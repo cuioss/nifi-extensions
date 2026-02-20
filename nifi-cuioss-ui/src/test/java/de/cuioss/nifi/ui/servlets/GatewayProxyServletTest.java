@@ -154,6 +154,18 @@ class GatewayProxyServletTest {
         }
 
         @Test
+        @DisplayName("Should reject GET with null pathInfo")
+        void shouldRejectGetWithNullPathInfo() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid management path"));
+        }
+
+        @Test
         @DisplayName("Should reject missing processor ID")
         void shouldRejectMissingProcessorId() {
             given()
@@ -353,6 +365,35 @@ class GatewayProxyServletTest {
     class PostTestEndpoint {
 
         @Test
+        @DisplayName("Should reject POST with null pathInfo")
+        void shouldRejectPostWithNullPathInfo() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{}")
+                    .when()
+                    .post("/gateway")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid path for POST"));
+        }
+
+        @Test
+        @DisplayName("Should reject blank processor ID on POST")
+        void shouldRejectBlankProcessorIdOnPost() {
+            given()
+                    .header("X-Processor-Id", "  ")
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
+        }
+
+        @Test
         @DisplayName("Should reject non-test POST path")
         void shouldRejectNonTestPostPath() {
             given()
@@ -439,6 +480,36 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should proxy test request with request body")
+        void shouldProxyTestRequestWithBody() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"POST","headers":{},"body":"{\\"name\\":\\"test\\"}"}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("Should handle test request without headers key")
+        void shouldHandleTestRequestWithoutHeaders() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/health","method":"GET"}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
         }
 
         @Test

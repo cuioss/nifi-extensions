@@ -170,6 +170,21 @@ class ComponentInfoServletTest {
         }
 
         @Test
+        @DisplayName("Should return 500 for unexpected exception")
+        void shouldReturn500ForUnexpectedException() {
+            configException.set(new RuntimeException("Unexpected error in config resolution"));
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/component-info")
+                    .then()
+                    .statusCode(500)
+                    .contentType(containsString("application/json"))
+                    .body("error", containsString("Failed to resolve component info"));
+        }
+
+        @Test
         @DisplayName("Should return 400 for blank processor ID")
         void shouldReturn400ForBlankProcessorId() {
             given()

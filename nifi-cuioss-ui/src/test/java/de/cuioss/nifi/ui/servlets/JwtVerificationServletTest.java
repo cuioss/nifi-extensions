@@ -77,7 +77,7 @@ class JwtVerificationServletTest {
                     new JwtValidationService(dummyContext) {
                         @Override
                         public TokenValidationResult verifyToken(String token, String processorId,
-                                                                 HttpServletRequest request)
+                                HttpServletRequest request)
                                 throws IllegalArgumentException, IllegalStateException {
                             try {
                                 return currentVerifier.verify(token, processorId);
@@ -456,6 +456,50 @@ class JwtVerificationServletTest {
                 .body("decoded.header.kid", equalTo("test-key-id"))
                 .body("decoded.payload.sub", equalTo("decoded-user"))
                 .body("decoded.payload.iss", equalTo("https://example.com"));
+    }
+
+    @Test
+    @DisplayName("Should handle diverse claim value types in decoded JWT payload")
+    void validTokenWithDiverseClaimTypes() {
+        // Build JWT with boolean, number, array, nested object claims
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"alg":"RS256","typ":"JWT"}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"sub":"diverse-user","active":true,"score":3.14,"count":42,"tags":["tag1","tag2"],"meta":{"key":"val"},"big":9999999999}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String rawToken = header + "." + payload + ".fake-signature";
+
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("diverse-user")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
+            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
+            replay(mockTokenContent);
+
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("decoded.payload.sub", equalTo("diverse-user"))
+                .body("decoded.payload.active", equalTo(true))
+                .body("decoded.payload.tags", hasItems("tag1", "tag2"))
+                .body("decoded.payload.meta.key", equalTo("val"));
     }
 
     @Test
