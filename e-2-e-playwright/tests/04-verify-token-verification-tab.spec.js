@@ -212,10 +212,9 @@ test.describe("Token Verification Tab", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(messageText);
 
-        // Must indicate a token-level error (expired or invalid, not a service error)
-        expect(messageText).toMatch(
-            /expired|invalid|error|fail/i,
-        );
+        // Must indicate a token-level error (expired or invalid — the backend may not
+        // distinguish between expiration and other validation failures)
+        expect(messageText).toMatch(/expired|invalid/i);
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -268,6 +267,58 @@ test.describe("Token Verification Tab", () => {
         // Must indicate a token-level error — not even a valid JWT structure
         expect(resultText).toMatch(
             /invalid|error|fail|malformed|not.*jwt/i,
+        );
+
+        // Must NOT show a successful "valid token" message
+        const validStatusVisible = await customUIFrame
+            .locator(".verification-status.valid")
+            .isVisible()
+            .catch(() => false);
+        expect(validStatusVisible).toBe(false);
+    });
+
+    test("should reject empty token submission", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        await processorService.clickTab(customUIFrame, "Token Verification");
+
+        const tokenVerificationTab = customUIFrame.locator(
+            "#token-verification",
+        );
+        const tokenInput = tokenVerificationTab
+            .locator("#field-token-input")
+            .first();
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
+
+        // Leave token input empty and click verify
+        await tokenInput.fill("");
+
+        const verifyButton = tokenVerificationTab
+            .locator(".verify-token-button")
+            .first();
+        await verifyButton.click();
+
+        // Expect an error or validation message — empty input should not silently succeed
+        const errorResult = customUIFrame
+            .locator(
+                ".token-error, .error-container, .error-message, .verification-status, .validation-message",
+            )
+            .first();
+        await expect(errorResult).toBeVisible({ timeout: 10000 });
+
+        const resultText = await errorResult.textContent();
+
+        // Must indicate an error (empty/missing/required/invalid token)
+        expect(resultText).toMatch(
+            /empty|required|missing|invalid|error|enter.*token|provide.*token/i,
         );
 
         // Must NOT show a successful "valid token" message

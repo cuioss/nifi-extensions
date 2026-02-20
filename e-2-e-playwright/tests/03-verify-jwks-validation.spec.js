@@ -260,7 +260,78 @@ test.describe("JWKS Validation", () => {
         await expect(memoryField).toBeHidden();
     });
 
-    test("should validate JWKS inline content", async ({ page }, testInfo) => {
+    test("should accept valid JWKS inline content", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Switch JWKS Source Type to "Memory" to reveal the content textarea
+        const jwksTypeSelect = customUIFrame
+            .locator('select[name="jwks-type"]')
+            .first();
+        await expect(jwksTypeSelect).toBeVisible({ timeout: 5000 });
+        await jwksTypeSelect.selectOption("memory");
+
+        const jwksContentArea = customUIFrame
+            .locator('textarea[name="jwks-content"]')
+            .first();
+        await expect(jwksContentArea).toBeVisible({ timeout: 5000 });
+        await expect(jwksContentArea).toBeEnabled({ timeout: 5000 });
+
+        // Fill with a valid JWKS structure containing an RSA public key
+        const validJwks = JSON.stringify({
+            keys: [
+                {
+                    kty: "RSA",
+                    kid: "test-key-1",
+                    use: "sig",
+                    alg: "RS256",
+                    n: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+                    e: "AQAB",
+                },
+            ],
+        });
+        await jwksContentArea.fill(validJwks);
+
+        const validateButton = customUIFrame
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        const verificationResult = customUIFrame
+            .locator(".verification-result")
+            .first();
+
+        // Wait for validation to complete — must contain actual result, not "Testing..."
+        await expect(verificationResult).not.toContainText("Testing", { timeout: 30000 });
+
+        const resultText = await verificationResult.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(resultText);
+
+        // Valid JWKS content should show as success (OK, valid, key found)
+        expect(resultText).toMatch(/OK|valid|success|key/i);
+    });
+
+    test("should reject invalid JWKS inline content", async ({ page }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         const processor = await processorService.findJwtAuthenticator({

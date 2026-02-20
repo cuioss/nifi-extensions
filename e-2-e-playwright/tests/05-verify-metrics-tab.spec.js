@@ -120,6 +120,17 @@ test.describe("Metrics Tab", () => {
         );
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         await expect(lastUpdated).toContainText("Last updated:");
+
+        // Verify the Metrics tab title is properly translated (not showing the i18n key)
+        const metricsTitle = customUIFrame
+            .locator("#metrics h3, #metrics h2")
+            .first();
+        await expect(metricsTitle).toBeVisible({ timeout: 5000 });
+        const metricsTitleText = await metricsTitle.textContent();
+        expect(metricsTitleText).not.toContain("jwt.validator.metrics.title");
+        expect(metricsTitleText).toMatch(
+            /JWT Validation Metrics|JWT-Validierungsmetriken/,
+        );
     });
 
     test("should refresh metrics data", async ({ page }, testInfo) => {
@@ -147,17 +158,19 @@ test.describe("Metrics Tab", () => {
         });
         await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-        // Get initial metrics content
-        await metricsContent.textContent();
-
-        // Click refresh button
+        // Click refresh and verify the button is functional (not disabled, no errors)
         await refreshButton.click();
 
-        // Wait for refresh to complete
+        // Wait for any pending operations to complete
         await page.waitForLoadState("networkidle");
 
-        // Verify metrics content is still visible (may have same or updated content)
+        // Verify metrics content remains visible and stable after refresh
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
+
+        // Verify last-updated element is still present (refresh didn't break the UI)
+        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        await expect(lastUpdated).toContainText("Last updated:");
     });
 
     test("should export metrics data", async ({ page }, testInfo) => {
@@ -205,11 +218,12 @@ test.describe("Metrics Tab", () => {
         await expect(jsonButton).toBeVisible();
         await expect(prometheusButton).toBeVisible();
 
-        // Click JSON export — in headless mode downloads may not trigger,
-        // so we verify the button is clickable and doesn't cause errors
+        // Click JSON export and verify a download is triggered
+        const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
         await jsonButton.click();
+        const download = await downloadPromise;
 
-        // After clicking export, the options dropdown should close or remain stable
-        await page.waitForLoadState("networkidle");
+        // Verify the download has a meaningful filename
+        expect(download.suggestedFilename()).toMatch(/\.json$/i);
     });
 });

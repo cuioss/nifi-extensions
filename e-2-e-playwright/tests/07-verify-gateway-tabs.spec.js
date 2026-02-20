@@ -13,6 +13,8 @@ import {
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { PROCESSOR_TYPES } from "../utils/constants.js";
+import { getValidAccessToken } from "../utils/keycloak-token-service.js";
+import { assertNoAuthError } from "../utils/test-assertions.js";
 
 test.describe("REST API Gateway Tabs", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
@@ -166,7 +168,55 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(responseDisplay).toBeHidden();
     });
 
-    test("should display metrics for gateway processor without not-available banner", async ({
+    test("should send request via endpoint tester and display response", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Fill in the token input with a valid Keycloak token
+        const tokenInput = endpointTesterPanel.locator(".token-input");
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        const validToken = await getValidAccessToken();
+        await tokenInput.fill(validToken);
+
+        // Click Send Request
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await expect(sendButton).toBeVisible({ timeout: 5000 });
+        await sendButton.click();
+
+        // Wait for response display to appear
+        const responseDisplay = endpointTesterPanel.locator(".response-display");
+        await expect(responseDisplay).toBeVisible({ timeout: 30000 });
+
+        const responseText = await responseDisplay.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(responseText);
+
+        // Response should contain HTTP status information
+        expect(responseText).toMatch(/\d{3}|status|response/i);
+    });
+
+    test("should display metrics for gateway processor with actual content", async ({
         page,
     }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
@@ -196,6 +246,15 @@ test.describe("REST API Gateway Tabs", () => {
             "text=Metrics Not Available",
         );
         await expect(notAvailableBanner).not.toBeVisible({ timeout: 3000 });
+
+        // Verify actual metrics content is rendered (not just empty)
+        const metricsText = await metricsContent.textContent();
+        expect(metricsText.length).toBeGreaterThan(50);
+
+        // Verify "Last updated" status is present for gateway metrics
+        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        await expect(lastUpdated).toContainText("Last updated:");
 
         // Take screenshot of gateway metrics
         await page.screenshot({

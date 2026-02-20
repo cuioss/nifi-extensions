@@ -78,6 +78,14 @@ test.describe("Help Tab", () => {
         const collapsibleHeaders = customUIFrame.locator(".collapsible-header");
         const headerCount = await collapsibleHeaders.count();
         expect(headerCount).toBeGreaterThan(0);
+
+        // Verify the Help tab title is properly translated (not showing the i18n key)
+        const helpTitle = customUIFrame.locator("#help h3, #help h2").first();
+        const helpTitleText = await helpTitle.textContent();
+        expect(helpTitleText).not.toContain("jwt.validator.help.title");
+        expect(helpTitleText).toMatch(
+            /Component Help|JWT Authenticator Help|JWT-Authentifikator-Hilfe/,
+        );
     });
 
     test("should have expandable help sections", async ({ page }, testInfo) => {
