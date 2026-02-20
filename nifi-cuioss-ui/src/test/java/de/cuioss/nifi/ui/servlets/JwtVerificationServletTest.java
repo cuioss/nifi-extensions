@@ -459,6 +459,48 @@ class JwtVerificationServletTest {
     }
 
     @Test
+    @DisplayName("Should handle null values and mixed array types in decoded JWT payload")
+    void validTokenWithNullAndMixedArrayClaims() {
+        // Build JWT with null claim and array containing mixed types (String, Integer, Boolean, null)
+        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"alg":"RS256","typ":"JWT"}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                """
+                {"sub":"null-test","nothing":null,"items":["text",42,true,null],"big":9999999999}"""
+                        .getBytes(StandardCharsets.UTF_8));
+        String rawToken = header + "." + payload + ".fake-signature";
+
+        currentVerifier = (token, processorId) -> {
+            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
+            expect(mockTokenContent.getSubject()).andReturn(Optional.of("null-test")).anyTimes();
+            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
+            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
+            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
+            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
+            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
+            replay(mockTokenContent);
+
+            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            result.setAuthorized(true);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("decoded.payload.sub", equalTo("null-test"))
+                .body("decoded.payload.items", hasItems("text"));
+    }
+
+    @Test
     @DisplayName("Should handle diverse claim value types in decoded JWT payload")
     void validTokenWithDiverseClaimTypes() {
         // Build JWT with boolean, number, array, nested object claims
