@@ -392,4 +392,66 @@ test.describe("JWKS Validation", () => {
         // Invalid JWKS content must not show as a success
         expect(resultText).not.toMatch(/^\s*OK\b/);
     });
+
+    test("should block path traversal attempts in JWKS file path", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Switch JWKS Source Type to "File"
+        const jwksTypeSelect = customUIFrame
+            .locator('select[name="jwks-type"]')
+            .first();
+        await expect(jwksTypeSelect).toBeVisible({ timeout: 5000 });
+        await jwksTypeSelect.selectOption("file");
+
+        // Fill with a path traversal attempt
+        const jwksFileInput = customUIFrame
+            .locator('input[name="jwks-file"]')
+            .first();
+        await expect(jwksFileInput).toBeVisible({ timeout: 5000 });
+        await jwksFileInput.fill("../../etc/passwd");
+
+        const validateButton = customUIFrame
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        const verificationResult = customUIFrame
+            .locator(".verification-result")
+            .first();
+
+        // Wait for validation result — must show error, not success
+        await expect(verificationResult).toContainText(
+            /error|invalid|fail|not found|denied|traversal|blocked/i,
+            { timeout: 30000 },
+        );
+
+        const resultText = await verificationResult.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(resultText);
+
+        // Path traversal must NOT show as a success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
+    });
 });

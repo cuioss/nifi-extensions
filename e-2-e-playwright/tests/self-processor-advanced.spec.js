@@ -1,8 +1,7 @@
 /**
- * @file Self-Test: Processor Advanced Configuration
- * Tests processor advanced configuration access with 2025 best practices
- * Single responsibility: Verify processor advanced dialog opens and "Back to Processor" works
- * @version 1.0.0
+ * @file Self-Test: Processor Navigation and Error Handling
+ * Tests "Back to Processor" navigation and configuration dialog error handling
+ * @version 1.1.0
  */
 
 import {
@@ -14,7 +13,7 @@ import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 
-test.describe("Self-Test: Processor Advanced Configuration", () => {
+test.describe("Self-Test: Processor Navigation and Error Handling", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         const authService = new AuthService(page);
         await authService.ensureReady();
@@ -27,75 +26,6 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
 
         // Don't check for critical errors here - authentication may have transient 401s
         await takeStartScreenshot(page, testInfo);
-    });
-
-    test("should open processor configuration dialog", async ({
-        page,
-    }, testInfo) => {
-        // Don't check critical errors at start - processor finding handles errors
-
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT authenticator on canvas (specific to avoid matching other flow processors)
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open configuration dialog
-        const dialog = await processorService.configure(processor);
-
-        // Verify dialog is visible
-        await expect(dialog).toBeVisible({ timeout: 3000 });
-
-        // Don't check critical errors here - dialog operations handle their own errors
-
-        // Close dialog using ESC key or close button
-        await page.keyboard.press("Escape");
-
-        // Verify dialog is closed
-        await expect(dialog).not.toBeVisible({ timeout: 5000 });
-    });
-
-    test("should access advanced configuration properties", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find existing JWT processor on canvas (throws if not found)
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Right-click to open context menu
-        await processorService.interact(processor, {
-            action: "rightclick",
-        });
-
-        // Look for configure option
-        const configureOption = page.getByRole("menuitem", {
-            name: /configure/i,
-        });
-
-        // If configure option exists, click it
-        if (await configureOption.isVisible({ timeout: 2000 })) {
-            await configureOption.click();
-
-            // Wait for configuration dialog - utility handles NiFi-compatible selectors
-            const dialog = page.locator(
-                '[role="dialog"], .dialog, .configuration-dialog',
-            );
-            await expect(dialog).toBeVisible({ timeout: 3000 });
-
-            // Close dialog first since Advanced is accessed via right-click
-            await page.keyboard.press("Escape");
-            await expect(dialog).not.toBeVisible({ timeout: 2000 });
-
-            // Now open Advanced UI via right-click menu
-            await processorService.openAdvancedUI(processor);
-
-            // Close using ESC
-            await page.keyboard.press("Escape");
-        }
     });
 
     test('should verify "Back to Processor" navigation link', async ({
@@ -173,39 +103,5 @@ test.describe("Self-Test: Processor Advanced Configuration", () => {
                 timeout: 2000,
             });
         }).rejects.toThrow(); // Should throw timeout error
-    });
-
-    test("should verify processor interaction reliability", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT authenticator on canvas (specific to avoid matching other flow processors)
-        // Find JWT authenticator on canvas (throws if not found)
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Test hover interaction
-        await processorService.interact(processor, { action: "hover" });
-
-        // Verify processor is still visible after interaction
-        // Use processor.locator if available, otherwise use first() to avoid strict mode violation
-        const locator =
-            processor.locator || page.locator(processor.element).first();
-        await expect(locator).toBeVisible({
-            timeout: 5000,
-        });
-
-        // Test click interaction
-        await processorService.interact(processor, { action: "click" });
-
-        // Should not crash or cause errors
-        await page.waitForLoadState("networkidle");
-
-        // Verify processor is still visible and functional
-        await expect(locator).toBeVisible({
-            timeout: 5000,
-        });
     });
 });

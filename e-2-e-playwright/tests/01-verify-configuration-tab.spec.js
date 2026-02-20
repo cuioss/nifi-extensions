@@ -247,4 +247,357 @@ test.describe("Configuration Tab", () => {
             expect(value).not.toBe("delete-me-issuer");
         }
     });
+
+    test("should edit an existing issuer configuration", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        // Add an issuer first
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
+        await addIssuerButton.click();
+
+        // Target the newly added form
+        const newForm = issuerForms.nth(existingCount);
+
+        const issuerNameInput = newForm.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        await issuerNameInput.fill("edit-test-issuer");
+
+        const issuerUriInput = newForm.locator('input[name="issuer"]');
+        await issuerUriInput.fill("https://original-issuer.example.com");
+
+        const jwksUrlInput = newForm.locator('input[name="jwks-url"]');
+        await jwksUrlInput.fill(
+            "https://original.example.com/.well-known/jwks.json",
+        );
+
+        const audienceInput = newForm.locator('input[name="audience"]');
+        await audienceInput.fill("original-audience");
+
+        // Save the initial issuer
+        const saveButton = newForm.getByRole("button", {
+            name: "Save Issuer",
+        });
+        await saveButton.click();
+
+        const successMessage = newForm.locator(".success-message").first();
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        await expect(successMessage).toContainText("saved successfully");
+
+        // Edit the issuer: change audience and JWKS URL
+        await audienceInput.fill("updated-audience");
+        await jwksUrlInput.fill(
+            "https://updated.example.com/.well-known/jwks.json",
+        );
+
+        // Save again
+        await saveButton.click();
+
+        // Verify save success
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        await expect(successMessage).toContainText("saved successfully");
+
+        // Verify updated values are preserved in the form
+        await expect(audienceInput).toHaveValue("updated-audience");
+        await expect(jwksUrlInput).toHaveValue(
+            "https://updated.example.com/.well-known/jwks.json",
+        );
+
+        // Clean up: remove the test issuer
+        await newForm.getByRole("button", { name: "Remove" }).click();
+
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+    });
+
+    test("should manage multiple issuers simultaneously", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+
+        // Count existing forms before adding
+        const existingCount = await issuerForms.count();
+
+        // Add first issuer — new form appears at the end
+        await addIssuerButton.click();
+        const firstForm = issuerForms.nth(existingCount);
+
+        await firstForm
+            .locator('input[placeholder="e.g., keycloak"]')
+            .fill("issuer-one");
+        await firstForm
+            .locator('input[name="issuer"]')
+            .fill("https://issuer-one.example.com");
+        await firstForm
+            .locator('input[name="jwks-url"]')
+            .fill("https://issuer-one.example.com/.well-known/jwks.json");
+
+        await firstForm.getByRole("button", { name: "Save Issuer" }).click();
+
+        // Verify first issuer saved
+        const firstSuccess = firstForm.locator(".success-message");
+        await expect(firstSuccess).toBeVisible({ timeout: 10000 });
+
+        // Add second issuer — new form appears at the end
+        await addIssuerButton.click();
+        const secondForm = issuerForms.nth(existingCount + 1);
+
+        await secondForm
+            .locator('input[placeholder="e.g., keycloak"]')
+            .fill("issuer-two");
+        await secondForm
+            .locator('input[name="issuer"]')
+            .fill("https://issuer-two.example.com");
+        await secondForm
+            .locator('input[name="jwks-url"]')
+            .fill("https://issuer-two.example.com/.well-known/jwks.json");
+
+        await secondForm.getByRole("button", { name: "Save Issuer" }).click();
+
+        // Verify second issuer saved
+        const secondSuccess = secondForm.locator(".success-message");
+        await expect(secondSuccess).toBeVisible({ timeout: 10000 });
+
+        // Verify both issuer names are visible
+        const allNameInputs = customUIFrame.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        const names = [];
+        const nameCount = await allNameInputs.count();
+        for (let i = 0; i < nameCount; i++) {
+            names.push(await allNameInputs.nth(i).inputValue());
+        }
+        expect(names).toContain("issuer-one");
+        expect(names).toContain("issuer-two");
+
+        // Remove first added issuer (issuer-one) via its own Remove button
+        await firstForm.getByRole("button", { name: "Remove" }).click();
+
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+
+        // Verify only issuer-two remains among the added issuers
+        const remainingInputs = customUIFrame.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        const remainingNames = [];
+        const remainingCount = await remainingInputs.count();
+        for (let i = 0; i < remainingCount; i++) {
+            remainingNames.push(await remainingInputs.nth(i).inputValue());
+        }
+        expect(remainingNames).not.toContain("issuer-one");
+        expect(remainingNames).toContain("issuer-two");
+
+        // Clean up: remove issuer-two — it's now the last form
+        const lastForm = issuerForms.last();
+        await lastForm.getByRole("button", { name: "Remove" }).click();
+
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+    });
+
+    test("should save issuer with inline JWKS content", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
+        await addIssuerButton.click();
+
+        // Target the newly added form
+        const newForm = issuerForms.nth(existingCount);
+
+        // Fill issuer name and URI
+        const issuerNameInput = newForm.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        await issuerNameInput.fill("memory-issuer");
+
+        const issuerUriInput = newForm.locator('input[name="issuer"]');
+        await issuerUriInput.fill("https://memory-issuer.example.com");
+
+        // Switch JWKS Source Type to "Memory"
+        const jwksTypeSelect = newForm.locator('select[name="jwks-type"]');
+        await jwksTypeSelect.selectOption("memory");
+
+        // Fill textarea with valid JWKS JSON
+        const jwksContentArea = newForm.locator(
+            'textarea[name="jwks-content"]',
+        );
+        await expect(jwksContentArea).toBeVisible({ timeout: 5000 });
+
+        const validJwks = JSON.stringify({
+            keys: [
+                {
+                    kty: "RSA",
+                    kid: "test-key-1",
+                    use: "sig",
+                    alg: "RS256",
+                    n: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+                    e: "AQAB",
+                },
+            ],
+        });
+        await jwksContentArea.fill(validJwks);
+
+        // Save the issuer
+        const saveButton = newForm.getByRole("button", {
+            name: "Save Issuer",
+        });
+        await saveButton.click();
+
+        // Verify save success
+        const successMessage = newForm.locator(".success-message").first();
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        await expect(successMessage).toContainText("saved successfully");
+
+        // Verify JWKS type still shows "Memory"
+        await expect(jwksTypeSelect).toHaveValue("memory");
+
+        // Verify issuer name is preserved
+        await expect(issuerNameInput).toHaveValue("memory-issuer");
+
+        // Clean up: remove the test issuer
+        await newForm.getByRole("button", { name: "Remove" }).click();
+
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+    });
+
+    test("should show error when saving issuer with missing required fields", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
+        await addIssuerButton.click();
+
+        // Target the newly added form (last one)
+        const newForm = issuerForms.nth(existingCount);
+
+        // The new form comes pre-populated with sample values.
+        // Clear Issuer URI and JWKS URL to trigger "required" validation.
+        const issuerNameInput = newForm.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
+        await issuerNameInput.fill("incomplete-issuer");
+
+        const issuerUriInput = newForm.locator('input[name="issuer"]');
+        await issuerUriInput.fill("");
+
+        const jwksUrlInput = newForm.locator('input[name="jwks-url"]');
+        await jwksUrlInput.fill("");
+
+        // Click save with missing required fields
+        const saveButton = newForm.getByRole("button", { name: "Save Issuer" });
+        await saveButton.click();
+
+        // Verify error message about required fields is displayed
+        const errorMessage = newForm.locator(".error-message").first();
+        await expect(errorMessage).toBeVisible({ timeout: 10000 });
+
+        const errorText = await errorMessage.textContent();
+        expect(errorText).toMatch(/required/i);
+
+        // Clean up: remove the incomplete issuer form
+        await newForm.getByRole("button", { name: "Remove" }).click();
+
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        if (await confirmButton.isVisible({ timeout: 2000 })) {
+            await confirmButton.click();
+        }
+    });
 });

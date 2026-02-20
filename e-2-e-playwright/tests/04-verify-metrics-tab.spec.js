@@ -152,25 +152,42 @@ test.describe("Metrics Tab", () => {
         const metricsContent = customUIFrame.locator("#metrics");
         await expect(metricsContent).toBeVisible({ timeout: 10000 });
 
+        // Capture the last-updated element before refresh
+        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        const timestampBefore = await lastUpdated.textContent();
+
         // Find refresh button
         const refreshButton = customUIFrame.getByRole("button", {
             name: /refresh|reload/i,
         });
         await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-        // Click refresh and verify the button is functional (not disabled, no errors)
+        // Wait 1.1s so the timestamp will differ (second-level granularity)
+        await page.waitForTimeout(1100);
+
+        // Click refresh
         await refreshButton.click();
 
-        // Wait for any pending operations to complete
+        // Wait for refresh to complete
         await page.waitForLoadState("networkidle");
 
         // Verify metrics content remains visible and stable after refresh
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
 
         // Verify last-updated element is still present (refresh didn't break the UI)
-        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
-        await expect(lastUpdated).toContainText("Last updated:");
+        const timestampAfter = await lastUpdated.textContent();
+
+        // For JWT authenticator, metrics are "Not Available" so timestamp may stay "Never".
+        // For gateway processors, the timestamp should change.
+        // In both cases, the element must still be visible and contain "Last updated:".
+        expect(timestampAfter).toContain("Last updated:");
+
+        // If metrics ARE available (not "Never"), the timestamp should have changed
+        if (!timestampBefore.includes("Never")) {
+            expect(timestampAfter).not.toBe(timestampBefore);
+        }
     });
 
     test("should export metrics data", async ({ page }, testInfo) => {

@@ -111,6 +111,18 @@ test.describe("Token Verification Tab", () => {
         await expect(sectionHeaders.filter({ hasText: "Header" })).toBeVisible({ timeout: 5000 });
         await expect(sectionHeaders.filter({ hasText: "Payload" })).toBeVisible({ timeout: 5000 });
 
+        // Verify decoded Header contains "alg" (always present in JWT headers)
+        const headerPre = customUIFrame.locator(".token-section:has(h4:has-text('Header')) pre").first();
+        await expect(headerPre).toContainText('"alg"');
+
+        // Verify decoded Payload contains standard claims
+        const payloadPre = customUIFrame.locator(".token-section:has(h4:has-text('Payload')) pre").first();
+        await expect(payloadPre).toContainText('"sub"');
+        await expect(payloadPre).toContainText('"iss"');
+
+        // Verify issuer claim references the Keycloak realm
+        await expect(payloadPre).toContainText("oauth_integration_tests");
+
         // Token claims must include Issuer and Subject
         const tokenClaims = customUIFrame.locator(".token-claims").first();
         await expect(tokenClaims).toBeVisible({ timeout: 5000 });

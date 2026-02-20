@@ -216,6 +216,66 @@ test.describe("REST API Gateway Tabs", () => {
         expect(responseText).toMatch(/\d{3}|status|response/i);
     });
 
+    test("should send POST request with body via endpoint tester", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Select POST method
+        const methodSelector = endpointTesterPanel.locator(".method-selector");
+        await methodSelector.selectOption("POST");
+
+        // Verify body textarea becomes visible
+        const bodyGroup = endpointTesterPanel.locator(".body-group");
+        await expect(bodyGroup).toBeVisible({ timeout: 5000 });
+
+        const bodyInput = endpointTesterPanel.locator(".body-input");
+        await expect(bodyInput).toBeVisible({ timeout: 5000 });
+
+        // Fill body with JSON
+        await bodyInput.fill('{"test":"data"}');
+
+        // Fill in a valid token
+        const tokenInput = endpointTesterPanel.locator(".token-input");
+        const validToken = await getValidAccessToken();
+        await tokenInput.fill(validToken);
+
+        // Click Send Request
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await sendButton.click();
+
+        // Wait for response display to appear
+        const responseDisplay = endpointTesterPanel.locator(".response-display");
+        await expect(responseDisplay).toBeVisible({ timeout: 30000 });
+
+        const responseText = await responseDisplay.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(responseText);
+
+        // Response should contain HTTP status information
+        expect(responseText).toMatch(/\d{3}|status|response/i);
+    });
+
     test("should display metrics for gateway processor with actual content", async ({
         page,
     }, testInfo) => {
@@ -251,16 +311,29 @@ test.describe("REST API Gateway Tabs", () => {
         const metricsText = await metricsContent.textContent();
         expect(metricsText.length).toBeGreaterThan(50);
 
+        // Verify at least one gateway-specific metrics section is visible
+        const tokenValidation = customUIFrame.locator(
+            '[data-testid="token-validation-metrics"]',
+        );
+        const httpSecurity = customUIFrame.locator(
+            '[data-testid="http-security-metrics"]',
+        );
+        const gatewayEvents = customUIFrame.locator(
+            '[data-testid="gateway-events-metrics"]',
+        );
+
+        const hasTokenValidation = await tokenValidation.isVisible();
+        const hasHttpSecurity = await httpSecurity.isVisible();
+        const hasGatewayEvents = await gatewayEvents.isVisible();
+
+        expect(
+            hasTokenValidation || hasHttpSecurity || hasGatewayEvents,
+        ).toBe(true);
+
         // Verify "Last updated" status is present for gateway metrics
         const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         await expect(lastUpdated).toContainText("Last updated:");
-
-        // Take screenshot of gateway metrics
-        await page.screenshot({
-            path: `${testInfo.outputDir}/gateway-metrics.png`,
-            fullPage: true,
-        });
     });
 
     test("should display gateway-specific help content", async ({
