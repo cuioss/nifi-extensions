@@ -4,9 +4,10 @@
  *
  * The JWT authenticator processor uses the non-gateway metrics template which
  * shows a "Metrics Not Available" banner (metrics are REST API Gateway only).
- * These tests verify that the metrics tab renders correctly, shows the
- * not-available banner, and that the refresh/export controls are functional.
- * @version 1.2.0
+ * These tests verify that the metrics tab renders correctly and shows the
+ * not-available banner. Refresh/export tests live in 06-verify-gateway-tabs.spec.js
+ * where metrics contain real data.
+ * @version 1.3.0
  */
 
 import {
@@ -133,117 +134,4 @@ test.describe("Metrics Tab", () => {
         );
     });
 
-    test("should refresh metrics data", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Metrics");
-
-        // Wait for metrics to load
-        const metricsContent = customUIFrame.locator("#metrics");
-        await expect(metricsContent).toBeVisible({ timeout: 10000 });
-
-        // Capture the last-updated element before refresh
-        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
-        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
-        const timestampBefore = await lastUpdated.textContent();
-
-        // Find refresh button
-        const refreshButton = customUIFrame.getByRole("button", {
-            name: /refresh|reload/i,
-        });
-        await expect(refreshButton).toBeVisible({ timeout: 5000 });
-
-        // Wait 1.1s so the timestamp will differ (second-level granularity)
-        await page.waitForTimeout(1100);
-
-        // Click refresh
-        await refreshButton.click();
-
-        // Wait for refresh to complete
-        await page.waitForLoadState("networkidle");
-
-        // Verify metrics content remains visible and stable after refresh
-        await expect(metricsContent).toBeVisible({ timeout: 5000 });
-
-        // Verify last-updated element is still present (refresh didn't break the UI)
-        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
-        const timestampAfter = await lastUpdated.textContent();
-
-        // This test runs against the JWT authenticator processor, where metrics are
-        // "Not Available" — the timestamp always shows "Never" and never changes after
-        // refresh. The conditional below is therefore dead code in this context, but is
-        // kept for correctness if this test is ever reused for gateway processors.
-        expect(timestampAfter).toContain("Last updated:");
-
-        // If metrics ARE available (not "Never"), the timestamp should have changed.
-        // For the JWT authenticator, timestampBefore always includes "Never", so this
-        // branch is never taken — it only applies to gateway-processor metrics.
-        if (!timestampBefore.includes("Never")) {
-            expect(timestampAfter).not.toBe(timestampBefore);
-        }
-    });
-
-    test("should export metrics data", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-        await processorService.clickTab(customUIFrame, "Metrics");
-
-        // Wait for metrics to load
-        const metricsContent = customUIFrame.locator("#metrics");
-        await expect(metricsContent).toBeVisible({ timeout: 10000 });
-
-        // Find export button
-        const exportButton = customUIFrame.getByRole("button", {
-            name: /export|download/i,
-        });
-        await expect(exportButton).toBeVisible({ timeout: 5000 });
-
-        // Click export button
-        await exportButton.click();
-
-        // Wait for export options to appear
-        const exportOptions = customUIFrame.locator(
-            '[data-testid="export-options"]',
-        );
-        await expect(exportOptions).toBeVisible({ timeout: 5000 });
-
-        // Check that export format options are available
-        const csvButton = customUIFrame.locator('[data-testid="export-csv"]');
-        const jsonButton = customUIFrame.locator('[data-testid="export-json"]');
-        const prometheusButton = customUIFrame.locator(
-            '[data-testid="export-prometheus"]',
-        );
-
-        await expect(csvButton).toBeVisible();
-        await expect(jsonButton).toBeVisible();
-        await expect(prometheusButton).toBeVisible();
-
-        // Click JSON export and verify a download is triggered
-        const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
-        await jsonButton.click();
-        const download = await downloadPromise;
-
-        // Verify the download has a meaningful filename
-        expect(download.suggestedFilename()).toMatch(/\.json$/i);
-    });
 });

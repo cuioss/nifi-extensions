@@ -196,6 +196,52 @@ export async function getOtherRealmAccessToken() {
 }
 
 /**
+ * Fetch a valid access token for the limitedUser (role-based authorization testing).
+ * Same realm (oauth_integration_tests) and client, but a user with only the 'user'
+ * role — missing the 'read' role required by the processor.
+ * @returns {Promise<string>} Valid JWT access token with insufficient roles
+ * @throws {Error} If token cannot be obtained
+ */
+export async function getLimitedUserAccessToken() {
+  const { LIMITED_USER_CONFIG } = await import('./constants.js');
+  testLogger.info('Auth', 'Fetching access token for limitedUser...');
+
+  const service = new KeycloakTokenService();
+  const response = await fetch(service.tokenEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: service.clientId,
+      client_secret: service.clientSecret,
+      username: LIMITED_USER_CONFIG.USERNAME,
+      password: LIMITED_USER_CONFIG.PASSWORD,
+      scope: 'openid'
+    })
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'Unknown error');
+    throw new Error(
+      `Failed to obtain access token for limitedUser. ` +
+      `Status: ${response.status} ${response.statusText}. ` +
+      `Response: ${errorBody}`
+    );
+  }
+
+  const tokenData = await response.json();
+  if (!tokenData.access_token) {
+    throw new Error(
+      `limitedUser response did not contain access_token. ` +
+      `Response: ${JSON.stringify(tokenData)}`
+    );
+  }
+
+  testLogger.info('Auth', 'Successfully obtained access token for limitedUser');
+  return tokenData.access_token;
+}
+
+/**
  * Export the service class as default
  */
 export default KeycloakTokenService;

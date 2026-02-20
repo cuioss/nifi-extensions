@@ -34,6 +34,16 @@ export const KEYCLOAK_CONFIG = {
 };
 
 /**
+ * Keycloak configuration for the limited user (role-based authorization testing)
+ * Same realm (oauth_integration_tests) and client, but a user with only the
+ * 'user' role — missing the 'read' role required by the processor.
+ */
+export const LIMITED_USER_CONFIG = {
+  USERNAME: 'limitedUser',
+  PASSWORD: 'drowssap',
+};
+
+/**
  * Keycloak configuration for the other_realm (cross-issuer testing)
  * Separate realm with its own RSA key pair — tokens from this realm
  * should be rejected by a processor configured for oauth_integration_tests
@@ -201,6 +211,7 @@ export const CONSTANTS = {
   PAGE_TYPES,
   AUTH,
   KEYCLOAK_CONFIG,
+  LIMITED_USER_CONFIG,
   OTHER_REALM_CONFIG,
   SERVICE_URLS,
   TIMEOUTS,

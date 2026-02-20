@@ -12,7 +12,7 @@ import {
 } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { PROCESSOR_TYPES } from "../utils/constants.js";
+import { PROCESSOR_TYPES, CONSTANTS } from "../utils/constants.js";
 import { getValidAccessToken } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
@@ -420,6 +420,66 @@ test.describe("REST API Gateway Tabs", () => {
         expect(indicatorText).toMatch(/route|select|error|required|invalid|400|404/i);
     });
 
+    test("should reject request with expired token via endpoint tester", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Select a valid route (first real option after placeholder)
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await expect(routeSelector).toBeVisible({ timeout: 5000 });
+        const options = routeSelector.locator("option");
+        const optionCount = await options.count();
+        if (optionCount > 1) {
+            await routeSelector.selectOption({ index: 1 });
+        }
+
+        // Fill token input with an expired token
+        const tokenInput = endpointTesterPanel.locator(".token-input");
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        await tokenInput.fill(CONSTANTS.TEST_TOKENS.EXPIRED);
+
+        // Click Send Request
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await expect(sendButton).toBeVisible({ timeout: 5000 });
+        await sendButton.click();
+
+        // Wait for response display — gateway should reject expired token
+        const responseDisplay = endpointTesterPanel.locator(
+            ".response-display, .error-message, [role='alert']",
+        );
+        await expect(responseDisplay).toBeVisible({ timeout: 30000 });
+
+        const responseText = await responseDisplay.textContent();
+
+        // Must indicate auth failure (401, expired, unauthorized, invalid, etc.)
+        expect(responseText).toMatch(
+            /401|expired|unauthorized|invalid|authentication|forbidden|error/i,
+        );
+
+        // Must NOT show a successful 2xx response
+        expect(responseText).not.toMatch(/\b2\d{2}\b.*OK/i);
+    });
+
     test("should reject request without authentication token", async ({
         page,
     }, testInfo) => {
@@ -479,6 +539,125 @@ test.describe("REST API Gateway Tabs", () => {
 
         // Must NOT show a successful 2xx response
         expect(responseText).not.toMatch(/\b2\d{2}\b.*OK/i);
+    });
+
+    test("should refresh gateway metrics and update timestamp", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Click Metrics tab
+        await processorService.clickTab(customUIFrame, "Metrics");
+
+        // Wait for metrics to load
+        const metricsContent = customUIFrame.locator("#metrics");
+        await expect(metricsContent).toBeVisible({ timeout: 10000 });
+
+        // Capture the last-updated element before refresh
+        const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        const timestampBefore = await lastUpdated.textContent();
+
+        // Find refresh button
+        const refreshButton = customUIFrame.getByRole("button", {
+            name: /refresh|reload/i,
+        });
+        await expect(refreshButton).toBeVisible({ timeout: 5000 });
+
+        // Wait 1.1s so the timestamp will differ (second-level granularity)
+        await page.waitForTimeout(1100);
+
+        // Click refresh
+        await refreshButton.click();
+
+        // Wait for refresh to complete
+        await page.waitForLoadState("networkidle");
+
+        // Verify metrics content remains visible and stable after refresh
+        await expect(metricsContent).toBeVisible({ timeout: 5000 });
+
+        // Verify last-updated element is still present (refresh didn't break the UI)
+        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+        const timestampAfter = await lastUpdated.textContent();
+
+        // Gateway metrics are real — timestamp should have changed after refresh
+        expect(timestampAfter).toContain("Last updated:");
+        if (!timestampBefore.includes("Never")) {
+            expect(timestampAfter).not.toBe(timestampBefore);
+        }
+    });
+
+    test("should export gateway metrics in JSON format", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Click Metrics tab
+        await processorService.clickTab(customUIFrame, "Metrics");
+
+        // Wait for metrics to load
+        const metricsContent = customUIFrame.locator("#metrics");
+        await expect(metricsContent).toBeVisible({ timeout: 10000 });
+
+        // Find export button
+        const exportButton = customUIFrame.getByRole("button", {
+            name: /export|download/i,
+        });
+        await expect(exportButton).toBeVisible({ timeout: 5000 });
+
+        // Click export button
+        await exportButton.click();
+
+        // Wait for export options to appear
+        const exportOptions = customUIFrame.locator(
+            '[data-testid="export-options"]',
+        );
+        await expect(exportOptions).toBeVisible({ timeout: 5000 });
+
+        // Check that export format options are available
+        const csvButton = customUIFrame.locator('[data-testid="export-csv"]');
+        const jsonButton = customUIFrame.locator('[data-testid="export-json"]');
+        const prometheusButton = customUIFrame.locator(
+            '[data-testid="export-prometheus"]',
+        );
+
+        await expect(csvButton).toBeVisible();
+        await expect(jsonButton).toBeVisible();
+        await expect(prometheusButton).toBeVisible();
+
+        // Click JSON export and verify a download is triggered
+        const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
+        await jsonButton.click();
+        const download = await downloadPromise;
+
+        // Verify the download has a meaningful filename
+        expect(download.suggestedFilename()).toMatch(/\.json$/i);
     });
 
     test("should display gateway-specific help content", async ({

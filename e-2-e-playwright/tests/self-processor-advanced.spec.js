@@ -1,7 +1,7 @@
 /**
  * @file Self-Test: Processor Navigation and Error Handling
- * Tests "Back to Processor" navigation and configuration dialog error handling
- * @version 1.1.0
+ * Tests configuration dialog error handling
+ * @version 1.2.0
  */
 
 import {
@@ -11,7 +11,6 @@ import {
 } from "../fixtures/test-fixtures.js";
 import { AuthService } from "../utils/auth-service.js";
 import { ProcessorService } from "../utils/processor.js";
-import { CONSTANTS } from "../utils/constants.js";
 
 test.describe("Self-Test: Processor Navigation and Error Handling", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
@@ -26,58 +25,6 @@ test.describe("Self-Test: Processor Navigation and Error Handling", () => {
 
         // Don't check for critical errors here - authentication may have transient 401s
         await takeStartScreenshot(page, testInfo);
-    });
-
-    // Known issue: double-clicking a processor in NiFi 2.x opens the configuration
-    // dialog (modal), not a separate page — so no "Back to Processor" link exists.
-    // This test.fail() will automatically start passing if the UI adds such a link.
-    test('should verify "Back to Processor" navigation link', async ({
-        page,
-    }, testInfo) => {
-        test.fail();
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find existing JWT processor on canvas (throws if not found)
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Double-click to open processor details/properties
-        await processorService.interact(processor, {
-            action: "doubleclick",
-        });
-
-        // Wait for navigation or modal to appear
-        await page.waitForLoadState("networkidle");
-
-        // Look for "Back to Processor" or similar navigation link
-        const backLinks = [
-            page.getByRole("link", { name: /back to processor/i }),
-            page.getByRole("button", { name: /back to processor/i }),
-            page.getByText(/back to processor/i),
-            page.locator('[href*="processor"]'),
-            page.locator(".back-link, .return-link"),
-        ];
-
-        let backLinkFound = false;
-        for (const backLink of backLinks) {
-            if (await backLink.isVisible({ timeout: 2000 })) {
-                // Click the back link
-                await backLink.click();
-                await page.waitForLoadState("networkidle");
-
-                // Verify we're back on main canvas
-                await expect(
-                    page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-                ).toBeVisible({ timeout: 3000 });
-
-                backLinkFound = true;
-                break;
-            }
-        }
-
-        // Fail clearly if no "Back to Processor" link was found — do not mask with goBack()
-        expect(backLinkFound).toBe(true);
     });
 
     test("should handle configuration dialog failures gracefully", async ({

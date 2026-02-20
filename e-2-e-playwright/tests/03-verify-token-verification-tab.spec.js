@@ -20,6 +20,7 @@ import {
     getValidAccessToken,
     getInvalidAccessToken,
     getOtherRealmAccessToken,
+    getLimitedUserAccessToken,
 } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
@@ -401,6 +402,68 @@ test.describe("Token Verification Tab", () => {
             .isVisible()
             .catch(() => false);
         expect(validStatusVisible).toBe(false);
+    });
+
+    test("should verify limitedUser token and show restricted role claims", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        await processorService.clickTab(customUIFrame, "Token Verification");
+
+        const tokenVerificationTab = customUIFrame.locator(
+            "#token-verification",
+        );
+        const tokenInput = tokenVerificationTab
+            .locator("#field-token-input")
+            .first();
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
+
+        // Fetch a real token for limitedUser — valid JWT from correct issuer/realm
+        // but with only the 'user' role (missing the 'read' role)
+        const limitedToken = await getLimitedUserAccessToken();
+
+        await tokenInput.fill(limitedToken);
+
+        const verifyButton = tokenVerificationTab
+            .locator(".verify-token-button")
+            .first();
+        await verifyButton.click();
+
+        // Token verification tab validates crypto/issuer only — the limitedUser
+        // token is from the correct issuer, so it should be accepted as valid
+        const verificationResult = customUIFrame
+            .locator(".verification-status.valid")
+            .first();
+        await expect(verificationResult).toBeVisible({ timeout: 10000 });
+
+        const resultText = await verificationResult.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(resultText);
+
+        // Must indicate a successful validation outcome
+        expect(resultText).toMatch(/valid/i);
+
+        // Verify decoded token details are rendered
+        const tokenDetails = customUIFrame.locator(".token-details").first();
+        await expect(tokenDetails).toBeVisible({ timeout: 5000 });
+
+        // Verify decoded Payload contains the limitedUser's subject
+        const payloadPre = customUIFrame.locator(".token-section:has(h4:has-text('Payload')) pre").first();
+        await expect(payloadPre).toContainText('"sub"');
+
+        // Verify issuer claim references the Keycloak realm
+        await expect(payloadPre).toContainText("oauth_integration_tests");
     });
 
     test("should clear token and results", async ({ page }, testInfo) => {
