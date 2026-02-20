@@ -118,7 +118,7 @@ class CustomUITestSupport {
                 .readObject().getJsonObject("component");
         String version = component.getJsonObject("bundle").getString("version");
 
-        // WAR context path follows NiFi convention: /{warArtifactId}-{version}
+        // NiFi WAR context path convention: the artifact ID followed by a dash and version
         return IntegrationTestSupport.NIFI_BASE + "/nifi-cuioss-ui-" + version;
     }
 

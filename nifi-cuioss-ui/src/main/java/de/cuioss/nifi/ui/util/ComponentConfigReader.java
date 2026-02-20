@@ -23,6 +23,7 @@ import jakarta.json.JsonReaderFactory;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.*;
+import org.jspecify.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -201,22 +202,16 @@ public class ComponentConfigReader {
             // to extracting the JWT from NiFi's __Secure-Authorization-Bearer
             // cookie. The Custom UI iframe uses cookie-based auth (no header),
             // so the cookie extraction is essential for E2E browser contexts.
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null || authHeader.isBlank()) {
-                authHeader = extractBearerTokenFromCookie(request);
-            }
-            if (authHeader != null) {
-                reqBuilder.header("Authorization", authHeader);
+            String resolvedAuth = resolveAuthHeader(request);
+            if (resolvedAuth != null) {
+                reqBuilder.header("Authorization", resolvedAuth);
             } else {
                 LOGGER.warn("No auth credentials available for REST API fallback "
                         + "(no Authorization header, no %s cookie)", NIFI_AUTH_COOKIE);
             }
 
             // Forward cookies as additional auth context
-            String cookieHeader = buildCookieHeader(request);
-            if (cookieHeader != null) {
-                reqBuilder.header("Cookie", cookieHeader);
-            }
+            addCookieHeader(reqBuilder, request);
 
             HttpResponse<String> response = client.send(
                     reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
@@ -224,7 +219,7 @@ public class ComponentConfigReader {
             if (response.statusCode() != 200) {
                 LOGGER.warn("REST API returned %s for component %s (auth: %s)",
                         response.statusCode(), componentId,
-                        authHeader != null ? "present" : "none");
+                        resolvedAuth != null ? "present" : "none");
                 return Map.of();
             }
 
@@ -247,6 +242,7 @@ public class ComponentConfigReader {
     // -----------------------------------------------------------------------
 
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
+    private static final String JSON_VALUE_KEY = "value";
 
     /**
      * Parses component properties from a NiFi REST API response. Handles both
@@ -291,7 +287,7 @@ public class ComponentConfigReader {
                     // properties map. Resolve from descriptors.allowableValues.
                     String csValue = resolveControllerServiceFromDescriptors(
                             key, descriptors);
-                    if (csValue != null) {
+                    if (!csValue.isEmpty()) {
                         result.put(key, csValue);
                     }
                 }
@@ -311,29 +307,29 @@ public class ComponentConfigReader {
      *
      * @param key         the property key
      * @param descriptors the descriptors JSON object (may be null)
-     * @return the controller service UUID, or null if not a CS reference
+     * @return the controller service UUID, or empty string if not a CS reference
      */
     private static String resolveControllerServiceFromDescriptors(
-            String key, JsonObject descriptors) {
+            String key, @Nullable JsonObject descriptors) {
         if (descriptors == null) {
-            return null;
+            return "";
         }
         JsonObject descriptor = descriptors.getJsonObject(key);
         if (descriptor == null || !descriptor.containsKey("identifiesControllerService")) {
-            return null;
+            return "";
         }
         // CS reference with a single allowable value → that's the configured CS
         var allowableValues = descriptor.getJsonArray("allowableValues");
         if (allowableValues != null && allowableValues.size() == 1) {
             JsonObject avWrapper = allowableValues.getJsonObject(0);
             JsonObject av = avWrapper.getJsonObject("allowableValue");
-            if (av != null && av.containsKey("value") && !av.isNull("value")) {
-                String csId = av.getString("value");
+            if (av != null && av.containsKey(JSON_VALUE_KEY) && !av.isNull(JSON_VALUE_KEY)) {
+                String csId = av.getString(JSON_VALUE_KEY);
                 LOGGER.debug("Resolved CS reference '%s' = '%s' from descriptors", key, csId);
                 return csId;
             }
         }
-        return null;
+        return "";
     }
 
     /**
@@ -343,32 +339,41 @@ public class ComponentConfigReader {
     private static final String NIFI_AUTH_COOKIE = "__Secure-Authorization-Bearer";
 
     /**
-     * Extracts the NiFi JWT from the {@code __Secure-Authorization-Bearer}
-     * cookie and returns it as a {@code "Bearer <jwt>"} string suitable for
-     * an {@code Authorization} header. Returns {@code null} if the cookie
-     * is not present.
+     * Resolves the authorization header value. Prefers the Authorization header
+     * from the request, falls back to extracting a Bearer token from NiFi's
+     * authentication cookie.
+     *
+     * @return the resolved auth header value, or null if no auth is available
      */
-    private static String extractBearerTokenFromCookie(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
+    @Nullable
+    private static String resolveAuthHeader(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && !header.isBlank()) {
+            return header;
         }
-        for (Cookie cookie : cookies) {
-            if (NIFI_AUTH_COOKIE.equals(cookie.getName())) {
-                String jwt = cookie.getValue();
-                if (jwt != null && !jwt.isBlank()) {
-                    LOGGER.debug("Extracted Bearer token from %s cookie", NIFI_AUTH_COOKIE);
-                    return "Bearer " + jwt;
+        // Fall back to NiFi's authentication cookie
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (NIFI_AUTH_COOKIE.equals(cookie.getName())) {
+                    String jwt = cookie.getValue();
+                    if (jwt != null && !jwt.isBlank()) {
+                        LOGGER.debug("Extracted Bearer token from %s cookie", NIFI_AUTH_COOKIE);
+                        return "Bearer " + jwt;
+                    }
                 }
             }
         }
         return null;
     }
 
-    private static String buildCookieHeader(HttpServletRequest request) {
+    /**
+     * Adds a Cookie header to the request builder if cookies are present.
+     */
+    private static void addCookieHeader(HttpRequest.Builder reqBuilder, HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null || cookies.length == 0) {
-            return null;
+            return;
         }
         StringBuilder sb = new StringBuilder();
         for (Cookie cookie : cookies) {
@@ -377,7 +382,7 @@ public class ComponentConfigReader {
             }
             sb.append(cookie.getName()).append("=").append(cookie.getValue());
         }
-        return sb.toString();
+        reqBuilder.header("Cookie", sb.toString());
     }
 
     @SuppressWarnings("java:S4830") // Trust-all is required: NiFi uses self-signed certs in Docker

@@ -28,6 +28,7 @@ import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -167,48 +168,75 @@ public class JwtValidationService {
             if (controllerServiceId != null && !controllerServiceId.isBlank()) {
                 LOGGER.debug("Resolving controller service %s from property '%s'",
                         controllerServiceId, key);
-                try {
-                    Map<String, String> csProperties =
-                            configReader.getComponentConfig(controllerServiceId, request).properties();
-                    LOGGER.debug("Resolved %s properties from controller service %s",
-                            csProperties.size(), controllerServiceId);
-                    if (!csProperties.isEmpty()) {
-                        return csProperties;
-                    }
-                    // NiFi's Custom UI framework may return empty properties for
-                    // controller services accessed from a processor WAR context.
-                    // Fall through to try the REST API.
-                    LOGGER.warn("Internal API returned empty properties for controller service %s, "
-                            + "trying NiFi REST API fallback", controllerServiceId);
-                } catch (RuntimeException e) {
-                    LOGGER.warn("Internal API failed for controller service %s: %s, "
-                            + "trying NiFi REST API fallback", controllerServiceId, e.getMessage());
-                }
-
-                // Fallback: fetch CS properties via NiFi REST API
-                try {
-                    Map<String, String> restProperties =
-                            configReader.getControllerServicePropertiesViaRest(
-                                    controllerServiceId, request);
-                    if (!restProperties.isEmpty()) {
-                        LOGGER.debug("REST API returned %s properties for controller service %s",
-                                restProperties.size(), controllerServiceId);
-                        return restProperties;
-                    }
-                    LOGGER.warn("REST API also returned empty properties for controller service %s",
-                            controllerServiceId);
-                } catch (RuntimeException e) {
-                    LOGGER.warn("REST API fallback failed for controller service %s: %s",
-                            controllerServiceId, e.getMessage());
-                }
-
-                // Both approaches failed — surface a clear error
-                throw new IllegalStateException(
-                        "Failed to resolve properties for controller service "
-                                + controllerServiceId + " referenced by property '" + key + "'");
+                return resolveControllerServiceProperties(
+                        controllerServiceId, key, configReader, request);
             }
         }
         return processorProperties;
+    }
+
+    private static Map<String, String> resolveControllerServiceProperties(
+            String controllerServiceId, String propertyKey,
+            ComponentConfigReader configReader, HttpServletRequest request) {
+        // Try internal NiFi API first
+        Map<String, String> csProperties = fetchViaInternalApi(
+                controllerServiceId, configReader, request);
+        if (!csProperties.isEmpty()) {
+            return csProperties;
+        }
+
+        // Fallback: fetch CS properties via NiFi REST API
+        Map<String, String> restProperties = fetchViaRestApi(
+                controllerServiceId, configReader, request);
+        if (!restProperties.isEmpty()) {
+            return restProperties;
+        }
+
+        throw new IllegalStateException(
+                "Failed to resolve properties for controller service "
+                        + controllerServiceId + " referenced by property '" + propertyKey + "'");
+    }
+
+    private static Map<String, String> fetchViaInternalApi(
+            String controllerServiceId, ComponentConfigReader configReader,
+            HttpServletRequest request) {
+        try {
+            Map<String, String> csProperties =
+                    configReader.getComponentConfig(controllerServiceId, request).properties();
+            LOGGER.debug("Resolved %s properties from controller service %s",
+                    csProperties.size(), controllerServiceId);
+            if (csProperties.isEmpty()) {
+                LOGGER.warn("Internal API returned empty properties for controller service %s, "
+                        + "trying NiFi REST API fallback", controllerServiceId);
+            }
+            return csProperties;
+        } catch (RuntimeException e) {
+            LOGGER.warn("Internal API failed for controller service %s: %s, "
+                    + "trying NiFi REST API fallback", controllerServiceId, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    private static Map<String, String> fetchViaRestApi(
+            String controllerServiceId, ComponentConfigReader configReader,
+            HttpServletRequest request) {
+        try {
+            Map<String, String> restProperties =
+                    configReader.getControllerServicePropertiesViaRest(
+                            controllerServiceId, request);
+            if (!restProperties.isEmpty()) {
+                LOGGER.debug("REST API returned %s properties for controller service %s",
+                        restProperties.size(), controllerServiceId);
+            } else {
+                LOGGER.warn("REST API also returned empty properties for controller service %s",
+                        controllerServiceId);
+            }
+            return restProperties;
+        } catch (RuntimeException e) {
+            LOGGER.warn("REST API fallback failed for controller service %s: %s",
+                    controllerServiceId, e.getMessage());
+            return Map.of();
+        }
     }
 
     /**
@@ -221,13 +249,20 @@ public class JwtValidationService {
             if (processorProperties.containsKey(key)) {
                 String value = processorProperties.get(key);
                 LOGGER.debug("CS reference property '%s' = '%s'", key,
-                        value == null ? "<null>" : (value.isBlank() ? "<blank>" : value));
+                        describeValue(value));
                 if (value == null || value.isBlank()) {
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private static String describeValue(@Nullable String value) {
+        if (value == null) {
+            return "<null>";
+        }
+        return value.isBlank() ? "<blank>" : value;
     }
 
     /**

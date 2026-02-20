@@ -61,6 +61,7 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
 
+    private static final String CONTENT_TYPE_JSON = "application/json";
     static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics");
     private static final String CONFIG_PATH = "/config";
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
@@ -120,9 +121,9 @@ public class GatewayProxyServlet extends HttpServlet {
             int port = resolveGatewayPort(processorId, req);
             String gatewayUrl = "http://localhost:" + port + pathInfo;
             String apiKey = apiKeyCache.get(processorId);
-            String gatewayResponse = executeGatewayGet(gatewayUrl, "application/json", apiKey);
+            String gatewayResponse = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON, apiKey);
 
-            resp.setContentType("application/json");
+            resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding("UTF-8");
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getOutputStream().write(gatewayResponse.getBytes(StandardCharsets.UTF_8));
@@ -206,7 +207,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
             result.add("headers", respHeaders);
 
-            resp.setContentType("application/json");
+            resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding("UTF-8");
             resp.setStatus(HttpServletResponse.SC_OK);
 
@@ -411,7 +412,17 @@ public class GatewayProxyServlet extends HttpServlet {
             root.add("listeningHost", host);
         }
 
-        // Routes: parse restapi.<name>.* dynamic properties
+        root.add("routes", buildRoutesArray(props));
+
+        resp.setContentType(CONTENT_TYPE_JSON);
+        resp.setCharacterEncoding("UTF-8");
+        resp.setStatus(HttpServletResponse.SC_OK);
+        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
+            writer.writeObject(root.build());
+        }
+    }
+
+    private static JsonArrayBuilder buildRoutesArray(Map<String, String> props) {
         JsonArrayBuilder routesArray = Json.createArrayBuilder();
         Map<String, Map<String, String>> routeGroups = new HashMap<>();
         for (Map.Entry<String, String> entry : props.entrySet()) {
@@ -435,21 +446,12 @@ public class GatewayProxyServlet extends HttpServlet {
             JsonObjectBuilder routeObj = Json.createObjectBuilder();
             routeObj.add("name", routeEntry.getKey());
             routeObj.add("path", path);
-
             routeObj.add("methods", buildStringArray(routeProps.get("methods")));
             routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
             routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
-
             routesArray.add(routeObj);
         }
-        root.add("routes", routesArray);
-
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
-        resp.setStatus(HttpServletResponse.SC_OK);
-        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-            writer.writeObject(root.build());
-        }
+        return routesArray;
     }
 
     private static JsonArrayBuilder buildStringArray(String commaSeparated) {
@@ -479,7 +481,7 @@ public class GatewayProxyServlet extends HttpServlet {
     private void sendErrorResponse(HttpServletResponse resp, int status, String message) {
         try {
             resp.setStatus(status);
-            resp.setContentType("application/json");
+            resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding("UTF-8");
 
             JsonObject errorJson = Json.createObjectBuilder()

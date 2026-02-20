@@ -74,6 +74,8 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     // --- NiFi Property Descriptors ---
 
+    private static final String BOOLEAN_FALSE = "false";
+
     static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
             .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
             .displayName("JWKS Refresh Interval")
@@ -108,7 +110,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production.")
             .required(true)
             .defaultValue("true")
-            .allowableValues("true", "false")
+            .allowableValues("true", BOOLEAN_FALSE)
             .build();
 
     static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
@@ -127,8 +129,8 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
                     + "Enable this when the IdP (e.g. Keycloak) runs on an internal network. "
                     + "Default: false (blocks private addresses for SSRF protection).")
             .required(true)
-            .defaultValue("false")
-            .allowableValues("true", "false")
+            .defaultValue(BOOLEAN_FALSE)
+            .allowableValues("true", BOOLEAN_FALSE)
             .build();
 
     private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(
