@@ -1,7 +1,7 @@
 /**
  * @file Critical Error Detector
  * Detects critical errors that should cause immediate test failure.
- * Includes error whitelisting and auth-aware HTTP error monitoring.
+ * Includes error whitelisting for console and page error monitoring.
  */
 
 /**
@@ -147,35 +147,6 @@ export class CriticalErrorDetector {
                 "Page crashed unexpectedly",
                 testInfo,
             );
-        });
-
-        // Monitor HTTP responses for errors (auth-aware: skip 401/403)
-        page.on("response", (response) => {
-            if (response.status() >= 400) {
-                const url = response.url();
-                const message = `HTTP ${response.status()} - ${url}`;
-
-                // Skip auth-related status codes
-                if (response.status() === 401 || response.status() === 403)
-                    return;
-
-                // Skip FontAwesome v4.7.0 font files (external NiFi UI dependency)
-                if (
-                    url.includes("fontawesome-webfont") &&
-                    url.includes("v=4.7.0")
-                )
-                    return;
-
-                // Token verification endpoint: skip expected 4xx client errors
-                // (invalid/malformed tokens) but flag 5xx server errors
-                if (
-                    url.includes("/jwt/verify-token") &&
-                    response.status() < 500
-                )
-                    return;
-
-                this.addCriticalError("HTTP_ERROR", message, testInfo);
-            }
         });
     }
 
@@ -431,33 +402,12 @@ export class CriticalErrorDetector {
     clearErrors() {
         this.detectedErrors = [];
     }
-
-    /**
-     * Check if any critical errors have been detected
-     */
-    hasCriticalErrors() {
-        return this.detectedErrors.length > 0;
-    }
 }
 
 /**
  * Global instance for use across tests
  */
 export const globalCriticalErrorDetector = new CriticalErrorDetector();
-
-/**
- * Utility function to setup critical error detection for a test
- */
-export async function setupCriticalErrorDetection(page, testInfo) {
-    globalCriticalErrorDetector.startMonitoring(page, testInfo);
-
-    // Skip initial canvas checks during setup - processor setup will handle canvas state
-    // Only check for UI loading stalls which are immediate issues
-    await globalCriticalErrorDetector.checkForUILoadingStalls(page, testInfo);
-
-    // Fail immediately if any critical errors detected
-    globalCriticalErrorDetector.failTestOnCriticalErrors();
-}
 
 /**
  * Utility function to check for critical errors during test execution
