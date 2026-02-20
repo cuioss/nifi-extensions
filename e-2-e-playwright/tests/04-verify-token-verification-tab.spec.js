@@ -6,7 +6,6 @@
  * Tests assert that actual token verification works end-to-end:
  * valid tokens produce "valid" results, invalid tokens produce token-level errors.
  * Infrastructure errors like "Service not available" are treated as test failures.
- * @version 2.0.0
  */
 
 import {
@@ -102,6 +101,21 @@ test.describe("Token Verification Tab", () => {
 
         // Must indicate a successful validation outcome
         expect(resultText).toMatch(/valid/i);
+
+        // Verify decoded token details are rendered
+        const tokenDetails = customUIFrame.locator(".token-details").first();
+        await expect(tokenDetails).toBeVisible({ timeout: 5000 });
+
+        // Header and Payload sections must be present
+        const sectionHeaders = customUIFrame.locator(".token-section h4");
+        await expect(sectionHeaders.filter({ hasText: "Header" })).toBeVisible({ timeout: 5000 });
+        await expect(sectionHeaders.filter({ hasText: "Payload" })).toBeVisible({ timeout: 5000 });
+
+        // Token claims must include Issuer and Subject
+        const tokenClaims = customUIFrame.locator(".token-claims").first();
+        await expect(tokenClaims).toBeVisible({ timeout: 5000 });
+        await expect(tokenClaims).toContainText("Issuer:");
+        await expect(tokenClaims).toContainText("Subject:");
     });
 
     test("should reject invalid JWT token", async ({ page }, testInfo) => {

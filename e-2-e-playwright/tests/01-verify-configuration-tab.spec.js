@@ -1,7 +1,6 @@
 /**
  * @file Configuration Tab Test
  * Verifies the configuration tab structure and issuer management in the JWT authenticator UI
- * @version 1.2.0
  */
 
 import {
@@ -153,6 +152,13 @@ test.describe("Configuration Tab", () => {
             .first();
         await expect(saveButton).toBeVisible({ timeout: 5000 });
         await saveButton.click();
+
+        // Verify save success message is displayed (displayUiSuccess renders .success-message)
+        const successMessage = customUIFrame
+            .locator(".success-message")
+            .first();
+        await expect(successMessage).toBeVisible({ timeout: 10000 });
+        await expect(successMessage).toContainText("saved successfully");
 
         // Verify issuer was saved — the issuer name must appear in an input field value
         // (The UI keeps issuers in editable form, not as collapsed text)

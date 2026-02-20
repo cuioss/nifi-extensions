@@ -3,7 +3,6 @@
  * Verifies the Custom UI displays gateway-specific tabs and content for
  * the RestApiGatewayProcessor. The gateway processor should show
  * Endpoint Configuration and Endpoint Tester tabs instead of JWT tabs.
- * @version 1.1.0
  */
 
 import {
@@ -102,11 +101,69 @@ test.describe("REST API Gateway Tabs", () => {
         const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
         await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
 
+        // Verify actual content: Global Settings section
+        const globalSettingsHeader = endpointConfigPanel.locator("h3").filter({ hasText: "Global Settings" });
+        await expect(globalSettingsHeader).toBeVisible({ timeout: 5000 });
+
+        // Config table must be rendered
+        const configTable = endpointConfigPanel.locator(".config-table").first();
+        await expect(configTable).toBeVisible({ timeout: 5000 });
+
+        // Routes section header must be present
+        const routesHeader = endpointConfigPanel.locator("h3").filter({ hasText: "Routes" });
+        await expect(routesHeader).toBeVisible({ timeout: 5000 });
+
         // Screenshot the endpoint config tab
         await page.screenshot({
             path: `${testInfo.outputDir}/gateway-endpoint-config.png`,
             fullPage: true,
         });
+    });
+
+    test("should display endpoint tester with route selector and controls", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        // Verify the endpoint tester panel is visible
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Verify route selector exists
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await expect(routeSelector).toBeVisible({ timeout: 5000 });
+
+        // Verify method selector exists
+        const methodSelector = endpointTesterPanel.locator(".method-selector");
+        await expect(methodSelector).toBeVisible({ timeout: 5000 });
+
+        // Verify token input exists
+        const tokenInput = endpointTesterPanel.locator(".token-input");
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+
+        // Verify send request button exists
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await expect(sendButton).toBeVisible({ timeout: 5000 });
+
+        // Response display should be initially hidden
+        const responseDisplay = endpointTesterPanel.locator(".response-display");
+        await expect(responseDisplay).toBeHidden();
     });
 
     test("should display metrics for gateway processor without not-available banner", async ({
