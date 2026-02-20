@@ -128,7 +128,11 @@ class CustomUIEndpointsIT {
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(true))
                     .body("claims", notNullValue())
-                    .body("issuer", notNullValue());
+                    .body("issuer", notNullValue())
+                    .body("decoded", notNullValue())
+                    .body("decoded.header.alg", notNullValue())
+                    .body("decoded.payload.iss", notNullValue())
+                    .body("decoded.payload.sub", notNullValue());
         }
 
         @Test

@@ -19,6 +19,11 @@ package de.cuioss.nifi.ui.servlets;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.oauth.core.json.JwtHeader;
+import de.cuioss.sheriff.oauth.core.pipeline.NonValidatingJwtParser;
+import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
@@ -28,6 +33,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
@@ -37,21 +43,29 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * This servlet provides a REST endpoint that verifies JWT tokens using the
  * same configuration and logic as the MultiIssuerJWTTokenAuthenticator processor.
  *
- * Endpoint: /nifi-api/processors/jwt/verify-token
- * Method: POST
+ * <p>Endpoint: /nifi-api/processors/jwt/verify-token
+ * <p>Method: POST
  *
- * Request format:
+ * <p>Request format:
+ * <pre>{@code
  * {
  *   "token": "eyJ...",
  *   "processorId": "uuid-of-processor"
  * }
+ * }</pre>
  *
- * Response format:
+ * <p>Response format:
+ * <pre>{@code
  * {
  *   "valid": true/false,
  *   "error": "error message if invalid",
- *   "claims": { ... token claims ... }
+ *   "claims": { ... token claims ... },
+ *   "decoded": {
+ *     "header": {"alg": "RS256", "typ": "JWT", ...},
+ *     "payload": {"sub": "...", "iss": "...", "exp": 123, ...}
+ *   }
  * }
+ * }</pre>
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  */
@@ -66,6 +80,10 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final String JSON_KEY_VALID = "valid";
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
+    /** Reusable parser for decoding already-validated tokens (no signature check). */
+    private static final NonValidatingJwtParser DECODE_PARSER = NonValidatingJwtParser.builder()
+            .securityEventCounter(new SecurityEventCounter())
+            .build();
 
     private transient JwtValidationService validationService;
 
@@ -94,84 +112,43 @@ public class JwtVerificationServlet extends HttpServlet {
 
         LOGGER.debug("Received JWT verification request");
 
-        // 1. Parse JSON request body
-        JsonObject requestJson = parseJsonRequest(req, resp);
-        if (requestJson.isEmpty()) {
-            return; // Error already handled
+        try {
+            JsonObject requestJson = parseJsonRequest(req);
+            TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, req);
+            TokenValidationResult result = performTokenVerification(verificationRequest, req);
+            sendJsonResponse(resp, 200, buildValidationResponse(result));
+        } catch (RequestException e) {
+            sendJsonResponse(resp, e.statusCode, buildErrorResponse(e.getMessage()));
         }
-
-        // 2. Validate and extract request parameters
-        TokenVerificationRequest verificationRequest = extractVerificationRequest(requestJson, req, resp);
-        if (verificationRequest == null) {
-            return; // Error already handled
-        }
-
-        // 3. Verify token using service
-        TokenValidationResult result = performTokenVerification(
-                verificationRequest,
-                req,
-                resp
-        );
-        if (result == null) {
-            return; // Error already handled
-        }
-
-        // 4. Build and send JSON response
-        safelySendValidationResponse(resp, result);
     }
 
-    /**
-     * Parses the JSON request body.
-     *
-     * @param req HTTP request
-     * @param resp HTTP response
-     * @return Parsed JSON object, or null if parsing failed (error already sent)
-     */
-    private JsonObject parseJsonRequest(HttpServletRequest req, HttpServletResponse resp) {
+    private JsonObject parseJsonRequest(HttpServletRequest req) throws RequestException {
         if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
-            safelySendErrorResponse(resp, 413, "Request body too large", false);
-            return Json.createObjectBuilder().build();
+            throw new RequestException(413, "Request body too large");
         }
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
             return reader.readObject();
         } catch (JsonException e) {
             LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
-            safelySendErrorResponse(resp, 400, "Invalid JSON format", false);
-            return Json.createObjectBuilder().build();
+            throw new RequestException(400, "Invalid JSON format");
         } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
-            safelySendErrorResponse(resp, 500, "Error reading request", false);
-            return Json.createObjectBuilder().build();
+            throw new RequestException(500, "Error reading request");
         }
     }
 
-    /**
-     * Extracts and validates token verification request parameters.
-     * The processor ID is read from the JSON body first, falling back to the
-     * {@code X-Processor-Id} header (set by the client and already validated
-     * by {@link ProcessorIdValidationFilter}).
-     *
-     * @param requestJson Parsed JSON request
-     * @param req HTTP request (for header fallback)
-     * @param resp HTTP response
-     * @return Token verification request, or null if validation failed (error already sent)
-     */
     private TokenVerificationRequest extractVerificationRequest(
             JsonObject requestJson,
-            HttpServletRequest req,
-            HttpServletResponse resp) {
+            HttpServletRequest req) throws RequestException {
 
-        // Validate required fields
         if (!requestJson.containsKey("token")) {
             LOGGER.warn(UILogMessages.WARN.MISSING_REQUIRED_FIELD_TOKEN);
-            safelySendErrorResponse(resp, 400, "Missing required field: token", false);
-            return null;
+            throw new RequestException(400, "Missing required field: token");
         }
 
         String token = requestJson.getString("token");
         if (token == null || token.trim().isEmpty()) {
-            safelySendErrorResponse(resp, 400, "Token cannot be empty", false);
-            return null;
+            throw new RequestException(400, "Token cannot be empty");
         }
 
         // Read processorId from body first, fall back to X-Processor-Id header
@@ -185,8 +162,7 @@ public class JwtVerificationServlet extends HttpServlet {
         LOGGER.debug("Request received - processorId: %s, token: %s", processorId, maskToken(token));
 
         if (processorId == null || processorId.trim().isEmpty()) {
-            safelySendErrorResponse(resp, 400, "Processor ID cannot be empty", false);
-            return null;
+            throw new RequestException(400, "Processor ID cannot be empty");
         }
 
         LOGGER.debug("Verifying token for processor: %s", processorId);
@@ -194,18 +170,9 @@ public class JwtVerificationServlet extends HttpServlet {
         return new TokenVerificationRequest(token, processorId);
     }
 
-    /**
-     * Performs token verification.
-     *
-     * @param verificationRequest Token verification request parameters
-     * @param req                 HTTP request (for authentication context)
-     * @param resp                HTTP response
-     * @return Token validation result, or null if verification failed (error already sent)
-     */
     private TokenValidationResult performTokenVerification(
             TokenVerificationRequest verificationRequest,
-            HttpServletRequest req,
-            HttpServletResponse resp) {
+            HttpServletRequest req) throws RequestException {
 
         try {
             return validationService.verifyToken(
@@ -216,38 +183,11 @@ public class JwtVerificationServlet extends HttpServlet {
         } catch (IllegalArgumentException e) {
             LOGGER.warn(UILogMessages.WARN.INVALID_REQUEST,
                     verificationRequest.processorId(), e.getMessage());
-            safelySendErrorResponse(resp, 400, "Invalid request: " + e.getMessage(), false);
-            return null;
+            throw new RequestException(400, "Invalid request: " + e.getMessage());
         } catch (IllegalStateException e) {
             LOGGER.error(UILogMessages.ERROR.SERVICE_NOT_AVAILABLE,
                     verificationRequest.processorId(), e.getMessage());
-            safelySendErrorResponse(resp, 503, "Service not available: " + e.getMessage(), false);
-            return null;
-        }
-    }
-
-    /**
-     * Safely sends error response, handling IOException.
-     */
-    private void safelySendErrorResponse(HttpServletResponse resp, int statusCode,
-            String errorMessage, boolean valid) {
-        try {
-            sendErrorResponse(resp, statusCode, errorMessage, valid);
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_ERROR_RESPONSE);
-            resp.setStatus(statusCode);
-        }
-    }
-
-    /**
-     * Safely sends validation response, handling IOException.
-     */
-    private void safelySendValidationResponse(HttpServletResponse resp, TokenValidationResult result) {
-        try {
-            sendValidationResponse(resp, result);
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_VALIDATION_RESPONSE);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            throw new RequestException(503, "Service not available: " + e.getMessage());
         }
     }
 
@@ -261,146 +201,160 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     /**
-     * Sends a validation response with token verification results.
+     * Carries HTTP status code and error message for request processing failures.
      */
-    private void sendValidationResponse(HttpServletResponse resp, TokenValidationResult result)
-            throws IOException {
+    private static class RequestException extends Exception {
+        private final int statusCode;
 
-        JsonObjectBuilder responseBuilder = buildJsonResponse(result);
-        JsonObject responseJson = responseBuilder.build();
-
-        // Set response headers and status
-        configureResponseHeaders(resp);
-        resp.setStatus(determineStatusCode(result));
-
-        // Write response
-        writeJsonResponse(resp, responseJson);
+        RequestException(int statusCode, String message) {
+            super(message);
+            this.statusCode = statusCode;
+        }
     }
 
-    /**
-     * Builds JSON response object from validation result.
-     */
-    private JsonObjectBuilder buildJsonResponse(TokenValidationResult result) {
-        JsonObjectBuilder responseBuilder = Json.createObjectBuilder()
+    // ── Response Building ────────────────────────────────────────────
+
+    private static JsonObject buildValidationResponse(TokenValidationResult result) {
+        JsonObjectBuilder builder = Json.createObjectBuilder()
                 .add(JSON_KEY_VALID, result.isValid())
                 .add("error", result.getError() != null ? result.getError() : "");
 
-        // Add issuer if available
         if (result.getIssuer() != null) {
-            responseBuilder.add(JSON_KEY_ISSUER, result.getIssuer());
+            builder.add(JSON_KEY_ISSUER, result.getIssuer());
         }
 
-        // Add authorization fields
-        responseBuilder.add("authorized", result.isAuthorized());
-        addScopesAndRoles(responseBuilder, result);
+        builder.add("authorized", result.isAuthorized());
+        addCollectionField(builder, "scopes", result.getScopes());
+        addCollectionField(builder, "roles", result.getRoles());
 
-        // Add claims
-        addClaims(responseBuilder, result);
-
-        return responseBuilder;
-    }
-
-    /**
-     * Adds scopes and roles arrays to response.
-     */
-    private void addScopesAndRoles(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
-        if (result.getScopes() != null && !result.getScopes().isEmpty()) {
-            JsonArrayBuilder scopesBuilder = Json.createArrayBuilder();
-            result.getScopes().forEach(scopesBuilder::add);
-            responseBuilder.add("scopes", scopesBuilder);
-        }
-
-        if (result.getRoles() != null && !result.getRoles().isEmpty()) {
-            JsonArrayBuilder rolesBuilder = Json.createArrayBuilder();
-            result.getRoles().forEach(rolesBuilder::add);
-            responseBuilder.add("roles", rolesBuilder);
-        }
-    }
-
-    /**
-     * Adds token claims to response.
-     */
-    private void addClaims(JsonObjectBuilder responseBuilder, TokenValidationResult result) {
         if (result.isValid() && result.getClaims() != null) {
-            JsonObjectBuilder claimsBuilder = Json.createObjectBuilder();
-            Map<String, Object> claims = result.getClaims();
-
-            for (Map.Entry<String, Object> entry : claims.entrySet()) {
-                addClaimValue(claimsBuilder, entry.getKey(), entry.getValue());
-            }
-
-            responseBuilder.add(JSON_KEY_CLAIMS, claimsBuilder);
+            builder.add(JSON_KEY_CLAIMS, mapToJsonObject(result.getClaims()));
         } else {
-            responseBuilder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
+            builder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
         }
+
+        addDecodedToken(builder, result);
+
+        return builder.build();
     }
 
-    /**
-     * Adds a single claim value to JSON builder, handling different types.
-     */
-    private void addClaimValue(JsonObjectBuilder builder, String key, Object value) {
-        switch (value) {
-            case null -> builder.addNull(key);
-            case String string -> builder.add(key, string);
-            case Integer integer -> builder.add(key, integer);
-            case Long long1 -> builder.add(key, long1);
-            case Double double1 -> builder.add(key, double1);
-            case Boolean boolean1 -> builder.add(key, boolean1);
-            default -> builder.add(key, value.toString());
-        }
-    }
-
-    /**
-     * Configures response headers for JSON.
-     */
-    private void configureResponseHeaders(HttpServletResponse resp) {
-        resp.setContentType("application/json");
-        resp.setCharacterEncoding("UTF-8");
-    }
-
-    /**
-     * Determines HTTP status code based on validation result.
-     * Well-formed verification requests always return 200; the JSON body
-     * communicates valid/invalid via the "valid" field.
-     */
-    private int determineStatusCode(TokenValidationResult result) {
-        return 200;
-    }
-
-    /**
-     * Writes JSON response to output stream.
-     */
-    private void writeJsonResponse(HttpServletResponse resp, JsonObject responseJson) throws IOException {
-        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-            writer.writeObject(responseJson);
-            LOGGER.debug("Sent validation response: valid=%s", responseJson.getBoolean(JSON_KEY_VALID));
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_VALIDATION_RESPONSE);
-            throw new IOException("Failed to write response", e);
-        }
-    }
-
-    /**
-     * Sends an error response in JSON format.
-     */
-    private void sendErrorResponse(HttpServletResponse resp, int statusCode, String errorMessage, boolean valid)
-            throws IOException {
-
-        JsonObject errorResponse = Json.createObjectBuilder()
-                .add(JSON_KEY_VALID, valid)
+    private static JsonObject buildErrorResponse(String errorMessage) {
+        return Json.createObjectBuilder()
+                .add(JSON_KEY_VALID, false)
                 .add("error", errorMessage)
                 .add(JSON_KEY_CLAIMS, Json.createObjectBuilder())
                 .build();
+    }
 
+    private void sendJsonResponse(HttpServletResponse resp, int statusCode, JsonObject json) {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         resp.setStatus(statusCode);
 
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-            writer.writeObject(errorResponse);
+            writer.writeObject(json);
+            LOGGER.debug("Sent response: status=%s, valid=%s", statusCode,
+                    json.containsKey(JSON_KEY_VALID) ? json.getBoolean(JSON_KEY_VALID) : "n/a");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_ERROR_RESPONSE);
-            // Don't throw here to avoid masking the original error
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_ERROR_RESPONSE);
+            // If writing a success response failed, signal the error to the client
+            if (statusCode == 200) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
+        }
+    }
+
+    // ── Decoded Token (library-based) ────────────────────────────────
+
+    /**
+     * Decodes the JWT header and payload using the library's {@link NonValidatingJwtParser}
+     * and adds them as a {@code decoded} object with {@code header} and {@code payload} fields.
+     * Only added for valid tokens with available token content. Malformed tokens are silently
+     * skipped (decoded field omitted).
+     */
+    private static void addDecodedToken(JsonObjectBuilder builder, TokenValidationResult result) {
+        AccessTokenContent tokenContent = result.getTokenContent();
+        if (tokenContent == null || tokenContent.getRawToken() == null) {
+            return;
+        }
+
+        try {
+            var decoded = DECODE_PARSER.decode(tokenContent.getRawToken(), false);
+
+            builder.add("decoded", Json.createObjectBuilder()
+                    .add("header", jwtHeaderToJson(decoded.getHeader()))
+                    .add("payload", mapToJsonObject(decoded.getBody().data())));
+        } catch (TokenValidationException e) {
+            LOGGER.debug("Failed to decode JWT parts for UI display: %s", e.getMessage());
+        }
+    }
+
+    // ── JSON Helpers ─────────────────────────────────────────────────
+
+    private static JsonObject jwtHeaderToJson(JwtHeader header) {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        header.getAlg().ifPresent(v -> builder.add("alg", v));
+        header.getTyp().ifPresent(v -> builder.add("typ", v));
+        header.getKid().ifPresent(v -> builder.add("kid", v));
+        header.getJku().ifPresent(v -> builder.add("jku", v));
+        header.getJwk().ifPresent(v -> builder.add("jwk", v));
+        header.getX5u().ifPresent(v -> builder.add("x5u", v));
+        header.getX5c().ifPresent(v -> builder.add("x5c", v));
+        header.getX5t().ifPresent(v -> builder.add("x5t", v));
+        header.getX5tS256().ifPresent(v -> builder.add("x5t#S256", v));
+        header.getCty().ifPresent(v -> builder.add("cty", v));
+        header.getCrit().ifPresent(v -> builder.add("crit", v));
+        return builder.build();
+    }
+
+    private static JsonObject mapToJsonObject(Map<String, Object> map) {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            addJsonValue(builder, entry.getKey(), entry.getValue());
+        }
+        return builder.build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void addJsonValue(JsonObjectBuilder builder, String key, Object value) {
+        switch (value) {
+            case null -> builder.addNull(key);
+            case String s -> builder.add(key, s);
+            case Integer i -> builder.add(key, i);
+            case Long l -> builder.add(key, l);
+            case Double d -> builder.add(key, d);
+            case Boolean b -> builder.add(key, b);
+            case Map<?, ?> m -> builder.add(key, mapToJsonObject((Map<String, Object>) m));
+            case List<?> list -> {
+                JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+                for (Object item : list) {
+                    addJsonArrayValue(arrayBuilder, item);
+                }
+                builder.add(key, arrayBuilder);
+            }
+            default -> builder.add(key, value.toString());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void addJsonArrayValue(JsonArrayBuilder arrayBuilder, Object value) {
+        switch (value) {
+            case null -> arrayBuilder.addNull();
+            case String s -> arrayBuilder.add(s);
+            case Integer i -> arrayBuilder.add(i);
+            case Long l -> arrayBuilder.add(l);
+            case Double d -> arrayBuilder.add(d);
+            case Boolean b -> arrayBuilder.add(b);
+            case Map<?, ?> m -> arrayBuilder.add(mapToJsonObject((Map<String, Object>) m));
+            default -> arrayBuilder.add(value.toString());
+        }
+    }
+
+    private static void addCollectionField(JsonObjectBuilder builder, String fieldName, List<String> values) {
+        if (values != null && !values.isEmpty()) {
+            JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+            values.forEach(arrayBuilder::add);
+            builder.add(fieldName, arrayBuilder);
         }
     }
 
