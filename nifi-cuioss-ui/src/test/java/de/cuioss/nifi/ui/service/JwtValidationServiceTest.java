@@ -293,6 +293,22 @@ class JwtValidationServiceTest {
         }
 
         @Test
+        @DisplayName("Should return null scopes when no token content")
+        void shouldReturnNullScopesWhenNoTokenContent() {
+            JwtValidationService.TokenValidationResult result =
+                    JwtValidationService.TokenValidationResult.failure("error");
+            assertNull(result.getScopes(), "Scopes should be null when token content is null");
+        }
+
+        @Test
+        @DisplayName("Should return null roles when no token content")
+        void shouldReturnNullRolesWhenNoTokenContent() {
+            JwtValidationService.TokenValidationResult result =
+                    JwtValidationService.TokenValidationResult.failure("error");
+            assertNull(result.getRoles(), "Roles should be null when token content is null");
+        }
+
+        @Test
         @DisplayName("Should return empty map when token content is null")
         void shouldReturnEmptyMapWhenTokenContentIsNull() {
             // Arrange

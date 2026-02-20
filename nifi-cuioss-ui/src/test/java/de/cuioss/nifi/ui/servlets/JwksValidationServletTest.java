@@ -288,7 +288,7 @@ class JwksValidationServletTest {
             InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", false);
 
             // Assert
-            assertEquals(null, result, "Private address should be blocked when allowPrivateAddresses=false");
+            assertNull(result, "Private address should be blocked when allowPrivateAddresses=false");
         }
 
         @Test
@@ -312,10 +312,10 @@ class JwksValidationServletTest {
             JwksValidationServlet servlet = new JwksValidationServlet();
 
             // Act & Assert
-            assertEquals(null, servlet.resolveAndValidateAddress("", true));
-            assertEquals(null, servlet.resolveAndValidateAddress(null, true));
-            assertEquals(null, servlet.resolveAndValidateAddress("", false));
-            assertEquals(null, servlet.resolveAndValidateAddress(null, false));
+            assertNull(servlet.resolveAndValidateAddress("", true));
+            assertNull(servlet.resolveAndValidateAddress(null, true));
+            assertNull(servlet.resolveAndValidateAddress("", false));
+            assertNull(servlet.resolveAndValidateAddress(null, false));
         }
 
         @Test
@@ -325,9 +325,9 @@ class JwksValidationServletTest {
             JwksValidationServlet servlet = new JwksValidationServlet();
 
             // Act & Assert
-            assertEquals(null, servlet.resolveAndValidateAddress(
+            assertNull(servlet.resolveAndValidateAddress(
                     "this.host.definitely.does.not.exist.invalid", true));
-            assertEquals(null, servlet.resolveAndValidateAddress(
+            assertNull(servlet.resolveAndValidateAddress(
                     "this.host.definitely.does.not.exist.invalid", false));
         }
     }
@@ -372,6 +372,104 @@ class JwksValidationServletTest {
                     .statusCode(200)
                     .body("valid", equalTo(false))
                     .body("error", containsString("does not exist"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should reject malformed JSON in JWKS content")
+    void invalidJsonInJwksContent() {
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"jwksContent":"not valid json at all","processorId":"test-processor-id"}""")
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid JWKS JSON format"));
+    }
+
+    @Test
+    @DisplayName("Should reject JWKS file with invalid JSON content")
+    void jwksFileWithInvalidJsonContent(@TempDir Path tempDir) throws Exception {
+        Path invalidFile = tempDir.resolve("bad-jwks.json");
+        Files.writeString(invalidFile, "this is not JSON at all");
+
+        try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
+            given()
+                    .contentType("application/json")
+                    .body("""
+                            {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
+                            .formatted(invalidFile.toString()))
+                    .when()
+                    .post(FILE_ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body("valid", equalTo(false))
+                    .body("error", containsString("Invalid JWKS JSON format"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should reject JWKS content that is a JSON array instead of object")
+    void jwksContentIsJsonArray() {
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"jwksContent":"[1,2,3]","processorId":"test-processor-id"}""")
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid JWKS JSON format"));
+    }
+
+    @Test
+    @DisplayName("Should use empty string for nifi properties path when only filename provided")
+    void basePathNifiPropertiesFilenameOnly() {
+        try {
+            // A filename without a parent directory
+            System.setProperty("nifi.properties.file.path", "nifi.properties");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            // Parent of "nifi.properties" in current dir returns cwd
+            assertNotNull(result, "Base path should not be null");
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+        }
+    }
+
+    @Test
+    @DisplayName("Should fallback to custom property when nifi.properties.file.path is blank")
+    void basePathBlankNifiPropertiesProperty() {
+        try {
+            System.setProperty("nifi.properties.file.path", "   ");
+            System.setProperty("nifi.jwks.allowed.base.path", "/custom/path");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            assertEquals(Path.of("/custom/path").normalize().toAbsolutePath(), result);
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+        }
+    }
+
+    @Test
+    @DisplayName("Should fallback to default when custom property is blank")
+    void basePathBlankCustomProperty() {
+        try {
+            System.clearProperty("nifi.properties.file.path");
+            System.setProperty("nifi.jwks.allowed.base.path", "   ");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            assertEquals(Path.of("/opt/nifi/nifi-current/conf").normalize().toAbsolutePath(), result);
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
         }
     }
 
