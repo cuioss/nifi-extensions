@@ -179,12 +179,15 @@ test.describe("Metrics Tab", () => {
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         const timestampAfter = await lastUpdated.textContent();
 
-        // For JWT authenticator, metrics are "Not Available" so timestamp may stay "Never".
-        // For gateway processors, the timestamp should change.
-        // In both cases, the element must still be visible and contain "Last updated:".
+        // This test runs against the JWT authenticator processor, where metrics are
+        // "Not Available" — the timestamp always shows "Never" and never changes after
+        // refresh. The conditional below is therefore dead code in this context, but is
+        // kept for correctness if this test is ever reused for gateway processors.
         expect(timestampAfter).toContain("Last updated:");
 
-        // If metrics ARE available (not "Never"), the timestamp should have changed
+        // If metrics ARE available (not "Never"), the timestamp should have changed.
+        // For the JWT authenticator, timestampBefore always includes "Never", so this
+        // branch is never taken — it only applies to gateway-processor metrics.
         if (!timestampBefore.includes("Never")) {
             expect(timestampAfter).not.toBe(timestampBefore);
         }

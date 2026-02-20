@@ -28,9 +28,13 @@ test.describe("Self-Test: Processor Navigation and Error Handling", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
+    // Known issue: double-clicking a processor in NiFi 2.x opens the configuration
+    // dialog (modal), not a separate page — so no "Back to Processor" link exists.
+    // This test.fail() will automatically start passing if the UI adds such a link.
     test('should verify "Back to Processor" navigation link', async ({
         page,
     }, testInfo) => {
+        test.fail();
         const processorService = new ProcessorService(page, testInfo);
 
         // Find existing JWT processor on canvas (throws if not found)
@@ -72,16 +76,8 @@ test.describe("Self-Test: Processor Navigation and Error Handling", () => {
             }
         }
 
-        if (!backLinkFound) {
-            // If no back link found, use browser back
-            await page.goBack();
-            await page.waitForLoadState("networkidle");
-
-            // Should still be on canvas
-            await expect(
-                page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS),
-            ).toBeVisible();
-        }
+        // Fail clearly if no "Back to Processor" link was found — do not mask with goBack()
+        expect(backLinkFound).toBe(true);
     });
 
     test("should handle configuration dialog failures gracefully", async ({

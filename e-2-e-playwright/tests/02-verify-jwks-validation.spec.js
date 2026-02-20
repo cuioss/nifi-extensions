@@ -393,6 +393,211 @@ test.describe("JWKS Validation", () => {
         expect(resultText).not.toMatch(/^\s*OK\b/);
     });
 
+    test("should reject JWKS URL with non-HTTP scheme", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        await page.waitForLoadState("networkidle");
+
+        const jwksUrlInput = customUIFrame
+            .locator('input[name="jwks-url"]')
+            .first();
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        await expect(jwksUrlInput).toBeEnabled({ timeout: 5000 });
+
+        // ftp:// is not a valid scheme for JWKS URLs — only http(s) allowed
+        await jwksUrlInput.fill("ftp://example.com/jwks.json");
+
+        const validateButton = customUIFrame
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        const verificationResult = customUIFrame
+            .locator(".verification-result")
+            .first();
+
+        await expect(verificationResult).toContainText(
+            /error|invalid|fail|scheme/i,
+            { timeout: 30000 },
+        );
+
+        const resultText = await verificationResult.textContent();
+
+        assertNoAuthError(resultText);
+
+        // Non-HTTP scheme must not show as success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
+    });
+
+    test("should reject empty JWKS keys array", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Switch JWKS Source Type to "Memory" to reveal the content textarea
+        const jwksTypeSelect = customUIFrame
+            .locator('select[name="jwks-type"]')
+            .first();
+        await expect(jwksTypeSelect).toBeVisible({ timeout: 5000 });
+        await jwksTypeSelect.selectOption("memory");
+
+        const jwksContentArea = customUIFrame
+            .locator('textarea[name="jwks-content"]')
+            .first();
+        await expect(jwksContentArea).toBeVisible({ timeout: 5000 });
+        await expect(jwksContentArea).toBeEnabled({ timeout: 5000 });
+
+        // Valid JWKS structure but with empty keys array — distinct from {"not":"jwks"}
+        await jwksContentArea.fill('{"keys": []}');
+
+        const validateButton = customUIFrame
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        const verificationResult = customUIFrame
+            .locator(".verification-result")
+            .first();
+
+        await expect(verificationResult).toContainText(
+            /error|invalid|fail|empty/i,
+            { timeout: 30000 },
+        );
+
+        const resultText = await verificationResult.textContent();
+
+        assertNoAuthError(resultText);
+
+        // Empty keys array must not show as success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
+    });
+
+    test("should reject non-existent JWKS file path", async ({ page }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        await page.waitForLoadState("networkidle");
+
+        // Switch JWKS Source Type to "File"
+        const jwksTypeSelect = customUIFrame
+            .locator('select[name="jwks-type"]')
+            .first();
+        await expect(jwksTypeSelect).toBeVisible({ timeout: 5000 });
+        await jwksTypeSelect.selectOption("file");
+
+        // Use a valid path inside NiFi's conf directory that does not exist
+        const jwksFileInput = customUIFrame
+            .locator('input[name="jwks-file"]')
+            .first();
+        await expect(jwksFileInput).toBeVisible({ timeout: 5000 });
+        await jwksFileInput.fill("/opt/nifi/nifi-current/conf/nonexistent-jwks.json");
+
+        const validateButton = customUIFrame
+            .getByRole("button", { name: "Test Connection" })
+            .first();
+        await expect(validateButton).toBeVisible({ timeout: 5000 });
+        await validateButton.click();
+
+        const verificationResult = customUIFrame
+            .locator(".verification-result")
+            .first();
+
+        await expect(verificationResult).toContainText(
+            /error|invalid|fail|not found|does not exist/i,
+            { timeout: 30000 },
+        );
+
+        const resultText = await verificationResult.textContent();
+
+        assertNoAuthError(resultText);
+
+        // Non-existent path must not show as success
+        expect(resultText).not.toMatch(/^\s*OK\b/);
+    });
+
+    test("should verify security headers are present on Custom UI responses", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        const advancedOpened = await processorService.openAdvancedUI(processor);
+        expect(advancedOpened).toBe(true);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+        expect(customUIFrame).toBeTruthy();
+
+        // Fetch a known Custom UI resource from within the frame to inspect headers
+        const headers = await customUIFrame.evaluate(async () => {
+            const response = await fetch("component-info", {
+                credentials: "same-origin",
+            });
+            const headerMap = {};
+            response.headers.forEach((value, key) => {
+                headerMap[key.toLowerCase()] = value;
+            });
+            return headerMap;
+        });
+
+        // SecurityHeadersFilter must set these headers
+        expect(headers["x-content-type-options"]).toBe("nosniff");
+        expect(headers["x-frame-options"]).toMatch(/DENY|SAMEORIGIN/i);
+        expect(headers["referrer-policy"]).toBeTruthy();
+        expect(headers["content-security-policy"]).toBeTruthy();
+    });
+
     test("should block path traversal attempts in JWKS file path", async ({
         page,
     }, testInfo) => {

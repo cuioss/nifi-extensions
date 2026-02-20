@@ -311,7 +311,7 @@ test.describe("REST API Gateway Tabs", () => {
         const metricsText = await metricsContent.textContent();
         expect(metricsText.length).toBeGreaterThan(50);
 
-        // Verify at least one gateway-specific metrics section is visible
+        // All gateway-specific metrics sections must be visible
         const tokenValidation = customUIFrame.locator(
             '[data-testid="token-validation-metrics"]',
         );
@@ -322,18 +322,102 @@ test.describe("REST API Gateway Tabs", () => {
             '[data-testid="gateway-events-metrics"]',
         );
 
-        const hasTokenValidation = await tokenValidation.isVisible();
-        const hasHttpSecurity = await httpSecurity.isVisible();
-        const hasGatewayEvents = await gatewayEvents.isVisible();
-
-        expect(
-            hasTokenValidation || hasHttpSecurity || hasGatewayEvents,
-        ).toBe(true);
+        await expect(tokenValidation).toBeVisible({ timeout: 5000 });
+        await expect(httpSecurity).toBeVisible({ timeout: 5000 });
+        await expect(gatewayEvents).toBeVisible({ timeout: 5000 });
 
         // Verify "Last updated" status is present for gateway metrics
         const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         await expect(lastUpdated).toContainText("Last updated:");
+    });
+
+    test("should display route details and global settings in endpoint config", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Verify Global Settings config table shows port and protocol info
+        const globalSettingsSection = endpointConfigPanel.locator(".config-table").first();
+        await expect(globalSettingsSection).toBeVisible({ timeout: 5000 });
+        const settingsText = await globalSettingsSection.textContent();
+        expect(settingsText.length).toBeGreaterThan(20);
+
+        // Verify the config panel has meaningful content beyond just headers
+        const panelText = await endpointConfigPanel.textContent();
+        expect(panelText).toMatch(/Global Settings/);
+        expect(panelText).toMatch(/Routes/);
+        // The panel should contain actual configuration data (port numbers, paths, etc.)
+        expect(panelText.length).toBeGreaterThan(100);
+    });
+
+    test("should show error when sending request without route selection", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Clear route selector to have no route selected
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await expect(routeSelector).toBeVisible({ timeout: 5000 });
+        await routeSelector.selectOption({ index: 0 }); // Select placeholder/empty option
+
+        // Click Send Request without selecting a route
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await expect(sendButton).toBeVisible({ timeout: 5000 });
+        await sendButton.click();
+
+        // Expect either a validation error or a response indicating the issue
+        // The UI may show an inline error, a response display error, or keep the send button disabled
+        const errorIndicator = endpointTesterPanel.locator(
+            ".error-message, .validation-error, .alert-danger, [role='alert'], .response-display",
+        );
+        await expect(errorIndicator).toBeVisible({ timeout: 10000 });
+
+        const indicatorText = await errorIndicator.textContent();
+        // Should indicate missing route or error — not a successful response
+        expect(indicatorText).toMatch(/route|select|error|required|invalid|400|404/i);
     });
 
     test("should display gateway-specific help content", async ({
@@ -371,5 +455,23 @@ test.describe("REST API Gateway Tabs", () => {
         const helpTitle = customUIFrame.locator("#help h3, #help h2").first();
         const helpTitleText = await helpTitle.textContent();
         expect(helpTitleText).not.toContain("jwt.validator.help.title");
+
+        // Validate actual help content — not just absence of i18n keys
+        const helpText = await helpContent.textContent();
+        expect(helpText.length).toBeGreaterThan(100);
+
+        // Help content should mention gateway-relevant keywords
+        const lowerHelp = helpText.toLowerCase();
+        const hasRelevantKeywords =
+            lowerHelp.includes("rest api gateway") ||
+            lowerHelp.includes("endpoint") ||
+            lowerHelp.includes("route") ||
+            lowerHelp.includes("authentication");
+        expect(hasRelevantKeywords).toBe(true);
+
+        // Help content should have structured sections (headings or distinct content blocks)
+        const helpSections = helpContent.locator("h3, h4, h5, .help-section, section");
+        const sectionCount = await helpSections.count();
+        expect(sectionCount).toBeGreaterThanOrEqual(1);
     });
 });
