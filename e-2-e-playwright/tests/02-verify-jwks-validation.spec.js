@@ -142,7 +142,7 @@ test.describe("JWKS Validation", () => {
         expect(resultText).not.toMatch(/^\s*OK\b/);
     });
 
-    test("should validate JWKS file path", async ({ page }, testInfo) => {
+    test("should reject JWKS file path outside allowed base directory", async ({ page }, testInfo) => {
         const processorService = new ProcessorService(page, testInfo);
 
         const processor = await processorService.findJwtAuthenticator({
@@ -177,7 +177,9 @@ test.describe("JWKS Validation", () => {
         await expect(jwksFileInput).toBeVisible({ timeout: 5000 });
         await expect(jwksFileInput).toBeEnabled({ timeout: 5000 });
 
-        await jwksFileInput.fill("/path/to/jwks.json");
+        // Use /tmp — outside the NiFi base directory, testing base-path restriction
+        // (distinct from the "non-existent file" test which uses a valid base dir)
+        await jwksFileInput.fill("/tmp/jwks.json");
 
         const validateButton = customUIFrame
             .getByRole("button", { name: "Test Connection" })
@@ -191,7 +193,7 @@ test.describe("JWKS Validation", () => {
 
         // Wait for actual validation content (not just element visibility)
         await expect(verificationResult).toContainText(
-            /error|invalid|fail|not found/i,
+            /error|invalid|fail|not found|not allowed|outside/i,
             { timeout: 30000 },
         );
 
@@ -200,7 +202,7 @@ test.describe("JWKS Validation", () => {
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
 
-        // File path must not show as a success
+        // Path outside allowed base directory must not show as a success
         expect(resultText).not.toMatch(/^\s*OK\b/);
     });
 

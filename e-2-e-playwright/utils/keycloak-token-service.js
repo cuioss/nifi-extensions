@@ -151,6 +151,51 @@ export function getInvalidAccessToken() {
 }
 
 /**
+ * Fetch a valid access token from the other_realm (cross-issuer testing).
+ * This token is structurally valid but signed by a different realm's keys,
+ * so it should be rejected by a processor configured for oauth_integration_tests.
+ * @returns {Promise<string>} Valid JWT access token from other_realm
+ * @throws {Error} If token cannot be obtained
+ */
+export async function getOtherRealmAccessToken() {
+  const { OTHER_REALM_CONFIG } = await import('./constants.js');
+  testLogger.info('Auth', 'Fetching access token from other_realm...');
+
+  const response = await fetch(OTHER_REALM_CONFIG.TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: OTHER_REALM_CONFIG.CLIENT_ID,
+      client_secret: OTHER_REALM_CONFIG.CLIENT_SECRET,
+      username: OTHER_REALM_CONFIG.USERNAME,
+      password: OTHER_REALM_CONFIG.PASSWORD,
+      scope: 'openid'
+    })
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => 'Unknown error');
+    throw new Error(
+      `Failed to obtain access token from other_realm. ` +
+      `Status: ${response.status} ${response.statusText}. ` +
+      `Response: ${errorBody}`
+    );
+  }
+
+  const tokenData = await response.json();
+  if (!tokenData.access_token) {
+    throw new Error(
+      `other_realm response did not contain access_token. ` +
+      `Response: ${JSON.stringify(tokenData)}`
+    );
+  }
+
+  testLogger.info('Auth', 'Successfully obtained access token from other_realm');
+  return tokenData.access_token;
+}
+
+/**
  * Export the service class as default
  */
 export default KeycloakTokenService;

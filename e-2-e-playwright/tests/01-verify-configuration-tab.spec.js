@@ -536,6 +536,100 @@ test.describe("Configuration Tab", () => {
         }
     });
 
+    test("should handle duplicate issuer names", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Could not find custom UI iframe");
+        }
+
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
+        // Add first issuer with name "duplicate-name"
+        await addIssuerButton.click();
+        const firstForm = issuerForms.nth(existingCount);
+
+        await firstForm
+            .locator('input[placeholder="e.g., keycloak"]')
+            .fill("duplicate-name");
+        await firstForm
+            .locator('input[name="jwks-url"]')
+            .fill("https://first.example.com/.well-known/jwks.json");
+
+        await firstForm.getByRole("button", { name: "Save Issuer" }).click();
+
+        const firstSuccess = firstForm.locator(".success-message");
+        await expect(firstSuccess).toBeVisible({ timeout: 10000 });
+
+        // Add second issuer with the same name "duplicate-name"
+        await addIssuerButton.click();
+        const secondForm = issuerForms.nth(existingCount + 1);
+
+        await secondForm
+            .locator('input[placeholder="e.g., keycloak"]')
+            .fill("duplicate-name");
+        await secondForm
+            .locator('input[name="jwks-url"]')
+            .fill("https://second.example.com/.well-known/jwks.json");
+
+        await secondForm.getByRole("button", { name: "Save Issuer" }).click();
+
+        // The UI should either prevent the duplicate or show an error/warning.
+        // Check for error message first; if none, verify behavior is at least predictable.
+        const errorMessage = secondForm.locator(".error-message").first();
+        const successMessage = secondForm.locator(".success-message").first();
+
+        // Wait for either an error or success response
+        await expect(
+            secondForm.locator(".error-message, .success-message").first(),
+        ).toBeVisible({ timeout: 10000 });
+
+        const hasError = await errorMessage.isVisible().catch(() => false);
+        const hasSuccess = await successMessage.isVisible().catch(() => false);
+
+        // Either the UI prevents the duplicate (error) or allows it (success).
+        // Both are acceptable — the key assertion is that the UI responds gracefully
+        // (no crash, no blank screen, no unhandled exception).
+        expect(hasError || hasSuccess).toBe(true);
+
+        if (hasError) {
+            const errorText = await errorMessage.textContent();
+            expect(errorText).toMatch(/duplicate|already exists|unique/i);
+        }
+
+        // Clean up: remove added issuers in reverse order
+        const cleanupForms = [secondForm, firstForm];
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+
+        for (const form of cleanupForms) {
+            const removeBtn = form.getByRole("button", { name: "Remove" });
+            if (await removeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+                await removeBtn.click();
+                if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+                    await confirmButton.click();
+                }
+            }
+        }
+    });
+
     test("should show error when saving issuer with missing required fields", async ({
         page,
     }, testInfo) => {

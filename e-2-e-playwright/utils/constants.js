@@ -34,6 +34,20 @@ export const KEYCLOAK_CONFIG = {
 };
 
 /**
+ * Keycloak configuration for the other_realm (cross-issuer testing)
+ * Separate realm with its own RSA key pair — tokens from this realm
+ * should be rejected by a processor configured for oauth_integration_tests
+ */
+export const OTHER_REALM_CONFIG = {
+  REALM: 'other_realm',
+  CLIENT_ID: 'other_client',
+  CLIENT_SECRET: 'otherClientSecretValue123456789',
+  USERNAME: 'otherUser',
+  PASSWORD: 'drowssap',
+  TOKEN_ENDPOINT: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/realms/other_realm/protocol/openid-connect/token'
+};
+
+/**
  * Service URLs
  */
 export const SERVICE_URLS = {
@@ -187,6 +201,7 @@ export const CONSTANTS = {
   PAGE_TYPES,
   AUTH,
   KEYCLOAK_CONFIG,
+  OTHER_REALM_CONFIG,
   SERVICE_URLS,
   TIMEOUTS,
   SELECTORS,

@@ -420,6 +420,67 @@ test.describe("REST API Gateway Tabs", () => {
         expect(indicatorText).toMatch(/route|select|error|required|invalid|400|404/i);
     });
 
+    test("should reject request without authentication token", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.find(
+            PROCESSOR_TYPES.REST_API_GATEWAY,
+            { failIfNotFound: true },
+        );
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        if (!customUIFrame) {
+            throw new Error("Failed to get custom UI frame");
+        }
+
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // Leave token input empty — no authentication
+        const tokenInput = endpointTesterPanel.locator(".token-input");
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        await tokenInput.fill("");
+
+        // Select a valid route (first real option after placeholder)
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await expect(routeSelector).toBeVisible({ timeout: 5000 });
+        const options = routeSelector.locator("option");
+        const optionCount = await options.count();
+        // Select the first non-placeholder option (index 1 if placeholder exists)
+        if (optionCount > 1) {
+            await routeSelector.selectOption({ index: 1 });
+        }
+
+        // Click Send Request without a token
+        const sendButton = endpointTesterPanel.locator(".send-request-button");
+        await expect(sendButton).toBeVisible({ timeout: 5000 });
+        await sendButton.click();
+
+        // Wait for response display — gateway should reject unauthenticated request
+        const responseDisplay = endpointTesterPanel.locator(
+            ".response-display, .error-message, [role='alert']",
+        );
+        await expect(responseDisplay).toBeVisible({ timeout: 30000 });
+
+        const responseText = await responseDisplay.textContent();
+
+        // Must indicate auth failure (401, unauthorized, missing token, etc.)
+        expect(responseText).toMatch(
+            /401|unauthorized|missing|token|authentication|forbidden|error/i,
+        );
+
+        // Must NOT show a successful 2xx response
+        expect(responseText).not.toMatch(/\b2\d{2}\b.*OK/i);
+    });
+
     test("should display gateway-specific help content", async ({
         page,
     }, testInfo) => {

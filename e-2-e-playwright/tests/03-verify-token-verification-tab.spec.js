@@ -19,6 +19,7 @@ import { CONSTANTS } from "../utils/constants.js";
 import {
     getValidAccessToken,
     getInvalidAccessToken,
+    getOtherRealmAccessToken,
 } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
@@ -331,6 +332,67 @@ test.describe("Token Verification Tab", () => {
         // Must indicate an error (empty/missing/required/invalid token)
         expect(resultText).toMatch(
             /empty|required|missing|invalid|error|enter.*token|provide.*token/i,
+        );
+
+        // Must NOT show a successful "valid token" message
+        const validStatusVisible = await customUIFrame
+            .locator(".verification-status.valid")
+            .isVisible()
+            .catch(() => false);
+        expect(validStatusVisible).toBe(false);
+    });
+
+    test("should reject token from unconfigured issuer", async ({
+        page,
+    }, testInfo) => {
+        const processorService = new ProcessorService(page, testInfo);
+
+        const processor = await processorService.findJwtAuthenticator({
+            failIfNotFound: true,
+        });
+
+        await processorService.openAdvancedUI(processor);
+
+        const customUIFrame = await processorService.getAdvancedUIFrame();
+
+        await processorService.clickTab(customUIFrame, "Token Verification");
+
+        const tokenVerificationTab = customUIFrame.locator(
+            "#token-verification",
+        );
+        const tokenInput = tokenVerificationTab
+            .locator("#field-token-input")
+            .first();
+        await expect(tokenInput).toBeVisible({ timeout: 5000 });
+        await expect(tokenInput).toBeEnabled({ timeout: 5000 });
+
+        // Fetch a real token from other_realm — valid JWT but from a different issuer
+        const otherRealmToken = await getOtherRealmAccessToken();
+
+        await tokenInput.fill(otherRealmToken);
+
+        const verifyButton = tokenVerificationTab
+            .locator(".verify-token-button")
+            .first();
+        await verifyButton.click();
+
+        // The processor is configured for oauth_integration_tests, so a token
+        // from other_realm must be rejected (wrong issuer / unknown signing key)
+        const errorResult = customUIFrame
+            .locator(
+                ".token-error, .error-container, .error-message, .verification-status",
+            )
+            .first();
+        await expect(errorResult).toBeVisible({ timeout: 10000 });
+
+        const resultText = await errorResult.textContent();
+
+        // Must not be an auth/CSRF infrastructure error
+        assertNoAuthError(resultText);
+
+        // Must indicate a token-level error (issuer mismatch or signature failure)
+        expect(resultText).toMatch(
+            /invalid|error|fail|issuer|signature|unknown/i,
         );
 
         // Must NOT show a successful "valid token" message
