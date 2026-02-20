@@ -341,4 +341,73 @@ class JwtVerificationServletTest {
                 .body("valid", equalTo(true))
                 .body("claims", hasKey("iss"));
     }
+
+    @Test
+    @DisplayName("Should include scopes and roles in valid response")
+    void validTokenWithScopesAndRoles() {
+        currentVerifier = (token, processorId) -> {
+            TokenValidationResult result = TokenValidationResult.success(null);
+            result.setIssuer("test-issuer");
+            result.setScopes(List.of("openid", "profile", "email"));
+            result.setRoles(List.of("admin", "user"));
+            result.setAuthorized(true);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("scopes", hasItems("openid", "profile", "email"))
+                .body("roles", hasItems("admin", "user"));
+    }
+
+    @Test
+    @DisplayName("Should omit scopes and roles when empty")
+    void validTokenWithEmptyScopesAndRoles() {
+        currentVerifier = (token, processorId) -> {
+            TokenValidationResult result = TokenValidationResult.success(null);
+            result.setIssuer("test-issuer");
+            result.setScopes(List.of());
+            result.setRoles(List.of());
+            result.setAuthorized(false);
+            return result;
+        };
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"test-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("$", not(hasKey("scopes")))
+                .body("$", not(hasKey("roles")));
+    }
+
+    @Test
+    @DisplayName("Should handle invalid token without claims")
+    void invalidTokenWithNoClaims() {
+        currentVerifier = (token, processorId) ->
+                TokenValidationResult.failure("Signature verification failed");
+
+        given()
+                .contentType("application/json")
+                .body("""
+                        {"token":"bad-token","processorId":"test-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Signature verification"))
+                .body("claims.size()", equalTo(0));
+    }
 }

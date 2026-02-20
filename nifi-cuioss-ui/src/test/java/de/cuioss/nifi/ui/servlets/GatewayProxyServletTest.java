@@ -258,6 +258,90 @@ class GatewayProxyServletTest {
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
         }
+
+        @Test
+        @DisplayName("Should report ssl=true when SSL context service is configured")
+        void shouldReportSslEnabled() {
+            Map<String, String> propsWithSsl = new HashMap<>(createDefaultProperties());
+            propsWithSsl.put("rest.gateway.ssl.context.service", "ssl-service-id");
+            processorProperties.set(propsWithSsl);
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("ssl", equalTo(true));
+        }
+
+        @Test
+        @DisplayName("Should handle minimal config with no optional properties")
+        void shouldHandleMinimalConfig() {
+            Map<String, String> minimalProps = new HashMap<>();
+            minimalProps.put("rest.gateway.listening.port", "9443");
+            processorProperties.set(minimalProps);
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("port", equalTo(9443))
+                    .body("ssl", equalTo(false))
+                    .body("corsAllowedOrigins.size()", equalTo(0))
+                    .body("routes.size()", equalTo(0));
+        }
+
+        @Test
+        @DisplayName("Should skip routes with blank path")
+        void shouldSkipRoutesWithBlankPath() {
+            Map<String, String> propsWithBlankRoute = new HashMap<>(createDefaultProperties());
+            propsWithBlankRoute.put("restapi.broken.path", "  ");
+            propsWithBlankRoute.put("restapi.broken.methods", "GET");
+            processorProperties.set(propsWithBlankRoute);
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    // Only the 2 original routes (health, users) — broken is skipped
+                    .body("routes.size()", equalTo(2));
+        }
+
+        @Test
+        @DisplayName("Should include CORS origins in config response")
+        void shouldIncludeCorsOrigins() {
+            Map<String, String> propsWithCors = new HashMap<>(createDefaultProperties());
+            propsWithCors.put("rest.gateway.cors.allowed.origins",
+                    "http://localhost:8443, https://nifi.example.com");
+            processorProperties.set(propsWithCors);
+
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("corsAllowedOrigins.size()", equalTo(2))
+                    .body("corsAllowedOrigins[0]", equalTo("http://localhost:8443"))
+                    .body("corsAllowedOrigins[1]", equalTo("https://nifi.example.com"));
+        }
+
+        @Test
+        @DisplayName("Should include listening host in config response")
+        void shouldIncludeListeningHost() {
+            given()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("listeningHost", equalTo("0.0.0.0"));
+        }
     }
 
     // -----------------------------------------------------------------------
