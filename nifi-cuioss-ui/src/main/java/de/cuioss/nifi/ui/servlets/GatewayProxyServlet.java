@@ -271,7 +271,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException if unable to fetch component config
      */
     protected Map<String, String> resolveProcessorProperties(String processorId,
-                                                             HttpServletRequest request) throws IOException {
+            HttpServletRequest request) throws IOException {
         var reader = new ComponentConfigReader(configContext);
         return reader.getProcessorProperties(processorId, request);
     }
@@ -285,7 +285,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException if unable to fetch component config
      */
     protected ComponentConfigReader.ComponentConfig resolveComponentConfig(String processorId,
-                                                                           HttpServletRequest request) throws IOException {
+            HttpServletRequest request) throws IOException {
         var reader = new ComponentConfigReader(configContext);
         return reader.getComponentConfig(processorId, request);
     }
@@ -336,7 +336,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-                                                    Map<String, String> headers, String body) throws IOException {
+            Map<String, String> headers, String body) throws IOException {
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(HTTP_TIMEOUT).build()) {
 
@@ -382,7 +382,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * Builds and writes the /config JSON response from processor properties.
      */
     private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props,
-                                     String componentClass) throws IOException {
+            String componentClass) throws IOException {
         JsonObjectBuilder root = Json.createObjectBuilder();
         root.add("component", componentClass);
         root.add("port", Integer.parseInt(props.getOrDefault(GATEWAY_PORT_PROPERTY, "9443")));

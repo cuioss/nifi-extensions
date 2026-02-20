@@ -418,7 +418,7 @@ public class ComponentConfigReader {
     }
 
     private ComponentDetails fetchDetails(String componentId, UiExtensionType extensionType,
-                                          HttpServletRequest request) {
+            HttpServletRequest request) {
         // Implement NiFiWebRequestContext directly instead of using HttpServletRequestContext
         // from nifi-custom-ui-utils, which is not available in the Custom UI WAR classloader.
         NiFiWebRequestContext requestContext = new NiFiWebRequestContext() {
