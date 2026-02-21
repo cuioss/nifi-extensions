@@ -110,7 +110,7 @@ class IntegrationTestSupport {
                 break;
             } catch (ConnectException e) {
                 // Not ready yet, retry
-                Thread.sleep(3000);
+                Thread.sleep(1000);
             }
         }
 

@@ -42,8 +42,8 @@ while [ $elapsed -lt $timeout ]; do
                     exit 0
                 fi
                 echo "Waiting for flow pipeline... ($flow_elapsed/$flow_timeout seconds, last status: $http_code)"
-                sleep 5
-                flow_elapsed=$((flow_elapsed + 5))
+                sleep 2
+                flow_elapsed=$((flow_elapsed + 2))
             done
 
             echo "NiFi UI is up but flow pipeline on port 7777 did not respond in time"
@@ -51,8 +51,8 @@ while [ $elapsed -lt $timeout ]; do
         fi
     fi
     echo "Waiting for containers... ($elapsed/$timeout seconds)"
-    sleep 10
-    elapsed=$((elapsed + 10))
+    sleep 5
+    elapsed=$((elapsed + 5))
 done
 
 echo "Timeout waiting for containers to be ready"
