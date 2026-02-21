@@ -271,8 +271,6 @@ test.describe("Token Verification Tab", () => {
             { timeout: 15000 },
         );
 
-        const resultText = await errorResult.textContent();
-
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
             .locator(".verification-status.valid")
