@@ -10,7 +10,52 @@ link:../Specification.adoc[Back to Main Specification]
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
 
-This specification defines the REST API endpoints for JWT token verification, JWKS validation, and security metrics in the NiFi JWT Authenticator. These endpoints enable the custom UI components to interact with the backend JWT validation services.
+This specification defines the REST API endpoints provided by both the Custom UI backend (JWT token verification, JWKS validation, security metrics) and the RestApiGatewayProcessor (management endpoints). These endpoints enable the custom UI components to interact with the backend services.
+
+=== Gateway Management Endpoints
+
+The `RestApiGatewayProcessor` exposes the following endpoint on its embedded Jetty server:
+
+[cols="1,1,3"]
+|===
+|Endpoint |Method |Description
+
+|`/metrics`
+|GET
+|Returns security metrics in Prometheus (`text/plain`) or JSON (`application/json`) format. Optionally protected by API key (`X-Api-Key` header). See link:observability.adoc[Observability] for format details.
+|===
+
+=== Gateway Proxy Endpoints (Custom UI)
+
+The `GatewayProxyServlet` in the Custom UI proxies requests to the running gateway:
+
+[cols="1,1,3"]
+|===
+|UI Endpoint |Method |Description
+
+|`/api/gateway/config`
+|GET
+|Retrieves current route configuration from the gateway
+
+|`/api/gateway/metrics`
+|GET
+|Retrieves metrics from the gateway's `/metrics` endpoint
+
+|`/api/gateway/test`
+|POST
+|Sends test requests to the gateway for endpoint testing
+|===
+
+=== Component Info Endpoint
+
+[cols="1,1,3"]
+|===
+|Endpoint |Method |Description
+
+|`/api/component-info`
+|GET
+|Returns the processor component type (class name). Used by the Custom UI to detect whether to show JWT or gateway tabs.
+|===
 
 == Status: IMPLEMENTED
 
@@ -27,8 +72,7 @@ The following tests verify the implementation:
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest] -- JWKS validation endpoint unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilterTest.java[ProcessorIdValidationFilterTest] -- Processor ID validation filter unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest] -- JWT validation service unit tests
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/integration/BackendEndpointsIntegrationTest.java[BackendEndpointsIntegrationTest] -- REST Assured integration tests for all endpoints
-* link:../../e-2-e-playwright/tests/04-verify-token-verification-tab.spec.js[E2E Token Verification Tab Test]
+* link:../../e-2-e-playwright/tests/03-verify-token-verification-tab.spec.js[E2E Token Verification Tab Test]
 
 == API Endpoints
 

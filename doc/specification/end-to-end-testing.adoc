@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator End-to-End Testing
+= NiFi Extensions End-to-End Testing
 :toc: left
 :toclevels: 3
 :toc-title: Table of Contents
@@ -100,7 +100,7 @@ Verified scenarios:
 
 Tests JWKS endpoint validation across all source types.
 
-**Implementation:** link:../../e-2-e-playwright/tests/03-verify-jwks-validation.spec.js[03-verify-jwks-validation.spec.js]
+**Implementation:** link:../../e-2-e-playwright/tests/02-verify-jwks-validation.spec.js[02-verify-jwks-validation.spec.js]
 
 Verified scenarios:
 
@@ -113,7 +113,7 @@ Verified scenarios:
 
 Tests the Token Verification tab with valid and invalid tokens.
 
-**Implementation:** link:../../e-2-e-playwright/tests/04-verify-token-verification-tab.spec.js[04-verify-token-verification-tab.spec.js]
+**Implementation:** link:../../e-2-e-playwright/tests/03-verify-token-verification-tab.spec.js[03-verify-token-verification-tab.spec.js]
 
 Verified scenarios:
 
@@ -127,7 +127,7 @@ Verified scenarios:
 
 Tests the Metrics tab dashboard and data display.
 
-**Implementation:** link:../../e-2-e-playwright/tests/05-verify-metrics-tab.spec.js[05-verify-metrics-tab.spec.js]
+**Implementation:** link:../../e-2-e-playwright/tests/04-verify-metrics-tab.spec.js[04-verify-metrics-tab.spec.js]
 
 Verified scenarios:
 
@@ -142,7 +142,7 @@ Verified scenarios:
 
 Tests the Help tab documentation and interactive features.
 
-**Implementation:** link:../../e-2-e-playwright/tests/06-verify-help-tab.spec.js[06-verify-help-tab.spec.js]
+**Implementation:** link:../../e-2-e-playwright/tests/05-verify-help-tab.spec.js[05-verify-help-tab.spec.js]
 
 Verified scenarios:
 
@@ -152,6 +152,18 @@ Verified scenarios:
 4. Copy code functionality
 5. Display troubleshooting guide
 6. Search functionality
+
+==== Gateway Tabs
+
+Tests the Custom UI displays gateway-specific tabs and content for the RestApiGatewayProcessor.
+
+**Implementation:** link:../../e-2-e-playwright/tests/06-verify-gateway-tabs.spec.js[06-verify-gateway-tabs.spec.js]
+
+Verified scenarios:
+
+1. Display gateway-specific tabs in custom UI (Endpoint Configuration, Metrics, Help)
+2. Verify endpoint configuration tab content
+3. Verify endpoint tester functionality
 
 === Accessibility Tests
 

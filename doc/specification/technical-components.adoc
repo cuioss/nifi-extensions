@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Technical Components
+= NiFi Extensions Technical Components
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -10,13 +10,97 @@ link:../Specification.adoc[Back to Main Specification]
 == Component Architecture
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
+image::architecture.png[Architecture Diagram]
+
+== Module Architecture
+
+The project is organized into modules that separate API contracts from implementations, following NiFi 2.x classloader requirements:
+
+[cols="1,2"]
+|===
+|Module |Purpose
+
+|nifi-cuioss-api
+|Controller Service API interfaces (`JwtIssuerConfigService`, `JwtAuthenticationConfig`). Packaged as a separate NAR (`nifi-cuioss-api-nar`) to satisfy NiFi 2.x classloader separation -- API interfaces must reside in a different NAR than their implementations.
+
+|nifi-cuioss-common
+|Shared JWT infrastructure: `StandardJwtIssuerConfigService` (CS implementation), `AuthorizationValidator`, `TokenClaimMapper`, `ErrorContext`, configuration parsing utilities.
+
+|nifi-cuioss-processors
+|`MultiIssuerJWTTokenAuthenticator` processor for FlowFile-based JWT validation.
+
+|nifi-cuioss-rest-processors
+|`RestApiGatewayProcessor` with embedded Jetty 12 server, route-based HTTP dispatching, RFC 9457 error responses, and management endpoints.
+
+|nifi-cuioss-ui
+|Unified Custom UI WAR serving both processors via component type detection. Provides issuer configuration, token verification, metrics, endpoint configuration, and endpoint testing tabs.
+
+|nifi-cuioss-api-nar
+|NAR packaging for the API module.
+
+|nifi-cuioss-nar
+|Main deployable NAR bundling processors, CS implementation, UI, and all runtime dependencies.
+|===
+
+== Controller Service Architecture
+
+Both processors share JWT validation capabilities through the `JwtIssuerConfigService` Controller Service:
+
+[cols="1,2"]
+|===
+|Component |Specification
+
+|Interface
+|link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] (in `nifi-cuioss-api`)
+
+|Implementation
+|link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java[StandardJwtIssuerConfigService] (in `nifi-cuioss-common`)
+
+|Config Record
+|link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtAuthenticationConfig.java[JwtAuthenticationConfig] (in `nifi-cuioss-api`)
+|===
+
+The Controller Service provides:
+
+* `validateToken(String rawToken)` -- validates a raw JWT string and returns `AccessTokenContent`
+* `getAuthenticationConfig()` -- returns immutable authentication configuration snapshot
+* `getSecurityEventCounter()` -- returns the oauth-sheriff `SecurityEventCounter` for metrics
+
 == Implementation Status
 
-=== Implementation Classes
+=== MultiIssuerJWTTokenAuthenticator Classes
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor extending AbstractProcessor
-* link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration (in `nifi-cuioss-api` module)
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Processor property definitions and relationships
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/AuthLogMessages.java[AuthLogMessages] -- Standardized log messages
+
+=== RestApiGateway Classes
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayProcessor.java[RestApiGatewayProcessor] -- REST API gateway processor with embedded Jetty
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayConstants.java[RestApiGatewayConstants] -- Property definitions, defaults, DSL constants
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiAttributes.java[RestApiAttributes] -- FlowFile attribute key constants
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java[GatewayRequestHandler] -- Jetty request handler implementing the full request pipeline
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler] -- `/metrics` management endpoint
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ProblemDetail.java[ProblemDetail] -- RFC 9457 error response format
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewaySecurityEvents.java[GatewaySecurityEvents] -- Application-level security event counters
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/HttpRequestContainer.java[HttpRequestContainer] -- Validated request record for queue transfer
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/SanitizedRequest.java[SanitizedRequest] -- Normalized request data after input validation
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/config/RouteConfiguration.java[RouteConfiguration] -- Route configuration record
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/config/RouteConfigurationParser.java[RouteConfigurationParser] -- Parses dynamic properties into route configurations
+
+=== Controller Service Classes
+* link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface (in `nifi-cuioss-api`)
+* link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtAuthenticationConfig.java[JwtAuthenticationConfig] -- Immutable configuration record (in `nifi-cuioss-api`)
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java[StandardJwtIssuerConfigService] -- CS implementation
+
+=== Shared Infrastructure Classes (nifi-cuioss-common)
 * link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
-* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTAttributes.java[JWTAttributes] -- Flow file attribute key constants
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/TokenClaimMapper.java[TokenClaimMapper] -- Maps JWT claims to FlowFile attributes
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTAttributes.java[JWTAttributes] -- FlowFile attribute key constants
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/ErrorContext.java[ErrorContext] -- Structured error context
+
+=== UI Classes (nifi-cuioss-ui)
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ComponentInfoServlet.java[ComponentInfoServlet] -- Returns processor component type for UI detection
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet] -- Proxies requests to gateway management endpoints
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/ComponentConfigReader.java[ComponentConfigReader] -- Reads processor configuration from NiFi API
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
@@ -26,9 +110,9 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
-This document describes the technical components of the MultiIssuerJWTTokenAuthenticator processor, their responsibilities, and how they interact to provide JWT token validation capabilities in NiFi. The processor leverages the OAuth-Sheriff library for token validation functionality.
+This document describes the technical components of the NiFi Extensions project, covering both the **MultiIssuerJWTTokenAuthenticator** (FlowFile-based JWT validation) and the **RestApiGatewayProcessor** (self-contained REST API gateway with embedded HTTP server). Both processors share JWT validation through a common Controller Service architecture and leverage the OAuth-Sheriff library.
 
-== Processor Implementation
+== MultiIssuerJWTTokenAuthenticator Processor
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
 
 [cols="1,2"]
@@ -45,6 +129,115 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 |AbstractProcessor
 |===
 
+=== Relationships
+
+[cols="1,2"]
+|===
+|Relationship |Description
+
+|success
+|FlowFiles that have been successfully processed with valid token data attached
+
+|authentication-failed
+|FlowFiles that contained tokens that failed validation (expired, invalid signature, etc.), or FlowFiles with missing tokens when `require.valid.token` is true
+|===
+
+See the relationship definitions in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants.Relationships].
+
+=== Flow File Attribute Handling
+
+==== Input Attributes
+
+* `jwt.token` (default, configurable) -- FlowFile attribute containing the raw JWT token
+
+==== Output Attributes
+
+For detailed information about attribute handling and token validation output, see link:../library/oauth-sheriff/Usage.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
+
+== RestApiGateway Processor
+
+[cols="1,2"]
+|===
+|Component |Specification
+
+|Package
+|de.cuioss.nifi.rest
+
+|Class Name
+|RestApiGatewayProcessor
+
+|Base Class
+|AbstractProcessor
+
+|Tags
+|rest, api, gateway, jwt, authentication, authorization
+|===
+
+The `RestApiGatewayProcessor` is a self-contained REST API gateway that embeds a Jetty 12 HTTP server. It receives HTTP requests directly (not through NiFi's HandleHttpRequest), validates JWT tokens, checks authorization, and converts validated requests into FlowFiles routed to per-route relationships.
+
+=== Lifecycle
+
+* **@OnScheduled**: Parses route configurations from dynamic properties, creates the request handler pipeline, starts the embedded Jetty server on the configured port/host.
+* **onTrigger**: Polls the internal request queue for validated `HttpRequestContainer` objects, creates FlowFiles with route/HTTP/JWT attributes, and transfers them to the matching route relationship.
+* **@OnStopped**: Stops the Jetty server, drains and clears the request queue.
+
+=== Relationships
+
+[cols="1,2"]
+|===
+|Relationship |Description
+
+|_<route-name>_ (dynamic)
+|One relationship per configured route. FlowFiles from validated requests matching that route are transferred here.
+
+|failure
+|FlowFiles created from requests that caused internal processing errors.
+|===
+
+=== FlowFile Output Attributes
+
+[cols="1,2"]
+|===
+|Attribute |Description
+
+|`rest.route.name`
+|Matched route name
+
+|`rest.route.path`
+|Matched route path pattern
+
+|`http.method`
+|HTTP method (GET, POST, etc.)
+
+|`http.request.uri`
+|Full request URI path
+
+|`http.remote.host`
+|Client remote host address
+
+|`mime.type`
+|Content-Type of request body
+
+|`http.query.<name>`
+|Query parameter values (one attribute per parameter)
+
+|`jwt.content.<claim>`
+|JWT token claims mapped by `TokenClaimMapper`
+|===
+
+=== Request Pipeline
+
+The `GatewayRequestHandler` processes each request through a 6-stage pipeline:
+
+1. **Input Sanitization** -- Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
+2. **Route Matching** -- Matches the sanitized path against configured routes (exact match). Returns 404 (route not found) or 405 (method not allowed).
+3. **JWT Authentication** -- Extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure.
+4. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes).
+5. **Body Validation** -- Reads the request body up to the configured maximum size. Returns 413 if the body exceeds the limit.
+6. **Enqueue** -- Places the validated `HttpRequestContainer` on the internal queue for `onTrigger` processing. Returns 503 if the queue is full (back-pressure).
+
+All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`.
+
 == Dependencies
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
@@ -54,6 +247,15 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integ
 
 |de.cuioss.sheriff.oauth:oauth-sheriff-core
 |Token validation framework
+
+|org.eclipse.jetty:jetty-server (Jetty 12)
+|Embedded HTTP server for RestApiGatewayProcessor
+
+|de.cuioss.cui-http:cui-http
+|HTTP security pipeline (input sanitization, security event counters)
+
+|jakarta.json:jakarta.json-api
+|JSON processing for RFC 9457 ProblemDetail responses
 
 |cui-java-tools
 |Logging and utilities
@@ -94,48 +296,25 @@ For more configuration details, see link:../library/oauth-sheriff/Usage.adoc[Con
 === Multi-Issuer Support
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
-The MultiIssuerJWTTokenAuthenticator supports multiple issuers simultaneously, allowing validation of tokens from different identity providers without complex flow configuration.
+Both processors support multiple issuers simultaneously through the shared Controller Service, allowing validation of tokens from different identity providers.
 
 For detailed implementation examples and integration patterns, see link:integration-patterns.adoc[Integration Patterns].
 
 == TokenValidator Lifecycle in NiFi
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
 
-The OAuth-Sheriff library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. In the MultiIssuerJWTTokenAuthenticator processor, the TokenValidator instance is managed with careful attention to NiFi's processor lifecycle.
+The OAuth-Sheriff library's `TokenValidator` is designed to be stateful and maintain caches for performance optimization. It is managed by the `StandardJwtIssuerConfigService` Controller Service:
+
+* **@OnEnabled**: Creates the `TokenValidator` with issuer configurations parsed from dynamic properties.
+* **@OnDisabled**: Disposes of the `TokenValidator` and releases resources.
+
+Both processors reference the same Controller Service instance, ensuring consistent token validation and shared JWKS caches.
 
 For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:../library/oauth-sheriff/Usage.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
 
-== Relationships
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-6[NIFI-AUTH-6: Output Requirements]_
-
-[cols="1,2"]
-|===
-|Relationship |Description
-
-|success
-|FlowFiles that have been successfully processed with valid token data attached
-
-|authentication-failed
-|FlowFiles that contained tokens that failed validation (expired, invalid signature, etc.), or FlowFiles with missing tokens when `require.valid.token` is true
-|===
-
-See the relationship definitions in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants.Relationships].
-
-== Flow File Attribute Handling
-
-=== Input Attributes
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-5[NIFI-AUTH-5: Input Requirements]_
-
-* `jwt.token` (default, configurable) -- FlowFile attribute containing the raw JWT token
-
-=== Output Attributes
-_See Requirements link:../Requirements.adoc#NIFI-AUTH-6.1[NIFI-AUTH-6.1: Success Path] and link:../Requirements.adoc#NIFI-AUTH-6.2[NIFI-AUTH-6.2: Failure Path]_
-
-For detailed information about attribute handling and token validation output, see link:../library/oauth-sheriff/Usage.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
-
 == Error Handling
 
-The processor implements comprehensive error handling using standardized error codes and consistent messages. For complete details on error handling strategies and implementation, see link:../library/oauth-sheriff/unit-testing.adoc[Error Handling Specification].
+The processors implement comprehensive error handling using standardized error codes and consistent messages. The RestApiGateway additionally returns RFC 9457 `application/problem+json` error responses to HTTP clients. For complete details, see link:error-handling.adoc[Error Handling Specification].
 
 == Security Considerations
 
@@ -154,10 +333,11 @@ Security is paramount in JWT token validation. For information about security im
 
 === Implementation
 * link:../library/oauth-sheriff/Usage.adoc[Token Validation]
-* link:../library/oauth-sheriff/unit-testing.adoc[Error Handling]
+* link:error-handling.adoc[Error Handling]
 * link:../library/oauth-sheriff/Usage.adoc[Security]
 * link:internationalization.adoc[Internationalization]
 * link:observability.adoc[Observability]
+* link:../rest-errors/index.adoc[REST API Error Reference]
 
 === Integration
 * link:integration-patterns.adoc[Integration Patterns]

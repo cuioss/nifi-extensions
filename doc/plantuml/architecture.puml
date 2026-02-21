@@ -3,19 +3,43 @@
 package "NiFi Framework" {
   [NiFi Core] as NiFiCore
   [Processor API] as ProcessorAPI
+  [Controller Service API] as CSAPI
 }
 
-package "NiFi CUI OSS Processors" {
-  [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
-  [JWTToken\nAuthenticator] as SimpleAuth
-  [ConfigurationManager] as ConfigManager
+package "nifi-cuioss-api" {
+  [JwtIssuerConfigService\n(CS Interface)] as CSInterface
+  [JwtAuthenticationConfig] as AuthConfig
+}
+
+package "nifi-cuioss-common" {
+  [StandardJwtIssuerConfig\nService (CS Impl)] as CSImpl
+  [AuthorizationValidator] as AuthzValidator
+  [TokenClaimMapper] as ClaimMapper
   [ErrorContext] as ErrorContext
+}
+
+package "nifi-cuioss-processors" {
+  [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
+}
+
+package "nifi-cuioss-rest-processors" {
+  [RestApiGateway\nProcessor] as Gateway
+  [GatewayRequestHandler] as ReqHandler
+  [ManagementEndpoint\nHandler] as MgmtHandler
+  [JettyServerManager] as JettyMgr
+}
+
+package "nifi-cuioss-ui" {
+  [Unified Custom UI] as UI
 }
 
 package "OAuth-Sheriff" {
   [TokenValidator] as TokenValidator
-  [HttpJwksLoaderConfig] as JwksLoader
   [AccessTokenContent] as TokenContent
+}
+
+package "Embedded Jetty 12" {
+  [Jetty Server] as Jetty
 }
 
 package "External Services" {
@@ -24,19 +48,29 @@ package "External Services" {
 }
 
 NiFiCore --> ProcessorAPI : uses
+NiFiCore --> CSAPI : uses
 ProcessorAPI --> MultiIssuer : extends
-ProcessorAPI --> SimpleAuth : extends
+ProcessorAPI --> Gateway : extends
+CSAPI --> CSInterface : defines
 
-MultiIssuer --> ConfigManager : reads configuration
-MultiIssuer --> TokenValidator : validates tokens
-MultiIssuer --> ErrorContext : captures errors
+CSImpl ..|> CSInterface : implements
+CSImpl --> TokenValidator : creates
+CSImpl --> AuthConfig : produces
 
-SimpleAuth --> TokenValidator : validates tokens
-SimpleAuth --> ErrorContext : captures errors
+MultiIssuer --> CSInterface : references CS
+Gateway --> CSInterface : references CS
+Gateway --> ReqHandler : delegates requests
+Gateway --> JettyMgr : manages server
+JettyMgr --> Jetty : starts/stops
 
-TokenValidator --> JwksLoader : retrieves keys
+ReqHandler --> AuthzValidator : authorizes
+ReqHandler --> MgmtHandler : /metrics endpoint
+ReqHandler --> ClaimMapper : maps token claims
+
 TokenValidator --> TokenContent : returns result
+TokenValidator --> IDP1 : retrieves JWKS
+TokenValidator --> IDP2 : retrieves JWKS
 
-JwksLoader --> IDP1 : retrieves JWKS
-JwksLoader --> IDP2 : retrieves JWKS
+UI --> MultiIssuer : configures
+UI --> Gateway : configures
 @enduml

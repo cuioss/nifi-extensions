@@ -4,12 +4,20 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
 
 ## Module Architecture
 
+### nifi-cuioss-api (JAR)
+- Controller Service API interfaces (packaged as separate NAR for NiFi 2.x classloader separation)
+- Key packages:
+  - `de.cuioss.nifi.jwt.config` — JwtIssuerConfigService (CS interface), JwtAuthenticationConfig (config record)
+
+### nifi-cuioss-api-nar (NAR)
+- Packages the API module into a separate `.nar` archive (required by NiFi 2.x classloader separation)
+
 ### nifi-cuioss-common (JAR)
-- Shared JWT infrastructure: Controller Service interface, configuration, utilities
+- Shared JWT infrastructure: Controller Service implementation, configuration, utilities
 - Key packages:
   - `de.cuioss.nifi.jwt` — JWTAttributes, JwtConstants, JWTPropertyKeys, JWTTranslationKeys
-  - `de.cuioss.nifi.jwt.config` — JwtIssuerConfigService, StandardJwtIssuerConfigService, ConfigurationManager, IssuerConfigurationParser
-  - `de.cuioss.nifi.jwt.util` — AuthorizationValidator, AuthorizationRequirements, ProcessingError, ErrorContext
+  - `de.cuioss.nifi.jwt.config` — StandardJwtIssuerConfigService, ConfigurationManager, IssuerConfigurationParser
+  - `de.cuioss.nifi.jwt.util` — AuthorizationValidator, AuthorizationRequirements, TokenClaimMapper, ProcessingError, ErrorContext
   - `de.cuioss.nifi.jwt.i18n` — I18nResolver, NiFiI18nResolver
 
 ### nifi-cuioss-processors (JAR)
@@ -17,9 +25,16 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
 - Key packages:
   - `de.cuioss.nifi.processors.auth` — Main processor class, AuthLogMessages, JWTProcessorConstants
 
+### nifi-cuioss-rest-processors (JAR)
+- REST API gateway processor: `RestApiGatewayProcessor`
+- Key packages:
+  - `de.cuioss.nifi.rest` — RestApiGatewayProcessor, RestApiGatewayConstants, RestApiAttributes
+  - `de.cuioss.nifi.rest.handler` — GatewayRequestHandler, ManagementEndpointHandler, ProblemDetail, GatewaySecurityEvents, HttpRequestContainer, SanitizedRequest
+  - `de.cuioss.nifi.rest.config` — RouteConfiguration, RouteConfigurationParser
+
 ### nifi-cuioss-ui (WAR)
-- Java servlets: `JwtVerificationServlet`, `JwksValidationServlet`, `MetricsServlet`, `ProcessorIdValidationFilter`
-- JavaScript components in `src/main/webapp/js/components/`, `services/`, `utils/`
+- Java servlets: `JwtVerificationServlet`, `JwksValidationServlet`, `MetricsServlet`, `ProcessorIdValidationFilter`, `ComponentInfoServlet`, `GatewayProxyServlet`
+- JavaScript modules in `src/main/webapp/js/` — `app.js`, `api.js`, `issuer-config.js`, `token-verifier.js`, `metrics.js`, `rest-endpoint-config.js`, `endpoint-tester.js`, `utils.js`
 
 ### nifi-cuioss-nar (NAR)
 - Packages processors + UI into a single `.nar` archive for NiFi deployment
@@ -124,16 +139,20 @@ docker compose logs -f nifi keycloak    # View logs
 
 **Core processor logic**:
 - `nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java`
+- `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayProcessor.java`
+- `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java`
 - `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java`
 - `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java`
 
 **UI configuration**:
 - `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java`
-- `nifi-cuioss-ui/src/main/webapp/js/components/issuerConfigEditor.js`
-- `nifi-cuioss-ui/src/main/webapp/js/components/tokenVerifier.js`
+- `nifi-cuioss-ui/src/main/webapp/js/issuer-config.js`
+- `nifi-cuioss-ui/src/main/webapp/js/token-verifier.js`
 
 **Tests**:
 - `nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/`
+- `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/`
+- `nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/`
 - `nifi-cuioss-ui/src/test/js/`
 - `e-2-e-playwright/tests/`
 

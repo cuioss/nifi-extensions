@@ -5,7 +5,7 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-Get the MultiIssuerJWTTokenAuthenticator processor running in under 5 minutes.
+Get the NiFi Extensions processors running in under 5 minutes. This guide covers both the **MultiIssuerJWTTokenAuthenticator** (FlowFile-based JWT validation) and the **RestApiGatewayProcessor** (self-contained REST API gateway).
 
 == Prerequisites
 
@@ -323,8 +323,82 @@ image::ui-metrics-tab.png[Metrics Tab]
 
 These tabs appear automatically in the processor configuration dialog.
 
+== RestApiGateway Quick Start
+
+The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server.
+
+=== Step 1: Add the Processor
+
+. Open the NiFi UI.
+. Drag a new processor onto the canvas.
+. Search for **RestApiGatewayProcessor** and select it.
+
+=== Step 2: Configure the Controller Service
+
+The gateway uses the same `JwtIssuerConfigService` Controller Service as the JWT processor. If you already have one configured, you can reuse it. Otherwise, create one as described in the JWT Quick Start above.
+
+=== Step 3: Set Gateway Properties
+
+In the processor properties tab:
+
+[cols="1,2"]
+|===
+|Property |Value
+
+|Listening Port
+|`9443` (or your preferred port)
+
+|JWT Issuer Config Service
+|Select your configured CS
+
+|Max Request Body Size
+|`1048576` (1 MB default)
+
+|Request Queue Size
+|`50` (default)
+|===
+
+=== Step 4: Add Routes via Dynamic Properties
+
+Click the "+" button to add dynamic properties for your routes:
+
+[source,properties]
+----
+restapi.users.path = /api/users
+restapi.users.methods = GET,POST
+restapi.users.required-roles = user
+
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+----
+
+=== Step 5: Connect Relationships
+
+Each route creates a named relationship. Connect them to downstream processors:
+
+* `users` -> your user-handling processor
+* `admin` -> your admin-handling processor
+* `failure` -> error handling
+
+=== Step 6: Start and Test
+
+Start the processor. The gateway listens on the configured port. Test with:
+
+[source,bash]
+----
+# Get a token from your identity provider
+TOKEN=$(curl -s -X POST https://your-idp/token -d 'grant_type=client_credentials' | jq -r '.access_token')
+
+# Send a request to the gateway
+curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
+----
+
+A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the `users` relationship.
+
 == Next Steps
 
 * link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough] -- step-by-step guide with test environment setup and troubleshooting
 * link:../../doc/specification/configuration.adoc[Configuration specification] -- complete configuration reference
 * link:../../doc/specification/security.adoc[Security specification] -- algorithm restrictions, SSRF protection, security headers
+* link:../../doc/rest-errors/index.adoc[REST API error reference] -- RFC 9457 error types returned by the gateway

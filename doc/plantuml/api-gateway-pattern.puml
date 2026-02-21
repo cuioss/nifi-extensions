@@ -2,15 +2,67 @@
 !pragma layout smetana
 skinparam componentStyle rectangle
 
-actor "API Client" as client
-component "API Gateway" as gateway
-component "Backend API" as backend
-component "JWT Token\nAuthenticator" as authenticator
-component "Identity\nProvider" as idp
+title "RestApiGateway Processor - Request Flow"
 
-client --> gateway
-gateway --> backend
-gateway --> authenticator
-authenticator --> idp
+actor "API Client" as client
+
+package "RestApiGatewayProcessor" {
+  component "Embedded Jetty\n(port 9443)" as jetty
+  component "GatewayRequestHandler" as handler
+
+  component "Request Pipeline" as pipeline {
+    component "1. Input Sanitization\n(cui-http)" as sanitize
+    component "2. Route Matching" as route
+    component "3. JWT Authentication\n(Bearer token)" as authn
+    component "4. Role/Scope\nAuthorization" as authz
+    component "5. Body Validation\n(size limit)" as body
+    component "6. Enqueue Request" as enqueue
+  }
+
+  component "ManagementEndpoint\nHandler (/metrics)" as mgmt
+}
+
+component "JwtIssuerConfigService\n(Controller Service)" as cs
+component "NiFi FlowFile\nRouting" as flowfile
+
+cloud "Identity Provider" as idp
+
+client --> jetty : HTTPS request
+jetty --> handler
+handler --> sanitize
+sanitize --> route
+route --> authn
+authn --> authz
+authz --> body
+body --> enqueue
+enqueue --> flowfile : FlowFile per route
+
+handler --> mgmt : GET /metrics
+
+authn --> cs : validateToken()
+cs --> idp : JWKS retrieval
+
+note right of route
+  Routes configured via
+  dynamic properties:
+  restapi.<name>.path
+  restapi.<name>.methods
+  restapi.<name>.required-roles
+  restapi.<name>.required-scopes
+end note
+
+note right of flowfile
+  FlowFile attributes:
+  rest.route.name
+  http.method
+  http.request.uri
+  jwt.content.*
+end note
+
+note bottom of handler
+  Error responses: RFC 9457
+  application/problem+json
+  Status codes: 400-503
+end note
 
 @enduml

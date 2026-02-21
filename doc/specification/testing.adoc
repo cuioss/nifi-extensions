@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Testing
+= NiFi Extensions Testing
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -10,9 +10,12 @@ link:../Specification.adoc[Back to Main Specification]
 == Referenced Implementation
 
 === Test Directories
-* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/[nifi-cuioss-processors tests] -- Processor unit tests
+* link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/[nifi-cuioss-processors tests] -- JWT processor unit tests
+* link:../../nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/[nifi-cuioss-rest-processors tests] -- REST gateway processor unit tests
+* link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/[nifi-cuioss-common tests] -- Shared infrastructure tests (AuthorizationValidator, ErrorContext, etc.)
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/[nifi-cuioss-ui tests] -- UI service and servlet tests
 * link:../../integration-testing/[integration-testing module] -- Docker-based integration tests
+* link:../../e-2-e-playwright/[e-2-e-playwright module] -- Playwright E2E and WCAG accessibility tests
 * link:../../e-2-e-playwright/[e-2-e-playwright module] -- Playwright E2E tests
 
 === Key Test Classes

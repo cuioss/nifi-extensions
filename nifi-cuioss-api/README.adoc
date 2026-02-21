@@ -1,0 +1,26 @@
+= nifi-cuioss-api
+
+Controller Service API interfaces for the NiFi Extensions project.
+
+== Purpose
+
+This module defines the API contracts that both processors (`MultiIssuerJWTTokenAuthenticator` and `RestApiGatewayProcessor`) use for JWT validation. It is packaged as a separate NAR (`nifi-cuioss-api-nar`) to satisfy NiFi 2.x classloader separation requirements -- API interfaces must reside in a different NAR than their implementations.
+
+== Key Classes
+
+[cols="1,3"]
+|===
+|Class |Description
+
+|`JwtIssuerConfigService`
+|Controller Service interface extending `org.apache.nifi.controller.ControllerService`. Provides `validateToken(String)`, `getAuthenticationConfig()`, and `getSecurityEventCounter()`.
+
+|`JwtAuthenticationConfig`
+|Immutable Java record holding authentication configuration (max token size, allowed algorithms, JWKS settings).
+|===
+
+== Module Relationships
+
+* **Implemented by**: `StandardJwtIssuerConfigService` in `nifi-cuioss-common`
+* **Referenced by**: `MultiIssuerJWTTokenAuthenticator` in `nifi-cuioss-processors` and `RestApiGatewayProcessor` in `nifi-cuioss-rest-processors`
+* **Packaged as**: `nifi-cuioss-api-nar` (deployed alongside `nifi-cuioss-nar`)

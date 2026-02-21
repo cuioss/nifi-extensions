@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Configuration
+= NiFi Extensions Configuration Reference
 :toc: left
 :toclevels: 3
 :toc-title: Table of Contents
@@ -11,7 +11,12 @@ xref:../Specification.adoc[Back to Main Specification]
 == Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
 
-The MultiIssuerJWTTokenAuthenticator processor provides comprehensive configuration options for validating and processing JWT tokens. This document serves as the central reference for all configuration options.
+The NiFi Extensions project provides two processors that share JWT validation through a common Controller Service:
+
+* **MultiIssuerJWTTokenAuthenticator** -- validates JWT tokens from FlowFile attributes
+* **RestApiGatewayProcessor** -- self-contained REST API gateway with embedded HTTP server
+
+This document serves as the central reference for all configuration options.
 
 [.text-center]
 image::../plantuml/configuration-overview.png[Configuration Overview Diagram, align="center"]
@@ -19,20 +24,23 @@ image::../plantuml/configuration-overview.png[Configuration Overview Diagram, al
 == Implementation Status
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- Processor property definitions and relationships
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/JWTProcessorConstants.java[JWTProcessorConstants] -- JWT processor property definitions and relationships
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayConstants.java[RestApiGatewayConstants] -- Gateway processor property definitions
 * link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration (in `nifi-cuioss-api` module)
 * link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java[StandardJwtIssuerConfigService] -- Controller Service implementation
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- JWT processor
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayProcessor.java[RestApiGatewayProcessor] -- Gateway processor
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 
 === Configuration Architecture
 
-Configuration is split between the **processor** and a **Controller Service (CS)**:
+Configuration is split between processors and a shared Controller Service (CS):
 
-* **Processor** -- token reading, authorization requirements, and CS reference
-* **JwtIssuerConfigService CS** -- issuer configuration, JWKS settings, token validation, and performance tuning
+* **JwtIssuerConfigService CS** -- issuer configuration, JWKS settings, token validation, and performance tuning (shared by both processors)
+* **MultiIssuerJWTTokenAuthenticator** -- token reading, authorization requirements, and CS reference
+* **RestApiGatewayProcessor** -- HTTP server settings, route configuration, CORS, management endpoints, and CS reference
 
 The CS supports three configuration methods:
 
@@ -40,7 +48,7 @@ The CS supports three configuration methods:
 2. **Static Configuration Files** - Configuration through properties or YAML files
 3. **Environment Variables** - Configuration through environment variables for containerized environments
 
-== Processor Properties
+== MultiIssuerJWTTokenAuthenticator Properties
 
 === Core Properties
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.2[NIFI-AUTH-7.2: Token Validation Configuration]_
@@ -85,9 +93,106 @@ Authorization is configured at the processor level:
 |No
 |===
 
+== RestApiGateway Processor Properties
+
+=== Static Properties
+
+[cols="1,1,3,1"]
+|===
+|Property |Default |Description |Required
+
+|rest.gateway.listening.port
+|9443
+|TCP port for the embedded Jetty HTTP server
+|Yes
+
+|rest.gateway.listening.host
+|0.0.0.0
+|Bind address for the embedded server
+|No
+
+|rest.gateway.jwt.config.service
+|--
+|Reference to the JwtIssuerConfigService Controller Service
+|Yes
+
+|rest.gateway.ssl.context.service
+|--
+|Reference to an SSLContextProvider for HTTPS
+|No
+
+|rest.gateway.max.request.size
+|1048576
+|Maximum request body size in bytes (default 1 MB)
+|Yes
+
+|rest.gateway.request.queue.size
+|50
+|Maximum number of requests queued for FlowFile processing. Acts as back-pressure when the NiFi flow cannot keep up.
+|Yes
+
+|rest.gateway.cors.allowed.origins
+|--
+|Comma-separated list of allowed CORS origins. When set, CORS headers are added to responses and preflight OPTIONS requests are handled automatically.
+|No
+
+|rest.gateway.management.api-key
+|--
+|API key required for accessing the `/metrics` management endpoint. When not set, the endpoint is accessible without authentication. **Sensitive property.**
+|No
+|===
+
+=== Route Configuration via Dynamic Properties
+
+Routes are configured using NiFi dynamic properties with the `restapi.` prefix. Each route is a named group of properties:
+
+[cols="1,3,1"]
+|===
+|Property Pattern |Description |Example
+
+|restapi.<name>.path
+|URL path for the route (exact match)
+|/api/users
+
+|restapi.<name>.methods
+|Comma-separated HTTP methods (default: GET,POST,PUT,DELETE)
+|GET,POST
+
+|restapi.<name>.required-roles
+|Comma-separated roles the JWT must carry
+|admin,editor
+
+|restapi.<name>.required-scopes
+|Comma-separated scopes the JWT must carry
+|read,write
+|===
+
+Each configured route creates a corresponding NiFi relationship with the route name.
+
+==== Multi-Route Configuration Example
+
+[source,properties]
+----
+# Route 1: User API (read-only)
+restapi.users.path = /api/users
+restapi.users.methods = GET
+restapi.users.required-roles = read
+
+# Route 2: Admin API (full access)
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+
+# Route 3: Public health check (no authorization)
+restapi.health.path = /api/health
+restapi.health.methods = GET
+----
+
+This creates three relationships (`users`, `admin`, `health`) plus the static `failure` relationship.
+
 == Controller Service Properties
 
-The `JwtIssuerConfigService` manages issuer configuration and token validation settings.
+The `JwtIssuerConfigService` manages issuer configuration and token validation settings. Both processors reference the same CS instance.
 
 === Performance Properties
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance Requirements]_
@@ -120,6 +225,11 @@ _See Requirement xref:../Requirements.adoc#NIFI-AUTH-9[NIFI-AUTH-9: Performance 
 |true
 |Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
 |Yes
+
+|jwt.validation.jwks.allow.private.network.addresses
+|false
+|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development.
+|Yes
 |===
 
 === Dynamic Properties (Issuers)
@@ -150,18 +260,16 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<p
 
 === UI Configuration
 
-The processor provides a comprehensive user interface for configuration through the NiFi Web UI. UI Configuration includes:
+Both processors provide a comprehensive user interface for configuration through the NiFi Web UI. The unified Custom UI detects the processor type and shows appropriate tabs:
 
-* Core and advanced property configuration
-* Dynamic issuer management
-* JWKS endpoint verification
-* Token validation testing
+* **JWT processor tabs**: Issuer Configuration, Token Verification, Metrics
+* **Gateway processor tabs**: Endpoint Configuration, Endpoint Tester, Metrics
 
 For detailed information about UI configuration, see xref:configuration-ui.adoc[UI Configuration].
 
 === Static Configuration Files
 
-For containerized environments and automated deployments, the processor supports configuration through external files in multiple formats:
+For containerized environments and automated deployments, the Controller Service supports configuration through external files in multiple formats:
 
 * Properties (.properties)
 * YAML (.yaml, .yml)
@@ -183,7 +291,7 @@ For detailed information about environment variable configuration, see xref:conf
 
 == Common Configuration Scenarios
 
-=== Basic Configuration with Single Issuer
+=== Basic JWT Processor with Single Issuer
 
 [source,properties]
 ----
@@ -196,7 +304,27 @@ jwt.validation.issuer.1.jwks-url = https://auth-server.example.com/.well-known/j
 jwt.validation.issuer.1.audience = api://my-service
 ----
 
-=== Advanced Configuration with Multiple Issuers
+=== RestApiGateway with Multiple Routes
+
+[source,properties]
+----
+# Gateway processor properties
+rest.gateway.listening.port = 9443
+rest.gateway.cors.allowed.origins = https://app.example.com
+rest.gateway.management.api-key = <secret>
+
+# Route configuration (on processor as dynamic properties)
+restapi.users.path = /api/users
+restapi.users.methods = GET,POST
+restapi.users.required-roles = user
+
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+restapi.admin.required-scopes = admin:write
+----
+
+=== Multiple Issuers (Shared CS)
 
 [source,properties]
 ----

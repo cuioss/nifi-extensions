@@ -1,4 +1,4 @@
-= JWT Validation Processor Requirements
+= NiFi Extensions Requirements
 :toc: left
 :toclevels: 3
 :toc-title: Table of Contents
@@ -6,7 +6,11 @@
 :source-highlighter: highlight.js
 
 == Overview
-This document outlines the requirements for the JWT Validation Processor, a component designed to enhance Apache NiFi's capabilities in handling REST API authentication through JWT tokens.
+This document outlines the requirements for the NiFi Extensions project, which provides JWT authentication processors and a REST API gateway for Apache NiFi. The project includes:
+
+* **MultiIssuerJWTTokenAuthenticator** -- FlowFile-based JWT validation against multiple identity providers
+* **RestApiGatewayProcessor** -- self-contained REST API gateway with embedded HTTP server, route-based dispatching, and RFC 9457 error responses
+* **JwtIssuerConfigService** -- shared Controller Service for JWT issuer configuration and token validation
 
 For detailed implementation specifications, see the xref:Specification.adoc[Specification Document].
 
@@ -398,3 +402,81 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Include proper documentation for external system configuration
 
 _Implementation details: xref:specification/observability.adoc[Observability]_
+
+== REST API Gateway Requirements
+
+[#NIFI-GATEWAY-1]
+=== NIFI-GATEWAY-1: Embedded HTTP Server
+
+* Provide an embedded HTTP server (Jetty 12) within the NiFi processor
+* Support configurable listening port and bind address
+* Support optional SSL/TLS via NiFi's SSLContextProvider
+* Accept HTTP requests directly without requiring HandleHttpRequest/HandleHttpResponse
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
+
+[#NIFI-GATEWAY-2]
+=== NIFI-GATEWAY-2: Multi-Route Configuration
+
+* Support multiple named routes via dynamic properties using `restapi.<name>.<property>` pattern
+* Each route defines: path (exact match), allowed HTTP methods, required roles, required scopes
+* Default HTTP methods: GET, POST, PUT, DELETE
+* Each route creates a corresponding NiFi relationship for FlowFile routing
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
+
+[#NIFI-GATEWAY-3]
+=== NIFI-GATEWAY-3: Per-Route JWT Authorization
+
+* Authenticate all requests using Bearer JWT tokens via the shared JwtIssuerConfigService
+* Support per-route required roles and scopes
+* Return RFC 6750 compliant WWW-Authenticate headers on authentication failure
+* Return 403 Forbidden for missing roles, 401 with `insufficient_scope` for missing scopes
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
+
+[#NIFI-GATEWAY-4]
+=== NIFI-GATEWAY-4: RFC 9457 Error Responses
+
+* All error responses must use `application/problem+json` format per RFC 9457
+* Each error type must link to human-readable documentation via the `type` field
+* Support error types: 400, 401, 403, 404, 405, 413, 422, 500, 503
+
+_Implementation details: xref:specification/error-handling.adoc[Error Handling]_
+
+[#NIFI-GATEWAY-5]
+=== NIFI-GATEWAY-5: CORS Support
+
+* Support configurable CORS allowed origins
+* Handle preflight OPTIONS requests automatically
+* Add appropriate Access-Control-* headers to responses
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
+
+[#NIFI-GATEWAY-6]
+=== NIFI-GATEWAY-6: Management Endpoint
+
+* Provide a `/metrics` endpoint on the gateway port
+* Support Prometheus text format and JSON format (content negotiation via Accept header)
+* Support optional API key authentication for the management endpoint
+* Expose token validation, transport security, and gateway application metrics
+
+_Implementation details: xref:specification/observability.adoc[Observability]_
+
+[#NIFI-GATEWAY-7]
+=== NIFI-GATEWAY-7: Request Size Limits
+
+* Support configurable maximum request body size
+* Return 413 Payload Too Large when exceeded
+* Default limit: 1 MB
+
+_Implementation details: xref:specification/configuration.adoc[Configuration]_
+
+[#NIFI-GATEWAY-8]
+=== NIFI-GATEWAY-8: Back-Pressure Integration
+
+* Use a bounded request queue for NiFi flow integration
+* Return 503 Service Unavailable when the queue is full
+* Configurable queue size (default: 50)
+
+_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
