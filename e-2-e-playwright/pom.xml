@@ -83,28 +83,6 @@
                     </execution>
                 </executions>
             </plugin>
-            
-            <!-- Ensure report directories exist for CI report assembly (even when tests are skipped) -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>create-report-dirs</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <configuration>
-                            <target>
-                                <mkdir dir="${selftests.output.dir}"/>
-                                <mkdir dir="${functional.output.dir}"/>
-                                <mkdir dir="${accessibility.output.dir}"/>
-                            </target>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
 
             <!-- Exec Maven Plugin for container management — Docker executions use
                  skip.docker.deployment; test executions use skipPlaywrightTests -->
