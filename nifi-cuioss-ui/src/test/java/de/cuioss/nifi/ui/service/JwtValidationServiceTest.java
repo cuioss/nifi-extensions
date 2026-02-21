@@ -642,4 +642,79 @@ class JwtValidationServiceTest {
             verify(mockConfigContext);
         }
     }
+
+    @Nested
+    @DisplayName("hasEmptyControllerServiceReference Tests")
+    class HasEmptyControllerServiceReferenceTests {
+
+        @Test
+        @DisplayName("Should return false when no CS keys present")
+        void shouldReturnFalseWhenNoCsKeysPresent() {
+            assertFalse(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("some.other.key", "value")));
+        }
+
+        @Test
+        @DisplayName("Should return true when CS key has empty value")
+        void shouldReturnTrueWhenCsKeyHasEmptyValue() {
+            assertTrue(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("jwt.issuer.config.service", "")));
+        }
+
+        @Test
+        @DisplayName("Should return true when CS key has blank value")
+        void shouldReturnTrueWhenCsKeyHasBlankValue() {
+            assertTrue(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("jwt.issuer.config.service", "   ")));
+        }
+
+        @Test
+        @DisplayName("Should return false when CS key has non-empty value")
+        void shouldReturnFalseWhenCsKeyHasNonEmptyValue() {
+            assertFalse(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("jwt.issuer.config.service", "some-uuid")));
+        }
+
+        @Test
+        @DisplayName("Should return true when CS key has null value")
+        void shouldReturnTrueWhenCsKeyHasNullValue() {
+            Map<String, String> props = new HashMap<>();
+            props.put("jwt.issuer.config.service", null);
+            assertTrue(JwtValidationService.hasEmptyControllerServiceReference(props));
+        }
+
+        @Test
+        @DisplayName("Should check gateway CS key as well")
+        void shouldCheckGatewayCsKey() {
+            assertFalse(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("rest.gateway.jwt.config.service", "some-uuid")));
+            assertTrue(JwtValidationService.hasEmptyControllerServiceReference(
+                    Map.of("rest.gateway.jwt.config.service", "")));
+        }
+    }
+
+    @Nested
+    @DisplayName("describeValue Tests")
+    class DescribeValueTests {
+
+        @Test
+        @DisplayName("Should return <null> for null value")
+        void shouldReturnNullDescription() {
+            assertEquals("<null>", JwtValidationService.describeValue(null));
+        }
+
+        @Test
+        @DisplayName("Should return <blank> for blank value")
+        void shouldReturnBlankDescription() {
+            assertEquals("<blank>", JwtValidationService.describeValue(""));
+            assertEquals("<blank>", JwtValidationService.describeValue("   "));
+        }
+
+        @Test
+        @DisplayName("Should return value itself for non-blank value")
+        void shouldReturnValueForNonBlank() {
+            assertEquals("hello", JwtValidationService.describeValue("hello"));
+            assertEquals("some-uuid-value", JwtValidationService.describeValue("some-uuid-value"));
+        }
+    }
 }

@@ -39,12 +39,12 @@ import java.util.Set;
  * @param schemaName     optional JSON Schema name for request body validation
  */
 public record RouteConfiguration(
-        @NonNull String name,
-        @NonNull String path,
-        Set<String> methods,
-        Set<String> requiredRoles,
-        Set<String> requiredScopes,
-        @Nullable String schemaName) {
+@NonNull String name,
+@NonNull String path,
+Set<String> methods,
+Set<String> requiredRoles,
+Set<String> requiredScopes,
+@Nullable String schemaName) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");

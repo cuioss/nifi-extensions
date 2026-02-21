@@ -328,7 +328,7 @@ public class JwksValidationServlet extends HttpServlet {
      * Resolves controller service properties from processor properties.
      * If the processor references a JwtIssuerConfigService, returns that service's properties.
      */
-    private static Map<String, String> resolveControllerServiceProperties(
+    static Map<String, String> resolveControllerServiceProperties(
             Map<String, String> processorProperties,
             ComponentConfigReader configReader,
             HttpServletRequest request) {

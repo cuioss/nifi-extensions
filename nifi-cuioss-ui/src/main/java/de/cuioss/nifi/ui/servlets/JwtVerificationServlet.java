@@ -195,8 +195,8 @@ public class JwtVerificationServlet extends HttpServlet {
      * Internal record for token verification request parameters.
      */
     private record TokenVerificationRequest(
-            String token,
-            String processorId
+    String token,
+    String processorId
     ) {
     }
 

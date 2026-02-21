@@ -16,7 +16,13 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.ComponentDetails;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.apache.nifi.web.NiFiWebRequestContext;
+import org.apache.nifi.web.ResourceNotFoundException;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,8 +35,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.easymock.EasyMock.*;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.*;
@@ -533,6 +543,112 @@ class JwksValidationServletTest {
                 System.clearProperty("nifi.properties.file.path");
                 System.clearProperty("nifi.jwks.allowed.base.path");
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("resolveControllerServiceProperties Tests")
+    class ResolveControllerServicePropertiesTests {
+
+        @Test
+        @DisplayName("Should return processor properties when no CS keys present")
+        void shouldReturnProcessorPropertiesWhenNoCsKeysPresent() {
+            // Arrange
+            Map<String, String> processorProps = Map.of("some.key", "some-value");
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns input properties unchanged
+            assertEquals(processorProps, result);
+        }
+
+        @Test
+        @DisplayName("Should resolve CS properties when CS reference key present")
+        void shouldResolveCsPropertiesWhenCsReferencePresent() {
+            // Arrange
+            String csId = UUID.randomUUID().toString();
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", csId);
+
+            Map<String, String> csProps = Map.of("issuer.1.name", "test-issuer");
+            ComponentDetails csDetails = new ComponentDetails.Builder()
+                    .id(csId)
+                    .type("StandardJwtIssuerConfigService")
+                    .properties(csProps)
+                    .build();
+
+            NiFiWebConfigurationContext mockCtx = createMock(NiFiWebConfigurationContext.class);
+            // First call tries processor lookup → throws (CS UUID is not a processor)
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not a processor"));
+            // Second call tries controller service lookup → returns CS details
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(csDetails);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns CS properties, not processor properties
+            assertEquals(csProps, result);
+            verify(mockCtx);
+        }
+
+        @Test
+        @DisplayName("Should return processor properties when CS lookup fails")
+        void shouldReturnProcessorPropertiesWhenCsLookupFails() {
+            // Arrange
+            String csId = UUID.randomUUID().toString();
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", csId);
+
+            NiFiWebConfigurationContext mockCtx = createMock(NiFiWebConfigurationContext.class);
+            // Both lookup attempts fail
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not found")).times(2);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act — CS lookup fails, should fall through and return processor properties
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns original processor properties as fallback
+            assertEquals(processorProps, result);
+            verify(mockCtx);
+        }
+
+        @Test
+        @DisplayName("Should skip blank CS reference values")
+        void shouldSkipBlankCsReferenceValues() {
+            // Arrange
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", "   ");
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — blank value is skipped, returns processor properties
+            assertEquals(processorProps, result);
         }
     }
 

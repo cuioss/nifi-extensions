@@ -419,11 +419,11 @@ class JwtVerificationServletTest {
         // Build a syntactically valid JWT (header.payload.signature)
         String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"alg":"RS256","typ":"JWT","kid":"test-key-id"}"""
+                        {"alg":"RS256","typ":"JWT","kid":"test-key-id"}"""
                         .getBytes(StandardCharsets.UTF_8));
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"sub":"decoded-user","iss":"https://example.com","exp":9999999999,"iat":1000000000,"custom":"value"}"""
+                        {"sub":"decoded-user","iss":"https://example.com","exp":9999999999,"iat":1000000000,"custom":"value"}"""
                         .getBytes(StandardCharsets.UTF_8));
         String rawToken = header + "." + payload + ".fake-signature";
 
@@ -464,11 +464,11 @@ class JwtVerificationServletTest {
         // Build JWT with null claim and array containing mixed types (String, Integer, Boolean, null)
         String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"alg":"RS256","typ":"JWT"}"""
+                        {"alg":"RS256","typ":"JWT"}"""
                         .getBytes(StandardCharsets.UTF_8));
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"sub":"null-test","nothing":null,"items":["text",42,true,null],"big":9999999999}"""
+                        {"sub":"null-test","nothing":null,"items":["text",42,true,null],"big":9999999999}"""
                         .getBytes(StandardCharsets.UTF_8));
         String rawToken = header + "." + payload + ".fake-signature";
 
@@ -506,11 +506,11 @@ class JwtVerificationServletTest {
         // Build JWT with boolean, number, array, nested object claims
         String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"alg":"RS256","typ":"JWT"}"""
+                        {"alg":"RS256","typ":"JWT"}"""
                         .getBytes(StandardCharsets.UTF_8));
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 """
-                {"sub":"diverse-user","active":true,"score":3.14,"count":42,"tags":["tag1","tag2"],"meta":{"key":"val"},"big":9999999999}"""
+                        {"sub":"diverse-user","active":true,"score":3.14,"count":42,"tags":["tag1","tag2"],"meta":{"key":"val"},"big":9999999999}"""
                         .getBytes(StandardCharsets.UTF_8));
         String rawToken = header + "." + payload + ".fake-signature";
 

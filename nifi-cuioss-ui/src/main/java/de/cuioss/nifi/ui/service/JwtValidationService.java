@@ -238,7 +238,7 @@ public class JwtValidationService {
      * has an empty or null value. This happens when NiFi's Custom UI
      * internal API redacts CS references in the processor WAR context.
      */
-    private static boolean hasEmptyControllerServiceReference(Map<String, String> processorProperties) {
+    static boolean hasEmptyControllerServiceReference(Map<String, String> processorProperties) {
         for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
             if (processorProperties.containsKey(key)) {
                 String value = processorProperties.get(key);
@@ -252,7 +252,7 @@ public class JwtValidationService {
         return false;
     }
 
-    private static String describeValue(@Nullable String value) {
+    static String describeValue(@Nullable String value) {
         if (value == null) {
             return "<null>";
         }
