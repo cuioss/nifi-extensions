@@ -31,8 +31,9 @@
         <!-- skipPlaywrightTests default inherited from root POM, overridden by integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
-        <!-- Test output directory (single run, Playwright projects handle ordering) -->
-        <playwright.output.dir>${project.build.directory}/results-e2e</playwright.output.dir>
+        <!-- Test output directory — uses Playwright's default (target/) so
+             Maven and npx produce results in the same location -->
+        <playwright.output.dir>${project.build.directory}</playwright.output.dir>
     </properties>
 
     <build>
