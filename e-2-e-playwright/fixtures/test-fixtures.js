@@ -30,9 +30,11 @@ export const test = authTest.extend({
         testLogger.startTest(testInfo.testId);
         testLogger.setupBrowserCapture(page);
         setupErrorMonitoring(page, testInfo);
+        testLogger.info("Test", `Started: ${testInfo.title}`);
 
         await use(page);
 
+        testLogger.info("Test", `Finished: ${testInfo.status}`);
         // Automatic end-tests screenshot + text logs
         mkdirSync(testInfo.outputDir, { recursive: true });
         await page
@@ -208,9 +210,12 @@ export const serialTest = test.extend({
         testLogger.startTest(testInfo.testId);
         testLogger.setupBrowserCapture(_sharedPage);
         setupErrorMonitoring(_sharedPage, testInfo);
+        testLogger.info("Test", `Started: ${testInfo.title}`);
+        testLogger.info("Test", `URL: ${_sharedPage.url()}`);
 
         await use(_sharedPage);
 
+        testLogger.info("Test", `Finished: ${testInfo.status}`);
         mkdirSync(testInfo.outputDir, { recursive: true });
         await _sharedPage
             .screenshot({
@@ -246,6 +251,7 @@ export const serialTest = test.extend({
     /** Test-scoped: validates cached frame, re-navigates if detached */
     customUIFrame: async ({ _jwtUIState }, use) => {
         const frame = await ensureValidFrame(_jwtUIState, async () => {
+            testLogger.info("Frame", "Re-navigating to Advanced UI (frame detached)");
             const { page, processorManager, processorService } =
                 _jwtUIState;
             await page.goto("/nifi");
@@ -253,6 +259,7 @@ export const serialTest = test.extend({
             await processorManager.ensureProcessorOnCanvas();
             return processorService.navigateToAdvancedUI();
         });
+        testLogger.info("Frame", `Custom UI frame ready (url: ${frame.url()})`);
         await use(frame);
     },
 
@@ -284,9 +291,12 @@ export const serialGatewayTest = test.extend({
         testLogger.startTest(testInfo.testId);
         testLogger.setupBrowserCapture(_sharedPage);
         setupErrorMonitoring(_sharedPage, testInfo);
+        testLogger.info("Test", `Started: ${testInfo.title}`);
+        testLogger.info("Test", `URL: ${_sharedPage.url()}`);
 
         await use(_sharedPage);
 
+        testLogger.info("Test", `Finished: ${testInfo.status}`);
         mkdirSync(testInfo.outputDir, { recursive: true });
         await _sharedPage
             .screenshot({
@@ -332,6 +342,7 @@ export const serialGatewayTest = test.extend({
         const frame = await ensureValidFrame(
             _gatewayUIState,
             async () => {
+                testLogger.info("Frame", "Re-navigating to Gateway UI (frame detached)");
                 const { page, processorManager, processorService } =
                     _gatewayUIState;
                 await page.goto("/nifi");
@@ -352,6 +363,7 @@ export const serialGatewayTest = test.extend({
                 return newFrame;
             },
         );
+        testLogger.info("Frame", `Gateway UI frame ready (url: ${frame.url()})`);
         await use(frame);
     },
 
