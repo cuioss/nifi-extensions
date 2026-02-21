@@ -17,7 +17,7 @@ const AUTH_DIR = join(dirname(new URL(import.meta.url).pathname), '.auth');
 const STATE_FILE = join(AUTH_DIR, 'state.json');
 const CONTEXT_FILE = join(AUTH_DIR, 'test-context.json');
 
-setup.setTimeout(90_000); // NiFi cold-start may need up to 60s
+setup.setTimeout(180_000); // NiFi cold-start: up to 60s API wait + 60s CSRF wait
 
 setup('authenticate and verify preconditions', async ({ page }) => {
   // Ensure .auth directory exists
@@ -56,11 +56,23 @@ setup('authenticate and verify preconditions', async ({ page }) => {
   expect(isAccessible, 'NiFi must be accessible within 60s').toBe(true);
 
   // ------- 2. Navigate and obtain CSRF token -------
-  await page.goto('/nifi');
-  await page.waitForLoadState('domcontentloaded');
+  // NiFi may serve the splash screen before the login page is ready.
+  // Retry until the CSRF cookie appears (set only by the real app, not splash).
+  let requestToken = null;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    await page.goto('/nifi');
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-  const cookies = await page.context().cookies();
-  const requestToken = cookies.find(c => c.name === '__Secure-Request-Token')?.value;
+    const cookies = await page.context().cookies();
+    requestToken = cookies.find(c => c.name === '__Secure-Request-Token')?.value;
+    if (requestToken) {
+      testLogger.info('Setup', `CSRF token obtained after ${attempt} attempt(s)`);
+      break;
+    }
+
+    testLogger.info('Setup', `CSRF token not yet available (attempt ${attempt}/${MAX_RETRIES}), retrying...`);
+    await page.waitForTimeout(RETRY_DELAY_MS);
+  }
   expect(requestToken, 'CSRF token must be present').toBeTruthy();
 
   // ------- 3. Authenticate via API -------
