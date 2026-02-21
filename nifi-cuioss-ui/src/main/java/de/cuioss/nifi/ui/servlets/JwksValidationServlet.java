@@ -71,13 +71,9 @@ public class JwksValidationServlet extends HttpServlet {
     private static final String JWKS_VALIDATION_FAILED_MSG = "JWKS URL validation failed: %s - %s";
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
 
-    /**
-     * Processor property keys that reference a JwtIssuerConfigService controller service.
-     */
-    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS = List.of(
-            "jwt.issuer.config.service",
-            "rest.gateway.jwt.config.service"
-    );
+    /** Shared CS property keys — see {@link ComponentConfigReader#CONTROLLER_SERVICE_PROPERTY_KEYS}. */
+    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS =
+            ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS;
 
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
@@ -702,10 +698,10 @@ public class JwksValidationServlet extends HttpServlet {
      * Result of JWKS validation.
      */
     private record JwksValidationResult(
-            boolean valid,
-            String error,
-            int keyCount,
-            List<String> algorithms
+    boolean valid,
+    String error,
+    int keyCount,
+    List<String> algorithms
     ) {
         public static JwksValidationResult success(int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);

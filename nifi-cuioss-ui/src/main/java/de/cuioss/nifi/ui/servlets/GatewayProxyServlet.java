@@ -80,6 +80,8 @@ public class GatewayProxyServlet extends HttpServlet {
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
     /** Cached management API keys by processor ID. */
     private final Map<String, String> apiKeyCache = new ConcurrentHashMap<>();
+    /** Cached gateway protocol (http or https) by processor ID. */
+    private final Map<String, String> protocolCache = new ConcurrentHashMap<>();
 
     private transient NiFiWebConfigurationContext configContext;
 
@@ -119,7 +121,8 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             int port = resolveGatewayPort(processorId, req);
-            String gatewayUrl = "http://localhost:" + port + pathInfo;
+            String protocol = protocolCache.getOrDefault(processorId, "http");
+            String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
             String apiKey = apiKeyCache.get(processorId);
             String gatewayResponse = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON, apiKey);
 
@@ -174,7 +177,8 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             int port = resolveGatewayPort(processorId, req);
-            String targetUrl = "http://localhost:" + port + path;
+            String protocol = protocolCache.getOrDefault(processorId, "http");
+            String targetUrl = protocol + "://localhost:" + port + path;
 
             // SSRF protection
             if (!isLocalhostTarget(URI.create(targetUrl))) {
@@ -245,7 +249,9 @@ public class GatewayProxyServlet extends HttpServlet {
 
         var reader = new ComponentConfigReader(configContext);
         var config = reader.getComponentConfig(processorId, request);
-        String portStr = config.properties().get(GATEWAY_PORT_PROPERTY);
+        Map<String, String> properties = config.properties();
+
+        String portStr = properties.get(GATEWAY_PORT_PROPERTY);
         if (portStr == null) {
             throw new IllegalArgumentException(
                     "Gateway port not configured for " + processorId);
@@ -253,8 +259,20 @@ public class GatewayProxyServlet extends HttpServlet {
         int port = Integer.parseInt(portStr);
         portCache.put(processorId, port);
 
-        // Cache management API key if configured
-        String apiKey = config.properties().get(MANAGEMENT_API_KEY_PROPERTY);
+        // Cache protocol — HTTPS when SSL Context Service is configured
+        String sslCs = properties.get(SSL_CONTEXT_SERVICE_PROPERTY);
+        protocolCache.put(processorId,
+                (sslCs != null && !sslCs.isBlank()) ? "https" : "http");
+
+        // The management API key is marked as sensitive in the processor descriptor,
+        // so NiFi's internal API redacts its value. Fall back to the REST API to
+        // retrieve the actual value when the internal API returns null/blank.
+        String apiKey = properties.get(MANAGEMENT_API_KEY_PROPERTY);
+        if (apiKey == null || apiKey.isBlank()) {
+            Map<String, String> restProps =
+                    reader.getProcessorPropertiesViaRest(processorId, request);
+            apiKey = restProps.get(MANAGEMENT_API_KEY_PROPERTY);
+        }
         if (apiKey != null && !apiKey.isBlank()) {
             apiKeyCache.put(processorId, apiKey);
         }
@@ -301,8 +319,8 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     protected String executeGatewayGet(String url, String accept, String apiKey)
             throws IOException {
-        try (HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(HTTP_TIMEOUT).build()) {
+        try {
+            HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -337,8 +355,8 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
             Map<String, String> headers, String body) throws IOException {
-        try (HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(HTTP_TIMEOUT).build()) {
+        try {
+            HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))

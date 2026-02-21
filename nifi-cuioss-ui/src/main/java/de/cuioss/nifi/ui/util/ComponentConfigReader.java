@@ -39,10 +39,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Utility class for reading NiFi component configuration via the framework's
@@ -60,6 +57,17 @@ public class ComponentConfigReader {
 
     private static final CuiLogger LOGGER = new CuiLogger(ComponentConfigReader.class);
 
+    /**
+     * Processor property keys that reference a JwtIssuerConfigService controller service.
+     * Shared across servlets ({@link de.cuioss.nifi.ui.service.JwtValidationService},
+     * {@link de.cuioss.nifi.ui.servlets.JwksValidationServlet}) that need to resolve
+     * issuer configuration from either the processor or a referenced controller service.
+     */
+    public static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS = List.of(
+            "jwt.issuer.config.service",       // MultiIssuerJWTTokenAuthenticator
+            "rest.gateway.jwt.config.service"   // RestApiGatewayProcessor
+    );
+
     /** NiFi component types. */
     public enum ComponentType {
         PROCESSOR, CONTROLLER_SERVICE
@@ -73,9 +81,9 @@ public class ComponentConfigReader {
      * @param properties     the component properties
      */
     public record ComponentConfig(
-            ComponentType type,
-            String componentClass,
-            Map<String, String> properties) {
+    ComponentType type,
+    String componentClass,
+    Map<String, String> properties) {
     }
 
     private final NiFiWebConfigurationContext configContext;
@@ -386,7 +394,7 @@ public class ComponentConfigReader {
     }
 
     @SuppressWarnings("java:S4830") // Trust-all is required: NiFi uses self-signed certs in Docker
-    private static HttpClient buildTrustAllHttpClient() {
+    public static HttpClient buildTrustAllHttpClient() {
         try {
             TrustManager[] trustAllCerts = {new X509TrustManager() {
                 @Override

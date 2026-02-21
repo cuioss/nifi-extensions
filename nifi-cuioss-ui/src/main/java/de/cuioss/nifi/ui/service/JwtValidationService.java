@@ -50,15 +50,9 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
-    /**
-     * Processor property keys that reference a JwtIssuerConfigService controller service.
-     * When one of these is present, the controller service's properties are used
-     * for issuer configuration parsing instead of the processor's own properties.
-     */
-    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS = List.of(
-            "jwt.issuer.config.service",       // MultiIssuerJWTTokenAuthenticator
-            "rest.gateway.jwt.config.service"   // RestApiGatewayProcessor
-    );
+    /** Shared CS property keys — see {@link ComponentConfigReader#CONTROLLER_SERVICE_PROPERTY_KEYS}. */
+    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS =
+            ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS;
 
     private final NiFiWebConfigurationContext configContext;
 
