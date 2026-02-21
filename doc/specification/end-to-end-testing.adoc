@@ -85,17 +85,6 @@ Verified scenarios:
 2. Add issuer and verify form fields (JWKS URL, audience, scopes, roles)
 3. Handle issuer configuration interactions (save, edit, delete)
 
-==== Custom UI Tabs
-
-Tests that all four custom UI tabs are present and functional.
-
-**Implementation:** link:../../e-2-e-playwright/tests/02-verify-custom-ui-tabs.spec.js[02-verify-custom-ui-tabs.spec.js]
-
-Verified scenarios:
-
-1. Display all four tabs (Configuration, Token Verification, Metrics, Help)
-2. Verify tab content functionality (switching, content loading)
-
 ==== JWKS Validation Flow
 
 Tests JWKS endpoint validation across all source types.
