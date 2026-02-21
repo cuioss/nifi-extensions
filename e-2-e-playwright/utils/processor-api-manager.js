@@ -6,6 +6,9 @@
 
 import { testLogger } from './test-logger.js';
 import { PROCESS_GROUPS, TIMEOUTS } from './constants.js';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 
 /**
@@ -13,12 +16,43 @@ import { PROCESS_GROUPS, TIMEOUTS } from './constants.js';
  * Uses NiFi REST API for reliable processor management
  */
 export class ProcessorApiManager {
+  /** Module-level cache for invariant API responses (shared across instances) */
+  static _cache = {};
+
   constructor(page) {
     this.page = page;
     this.baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi';
     this.processorType = 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator';
     this.processorName = 'MultiIssuerJWTTokenAuthenticator';
+    ProcessorApiManager._seedFromContext();
   }
+
+  /** Clear the module-level cache (e.g. for test cleanup) */
+  static clearCache() {
+    ProcessorApiManager._cache = {};
+  }
+
+  /**
+   * Pre-seed the cache from the global-setup test-context.json file.
+   * Called automatically on first construction if the file exists.
+   */
+  static _seedFromContext() {
+    if (ProcessorApiManager._contextSeeded) return;
+    ProcessorApiManager._contextSeeded = true;
+    try {
+      const thisDir = dirname(fileURLToPath(import.meta.url));
+      const contextPath = join(thisDir, '..', '.auth', 'test-context.json');
+      const ctx = JSON.parse(readFileSync(contextPath, 'utf-8'));
+      if (ctx.rootGroupId) ProcessorApiManager._cache.rootGroupId = ctx.rootGroupId;
+      if (ctx.jwtPipelineGroupId !== undefined) ProcessorApiManager._cache.jwtPipelineGroupId = ctx.jwtPipelineGroupId;
+      if (ctx.gatewayGroupId !== undefined) ProcessorApiManager._cache.gatewayGroupId = ctx.gatewayGroupId;
+      testLogger.info('Processor', 'Cache pre-seeded from test-context.json');
+    } catch {
+      // File doesn't exist yet (first run or running outside project system) — that's OK
+    }
+  }
+
+  static _contextSeeded = false;
 
   /**
    * Get authentication headers from the page context
@@ -120,14 +154,19 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Get the root process group ID
+   * Get the root process group ID (cached after first successful call)
    */
   async getRootProcessGroupId() {
+    if (ProcessorApiManager._cache.rootGroupId) {
+      return ProcessorApiManager._cache.rootGroupId;
+    }
     try {
       const result = await this.makeApiCall('/nifi-api/flow/process-groups/root');
-      
+
       if (result.ok && result.data) {
-        return result.data.processGroupFlow?.id || result.data.id || 'root';
+        const id = result.data.processGroupFlow?.id || result.data.id || 'root';
+        ProcessorApiManager._cache.rootGroupId = id;
+        return id;
       }
 
       // Fallback to 'root' if API call fails
@@ -140,9 +179,12 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Get child process groups of the root process group
+   * Get child process groups of the root process group (cached after first successful call)
    */
   async getProcessGroups() {
+    if (ProcessorApiManager._cache.processGroups) {
+      return ProcessorApiManager._cache.processGroups;
+    }
     try {
       const rootGroupId = await this.getRootProcessGroupId();
       const result = await this.makeApiCall(`/nifi-api/process-groups/${rootGroupId}/process-groups`);
@@ -152,7 +194,9 @@ export class ProcessorApiManager {
         return [];
       }
 
-      return result.data?.processGroups || [];
+      const groups = result.data?.processGroups || [];
+      ProcessorApiManager._cache.processGroups = groups;
+      return groups;
     } catch (error) {
       testLogger.error('Processor', 'Error getting process groups:', error.message);
       return [];
@@ -160,9 +204,12 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Find the JWT Auth Pipeline process group and return its id (instanceIdentifier)
+   * Find the JWT Auth Pipeline process group and return its id (cached)
    */
   async getJwtPipelineProcessGroupId() {
+    if (ProcessorApiManager._cache.jwtPipelineGroupId !== undefined) {
+      return ProcessorApiManager._cache.jwtPipelineGroupId;
+    }
     const groups = await this.getProcessGroups();
     const jwtGroup = groups.find(g =>
       g.component?.name === PROCESS_GROUPS.JWT_AUTH_PIPELINE
@@ -170,17 +217,22 @@ export class ProcessorApiManager {
 
     if (jwtGroup) {
       testLogger.info('Processor', `Found JWT Auth Pipeline group: ${jwtGroup.id}`);
+      ProcessorApiManager._cache.jwtPipelineGroupId = jwtGroup.id;
       return jwtGroup.id;
     }
 
     testLogger.warn('Processor', 'JWT Auth Pipeline process group not found');
+    ProcessorApiManager._cache.jwtPipelineGroupId = null;
     return null;
   }
 
   /**
-   * Find the REST API Gateway process group and return its id
+   * Find the REST API Gateway process group and return its id (cached)
    */
   async getGatewayProcessGroupId() {
+    if (ProcessorApiManager._cache.gatewayGroupId !== undefined) {
+      return ProcessorApiManager._cache.gatewayGroupId;
+    }
     const groups = await this.getProcessGroups();
     const gatewayGroup = groups.find(g =>
       g.component?.name === PROCESS_GROUPS.REST_API_GATEWAY
@@ -188,10 +240,12 @@ export class ProcessorApiManager {
 
     if (gatewayGroup) {
       testLogger.info('Processor', `Found REST API Gateway group: ${gatewayGroup.id}`);
+      ProcessorApiManager._cache.gatewayGroupId = gatewayGroup.id;
       return gatewayGroup.id;
     }
 
     testLogger.warn('Processor', 'REST API Gateway process group not found');
+    ProcessorApiManager._cache.gatewayGroupId = null;
     return null;
   }
 

@@ -8,6 +8,14 @@ import { CONSTANTS } from './constants.js';
 import { testLogger } from './test-logger.js';
 
 /**
+ * Module-level token cache with TTL.
+ * Keycloak tokens are valid for minutes; we cache for 4 min to avoid
+ * repeated HTTP calls across tests within the same run.
+ */
+const TOKEN_CACHE_TTL_MS = 4 * 60 * 1000;
+const _tokenCache = new Map();
+
+/**
  * Keycloak token service for obtaining access tokens
  */
 export class KeycloakTokenService {
@@ -132,13 +140,21 @@ export class KeycloakTokenService {
 }
 
 /**
- * Convenience function to get a valid access token
+ * Convenience function to get a valid access token (cached with 4-min TTL)
  * @returns {Promise<string>} Valid JWT access token
  * @throws {Error} If token cannot be obtained
  */
 export async function getValidAccessToken() {
+  const cacheKey = 'valid';
+  const cached = _tokenCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TOKEN_CACHE_TTL_MS) {
+    testLogger.info('Auth', 'Returning cached valid access token');
+    return cached.token;
+  }
   const service = new KeycloakTokenService();
-  return service.getValidAccessToken();
+  const token = await service.getValidAccessToken();
+  _tokenCache.set(cacheKey, { token, ts: Date.now() });
+  return token;
 }
 
 /**
@@ -151,13 +167,19 @@ export function getInvalidAccessToken() {
 }
 
 /**
- * Fetch a valid access token from the other_realm (cross-issuer testing).
+ * Fetch a valid access token from the other_realm (cross-issuer testing, cached with 4-min TTL).
  * This token is structurally valid but signed by a different realm's keys,
  * so it should be rejected by a processor configured for oauth_integration_tests.
  * @returns {Promise<string>} Valid JWT access token from other_realm
  * @throws {Error} If token cannot be obtained
  */
 export async function getOtherRealmAccessToken() {
+  const cacheKey = 'otherRealm';
+  const cached = _tokenCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TOKEN_CACHE_TTL_MS) {
+    testLogger.info('Auth', 'Returning cached other_realm access token');
+    return cached.token;
+  }
   const { OTHER_REALM_CONFIG } = await import('./constants.js');
   testLogger.info('Auth', 'Fetching access token from other_realm...');
 
@@ -192,17 +214,24 @@ export async function getOtherRealmAccessToken() {
   }
 
   testLogger.info('Auth', 'Successfully obtained access token from other_realm');
+  _tokenCache.set(cacheKey, { token: tokenData.access_token, ts: Date.now() });
   return tokenData.access_token;
 }
 
 /**
- * Fetch a valid access token for the limitedUser (role-based authorization testing).
+ * Fetch a valid access token for the limitedUser (role-based authorization testing, cached with 4-min TTL).
  * Same realm (oauth_integration_tests) and client, but a user with only the 'user'
  * role — missing the 'read' role required by the processor.
  * @returns {Promise<string>} Valid JWT access token with insufficient roles
  * @throws {Error} If token cannot be obtained
  */
 export async function getLimitedUserAccessToken() {
+  const cacheKey = 'limitedUser';
+  const cached = _tokenCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < TOKEN_CACHE_TTL_MS) {
+    testLogger.info('Auth', 'Returning cached limitedUser access token');
+    return cached.token;
+  }
   const { LIMITED_USER_CONFIG } = await import('./constants.js');
   testLogger.info('Auth', 'Fetching access token for limitedUser...');
 
@@ -238,6 +267,7 @@ export async function getLimitedUserAccessToken() {
   }
 
   testLogger.info('Auth', 'Successfully obtained access token for limitedUser');
+  _tokenCache.set(cacheKey, { token: tokenData.access_token, ts: Date.now() });
   return tokenData.access_token;
 }
 

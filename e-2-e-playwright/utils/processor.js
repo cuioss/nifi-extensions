@@ -342,10 +342,7 @@ export class ProcessorService {
         // Wait for iframe to be injected into the page
         await this.page.waitForSelector('iframe', { timeout: 5000 });
         testLogger.info('Processor',"Advanced UI iframe detected in DOM");
-        
-        // Give iframe time to start loading
-        await this.page.waitForTimeout(1000);
-        
+
         return true;
       } catch (error) {
         testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
@@ -418,7 +415,7 @@ export class ProcessorService {
       attempts++;
       if (attempts < maxAttempts) {
         testLogger.info('Processor',`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
-        await this.page.waitForTimeout(1000);
+        await this.page.waitForTimeout(500);
       }
     }
     
@@ -476,10 +473,20 @@ export class ProcessorService {
   async clickTab(customUIFrame, tabName) {
     // Ensure frame is stable before interaction
     await this.waitForFrameStability(customUIFrame);
-    
+
     const tab = customUIFrame.getByRole("tab", { name: tabName, exact: true });
     await tab.click();
-    await this.page.waitForTimeout(1000);
+
+    // Wait for the corresponding tab panel to become visible instead of a hard timeout
+    const tabPanelId = await tab.evaluate(el => {
+      const href = el.querySelector('a')?.getAttribute('href');
+      return href ? href.replace('#', '') : null;
+    }).catch(() => null);
+
+    if (tabPanelId) {
+      await customUIFrame.locator(`#${tabPanelId}`).waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    }
+
     testLogger.info('Processor',`Clicked ${tabName} tab`);
   }
 
@@ -515,10 +522,7 @@ export class ProcessorService {
       throw new Error("Failed to open Advanced UI via right-click menu");
     }
 
-    // Wait for custom UI to load
-    await this.page.waitForTimeout(2000);
-
-    // Get the custom UI frame
+    // Get the custom UI frame (getAdvancedUIFrame handles waiting internally)
     const customUIFrame = await this.getAdvancedUIFrame();
 
     if (!customUIFrame) {

@@ -11,38 +11,22 @@
  */
 
 import {
-    test,
+    serialTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
-import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor.js";
 
 test.describe("Metrics Tab", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+    test.describe.configure({ mode: "serial" });
 
-        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
-        await processorManager.ensureProcessorOnCanvas();
+    test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });
 
     test("should display not-available banner with gateway requirement message", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Metrics");
 
         // Check for metrics dashboard content
@@ -67,17 +51,9 @@ test.describe("Metrics Tab", () => {
     });
 
     test("should not display gateway-specific metrics sections for JWT processor", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Metrics");
 
         // Wait for metrics content to render
@@ -102,17 +78,9 @@ test.describe("Metrics Tab", () => {
     });
 
     test("should display last-updated status in metrics tab", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Metrics");
 
         // Verify last-updated status is present

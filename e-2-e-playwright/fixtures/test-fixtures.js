@@ -12,7 +12,12 @@ import {
     cleanupCriticalErrorDetection,
 } from "../utils/critical-error-detector.js";
 import { ProcessorApiManager } from "../utils/processor-api-manager.js";
-import { join } from "path";
+import { ProcessorService } from "../utils/processor.js";
+import { PROCESSOR_TYPES } from "../utils/constants.js";
+import { join, dirname } from "path";
+
+const __fixturesDir = dirname(new URL(import.meta.url).pathname);
+const AUTH_STATE_PATH = join(__fixturesDir, "..", ".auth", "state.json");
 
 /**
  * Extended test with all fixtures combined including structured test logging
@@ -143,6 +148,215 @@ export const gatewayTest = test.extend({
         testLogger.info("Processor", "Gateway preconditions met");
 
         await use(page);
+    },
+});
+
+/**
+ * Validate a cached frame is still usable; re-navigate if not.
+ * @param {object} state - Mutable state with frame, page, and navigation deps
+ * @param {Function} navigateFn - Async function that re-navigates and returns a frame
+ * @returns {Promise<Frame>} The valid frame
+ */
+async function ensureValidFrame(state, navigateFn) {
+    try {
+        if (
+            state.frame &&
+            !state.frame.isDetached() &&
+            state.page.url().includes("/advanced")
+        ) {
+            return state.frame;
+        }
+    } catch {
+        /* frame reference invalid */
+    }
+    state.frame = await navigateFn();
+    return state.frame;
+}
+
+/** Browser context options matching playwright.config.cjs */
+const SHARED_CONTEXT_OPTIONS = {
+    storageState: AUTH_STATE_PATH,
+    ignoreHTTPSErrors: true,
+    viewport: { width: 1920, height: 1080 },
+    acceptDownloads: true,
+    timezoneId: "America/New_York",
+    permissions: ["clipboard-read", "clipboard-write"],
+};
+
+/**
+ * Serial test fixture for JWT authenticator functional tests.
+ * Shares a single browser page and Advanced UI across all tests in a file,
+ * eliminating per-test auth + navigation overhead (~5-6s per test).
+ *
+ * Usage: import { serialTest as test } from '../fixtures/test-fixtures.js'
+ */
+export const serialTest = test.extend({
+    /** Worker-scoped shared page with pre-loaded storageState */
+    _sharedPage: [
+        async ({ browser }, use) => {
+            const context =
+                await browser.newContext(SHARED_CONTEXT_OPTIONS);
+            const page = await context.newPage();
+            await use(page);
+            await context.close();
+        },
+        { scope: "worker" },
+    ],
+
+    /** Override page to delegate to shared page with per-test monitoring */
+    page: async ({ _sharedPage }, use, testInfo) => {
+        testLogger.startTest(testInfo.testId);
+        testLogger.setupBrowserCapture(_sharedPage);
+        setupErrorMonitoring(_sharedPage, testInfo);
+
+        await use(_sharedPage);
+
+        mkdirSync(testInfo.outputDir, { recursive: true });
+        await _sharedPage
+            .screenshot({
+                path: join(testInfo.outputDir, "after.png"),
+                fullPage: true,
+            })
+            .catch(() => {});
+        testLogger.writeLogs(testInfo);
+        cleanupCriticalErrorDetection();
+    },
+
+    /** Worker-scoped: navigates to JWT Advanced UI once, reused across tests */
+    _jwtUIState: [
+        async ({ _sharedPage }, use) => {
+            await _sharedPage.goto("/nifi");
+            await _sharedPage.waitForLoadState("domcontentloaded");
+
+            const processorManager = new ProcessorApiManager(_sharedPage);
+            await processorManager.ensureProcessorOnCanvas();
+            const processorService = new ProcessorService(_sharedPage);
+            const frame =
+                await processorService.navigateToAdvancedUI();
+            await use({
+                frame,
+                processorService,
+                page: _sharedPage,
+                processorManager,
+            });
+        },
+        { scope: "worker" },
+    ],
+
+    /** Test-scoped: validates cached frame, re-navigates if detached */
+    customUIFrame: async ({ _jwtUIState }, use) => {
+        const frame = await ensureValidFrame(_jwtUIState, async () => {
+            const { page, processorManager, processorService } =
+                _jwtUIState;
+            await page.goto("/nifi");
+            await page.waitForLoadState("domcontentloaded");
+            await processorManager.ensureProcessorOnCanvas();
+            return processorService.navigateToAdvancedUI();
+        });
+        await use(frame);
+    },
+
+    /** Convenience fixture: ProcessorService bound to the shared page */
+    processorService: async ({ page }, use, testInfo) => {
+        await use(new ProcessorService(page, testInfo));
+    },
+});
+
+/**
+ * Serial test fixture for REST API Gateway functional tests.
+ * Same shared-page pattern as serialTest but navigates to the gateway processor.
+ *
+ * Usage: import { serialGatewayTest as test } from '../fixtures/test-fixtures.js'
+ */
+export const serialGatewayTest = test.extend({
+    _sharedPage: [
+        async ({ browser }, use) => {
+            const context =
+                await browser.newContext(SHARED_CONTEXT_OPTIONS);
+            const page = await context.newPage();
+            await use(page);
+            await context.close();
+        },
+        { scope: "worker" },
+    ],
+
+    page: async ({ _sharedPage }, use, testInfo) => {
+        testLogger.startTest(testInfo.testId);
+        testLogger.setupBrowserCapture(_sharedPage);
+        setupErrorMonitoring(_sharedPage, testInfo);
+
+        await use(_sharedPage);
+
+        mkdirSync(testInfo.outputDir, { recursive: true });
+        await _sharedPage
+            .screenshot({
+                path: join(testInfo.outputDir, "after.png"),
+                fullPage: true,
+            })
+            .catch(() => {});
+        testLogger.writeLogs(testInfo);
+        cleanupCriticalErrorDetection();
+    },
+
+    _gatewayUIState: [
+        async ({ _sharedPage }, use) => {
+            await _sharedPage.goto("/nifi");
+            await _sharedPage.waitForLoadState("domcontentloaded");
+
+            const processorManager = new ProcessorApiManager(_sharedPage);
+            await processorManager.ensureGatewayProcessorOnCanvas();
+            const processorService = new ProcessorService(_sharedPage);
+            const processor = await processorService.find(
+                PROCESSOR_TYPES.REST_API_GATEWAY,
+                { failIfNotFound: true },
+            );
+            await processorService.openAdvancedUI(processor);
+            const frame =
+                await processorService.getAdvancedUIFrame();
+            if (!frame) {
+                throw new Error(
+                    "Failed to get gateway custom UI frame",
+                );
+            }
+            await use({
+                frame,
+                processorService,
+                page: _sharedPage,
+                processorManager,
+            });
+        },
+        { scope: "worker" },
+    ],
+
+    customUIFrame: async ({ _gatewayUIState }, use) => {
+        const frame = await ensureValidFrame(
+            _gatewayUIState,
+            async () => {
+                const { page, processorManager, processorService } =
+                    _gatewayUIState;
+                await page.goto("/nifi");
+                await page.waitForLoadState("domcontentloaded");
+                await processorManager.ensureGatewayProcessorOnCanvas();
+                const processor = await processorService.find(
+                    PROCESSOR_TYPES.REST_API_GATEWAY,
+                    { failIfNotFound: true },
+                );
+                await processorService.openAdvancedUI(processor);
+                const newFrame =
+                    await processorService.getAdvancedUIFrame();
+                if (!newFrame) {
+                    throw new Error(
+                        "Failed to get gateway custom UI frame on re-navigation",
+                    );
+                }
+                return newFrame;
+            },
+        );
+        await use(frame);
+    },
+
+    processorService: async ({ page }, use, testInfo) => {
+        await use(new ProcessorService(page, testInfo));
     },
 });
 

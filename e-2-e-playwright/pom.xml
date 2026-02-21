@@ -31,10 +31,8 @@
         <!-- skipPlaywrightTests default inherited from root POM, overridden by integration-tests profile -->
         <!-- Include this module in SonarQube analysis -->
         <sonar.skip>false</sonar.skip>
-        <!-- Test output directories -->
-        <selftests.output.dir>${project.build.directory}/results-selftests</selftests.output.dir>
-        <functional.output.dir>${project.build.directory}/results-functional-tests</functional.output.dir>
-        <accessibility.output.dir>${project.build.directory}/results-accessibility-tests</accessibility.output.dir>
+        <!-- Test output directory (single run, Playwright projects handle ordering) -->
+        <playwright.output.dir>${project.build.directory}/results-e2e</playwright.output.dir>
     </properties>
 
     <build>
@@ -134,9 +132,12 @@
                         </configuration>
                     </execution>
 
-                    <!-- Run self-tests — requires Docker containers running -->
+                    <!-- Run all Playwright tests in a single invocation.
+                         Playwright's project system (playwright.config.cjs) handles ordering:
+                         auth-setup -> self-tests -> functional + accessibility.
+                         This saves ~2 Chromium launches and ~2 auth cycles. -->
                     <execution>
-                        <id>run-selftests</id>
+                        <id>run-playwright-tests</id>
                         <goals>
                             <goal>exec</goal>
                         </goals>
@@ -148,74 +149,14 @@
                                 <argument>--yes</argument>
                                 <argument>playwright</argument>
                                 <argument>test</argument>
-                                <argument>self-</argument>
                                 <argument>--reporter=dot</argument>
                             </arguments>
                             <environmentVariables>
                                 <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
                                 <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
-                                <PLAYWRIGHT_OUTPUT_DIR>${selftests.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
-                                <TEST_RESULTS_DIR>${selftests.output.dir}/test-results</TEST_RESULTS_DIR>
-                                <PLAYWRIGHT_REPORT_DIR>${selftests.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
-                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
-                            </environmentVariables>
-                            <skip>${skip.docker.deployment}</skip>
-                        </configuration>
-                    </execution>
-
-                    <!-- Run functional tests — requires Docker containers running -->
-                    <execution>
-                        <id>run-functional-tests</id>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <workingDirectory>${project.basedir}</workingDirectory>
-                            <executable>npx</executable>
-                            <arguments>
-                                <argument>--yes</argument>
-                                <argument>playwright</argument>
-                                <argument>test</argument>
-                                <argument>--grep-invert</argument>
-                                <argument>self-|accessibility</argument>
-                                <argument>--reporter=dot</argument>
-                            </arguments>
-                            <environmentVariables>
-                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
-                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
-                                <PLAYWRIGHT_OUTPUT_DIR>${functional.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
-                                <TEST_RESULTS_DIR>${functional.output.dir}/test-results</TEST_RESULTS_DIR>
-                                <PLAYWRIGHT_REPORT_DIR>${functional.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
-                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
-                            </environmentVariables>
-                            <skip>${skip.docker.deployment}</skip>
-                        </configuration>
-                    </execution>
-
-                    <!-- Run accessibility tests — requires Docker containers running -->
-                    <execution>
-                        <id>run-accessibility-tests</id>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <workingDirectory>${project.basedir}</workingDirectory>
-                            <executable>npx</executable>
-                            <arguments>
-                                <argument>--yes</argument>
-                                <argument>playwright</argument>
-                                <argument>test</argument>
-                                <argument>accessibility</argument>
-                                <argument>--reporter=dot</argument>
-                            </arguments>
-                            <environmentVariables>
-                                <PLAYWRIGHT_BASE_URL>${nifi.base.url}</PLAYWRIGHT_BASE_URL>
-                                <PLAYWRIGHT_KEYCLOAK_URL>${keycloak.url}</PLAYWRIGHT_KEYCLOAK_URL>
-                                <PLAYWRIGHT_OUTPUT_DIR>${accessibility.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
-                                <TEST_RESULTS_DIR>${accessibility.output.dir}/test-results</TEST_RESULTS_DIR>
-                                <PLAYWRIGHT_REPORT_DIR>${accessibility.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
+                                <PLAYWRIGHT_OUTPUT_DIR>${playwright.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
+                                <TEST_RESULTS_DIR>${playwright.output.dir}/test-results</TEST_RESULTS_DIR>
+                                <PLAYWRIGHT_REPORT_DIR>${playwright.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                             </environmentVariables>
                             <skip>${skip.docker.deployment}</skip>

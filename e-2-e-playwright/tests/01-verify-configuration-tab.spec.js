@@ -4,39 +4,21 @@
  */
 
 import {
-    test,
+    serialTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
-import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor.js";
 
 test.describe("Configuration Tab", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+    test.describe.configure({ mode: "serial" });
 
-        await processorManager.ensureProcessorOnCanvas();
+    test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });
 
     test("should display configuration tab structure", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         // Verify container, panel, and tabs structure
         const structuralElements = [
             {
@@ -88,26 +70,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should handle issuer configuration interactions", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        const advancedOpened = await processorService.openAdvancedUI(processor);
-
-        if (!advancedOpened) {
-            throw new Error("Failed to open Advanced UI via right-click menu");
-        }
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
@@ -170,25 +134,7 @@ test.describe("Configuration Tab", () => {
         });
     });
 
-    test("should delete an existing issuer", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        const advancedOpened = await processorService.openAdvancedUI(processor);
-
-        if (!advancedOpened) {
-            throw new Error("Failed to open Advanced UI via right-click menu");
-        }
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+    test("should delete an existing issuer", async ({ customUIFrame }) => {
         // First, add an issuer to delete
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
@@ -249,22 +195,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should edit an existing issuer configuration", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         // Add an issuer first
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
@@ -336,22 +268,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should manage multiple issuers simultaneously", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
@@ -446,22 +364,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should save issuer with inline JWKS content", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
@@ -537,22 +441,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should handle duplicate issuer names", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
@@ -631,22 +521,8 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should show error when saving issuer with missing required fields", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Could not find custom UI iframe");
-        }
-
+        customUIFrame,
+    }) => {
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });

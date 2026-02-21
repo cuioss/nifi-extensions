@@ -9,12 +9,10 @@
  */
 
 import {
-    test,
+    serialTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
-import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor.js";
 import { CONSTANTS } from "../utils/constants.js";
 import {
     getValidAccessToken,
@@ -25,25 +23,16 @@ import {
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
 test.describe("Token Verification Tab", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+    test.describe.configure({ mode: "serial" });
 
-        await processorManager.ensureProcessorOnCanvas();
+    test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should access token verification tab", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+    test("should access token verification tab", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tabPanel = customUIFrame.locator("#token-verification");
@@ -57,18 +46,9 @@ test.describe("Token Verification Tab", () => {
     });
 
     test("should submit valid JWT token from Keycloak and show result", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -132,17 +112,10 @@ test.describe("Token Verification Tab", () => {
         await expect(tokenClaims).toContainText("Subject:");
     });
 
-    test("should reject invalid JWT token", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+    test("should reject invalid JWT token", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -159,22 +132,20 @@ test.describe("Token Verification Tab", () => {
             .first();
         await verifyButton.click();
 
-        const errorResult = customUIFrame
-            .locator(
-                ".token-error, .error-container, .error-message, .verification-status",
-            )
-            .first();
-        await expect(errorResult).toBeVisible({ timeout: 10000 });
+        // Wait for result — use the verification status area (visible after verify)
+        const resultArea = tokenVerificationTab.locator(
+            '[role="status"], .verification-status, .token-error',
+        ).first();
+        // Wait for verification to complete (not just "Verifying token...")
+        await expect(resultArea).toContainText(
+            /invalid|error|fail|malformed|signature/i,
+            { timeout: 15000 },
+        );
 
-        const resultText = await errorResult.textContent();
+        const resultText = await resultArea.textContent();
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
-
-        // Must indicate a token-level error (not a service/infrastructure error)
-        expect(resultText).toMatch(
-            /invalid|error|fail|malformed|signature/i,
-        );
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -185,18 +156,9 @@ test.describe("Token Verification Tab", () => {
     });
 
     test("should display token expiration status", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -214,21 +176,19 @@ test.describe("Token Verification Tab", () => {
             .first();
         await verifyButton.click();
 
-        const verificationMessage = customUIFrame
-            .locator(
-                ".token-error, .error-container, .warning-message, .verification-status, .error-message",
-            )
-            .first();
-        await expect(verificationMessage).toBeVisible({ timeout: 10000 });
+        const verificationMessage = tokenVerificationTab.locator(
+            '[role="status"], .verification-status, .token-error',
+        ).first();
+        // Wait for verification to complete (not just "Verifying token...")
+        await expect(verificationMessage).toContainText(
+            /expired|invalid/i,
+            { timeout: 15000 },
+        );
 
         const messageText = await verificationMessage.textContent();
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(messageText);
-
-        // Must indicate a token-level error (expired or invalid — the backend may not
-        // distinguish between expiration and other validation failures)
-        expect(messageText).toMatch(/expired|invalid/i);
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -238,17 +198,10 @@ test.describe("Token Verification Tab", () => {
         expect(validStatusVisible).toBe(false);
     });
 
-    test("should handle malformed token", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+    test("should handle malformed token", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -266,22 +219,18 @@ test.describe("Token Verification Tab", () => {
             .first();
         await verifyButton.click();
 
-        const errorResult = customUIFrame
-            .locator(
-                ".token-error, .error-container, .error-message, .verification-status",
-            )
-            .first();
-        await expect(errorResult).toBeVisible({ timeout: 10000 });
+        const errorResult = tokenVerificationTab.locator(
+            '[role="status"], .verification-status, .token-error',
+        ).first();
+        await expect(errorResult).toContainText(
+            /invalid|error|fail|malformed|not.*jwt/i,
+            { timeout: 15000 },
+        );
 
         const resultText = await errorResult.textContent();
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
-
-        // Must indicate a token-level error — not even a valid JWT structure
-        expect(resultText).toMatch(
-            /invalid|error|fail|malformed|not.*jwt/i,
-        );
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -291,17 +240,10 @@ test.describe("Token Verification Tab", () => {
         expect(validStatusVisible).toBe(false);
     });
 
-    test("should reject empty token submission", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+    test("should reject empty token submission", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -321,19 +263,15 @@ test.describe("Token Verification Tab", () => {
         await verifyButton.click();
 
         // Expect an error or validation message — empty input should not silently succeed
-        const errorResult = customUIFrame
-            .locator(
-                ".token-error, .error-container, .error-message, .verification-status, .validation-message",
-            )
-            .first();
-        await expect(errorResult).toBeVisible({ timeout: 10000 });
+        const errorResult = tokenVerificationTab.locator(
+            '[role="status"], .verification-status, .token-error, .validation-message',
+        ).first();
+        await expect(errorResult).toContainText(
+            /empty|required|missing|invalid|error|enter.*token|provide.*token/i,
+            { timeout: 15000 },
+        );
 
         const resultText = await errorResult.textContent();
-
-        // Must indicate an error (empty/missing/required/invalid token)
-        expect(resultText).toMatch(
-            /empty|required|missing|invalid|error|enter.*token|provide.*token/i,
-        );
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -344,18 +282,9 @@ test.describe("Token Verification Tab", () => {
     });
 
     test("should reject token from unconfigured issuer", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -379,22 +308,18 @@ test.describe("Token Verification Tab", () => {
 
         // The processor is configured for oauth_integration_tests, so a token
         // from other_realm must be rejected (wrong issuer / unknown signing key)
-        const errorResult = customUIFrame
-            .locator(
-                ".token-error, .error-container, .error-message, .verification-status",
-            )
-            .first();
-        await expect(errorResult).toBeVisible({ timeout: 10000 });
+        const errorResult = tokenVerificationTab.locator(
+            '[role="status"], .verification-status, .token-error',
+        ).first();
+        await expect(errorResult).toContainText(
+            /invalid|error|fail|issuer|signature|unknown/i,
+            { timeout: 15000 },
+        );
 
         const resultText = await errorResult.textContent();
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
-
-        // Must indicate a token-level error (issuer mismatch or signature failure)
-        expect(resultText).toMatch(
-            /invalid|error|fail|issuer|signature|unknown/i,
-        );
 
         // Must NOT show a successful "valid token" message
         const validStatusVisible = await customUIFrame
@@ -405,18 +330,9 @@ test.describe("Token Verification Tab", () => {
     });
 
     test("should verify limitedUser token and show restricted role claims", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -466,17 +382,10 @@ test.describe("Token Verification Tab", () => {
         await expect(payloadPre).toContainText("oauth_integration_tests");
     });
 
-    test("should clear token and results", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
+    test("should clear token and results", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Token Verification");
 
         const tokenVerificationTab = customUIFrame.locator(
@@ -495,11 +404,9 @@ test.describe("Token Verification Tab", () => {
 
         // Wait for verification to complete
         await expect(
-            customUIFrame
-                .locator(
-                    ".token-results-content, .token-error, .verification-status.valid, .verification-status.invalid, .error-container",
-                )
-                .first(),
+            tokenVerificationTab.locator(
+                '[role="status"], .verification-status, .token-error',
+            ).first(),
         ).toBeVisible({ timeout: 5000 });
 
         const clearButton = tokenVerificationTab

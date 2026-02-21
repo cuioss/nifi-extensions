@@ -116,9 +116,9 @@ export class AuthService {
         return true;
       }
 
-      // First get the CSRF token by navigating to the login page
+      // Get the CSRF token — only need cookies, not full network idle
       await this.page.goto('/nifi');
-      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForLoadState('domcontentloaded');
 
       // Extract CSRF token from cookies
       const cookies = await this.page.context().cookies();
@@ -170,8 +170,8 @@ export class AuthService {
 
       // Wait for authentication with proper error handling
       try {
-        // Wait for page to be fully loaded
-        await this.page.waitForLoadState('networkidle');
+        // Wait for page content to load, then check for auth indicators
+        await this.page.waitForLoadState('domcontentloaded');
 
         // Check multiple indicators that login was successful
         const mainCanvasVisible = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);

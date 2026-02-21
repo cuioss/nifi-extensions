@@ -5,38 +5,22 @@
  */
 
 import {
-    test,
+    serialTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
-import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor.js";
 
 test.describe("Help Tab", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+    test.describe.configure({ mode: "serial" });
 
-        // Ensure all preconditions are met (processor setup, error handling, logging handled internally)
-        await processorManager.ensureProcessorOnCanvas();
+    test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });
 
     test("should display help documentation with essential keywords", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Help");
 
         const helpPanel = customUIFrame.locator("#help");
@@ -88,19 +72,10 @@ test.describe("Help Tab", () => {
         );
     });
 
-    test("should have expandable help sections", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+    test("should have expandable help sections", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Help");
 
         const accordionItems = customUIFrame.locator(
@@ -148,20 +123,9 @@ test.describe("Help Tab", () => {
     });
 
     test("should display configuration examples", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Help");
 
         // First, ensure the Issuer Configuration section is expanded
@@ -199,19 +163,10 @@ test.describe("Help Tab", () => {
         }
     });
 
-    test("should display troubleshooting guide", async ({ page }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find JWT processor using the verified utility
-        const processor = await processorService.findJwtAuthenticator({
-            failIfNotFound: true,
-        });
-
-        // Open Advanced UI using the verified utility
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
+    test("should display troubleshooting guide", async ({
+        customUIFrame,
+        processorService,
+    }) => {
         await processorService.clickTab(customUIFrame, "Help");
 
         // Look for Common Issues section

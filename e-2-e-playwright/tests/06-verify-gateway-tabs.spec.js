@@ -6,47 +6,25 @@
  */
 
 import {
-    gatewayTest as test,
+    serialGatewayTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
-import { AuthService } from "../utils/auth-service.js";
-import { ProcessorService } from "../utils/processor.js";
-import { PROCESSOR_TYPES, CONSTANTS } from "../utils/constants.js";
+import { CONSTANTS } from "../utils/constants.js";
 import { getValidAccessToken } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
 test.describe("REST API Gateway Tabs", () => {
-    test.beforeEach(async ({ page, processorManager }, testInfo) => {
-        const authService = new AuthService(page);
-        await authService.ensureReady();
+    test.describe.configure({ mode: "serial" });
 
-        // Ensure gateway processor preconditions are met
-        await processorManager.ensureGatewayProcessorOnCanvas();
+    test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
     });
 
     test("should display gateway-specific tabs in custom UI", async ({
         page,
+        customUIFrame,
     }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        // Find gateway processor on canvas
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        // Open Advanced UI
-        await processorService.openAdvancedUI(processor);
-
-        // Get the custom UI frame
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame for gateway processor");
-        }
-
         // Take screenshot of the gateway custom UI
         await page.screenshot({
             path: `${testInfo.outputDir}/gateway-custom-ui-tabs.png`,
@@ -76,22 +54,8 @@ test.describe("REST API Gateway Tabs", () => {
 
     test("should load gateway config from /gateway/config endpoint", async ({
         page,
+        customUIFrame,
     }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
         // Navigate to Endpoint Configuration tab
         const endpointConfigTab = customUIFrame.locator(
             'a[href="#endpoint-config"]',
@@ -123,23 +87,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should display endpoint tester with route selector and controls", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -169,23 +119,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should send request via endpoint tester and display response", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -217,23 +153,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should send POST request with body via endpoint tester", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -277,23 +199,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should display metrics for gateway processor with actual content", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Click Metrics tab
         await processorService.clickTab(customUIFrame, "Metrics");
 
@@ -333,23 +241,8 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should display route details and global settings in endpoint config", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+    }) => {
         // Navigate to Endpoint Configuration tab
         const endpointConfigTab = customUIFrame.locator(
             'a[href="#endpoint-config"]',
@@ -375,23 +268,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should show error when sending request without route selection", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -401,7 +280,11 @@ test.describe("REST API Gateway Tabs", () => {
         // Clear route selector to have no route selected
         const routeSelector = endpointTesterPanel.locator(".route-selector");
         await expect(routeSelector).toBeVisible({ timeout: 5000 });
-        await routeSelector.selectOption({ index: 0 }); // Select placeholder/empty option
+        // Deselect all options (no placeholder may exist in shared-page context)
+        await routeSelector.evaluate(el => {
+            el.selectedIndex = -1;
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+        });
 
         // Click Send Request without selecting a route
         const sendButton = endpointTesterPanel.locator(".send-request-button");
@@ -421,23 +304,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should reject request with expired token via endpoint tester", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -481,23 +350,9 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should reject request without authentication token", async ({
-        page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Navigate to Endpoint Tester tab
         await processorService.clickTab(customUIFrame, "Endpoint Tester");
 
@@ -543,22 +398,9 @@ test.describe("REST API Gateway Tabs", () => {
 
     test("should refresh gateway metrics and update timestamp", async ({
         page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Click Metrics tab
         await processorService.clickTab(customUIFrame, "Metrics");
 
@@ -602,22 +444,9 @@ test.describe("REST API Gateway Tabs", () => {
 
     test("should export gateway metrics in JSON format", async ({
         page,
-    }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
+        customUIFrame,
+        processorService,
+    }) => {
         // Click Metrics tab
         await processorService.clickTab(customUIFrame, "Metrics");
 
@@ -662,22 +491,9 @@ test.describe("REST API Gateway Tabs", () => {
 
     test("should display gateway-specific help content", async ({
         page,
+        customUIFrame,
+        processorService,
     }, testInfo) => {
-        const processorService = new ProcessorService(page, testInfo);
-
-        const processor = await processorService.find(
-            PROCESSOR_TYPES.REST_API_GATEWAY,
-            { failIfNotFound: true },
-        );
-
-        await processorService.openAdvancedUI(processor);
-
-        const customUIFrame = await processorService.getAdvancedUIFrame();
-
-        if (!customUIFrame) {
-            throw new Error("Failed to get custom UI frame");
-        }
-
         // Click Help tab
         await processorService.clickTab(customUIFrame, "Help");
 
