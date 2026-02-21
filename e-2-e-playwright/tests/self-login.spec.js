@@ -81,7 +81,7 @@ test.describe("Self-Test: Login", () => {
         await authService.verifyCanvasVisible();
     });
 
-    test("should detect authentication status correctly", async ({ page }) => {
+    test("should detect authentication status correctly", async ({ page, context }) => {
         const authService = new AuthService(page);
 
         // Check if NiFi is accessible before attempting navigation
@@ -93,6 +93,10 @@ test.describe("Self-Test: Login", () => {
                     "Start NiFi with: ./integration-testing/src/main/docker/run-and-deploy.sh",
             );
         }
+
+        // Clear cookies to start from unauthenticated state
+        // (storageState pre-loads auth cookies, so we must remove them first)
+        await context.clearCookies();
 
         // Initially should not be authenticated
         await page.goto("/nifi");
