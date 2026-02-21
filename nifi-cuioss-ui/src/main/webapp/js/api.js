@@ -11,8 +11,8 @@ const BASE_URL = 'nifi-api/processors/jwt';
 
 /** Component type definitions with NiFi REST API paths. */
 const COMPONENT_TYPES = {
-    PROCESSOR: { apiPath: 'nifi-api/processors', propsPath: ['config', 'properties'] },
-    CONTROLLER_SERVICE: { apiPath: 'nifi-api/controller-services', propsPath: ['properties'] }
+    PROCESSOR: { apiPath: '/nifi-api/processors', propsPath: ['component', 'config', 'properties'] },
+    CONTROLLER_SERVICE: { apiPath: '/nifi-api/controller-services', propsPath: ['component', 'properties'] }
 };
 
 /** Cached component detection result: { type, componentClass, apiPath, propsPath } */
@@ -31,6 +31,30 @@ const getComponentId = () => {
 };
 
 /**
+ * Extract NiFi's CSRF token from the __Secure-Request-Token cookie.
+ * Tries document.cookie first, then window.parent.document.cookie
+ * (Custom UI runs in an iframe; the cookie path may restrict direct access).
+ * @returns {string|null}
+ */
+const getCsrfToken = () => {
+    const cookieName = '__Secure-Request-Token=';
+    const extract = (cookieString) => {
+        const match = cookieString.split(';')
+            .map(c => c.trim())
+            .find(c => c.startsWith(cookieName));
+        return match ? match.split('=')[1] : null;
+    };
+    try {
+        const token = extract(document.cookie);
+        if (token) return token;
+    } catch { /* no document.cookie access */ }
+    try {
+        return extract(window.parent.document.cookie);
+    } catch { /* cross-origin or no parent */ }
+    return null;
+};
+
+/**
  * Core fetch wrapper with JSON handling, auth headers, and timeout.
  *
  * @param {string} method  HTTP method
@@ -45,6 +69,13 @@ const request = async (method, url, body = null) => {
     if (url.includes('/jwt/')) {
         const pid = getComponentId();
         if (pid) headers['X-Processor-Id'] = pid;
+    }
+
+    // NiFi CSRF protection: double-submit cookie pattern requires
+    // Request-Token header for state-changing methods
+    if (['POST', 'PUT', 'DELETE'].includes(method.toUpperCase())) {
+        const csrfToken = getCsrfToken();
+        if (csrfToken) headers['Request-Token'] = csrfToken;
     }
 
     const opts = { method, headers, credentials: 'same-origin' };
@@ -83,35 +114,16 @@ const request = async (method, url, body = null) => {
 const detectComponentType = async (componentId) => {
     if (_componentInfo) return _componentInfo;
 
-    // Try processor first
-    try {
-        const data = await request('GET', `${COMPONENT_TYPES.PROCESSOR.apiPath}/${componentId}`);
-        const componentClass = data?.component?.type || '';
-        _componentInfo = {
-            type: 'PROCESSOR',
-            componentClass,
-            ...COMPONENT_TYPES.PROCESSOR
-        };
-        return _componentInfo;
-    } catch (processorErr) {
-        if (processorErr.status !== 404) throw processorErr;
-    }
-
-    // Try controller service
-    try {
-        const data = await request('GET',
-            `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${componentId}`);
-        const componentClass = data?.component?.type || '';
-        _componentInfo = {
-            type: 'CONTROLLER_SERVICE',
-            componentClass,
-            ...COMPONENT_TYPES.CONTROLLER_SERVICE
-        };
-        return _componentInfo;
-    } catch (csErr) {
-        if (csErr.status !== 404) throw csErr;
-        throw new Error(`Component not found: ${componentId}`);
-    }
+    // Call WAR servlet — resolves within the WAR context (works both in
+    // NiFi iframe and standalone E2E). The request() function adds the
+    // X-Processor-Id header automatically for URLs containing '/jwt/'.
+    const data = await request('GET', `${BASE_URL}/component-info`);
+    _componentInfo = {
+        type: data.type,
+        componentClass: data.componentClass,
+        ...COMPONENT_TYPES[data.type]
+    };
+    return _componentInfo;
 };
 
 /**
@@ -139,10 +151,6 @@ export const validateJwksContent = (jwksContent) =>
 export const verifyToken = (token) =>
     request('POST', `${BASE_URL}/verify-token`, { token });
 
-/** Fetch security / validation metrics */
-export const getSecurityMetrics = () =>
-    request('GET', `${BASE_URL}/metrics`);
-
 /**
  * Fetch component configuration using the correct API path for the component type.
  *
@@ -151,7 +159,11 @@ export const getSecurityMetrics = () =>
  */
 export const getComponentProperties = async (componentId) => {
     const info = await detectComponentType(componentId);
-    return request('GET', `${info.apiPath}/${componentId}`);
+    const data = await request('GET', `${info.apiPath}/${componentId}`);
+    // Navigate propsPath to extract properties: e.g. ['component', 'config', 'properties']
+    let props = data;
+    for (const key of info.propsPath) { props = props?.[key]; }
+    return { properties: props || {}, revision: data.revision };
 };
 
 /**
@@ -191,15 +203,15 @@ export const sendGatewayTestRequest = (payload) =>
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = (processorId) =>
-    request('GET', `nifi-api/processors/${processorId}`);
+    request('GET', `/nifi-api/processors/${processorId}`);
 
 /** @deprecated Use updateComponentProperties instead */
 export const updateProcessorProperties = async (processorId, properties) => {
     const proc = await getProcessorProperties(processorId);
-    return request('PUT', `nifi-api/processors/${processorId}`, {
+    return request('PUT', `/nifi-api/processors/${processorId}`, {
         revision: proc.revision,
         component: { id: processorId, properties }
     });
 };
 
-export { getComponentId, detectComponentType, resetComponentCache, COMPONENT_TYPES };
+export { getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES };

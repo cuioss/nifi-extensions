@@ -33,9 +33,9 @@ import java.util.Set;
  * @param requireHttpsForJwks whether HTTPS is required for JWKS URLs
  */
 public record JwtAuthenticationConfig(
-        int maxTokenSize,
-        Set<String> allowedAlgorithms,
-        boolean requireHttpsForJwks) {
+int maxTokenSize,
+Set<String> allowedAlgorithms,
+boolean requireHttpsForJwks) {
 
     public JwtAuthenticationConfig {
         allowedAlgorithms = allowedAlgorithms != null ? Set.copyOf(allowedAlgorithms) : Set.of();

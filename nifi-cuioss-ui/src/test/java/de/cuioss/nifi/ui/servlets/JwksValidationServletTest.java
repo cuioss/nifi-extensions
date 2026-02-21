@@ -16,7 +16,13 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.ComponentDetails;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.apache.nifi.web.NiFiWebRequestContext;
+import org.apache.nifi.web.ResourceNotFoundException;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,14 +30,20 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.easymock.EasyMock.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link JwksValidationServlet} using embedded Jetty + REST Assured.
@@ -47,9 +59,11 @@ class JwksValidationServletTest {
     private static final String FILE_ENDPOINT = "/nifi-api/processors/jwt/validate-jwks-file";
     private static final String CONTENT_ENDPOINT = "/nifi-api/processors/jwt/validate-jwks-content";
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx -> {
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
             ServletHolder holder = new ServletHolder(new JwksValidationServlet());
             ctx.addServlet(holder, URL_ENDPOINT);
             ctx.addServlet(holder, FILE_ENDPOINT);
@@ -61,7 +75,7 @@ class JwksValidationServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Test
@@ -74,7 +88,7 @@ class JwksValidationServletTest {
                 {"jwksContent":"%s","processorId":"test-processor-id"}"""
                 .formatted(validJwksContent.replace("\"", "\\\""));
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -92,13 +106,13 @@ class JwksValidationServletTest {
         String requestJson = """
                 {"jwksContent":"{\\"invalid\\":\\"structure\\"}","processorId":"test-processor-id"}""";
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
                 .post(CONTENT_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("missing required 'keys' field"));
     }
@@ -109,13 +123,13 @@ class JwksValidationServletTest {
         String requestJson = """
                 {"jwksContent":"{\\"keys\\":[]}","processorId":"test-processor-id"}""";
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
                 .post(CONTENT_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("empty 'keys' array"));
     }
@@ -123,7 +137,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should return 404 for unknown endpoint")
     void unknownEndpoint() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("{}")
                 .when()
@@ -137,7 +151,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should reject invalid JSON request")
     void invalidJsonRequest() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("{ invalid json }")
                 .when()
@@ -148,24 +162,23 @@ class JwksValidationServletTest {
                 .body("error", containsString("Invalid JSON format"));
     }
 
-    @ParameterizedTest(name = "URL validation: {0}")
+    @ParameterizedTest(name = "URL validation failure: {0}")
     @CsvSource({
             "'not a valid url with spaces', Invalid JWKS URL format",
-            "'ftp://example.com/jwks.json', Invalid URL scheme",
-            "'', JWKS URL cannot be empty"
+            "'ftp://example.com/jwks.json', Invalid URL scheme"
     })
-    @DisplayName("Should reject invalid URLs")
+    @DisplayName("Should return validation failure for invalid URLs")
     void invalidUrlValidation(String jwksUrl, String expectedError) {
         String requestJson = """
                 {"jwksUrl":"%s","processorId":"test-processor-id"}""".formatted(jwksUrl);
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString(expectedError));
     }
@@ -176,22 +189,22 @@ class JwksValidationServletTest {
                         CONTENT_ENDPOINT, "Missing required field: jwksContent"),
                 Arguments.of("{\"processorId\": \"test-processor-id\"}",
                         URL_ENDPOINT, "Missing required field: jwksUrl"),
+                Arguments.of("{\"jwksUrl\": \"\", \"processorId\": \"test-processor-id\"}",
+                        URL_ENDPOINT, "JWKS URL cannot be empty"),
                 Arguments.of("{\"jwksContent\": \"\", \"processorId\": \"test-processor-id\"}",
                         CONTENT_ENDPOINT, "JWKS content cannot be empty"),
                 Arguments.of("{\"jwksFilePath\": \"\", \"processorId\": \"test-processor-id\"}",
                         FILE_ENDPOINT, "JWKS file path cannot be empty"),
                 Arguments.of("{\"processorId\": \"test-processor-id\"}",
-                        FILE_ENDPOINT, "Missing required field: jwksFilePath"),
-                Arguments.of("{\"jwksFilePath\": \"/nonexistent/path/to/jwks.json\", \"processorId\": \"test-processor-id\"}",
-                        FILE_ENDPOINT, "File path must be within")
+                        FILE_ENDPOINT, "Missing required field: jwksFilePath")
         );
     }
 
     @ParameterizedTest(name = "Field validation: {2}")
     @MethodSource("missingOrEmptyFieldProvider")
-    @DisplayName("Should reject missing or empty fields")
+    @DisplayName("Should reject missing or empty fields with 400")
     void shouldRejectMissingOrEmptyFields(String requestJson, String endpoint, String expectedError) {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -202,12 +215,27 @@ class JwksValidationServletTest {
                 .body("error", containsString(expectedError));
     }
 
+    @Test
+    @DisplayName("Should return validation failure for file path outside allowed base")
+    void filePathOutsideAllowedBase() {
+        handle.spec()
+                .contentType("application/json")
+                .body("""
+                        {"jwksFilePath":"/nonexistent/path/to/jwks.json","processorId":"test-processor-id"}""")
+                .when()
+                .post(FILE_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("File path must be within"));
+    }
+
     @Nested
     @DisplayName("Path Traversal Protection Tests")
     class PathTraversalProtectionTests {
 
         @ParameterizedTest(name = "Should reject path: {0}")
-        @CsvSource({
+        @ValueSource(strings = {
                 "'../../etc/passwd'",
                 "'/etc/shadow'",
                 "'..%2F..%2Fetc%2Fpasswd'"
@@ -218,13 +246,13 @@ class JwksValidationServletTest {
                     {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
                     .formatted(maliciousPath);
 
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body(requestJson)
                     .when()
                     .post(FILE_ENDPOINT)
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .body("valid", equalTo(false));
         }
     }
@@ -232,29 +260,87 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should block private address via SSRF protection")
     void ssrfProtectionBlocksPrivateAddress() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksUrl":"https://10.0.0.1/.well-known/jwks.json","processorId":"test-processor-id"}""")
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false));
     }
 
     @Test
     @DisplayName("Should block loopback address via SSRF protection")
     void ssrfProtectionBlocksLoopbackAddress() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksUrl":"https://127.0.0.1/.well-known/jwks.json","processorId":"test-processor-id"}""")
                 .when()
                 .post(URL_ENDPOINT)
                 .then()
-                .statusCode(400)
+                .statusCode(200)
                 .body("valid", equalTo(false));
+    }
+
+    @Nested
+    @DisplayName("Configurable SSRF Protection Tests")
+    class ConfigurableSsrfProtectionTests {
+
+        @Test
+        @DisplayName("Should block private address by default (allowPrivateAddresses=false)")
+        void defaultBlocksPrivateAddress() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act — default is false, so private addresses should be blocked
+            InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", false);
+
+            // Assert
+            assertNull(result, "Private address should be blocked when allowPrivateAddresses=false");
+        }
+
+        @Test
+        @DisplayName("Should allow loopback address when allowPrivateAddresses=true")
+        void allowsLoopbackWhenEnabled() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act
+            InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", true);
+
+            // Assert
+            assertNotNull(result, "Loopback address should be allowed when allowPrivateAddresses=true");
+            assertTrue(result.isLoopbackAddress());
+        }
+
+        @Test
+        @DisplayName("Should return null for empty host regardless of allowPrivateAddresses")
+        void returnsNullForEmptyHost() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act & Assert
+            assertNull(servlet.resolveAndValidateAddress("", true));
+            assertNull(servlet.resolveAndValidateAddress(null, true));
+            assertNull(servlet.resolveAndValidateAddress("", false));
+            assertNull(servlet.resolveAndValidateAddress(null, false));
+        }
+
+        @Test
+        @DisplayName("Should return null for unresolvable host regardless of allowPrivateAddresses")
+        void returnsNullForUnresolvableHost() {
+            // Arrange
+            JwksValidationServlet servlet = new JwksValidationServlet();
+
+            // Act & Assert
+            assertNull(servlet.resolveAndValidateAddress(
+                    "this.host.definitely.does.not.exist.invalid", true));
+            assertNull(servlet.resolveAndValidateAddress(
+                    "this.host.definitely.does.not.exist.invalid", false));
+        }
     }
 
     @Test
@@ -266,7 +352,7 @@ class JwksValidationServletTest {
         Files.writeString(jwksFile, jwksContent);
 
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("""
                             {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
@@ -286,7 +372,7 @@ class JwksValidationServletTest {
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
             Path nonExistent = tempDir.resolve("nonexistent.json");
 
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("""
                             {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
@@ -294,9 +380,107 @@ class JwksValidationServletTest {
                     .when()
                     .post(FILE_ENDPOINT)
                     .then()
-                    .statusCode(400)
+                    .statusCode(200)
                     .body("valid", equalTo(false))
                     .body("error", containsString("does not exist"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should reject malformed JSON in JWKS content")
+    void invalidJsonInJwksContent() {
+        handle.spec()
+                .contentType("application/json")
+                .body("""
+                        {"jwksContent":"not valid json at all","processorId":"test-processor-id"}""")
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid JWKS JSON format"));
+    }
+
+    @Test
+    @DisplayName("Should reject JWKS file with invalid JSON content")
+    void jwksFileWithInvalidJsonContent(@TempDir Path tempDir) throws Exception {
+        Path invalidFile = tempDir.resolve("bad-jwks.json");
+        Files.writeString(invalidFile, "this is not JSON at all");
+
+        try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
+            handle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
+                            .formatted(invalidFile.toString()))
+                    .when()
+                    .post(FILE_ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body("valid", equalTo(false))
+                    .body("error", containsString("Invalid JWKS JSON format"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should reject JWKS content that is a JSON array instead of object")
+    void jwksContentIsJsonArray() {
+        handle.spec()
+                .contentType("application/json")
+                .body("""
+                        {"jwksContent":"[1,2,3]","processorId":"test-processor-id"}""")
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid JWKS JSON format"));
+    }
+
+    @Test
+    @DisplayName("Should use empty string for nifi properties path when only filename provided")
+    void basePathNifiPropertiesFilenameOnly() {
+        try {
+            // A filename without a parent directory
+            System.setProperty("nifi.properties.file.path", "nifi.properties");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            // Parent of "nifi.properties" in current dir returns cwd
+            assertNotNull(result, "Base path should not be null");
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+        }
+    }
+
+    @Test
+    @DisplayName("Should fallback to custom property when nifi.properties.file.path is blank")
+    void basePathBlankNifiPropertiesProperty() {
+        try {
+            System.setProperty("nifi.properties.file.path", "   ");
+            System.setProperty("nifi.jwks.allowed.base.path", "/custom/path");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            assertEquals(Path.of("/custom/path").normalize().toAbsolutePath(), result);
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
+        }
+    }
+
+    @Test
+    @DisplayName("Should fallback to default when custom property is blank")
+    void basePathBlankCustomProperty() {
+        try {
+            System.clearProperty("nifi.properties.file.path");
+            System.setProperty("nifi.jwks.allowed.base.path", "   ");
+
+            Path result = JwksValidationServlet.getJwksAllowedBasePath();
+            assertEquals(Path.of("/opt/nifi/nifi-current/conf").normalize().toAbsolutePath(), result);
+        } finally {
+            System.clearProperty("nifi.properties.file.path");
+            System.clearProperty("nifi.jwks.allowed.base.path");
         }
     }
 
@@ -359,6 +543,112 @@ class JwksValidationServletTest {
                 System.clearProperty("nifi.properties.file.path");
                 System.clearProperty("nifi.jwks.allowed.base.path");
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("resolveControllerServiceProperties Tests")
+    class ResolveControllerServicePropertiesTests {
+
+        @Test
+        @DisplayName("Should return processor properties when no CS keys present")
+        void shouldReturnProcessorPropertiesWhenNoCsKeysPresent() {
+            // Arrange
+            Map<String, String> processorProps = Map.of("some.key", "some-value");
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns input properties unchanged
+            assertEquals(processorProps, result);
+        }
+
+        @Test
+        @DisplayName("Should resolve CS properties when CS reference key present")
+        void shouldResolveCsPropertiesWhenCsReferencePresent() {
+            // Arrange
+            String csId = UUID.randomUUID().toString();
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", csId);
+
+            Map<String, String> csProps = Map.of("issuer.1.name", "test-issuer");
+            ComponentDetails csDetails = new ComponentDetails.Builder()
+                    .id(csId)
+                    .type("StandardJwtIssuerConfigService")
+                    .properties(csProps)
+                    .build();
+
+            NiFiWebConfigurationContext mockCtx = createMock(NiFiWebConfigurationContext.class);
+            // First call tries processor lookup → throws (CS UUID is not a processor)
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not a processor"));
+            // Second call tries controller service lookup → returns CS details
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(csDetails);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns CS properties, not processor properties
+            assertEquals(csProps, result);
+            verify(mockCtx);
+        }
+
+        @Test
+        @DisplayName("Should return processor properties when CS lookup fails")
+        void shouldReturnProcessorPropertiesWhenCsLookupFails() {
+            // Arrange
+            String csId = UUID.randomUUID().toString();
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", csId);
+
+            NiFiWebConfigurationContext mockCtx = createMock(NiFiWebConfigurationContext.class);
+            // Both lookup attempts fail
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andThrow(new ResourceNotFoundException("Not found")).times(2);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act — CS lookup fails, should fall through and return processor properties
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — returns original processor properties as fallback
+            assertEquals(processorProps, result);
+            verify(mockCtx);
+        }
+
+        @Test
+        @DisplayName("Should skip blank CS reference values")
+        void shouldSkipBlankCsReferenceValues() {
+            // Arrange
+            Map<String, String> processorProps = new HashMap<>();
+            processorProps.put("jwt.issuer.config.service", "   ");
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            replay(mockCtx);
+            var reader = new ComponentConfigReader(mockCtx);
+            HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
+            replay(mockReq);
+
+            // Act
+            Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
+                    processorProps, reader, mockReq);
+
+            // Assert — blank value is skipped, returns processor properties
+            assertEquals(processorProps, result);
         }
     }
 

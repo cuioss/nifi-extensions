@@ -28,26 +28,27 @@ import java.util.EnumSet;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
 /**
- * Tests for {@link ApiKeyAuthenticationFilter} using embedded Jetty + REST Assured.
+ * Tests for {@link ProcessorIdValidationFilter} using embedded Jetty + REST Assured.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
 @EnableTestLogger
-@DisplayName("API Key Authentication Filter Tests")
-class ApiKeyAuthenticationFilterTest {
+@DisplayName("Processor ID Validation Filter Tests")
+class ProcessorIdValidationFilterTest {
 
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     private static final String COMPONENT_ID_HEADER = "X-Component-Id";
     private static final String ENDPOINT = "/nifi-api/processors/jwt/validate";
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx -> {
-            ctx.addFilter(ApiKeyAuthenticationFilter.class, "/nifi-api/processors/jwt/*",
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
+            ctx.addFilter(ProcessorIdValidationFilter.class, "/nifi-api/processors/jwt/*",
                     EnumSet.of(DispatcherType.REQUEST));
             ctx.addServlet(new ServletHolder(new EmbeddedServletTestSupport.PassthroughServlet()),
                     "/nifi-api/processors/jwt/*");
@@ -56,7 +57,7 @@ class ApiKeyAuthenticationFilterTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Nested
@@ -66,7 +67,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should allow request with valid processor ID header")
         void shouldAllowRequestWithValidProcessorId() {
-            given()
+            handle.spec()
                     .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
                     .when()
                     .post(ENDPOINT)
@@ -78,7 +79,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should reject request when processor ID is null")
         void shouldRejectRequestWhenProcessorIdIsNull() {
-            given()
+            handle.spec()
                     .when()
                     .post(ENDPOINT)
                     .then()
@@ -101,8 +102,8 @@ class ApiKeyAuthenticationFilterTest {
         @MethodSource("invalidProcessorIdCases")
         @DisplayName("Should reject request with invalid processor ID")
         void shouldRejectRequestWithInvalidProcessorId(String processorId,
-                                                       String expectedMessage, String scenario) {
-            given()
+                String expectedMessage, String scenario) {
+            handle.spec()
                     .header(PROCESSOR_ID_HEADER, processorId)
                     .when()
                     .post(ENDPOINT)
@@ -114,7 +115,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should reject empty processor ID on verify-token endpoint")
         void shouldRejectEmptyProcessorIdOnVerifyToken() {
-            given()
+            handle.spec()
                     .when()
                     .post("/nifi-api/processors/jwt/verify-token")
                     .then()
@@ -130,7 +131,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should accept request with valid X-Component-Id when X-Processor-Id is absent")
         void shouldAcceptComponentIdHeader() {
-            given()
+            handle.spec()
                     .header(COMPONENT_ID_HEADER, UUID.randomUUID().toString())
                     .when()
                     .post(ENDPOINT)
@@ -142,7 +143,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should prefer X-Processor-Id over X-Component-Id")
         void shouldPreferProcessorIdOverComponentId() {
-            given()
+            handle.spec()
                     .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
                     .header(COMPONENT_ID_HEADER, UUID.randomUUID().toString())
                     .when()
@@ -155,7 +156,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should reject request when both headers are missing")
         void shouldRejectWhenBothHeadersMissing() {
-            given()
+            handle.spec()
                     .when()
                     .post(ENDPOINT)
                     .then()
@@ -166,7 +167,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should reject invalid UUID in X-Component-Id fallback")
         void shouldRejectInvalidComponentId() {
-            given()
+            handle.spec()
                     .header(COMPONENT_ID_HEADER, "not-a-uuid")
                     .when()
                     .post(ENDPOINT)
@@ -183,7 +184,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should return valid JSON structure in error response")
         void shouldReturnValidJsonStructureInErrorResponse() {
-            given()
+            handle.spec()
                     .header(PROCESSOR_ID_HEADER, "")
                     .when()
                     .post(ENDPOINT)
@@ -203,7 +204,7 @@ class ApiKeyAuthenticationFilterTest {
         @Test
         @DisplayName("Should handle null servlet path gracefully")
         void shouldPassWithValidProcessorIdOnAnyPath() {
-            given()
+            handle.spec()
                     .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
                     .when()
                     .get("/nifi-api/processors/jwt/some-other-path")

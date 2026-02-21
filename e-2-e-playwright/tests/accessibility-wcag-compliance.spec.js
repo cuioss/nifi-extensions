@@ -13,6 +13,7 @@ import {
     a11yUtils,
 } from "../utils/accessibility-helper.js";
 import { navigateToJWTAuthenticatorUI } from "../utils/navigation-utils.js";
+import { testLogger } from "../utils/test-logger.js";
 
 /**
  * Test configuration
@@ -38,8 +39,7 @@ const A11Y_CONFIG = {
 // Prerequisites:
 // - NiFi must be running
 // - MultiIssuerJWTTokenAuthenticator must be on the canvas
-// Skip: custom UI moved to CS — re-enable after #137 UI migration
-test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
+test.describe("WCAG 2.1 Level AA Compliance", () => {
     let accessibilityHelper;
     let currentPage;
 
@@ -93,7 +93,8 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
                 return accessibilityHelper;
             }
         } catch (_error) {
-            console.log(
+            testLogger.warn(
+                "A11y",
                 "Existing accessibility helper is invalid, creating new one",
             );
         }
@@ -123,7 +124,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
 
             if (!results.passed) {
                 // Log violations for debugging
-                console.log("WCAG Violations found:", results.violations);
+                testLogger.warn("A11y", `WCAG Violations found: ${JSON.stringify(results.violations)}`);
 
                 // Filter known issues
                 const filteredViolations = a11yUtils.skipKnownA11yIssues(
@@ -142,6 +143,11 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Component-level accessibility checks", async ({ page }, testInfo) => {
+        // KNOWN ISSUE: Configuration Form has a pre-existing accessibility violation.
+        // Previously silently swallowed via expect(true).toBe(true).
+        // Now properly asserted — remove test.fail() when the issue is resolved.
+        test.fail();
+
         // Get the custom UI frame once
         const customUIFrame = await navigateToJWTAuthenticatorUI(
             page,
@@ -150,48 +156,39 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
 
         for (const [key, component] of Object.entries(A11Y_CONFIG.components)) {
             await test.step(`Check ${component.name} accessibility`, async () => {
-                try {
-                    // For the tabs component, it should always be visible
-                    if (key === "tabs") {
-                        const tabsExist =
-                            (await customUIFrame
-                                .locator(component.selector)
-                                .count()) > 0;
-                        expect(tabsExist).toBe(true);
-                        return; // Skip detailed check for tabs
-                    }
-
-                    // For configForm, check if it's visible (default tab)
-                    if (key === "configForm") {
-                        const configFormVisible = await customUIFrame
+                // For the tabs component, it should always be visible
+                if (key === "tabs") {
+                    const tabsExist =
+                        (await customUIFrame
                             .locator(component.selector)
-                            .isVisible();
-                        expect(configFormVisible).toBe(true);
+                            .count()) > 0;
+                    expect(tabsExist).toBe(true);
+                    return; // Skip detailed check for tabs
+                }
 
-                        // Run basic accessibility check
-                        const helper =
-                            await ensureValidAccessibilityHelper(testInfo);
-                        const result = await helper.checkComponent(
-                            component.selector,
-                            component.name,
-                        );
+                // For configForm, check if it's visible (default tab)
+                if (key === "configForm") {
+                    const configFormVisible = await customUIFrame
+                        .locator(component.selector)
+                        .isVisible();
+                    expect(configFormVisible).toBe(true);
 
-                        expect(result.passed).toBe(true);
-
-                        if (!result.passed) {
-                            console.log(
-                                `${component.name} accessibility issues:`,
-                                result,
-                            );
-                        }
-                    }
-                } catch (error) {
-                    console.error(
-                        `Error checking ${component.name}:`,
-                        error.message,
+                    // Run accessibility check — let failures propagate
+                    const helper =
+                        await ensureValidAccessibilityHelper(testInfo);
+                    const result = await helper.checkComponent(
+                        component.selector,
+                        component.name,
                     );
-                    // Don't fail the entire test suite for component-level issues
-                    expect(true).toBe(true);
+
+                    if (!result.passed) {
+                        testLogger.warn(
+                            "A11y",
+                            `${component.name} issues: ${JSON.stringify(result, null, 2)}`,
+                        );
+                    }
+
+                    expect(result.passed).toBe(true);
                 }
             });
         }
@@ -209,7 +206,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
             expect(formLabelIssues).toHaveLength(0);
 
             if (formLabelIssues.length > 0) {
-                console.log("Form label issues:", formLabelIssues);
+                testLogger.warn("A11y", `Form label issues: ${JSON.stringify(formLabelIssues)}`);
             }
         });
 
@@ -284,7 +281,8 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
                 .all();
 
             expect(focusableElements.length).toBeGreaterThan(0);
-            console.log(
+            testLogger.info(
+                "A11y",
                 `Total focusable elements: ${focusableElements.length}`,
             );
 
@@ -346,7 +344,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
             expect(ariaIssues).toHaveLength(0);
 
             if (ariaIssues.length > 0) {
-                console.log("ARIA attribute issues:", ariaIssues);
+                testLogger.warn("A11y", `ARIA attribute issues: ${JSON.stringify(ariaIssues)}`);
             }
         });
 
@@ -376,8 +374,14 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Color contrast and visual design", async ({ page }, testInfo) => {
+        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
+
         await test.step("Check text color contrast", async () => {
-            const helper = await ensureValidAccessibilityHelper(testInfo);
+            // Create a fresh helper from the current frame (not the beforeEach one which is detached)
+            const frameContext = customUIFrame ? customUIFrame : page;
+            const helper = new AccessibilityHelper(frameContext);
+            await helper.initialize();
+            await a11yUtils.waitForA11yReady(frameContext);
             const results = await helper.runCustomChecks();
 
             const contrastIssues = results.failures.filter(
@@ -388,15 +392,15 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Verify error and success states have sufficient contrast", async () => {
-            // Trigger validation error
-            const validateButton = page
+            // Trigger validation error within the custom UI frame
+            const validateButton = customUIFrame
                 .locator('button:has-text("Validate")')
                 .first();
             if (await validateButton.isVisible()) {
                 await validateButton.click();
                 await page.waitForTimeout(500);
 
-                const errorMessage = page.locator(".validation-error").first();
+                const errorMessage = customUIFrame.locator(".validation-error").first();
                 if (await errorMessage.isVisible()) {
                     const contrast = await errorMessage.evaluate((el) => {
                         const styles = window.getComputedStyle(el);
@@ -413,9 +417,16 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Screen reader compatibility", async ({ page }) => {
+    test("Screen reader compatibility", async ({ page }, testInfo) => {
+        // KNOWN ISSUE: Custom UI has heading level skip (e.g. h1 → h4).
+        // Previously hidden because the test ran on `page` (NiFi chrome) instead of `customUIFrame`.
+        // Now correctly detected — remove test.fail() when the heading hierarchy is fixed.
+        test.fail();
+
+        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
+
         await test.step("Check heading hierarchy", async () => {
-            const headings = await page.locator("h1, h2, h3, h4, h5, h6").all();
+            const headings = await customUIFrame.locator("h1, h2, h3, h4, h5, h6").all();
             const headingLevels = [];
 
             for (const heading of headings) {
@@ -435,7 +446,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Verify images have alt text", async () => {
-            const images = await page.locator("img").all();
+            const images = await customUIFrame.locator("img").all();
 
             for (const img of images) {
                 const alt = await img.getAttribute("alt");
@@ -449,7 +460,7 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Check table accessibility", async () => {
-            const tables = await page.locator("table").all();
+            const tables = await customUIFrame.locator("table").all();
 
             for (const table of tables) {
                 const _caption = await table.locator("caption").count();
@@ -460,17 +471,19 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Dynamic content accessibility", async ({ page }) => {
+    test("Dynamic content accessibility", async ({ page }, testInfo) => {
+        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
+
         await test.step("Verify loading states are announced", async () => {
-            // Click validate button to trigger loading
-            const validateButton = page
+            // Click validate button to trigger loading within the custom UI frame
+            const validateButton = customUIFrame
                 .locator('button:has-text("Test Connection")')
                 .first();
             if (await validateButton.isVisible()) {
                 await validateButton.click();
 
                 // Check for loading announcement
-                const loadingText = page.locator(
+                const loadingText = customUIFrame.locator(
                     '[aria-live="polite"]:has-text("Testing")',
                 );
                 await expect(loadingText).toBeVisible();
@@ -478,14 +491,14 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Check error announcements", async () => {
-            // Trigger an error
-            const tokenInput = page.locator("#token-input");
+            // Trigger an error within the custom UI frame
+            const tokenInput = customUIFrame.locator("#token-input");
             if (await tokenInput.isVisible()) {
                 await tokenInput.fill("invalid-token");
-                await page.locator('button:has-text("Verify")').click();
+                await customUIFrame.locator('button:has-text("Verify")').click();
 
                 // Check for error announcement
-                const errorRegion = page.locator(
+                const errorRegion = customUIFrame.locator(
                     '[role="alert"], [aria-live="assertive"]',
                 );
                 await expect(errorRegion).toBeVisible();
@@ -494,28 +507,22 @@ test.describe.skip("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Generate comprehensive accessibility report", async ({
-        page,
+        page: _page,
     }, testInfo) => {
         const helper = await ensureValidAccessibilityHelper(testInfo);
         const report = await helper.generateReport();
 
         // Log report summary
-        console.log("Accessibility Report Summary:", {
+        testLogger.info("A11y", `Accessibility Report Summary: ${JSON.stringify({
             wcagCompliant: report.summary.wcagPassed,
             customChecksPassed: report.summary.customChecksPassed,
             keyboardAccessible: report.summary.keyboardNavigable,
             screenReaderReady: report.summary.screenReaderReady,
-        });
+        })}`);
 
         // Save detailed report
         await test.step("Save accessibility report", async () => {
-            const _reportPath = `target/accessibility-report-${Date.now()}.json`;
-            await page.evaluate((reportData) => {
-                console.log(
-                    "Full Accessibility Report:",
-                    JSON.stringify(reportData, null, 2),
-                );
-            }, report);
+            testLogger.info("A11y", `Full Accessibility Report: ${JSON.stringify(report, null, 2)}`);
         });
 
         // Assert overall compliance

@@ -19,11 +19,9 @@ jobs:
       maven-args-input: verify -Pintegration-tests -pl e-2-e-playwright -am
       install-playwright: true
       npm-cache: true
-      timeout-minutes: 20
+      timeout-minutes: 30
       reports-folder: |
-        e-2-e-playwright/target/results-selftests
-        e-2-e-playwright/target/results-functional-tests
-        e-2-e-playwright/target/results-accessibility-tests
+        e-2-e-playwright/target/test-results
       report-logs: |
         e-2-e-playwright/target/keycloak-container.log
         e-2-e-playwright/target/nifi-container.log

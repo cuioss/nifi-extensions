@@ -24,7 +24,7 @@ mkdir -p "${PROJECT_ROOT}/target/nifi-deploy"
 
 # Step 2: Build and copy NAR
 echo "Building and deploying NAR files..."
-bash "${DOCKER_DIR}/copy-deployment.sh"
+bash "${DOCKER_DIR}/copy-deployment.sh" --skip-build
 
 # Step 3: Start containers
 echo "Starting Docker containers..."

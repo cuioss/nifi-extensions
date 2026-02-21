@@ -48,6 +48,14 @@
             <artifactId>nifi-api</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-framework-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- nifi-custom-ui-utils removed: HttpServletRequestContext is not available
+             in the Custom UI WAR classloader at runtime. NiFiWebRequestContext from
+             nifi-framework-api is implemented directly in ComponentConfigReader. -->
         
         <!-- JWT Validation Dependencies for Servlets -->
         <dependency>
@@ -144,15 +152,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>**/integration/**</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>

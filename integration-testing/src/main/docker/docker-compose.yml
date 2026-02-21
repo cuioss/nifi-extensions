@@ -6,6 +6,7 @@ services:
     ports:
       - "9095:8443"
       - "7777:7777"
+      - "9443:9443"
     environment:
       - NIFI_WEB_HTTP_PORT=
       - NIFI_WEB_HTTP_HOST=
@@ -96,10 +97,10 @@ services:
       # TCP socket-based health check (works with minimal Keycloak images v21+)
       # Keycloak's minimal container doesn't include curl, so we use bash TCP sockets
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost:9000\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'UP' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 12
-      start_period: 30s
+      start_period: 20s
     networks:
       - nifi-keycloak-network
     restart: unless-stopped

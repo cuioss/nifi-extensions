@@ -51,13 +51,13 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
-    <!-- API Key Authentication Filter -->
+    <!-- Processor ID Validation Filter -->
     <filter>
-        <filter-name>ApiKeyAuthenticationFilter</filter-name>
-        <filter-class>de.cuioss.nifi.ui.servlets.ApiKeyAuthenticationFilter</filter-class>
+        <filter-name>ProcessorIdValidationFilter</filter-name>
+        <filter-class>de.cuioss.nifi.ui.servlets.ProcessorIdValidationFilter</filter-class>
     </filter>
     <filter-mapping>
-        <filter-name>ApiKeyAuthenticationFilter</filter-name>
+        <filter-name>ProcessorIdValidationFilter</filter-name>
         <url-pattern>/nifi-api/processors/jwt/*</url-pattern>
     </filter-mapping>
 
@@ -89,12 +89,12 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>MetricsServlet</servlet-name>
-        <servlet-class>de.cuioss.nifi.ui.servlets.MetricsServlet</servlet-class>
+        <servlet-name>ComponentInfoServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.ComponentInfoServlet</servlet-class>
     </servlet>
     <servlet-mapping>
-        <servlet-name>MetricsServlet</servlet-name>
-        <url-pattern>/nifi-api/processors/jwt/metrics</url-pattern>
+        <servlet-name>ComponentInfoServlet</servlet-name>
+        <url-pattern>/nifi-api/processors/jwt/component-info</url-pattern>
     </servlet-mapping>
 
     <servlet>

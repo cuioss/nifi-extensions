@@ -42,11 +42,11 @@ import java.util.Map;
  */
 @Builder
 public record ProblemDetail(
-        @Nullable String type,
-        String title,
-        int status,
-        @Nullable String detail,
-        @Singular Map<String, Object> extensions) {
+@Nullable String type,
+String title,
+int status,
+@Nullable String detail,
+@Singular Map<String, Object> extensions) {
 
     /** RFC 9457 content type. */
     public static final String CONTENT_TYPE = "application/problem+json";

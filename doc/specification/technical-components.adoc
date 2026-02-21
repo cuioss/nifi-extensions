@@ -14,7 +14,7 @@ _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functio
 
 === Implementation Classes
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor extending AbstractProcessor
-* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration
+* link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] -- Controller Service interface for JWT issuer configuration (in `nifi-cuioss-api` module)
 * link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/AuthorizationValidator.java[AuthorizationValidator] -- Scope and role validation
 * link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTAttributes.java[JWTAttributes] -- Flow file attribute key constants
 

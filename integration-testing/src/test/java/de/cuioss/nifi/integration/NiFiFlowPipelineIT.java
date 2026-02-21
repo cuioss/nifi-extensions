@@ -20,7 +20,10 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -29,6 +32,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -47,33 +51,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
-@Disabled("flow.json needs CS architecture update — re-enable after #137 flow migration")
 @DisplayName("NiFi Flow Pipeline Integration Tests")
 class NiFiFlowPipelineIT {
-
-    // Keycloak endpoints — token acquisition runs from the host via port-forwarded 9080
-    private static final String KEYCLOAK_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
-    private static final String OTHER_REALM_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/other_realm/protocol/openid-connect/token";
-
-    // NiFi flow pipeline endpoint
-    private static final String FLOW_ENDPOINT = "http://localhost:7777";
-
-    // Expected issuer value (as seen by NiFi inside Docker network)
-    private static final String EXPECTED_ISSUER = "http://keycloak:8080/realms/oauth_integration_tests";
-
-    // Credentials for oauth_integration_tests realm
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
-    private static final String TEST_USER = "testUser";
-    private static final String LIMITED_USER = "limitedUser";
-    private static final String PASSWORD = "drowssap";
-
-    // Credentials for other_realm
-    private static final String OTHER_CLIENT_ID = "other_client";
-    private static final String OTHER_CLIENT_SECRET = "otherClientSecretValue123456789";
-    private static final String OTHER_USER = "otherUser";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -81,7 +60,7 @@ class NiFiFlowPipelineIT {
 
     @BeforeAll
     static void waitForFlowEndpoint() throws Exception {
-        IntegrationTestSupport.waitForEndpoint(HTTP_CLIENT, FLOW_ENDPOINT, Duration.ofSeconds(120));
+        waitForEndpoint(HTTP_CLIENT, FLOW_ENDPOINT, Duration.ofSeconds(120));
     }
 
     // ── Valid Token ────────────────────────────────────────────────────
@@ -94,7 +73,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 200 with jwt attributes for valid JWT with required 'read' role")
         void shouldReturn200ForValidJwtWithRequiredRoles() throws Exception {
             // testUser has roles: user, read — 'read' is required by the flow
-            String token = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+            String token = fetchKeycloakToken(HTTP_CLIENT,
                     KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
@@ -131,7 +110,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with error attributes for token signed by a different realm")
         void shouldReturn401ForTokenSignedByDifferentRealm() throws Exception {
             // Fetch a token from other_realm — signed with a different RSA key pair
-            String otherToken = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+            String otherToken = fetchKeycloakToken(HTTP_CLIENT,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
                     OTHER_USER, PASSWORD);
 
@@ -144,8 +123,12 @@ class NiFiFlowPipelineIT {
             assertNotNull(body, "Response body should contain JSON with jwt attributes");
             assertTrue(body.containsKey("jwt.error.code"),
                     "jwt.error.code should be present for invalid signature");
+            assertFalse(body.getString("jwt.error.code").isBlank(),
+                    "jwt.error.code should not be blank for cross-realm token");
             assertTrue(body.containsKey("jwt.error.category"),
                     "jwt.error.category should be present for invalid signature");
+            assertNotEquals("EXTRACTION_ERROR", body.getString("jwt.error.category"),
+                    "Cross-realm token should trigger a validation error, not extraction error");
         }
     }
 
@@ -159,7 +142,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with authorization failure for token missing required 'read' role")
         void shouldReturn401ForTokenMissingRequiredRole() throws Exception {
             // limitedUser has only 'user' role — missing 'read' which is required
-            String token = IntegrationTestSupport.fetchKeycloakToken(HTTP_CLIENT,
+            String token = fetchKeycloakToken(HTTP_CLIENT,
                     KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, LIMITED_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
@@ -214,8 +197,12 @@ class NiFiFlowPipelineIT {
             assertNotNull(body, "Response body should contain JSON with jwt attributes");
             assertTrue(body.containsKey("jwt.error.code"),
                     "jwt.error.code should be present for malformed token");
+            assertFalse(body.getString("jwt.error.code").isBlank(),
+                    "jwt.error.code should not be blank for malformed token");
             assertTrue(body.containsKey("jwt.error.category"),
                     "jwt.error.category should be present for malformed token");
+            assertFalse(body.getString("jwt.error.category").isBlank(),
+                    "jwt.error.category should not be blank for malformed token");
         }
     }
 

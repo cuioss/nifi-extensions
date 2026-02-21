@@ -2,11 +2,11 @@
 
 import {
     validateJwksUrl, validateJwksFile, validateJwksContent,
-    verifyToken, getSecurityMetrics,
+    verifyToken,
     getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
     getComponentId, detectComponentType, resetComponentCache,
-    fetchGatewayApi, sendGatewayTestRequest, COMPONENT_TYPES
+    fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
@@ -115,33 +115,16 @@ describe('verifyToken', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getSecurityMetrics
-// ---------------------------------------------------------------------------
-
-describe('getSecurityMetrics', () => {
-    test('sends GET request', async () => {
-        mockJsonResponse({ totalTokensValidated: 100 });
-
-        const result = await getSecurityMetrics();
-
-        const [url, opts] = globalThis.fetch.mock.calls[0];
-        expect(url).toBe('nifi-api/processors/jwt/metrics');
-        expect(opts.method).toBe('GET');
-        expect(result.totalTokensValidated).toBe(100);
-    });
-});
-
-// ---------------------------------------------------------------------------
 // getProcessorProperties (backward-compatible)
 // ---------------------------------------------------------------------------
 
 describe('getProcessorProperties', () => {
-    test('sends GET with processor ID', async () => {
+    test('sends GET with processor ID using absolute path', async () => {
         mockJsonResponse({ revision: { version: 1 }, properties: {} });
 
         const result = await getProcessorProperties('proc-123');
 
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('nifi-api/processors/proc-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/proc-123');
         expect(result.revision.version).toBe(1);
     });
 });
@@ -164,12 +147,12 @@ describe('updateProcessorProperties', () => {
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
         // First call: GET
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('nifi-api/processors/proc-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/proc-123');
         expect(globalThis.fetch.mock.calls[0][1].method).toBe('GET');
 
         // Second call: PUT
         const [putUrl, putOpts] = globalThis.fetch.mock.calls[1];
-        expect(putUrl).toBe('nifi-api/processors/proc-123');
+        expect(putUrl).toBe('/nifi-api/processors/proc-123');
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(3);
@@ -184,9 +167,11 @@ describe('updateProcessorProperties', () => {
 // ---------------------------------------------------------------------------
 
 describe('detectComponentType', () => {
-    test('should detect processor type on 200 from processor API', async () => {
+    test('should detect processor type via WAR servlet', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockJsonResponse({
-            component: { type: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator' }
+            type: 'PROCESSOR',
+            componentClass: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator'
         });
 
         const info = await detectComponentType('comp-123');
@@ -195,13 +180,17 @@ describe('detectComponentType', () => {
         expect(info.componentClass).toBe(
             'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator'
         );
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('nifi-api/processors/comp-123');
+        expect(info.apiPath).toBe('/nifi-api/processors');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(
+            'nifi-api/processors/jwt/component-info'
+        );
     });
 
-    test('should detect controller service on 404 from processor, 200 from CS', async () => {
-        mockErrorResponse(404, 'Not found');
+    test('should detect controller service type via WAR servlet', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
         mockJsonResponse({
-            component: { type: 'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService' }
+            type: 'CONTROLLER_SERVICE',
+            componentClass: 'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService'
         });
 
         const info = await detectComponentType('cs-456');
@@ -210,21 +199,13 @@ describe('detectComponentType', () => {
         expect(info.componentClass).toBe(
             'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService'
         );
-        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(globalThis.fetch.mock.calls[1][0]).toBe('nifi-api/controller-services/cs-456');
-    });
-
-    test('should throw for unknown component (both 404)', async () => {
-        mockErrorResponse(404, 'Not found');
-        mockErrorResponse(404, 'Not found');
-
-        await expect(detectComponentType('unknown-789')).rejects.toThrow(
-            'Component not found: unknown-789'
-        );
+        expect(info.apiPath).toBe('/nifi-api/controller-services');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
     test('should cache detection result', async () => {
-        mockJsonResponse({ component: { type: 'SomeProcessor' } });
+        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
 
         await detectComponentType('comp-123');
         const cached = await detectComponentType('comp-123');
@@ -233,7 +214,8 @@ describe('detectComponentType', () => {
         expect(cached.type).toBe('PROCESSOR');
     });
 
-    test('should propagate non-404 errors from processor API', async () => {
+    test('should propagate errors from component-info endpoint', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockErrorResponse(500, 'Server Error');
 
         await expect(detectComponentType('comp-123')).rejects.toThrow('HTTP 500');
@@ -245,28 +227,47 @@ describe('detectComponentType', () => {
 // ---------------------------------------------------------------------------
 
 describe('getComponentProperties', () => {
-    test('should use correct processor API path', async () => {
+    test('should extract processor properties via propsPath', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
         // Detection call
-        mockJsonResponse({ component: { type: 'SomeProcessor' } });
-        // Properties call
-        mockJsonResponse({ revision: { version: 1 }, component: { config: { properties: {} } } });
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // Properties call — NiFi REST API response structure
+        mockJsonResponse({
+            revision: { version: 1 },
+            component: { config: { properties: { 'key1': 'val1' } } }
+        });
 
-        await getComponentProperties('proc-123');
+        const result = await getComponentProperties('proc-123');
 
-        expect(globalThis.fetch.mock.calls[1][0]).toBe('nifi-api/processors/proc-123');
+        expect(result.properties).toEqual({ 'key1': 'val1' });
+        expect(result.revision.version).toBe(1);
+        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/processors/proc-123');
     });
 
-    test('should use correct CS API path', async () => {
-        // Detection: processor 404
-        mockErrorResponse(404, 'Not found');
-        // Detection: CS 200
-        mockJsonResponse({ component: { type: 'StandardJwtIssuerConfigService' } });
-        // Properties call
-        mockJsonResponse({ revision: { version: 1 }, component: { properties: {} } });
+    test('should extract CS properties via propsPath', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
+        // Detection call
+        mockJsonResponse({ type: 'CONTROLLER_SERVICE', componentClass: 'SomeCS' });
+        // Properties call — CS response structure
+        mockJsonResponse({
+            revision: { version: 1 },
+            component: { properties: { 'csKey': 'csVal' } }
+        });
 
-        await getComponentProperties('cs-456');
+        const result = await getComponentProperties('cs-456');
 
-        expect(globalThis.fetch.mock.calls[2][0]).toBe('nifi-api/controller-services/cs-456');
+        expect(result.properties).toEqual({ 'csKey': 'csVal' });
+        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/controller-services/cs-456');
+    });
+
+    test('should return empty properties when path yields null', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        mockJsonResponse({ revision: { version: 1 }, component: {} });
+
+        const result = await getComponentProperties('proc-123');
+
+        expect(result.properties).toEqual({});
     });
 });
 
@@ -276,8 +277,9 @@ describe('getComponentProperties', () => {
 
 describe('updateComponentProperties', () => {
     test('should use correct API path for update', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
         // Detection
-        mockJsonResponse({ component: { type: 'SomeProcessor' } });
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // GET current
         mockJsonResponse({ revision: { version: 5 }, component: { id: 'proc-123' } });
         // PUT update
@@ -288,7 +290,7 @@ describe('updateComponentProperties', () => {
         // 3 fetch calls: detect + GET + PUT
         expect(globalThis.fetch).toHaveBeenCalledTimes(3);
         const [putUrl, putOpts] = globalThis.fetch.mock.calls[2];
-        expect(putUrl).toBe('nifi-api/processors/proc-123');
+        expect(putUrl).toBe('/nifi-api/processors/proc-123');
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(5);
@@ -349,13 +351,13 @@ describe('error handling', () => {
     test('throws on non-ok response', async () => {
         mockErrorResponse(500, 'Internal Server Error');
 
-        await expect(getSecurityMetrics()).rejects.toThrow('HTTP 500');
+        await expect(verifyToken('test')).rejects.toThrow('HTTP 500');
     });
 
     test('includes status on error', async () => {
         mockErrorResponse(404, 'Not Found');
 
-        const err = await getSecurityMetrics().catch((e) => e);
+        const err = await verifyToken('test').catch((e) => e);
         expect(err.status).toBe(404);
         expect(err.responseText).toBe('Not Found');
     });
@@ -370,7 +372,7 @@ describe('processor ID header', () => {
         globalThis.jwtAuthConfig = { processorId: 'test-proc-id' };
         mockJsonResponse({});
 
-        await getSecurityMetrics();
+        await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['X-Processor-Id']).toBe('test-proc-id');
@@ -383,7 +385,7 @@ describe('processor ID header', () => {
         };
         mockJsonResponse({});
 
-        await getSecurityMetrics();
+        await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['X-Processor-Id']).toBe('url-proc-id');
@@ -395,9 +397,14 @@ describe('processor ID header', () => {
 // ---------------------------------------------------------------------------
 
 describe('COMPONENT_TYPES', () => {
-    test('should expose processor and controller service types', () => {
-        expect(COMPONENT_TYPES.PROCESSOR.apiPath).toBe('nifi-api/processors');
-        expect(COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath).toBe('nifi-api/controller-services');
+    test('should expose processor and controller service types with absolute paths', () => {
+        expect(COMPONENT_TYPES.PROCESSOR.apiPath).toBe('/nifi-api/processors');
+        expect(COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath).toBe('/nifi-api/controller-services');
+    });
+
+    test('should have correct property paths', () => {
+        expect(COMPONENT_TYPES.PROCESSOR.propsPath).toEqual(['component', 'config', 'properties']);
+        expect(COMPONENT_TYPES.CONTROLLER_SERVICE.propsPath).toEqual(['component', 'properties']);
     });
 });
 
@@ -419,5 +426,88 @@ describe('getComponentId', () => {
     test('returns empty string when no ID available', () => {
         globalThis.location = { search: '', href: 'https://nifi:8443' };
         expect(getComponentId()).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// CSRF token handling
+// ---------------------------------------------------------------------------
+
+describe('CSRF token handling', () => {
+    let cookieDescriptor;
+
+    beforeEach(() => {
+        cookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie')
+            || Object.getOwnPropertyDescriptor(HTMLDocument.prototype, 'cookie');
+    });
+
+    afterEach(() => {
+        if (cookieDescriptor) {
+            Object.defineProperty(document, 'cookie', cookieDescriptor);
+        }
+    });
+
+    test('getCsrfToken extracts token from document.cookie', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => 'other=val; __Secure-Request-Token=csrf-abc-123; session=xyz',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBe('csrf-abc-123');
+    });
+
+    test('getCsrfToken returns null when cookie is absent', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => 'session=xyz; other=val',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBeNull();
+    });
+
+    test('getCsrfToken returns null on empty cookies', () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '',
+            configurable: true
+        });
+        expect(getCsrfToken()).toBeNull();
+    });
+
+    test('adds Request-Token header for POST requests when cookie exists', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '__Secure-Request-Token=test-csrf-token',
+            configurable: true
+        });
+        mockJsonResponse({ valid: true });
+
+        await verifyToken('test');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBe('test-csrf-token');
+    });
+
+    test('does not add Request-Token for GET requests', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '__Secure-Request-Token=test-csrf-token',
+            configurable: true
+        });
+        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'Test' });
+
+        await detectComponentType('comp-123');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBeUndefined();
+    });
+
+    test('gracefully handles missing CSRF cookie for POST', async () => {
+        Object.defineProperty(document, 'cookie', {
+            get: () => '',
+            configurable: true
+        });
+        mockJsonResponse({ valid: true });
+
+        await verifyToken('test');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['Request-Token']).toBeUndefined();
     });
 });

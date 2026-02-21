@@ -18,16 +18,14 @@ The following classes implement this specification:
 
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java[JwtVerificationServlet]
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet]
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/MetricsServlet.java[MetricsServlet]
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilter.java[ApiKeyAuthenticationFilter]
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java[ProcessorIdValidationFilter]
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service/JwtValidationService.java[JwtValidationService]
 
 The following tests verify the implementation:
 
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwtVerificationServletTest.java[JwtVerificationServletTest] -- Token verification endpoint unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest] -- JWKS validation endpoint unit tests
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/MetricsServletTest.java[MetricsServletTest] -- Metrics endpoint unit tests
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ApiKeyAuthenticationFilterTest.java[ApiKeyAuthenticationFilterTest] -- API key authentication filter unit tests
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilterTest.java[ProcessorIdValidationFilterTest] -- Processor ID validation filter unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java[JwtValidationServiceTest] -- JWT validation service unit tests
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/integration/BackendEndpointsIntegrationTest.java[BackendEndpointsIntegrationTest] -- REST Assured integration tests for all endpoints
 * link:../../e-2-e-playwright/tests/04-verify-token-verification-tab.spec.js[E2E Token Verification Tab Test]
@@ -133,42 +131,6 @@ Validates JWKS URL accessibility and content structure.
   "error": "",
   "keyCount": 2,
   "algorithms": ["RS256", "ES256"]
-}
-----
-
-=== Security Metrics Endpoint
-
-==== Overview
-Provides security metrics for JWT validation operations.
-
-==== Endpoint Details
-* *Path*: `/nifi-api/processors/jwt/metrics`
-* *Method*: GET
-* *Authentication*: Required (API Key)
-
-==== Query Parameters
-* `processorId` (required): UUID of the processor
-
-==== Response Format
-[source,json]
-----
-{
-  "totalTokensValidated": 1250,
-  "validTokens": 1180,
-  "invalidTokens": 70,
-  "errorRate": 0.056,
-  "lastValidation": "2025-01-27T10:30:00Z",
-  "topErrors": [
-    {"error": "Token expired", "count": 45},
-    {"error": "Invalid signature", "count": 25}
-  ],
-  "issuerMetrics": {
-    "https://example.com": {
-      "totalValidated": 500,
-      "validTokens": 480,
-      "invalidTokens": 20
-    }
-  }
 }
 ----
 

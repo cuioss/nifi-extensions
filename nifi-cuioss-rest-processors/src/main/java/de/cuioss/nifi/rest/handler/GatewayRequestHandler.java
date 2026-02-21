@@ -97,7 +97,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
     @Getter private final SecurityEventCounter httpSecurityEvents;
     /** Application-level gateway security event counters. */
     @Getter private final GatewaySecurityEvents gatewaySecurityEvents;
-    /** Handler for reserved management endpoints (/metrics, /config). */
+    /** Handler for reserved management endpoints (/metrics). */
     @Getter @Nullable private ManagementEndpointHandler managementHandler;
 
     /**
@@ -143,17 +143,15 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     /**
-     * Configures management endpoints ({@code /metrics}, {@code /config}) on this handler.
+     * Configures the management endpoint ({@code /metrics}) on this handler.
      * Must be called after construction to enable management API access.
      *
-     * @param port       the listening port (reported in /config)
-     * @param queueSize  the queue capacity (reported in /config)
-     * @param sslEnabled whether SSL/TLS is enabled (reported in /config)
+     * @param managementApiKey  API key for management endpoint auth, or {@code null} for unauthenticated access
      */
-    public void configureManagementEndpoints(int port, int queueSize, boolean sslEnabled) {
+    public void configureManagementEndpoints(@Nullable String managementApiKey) {
         this.managementHandler = new ManagementEndpointHandler(
-                routes, configService, httpSecurityEvents, gatewaySecurityEvents,
-                port, maxRequestSize, queueSize, sslEnabled, corsAllowedOrigins);
+                configService, httpSecurityEvents, gatewaySecurityEvents,
+                managementApiKey);
     }
 
 
@@ -170,7 +168,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             String rawPath = request.getHttpURI().getPath();
             String accept = request.getHeaders().get("Accept");
             if (managementHandler.handleIfManagement(rawPath, request.getMethod(), accept,
-                    response, callback)) {
+                    request, response, callback)) {
                 return true;
             }
         }

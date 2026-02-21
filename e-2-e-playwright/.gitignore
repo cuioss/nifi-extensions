@@ -11,6 +11,7 @@ debug.out
 /playwright/.cache/
 /node_modules/
 /target/
+/.auth/
 
 # Screenshot and trace files
 *.png

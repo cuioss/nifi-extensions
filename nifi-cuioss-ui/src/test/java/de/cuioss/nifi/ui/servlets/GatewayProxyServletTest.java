@@ -16,19 +16,20 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.servlet.http.HttpServletRequest;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -56,18 +57,56 @@ class GatewayProxyServletTest {
     /** When true, all gateway operations throw IOException. */
     private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
 
+    /** Configurable processor properties — reset before each test. */
+    private static final AtomicReference<Map<String, String>> processorProperties =
+            new AtomicReference<>(createDefaultProperties());
+
+    private static Map<String, String> createDefaultProperties() {
+        Map<String, String> props = new HashMap<>();
+        props.put("rest.gateway.listening.port", "9443");
+        props.put("rest.gateway.max.request.size", "1048576");
+        props.put("rest.gateway.request.queue.size", "50");
+        props.put("rest.gateway.cors.allowed.origins", "http://localhost:8443");
+        props.put("rest.gateway.listening.host", "0.0.0.0");
+        props.put("restapi.health.path", "/api/health");
+        props.put("restapi.health.methods", "GET");
+        props.put("restapi.users.path", "/api/users");
+        props.put("restapi.users.methods", "GET,POST");
+        props.put("restapi.users.required-roles", "ADMIN");
+        return props;
+    }
+
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx ->
+        handle = EmbeddedServletTestSupport.startServer(ctx ->
                 ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                     @Override
-                    protected int resolveGatewayPort(String processorId) throws IOException {
+                    protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return 9443;
                     }
 
                     @Override
-                    protected String executeGatewayGet(String url, String accept) throws IOException {
+                    protected Map<String, String> resolveProcessorProperties(
+                            String processorId, HttpServletRequest req) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return processorProperties.get();
+                    }
+
+                    @Override
+                    protected ComponentConfigReader.ComponentConfig resolveComponentConfig(
+                            String processorId, HttpServletRequest req) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return new ComponentConfigReader.ComponentConfig(
+                                ComponentConfigReader.ComponentType.PROCESSOR,
+                                "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
+                                processorProperties.get());
+                    }
+
+                    @Override
+                    protected String executeGatewayGet(String url, String accept, String apiKey) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return gatewayGetResponse.get();
                     }
@@ -85,13 +124,14 @@ class GatewayProxyServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @BeforeEach
     void resetBehavior() {
         gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
         gatewayFailing.set(false);
+        processorProperties.set(createDefaultProperties());
     }
 
     // -----------------------------------------------------------------------
@@ -105,7 +145,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject non-whitelisted path")
         void shouldRejectNonWhitelistedPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/evil")
@@ -115,11 +155,23 @@ class GatewayProxyServletTest {
         }
 
         @Test
+        @DisplayName("Should reject GET with null pathInfo")
+        void shouldRejectGetWithNullPathInfo() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid management path"));
+        }
+
+        @Test
         @DisplayName("Should reject missing processor ID")
         void shouldRejectMissingProcessorId() {
-            given()
+            handle.spec()
                     .when()
-                    .get("/gateway/config")
+                    .get("/gateway/metrics")
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
@@ -128,10 +180,10 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject blank processor ID")
         void shouldRejectBlankProcessorId() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", "  ")
                     .when()
-                    .get("/gateway/config")
+                    .get("/gateway/metrics")
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
@@ -147,18 +199,35 @@ class GatewayProxyServletTest {
     class GetManagementProxy {
 
         @Test
-        @DisplayName("Should proxy /config endpoint")
-        void shouldProxyConfigEndpoint() {
-            gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
-
-            given()
+        @DisplayName("Should serve /config locally from processor properties")
+        void shouldServeConfigLocally() {
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
                     .then()
                     .statusCode(200)
                     .contentType(containsString("application/json"))
-                    .body(containsString("RestApiGatewayProcessor"));
+                    .body("component", equalTo("de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor"))
+                    .body("port", equalTo(9443))
+                    .body("maxRequestBodySize", equalTo(1048576))
+                    .body("queueSize", equalTo(50))
+                    .body("ssl", equalTo(false))
+                    .body("routes.size()", equalTo(2));
+        }
+
+        @Test
+        @DisplayName("Should include route details in local config")
+        void shouldIncludeRouteDetailsInLocalConfig() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("routes.find { it.name == 'health' }.path", equalTo("/api/health"))
+                    .body("routes.find { it.name == 'users' }.path", equalTo("/api/users"))
+                    .body("routes.find { it.name == 'users' }.requiredRoles", hasItem("ADMIN"));
         }
 
         @Test
@@ -166,7 +235,7 @@ class GatewayProxyServletTest {
         void shouldProxyMetricsEndpoint() {
             gatewayGetResponse.set(SAMPLE_METRICS_JSON);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/metrics")
@@ -176,17 +245,115 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 when gateway is unavailable")
-        void shouldReturn503WhenGatewayUnavailable() {
+        @DisplayName("Should return 503 when gateway is unavailable for metrics")
+        void shouldReturn503WhenGatewayUnavailableForMetrics() {
             gatewayFailing.set(true);
 
-            given()
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 when config properties unavailable")
+        void shouldReturn503WhenConfigPropertiesUnavailable() {
+            gatewayFailing.set(true);
+
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
                     .then()
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should report ssl=true when SSL context service is configured")
+        void shouldReportSslEnabled() {
+            Map<String, String> propsWithSsl = new HashMap<>(createDefaultProperties());
+            propsWithSsl.put("rest.gateway.ssl.context.service", "ssl-service-id");
+            processorProperties.set(propsWithSsl);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("ssl", equalTo(true));
+        }
+
+        @Test
+        @DisplayName("Should handle minimal config with no optional properties")
+        void shouldHandleMinimalConfig() {
+            Map<String, String> minimalProps = new HashMap<>();
+            minimalProps.put("rest.gateway.listening.port", "9443");
+            processorProperties.set(minimalProps);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("port", equalTo(9443))
+                    .body("ssl", equalTo(false))
+                    .body("corsAllowedOrigins.size()", equalTo(0))
+                    .body("routes.size()", equalTo(0));
+        }
+
+        @Test
+        @DisplayName("Should skip routes with blank path")
+        void shouldSkipRoutesWithBlankPath() {
+            Map<String, String> propsWithBlankRoute = new HashMap<>(createDefaultProperties());
+            propsWithBlankRoute.put("restapi.broken.path", "  ");
+            propsWithBlankRoute.put("restapi.broken.methods", "GET");
+            processorProperties.set(propsWithBlankRoute);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    // Only the 2 original routes (health, users) — broken is skipped
+                    .body("routes.size()", equalTo(2));
+        }
+
+        @Test
+        @DisplayName("Should include CORS origins in config response")
+        void shouldIncludeCorsOrigins() {
+            Map<String, String> propsWithCors = new HashMap<>(createDefaultProperties());
+            propsWithCors.put("rest.gateway.cors.allowed.origins",
+                    "http://localhost:8443, https://nifi.example.com");
+            processorProperties.set(propsWithCors);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("corsAllowedOrigins.size()", equalTo(2))
+                    .body("corsAllowedOrigins[0]", equalTo("http://localhost:8443"))
+                    .body("corsAllowedOrigins[1]", equalTo("https://nifi.example.com"));
+        }
+
+        @Test
+        @DisplayName("Should include listening host in config response")
+        void shouldIncludeListeningHost() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("listeningHost", equalTo("0.0.0.0"));
         }
     }
 
@@ -199,9 +366,38 @@ class GatewayProxyServletTest {
     class PostTestEndpoint {
 
         @Test
+        @DisplayName("Should reject POST with null pathInfo")
+        void shouldRejectPostWithNullPathInfo() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{}")
+                    .when()
+                    .post("/gateway")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid path for POST"));
+        }
+
+        @Test
+        @DisplayName("Should reject blank processor ID on POST")
+        void shouldRejectBlankProcessorIdOnPost() {
+            handle.spec()
+                    .header("X-Processor-Id", "  ")
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
+        }
+
+        @Test
         @DisplayName("Should reject non-test POST path")
         void shouldRejectNonTestPostPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("{}")
@@ -215,7 +411,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject missing processor ID on POST")
         void shouldRejectMissingProcessorIdOnPost() {
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("{}")
                     .when()
@@ -228,7 +424,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should proxy valid test request")
         void shouldProxyValidTestRequest() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -244,7 +440,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject missing path in test request")
         void shouldRejectMissingPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -259,7 +455,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject invalid JSON body")
         void shouldRejectInvalidJson() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("{ invalid }")
@@ -275,7 +471,7 @@ class GatewayProxyServletTest {
         void shouldReturn503WhenGatewayUnavailableForTest() {
             gatewayFailing.set(true);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -288,9 +484,39 @@ class GatewayProxyServletTest {
         }
 
         @Test
+        @DisplayName("Should proxy test request with request body")
+        void shouldProxyTestRequestWithBody() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"POST","headers":{},"body":"{\\"name\\":\\"test\\"}"}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("Should handle test request without headers key")
+        void shouldHandleTestRequestWithoutHeaders() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/health","method":"GET"}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
+        }
+
+        @Test
         @DisplayName("Should handle null body in test request")
         void shouldHandleNullBody() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -356,11 +582,11 @@ class GatewayProxyServletTest {
     class AllowedPaths {
 
         @Test
-        @DisplayName("Should contain metrics and config")
+        @DisplayName("Should contain only metrics (config is served locally)")
         void shouldContainExpectedPaths() {
             assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/metrics"));
-            assertTrue(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/config"));
-            assertEquals(2, GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.size());
+            assertFalse(GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.contains("/config"));
+            assertEquals(1, GatewayProxyServlet.ALLOWED_MANAGEMENT_PATHS.size());
         }
     }
 }

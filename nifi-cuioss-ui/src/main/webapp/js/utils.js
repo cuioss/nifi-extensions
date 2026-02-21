@@ -230,11 +230,17 @@ export const validateIssuerConfig = (fd) => {
 const extractErrorMessage = (error) => {
     if (!error) return 'Unknown error';
     if (error.responseJSON?.message) return error.responseJSON.message;
+    if (error.responseJSON?.error) return error.responseJSON.error;
     if (error.responseText) {
         try {
             const parsed = JSON.parse(error.responseText);
             if (parsed.message) return parsed.message;
+            if (parsed.error) return parsed.error;
         } catch { /* not JSON */ }
+        // HTML responses (e.g., Jetty error pages) — show status instead of raw markup
+        if (error.responseText.trimStart().startsWith('<')) {
+            return `Server error (HTTP ${error.status || 'unknown'})`;
+        }
         return error.responseText;
     }
     return error.statusText || error.message || 'Unknown error';

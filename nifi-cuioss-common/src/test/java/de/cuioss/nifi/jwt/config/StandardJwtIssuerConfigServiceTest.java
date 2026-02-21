@@ -73,7 +73,7 @@ class StandardJwtIssuerConfigServiceTest {
     class PropertyDescriptorTests {
 
         @Test
-        @DisplayName("Should return all 5 property descriptors")
+        @DisplayName("Should return all 6 property descriptors")
         void shouldReturnAllPropertyDescriptors() throws Exception {
             // Arrange
             TestRunner runner = TestRunners.newTestRunner(StubProcessor.class);
@@ -84,7 +84,7 @@ class StandardJwtIssuerConfigServiceTest {
             List<PropertyDescriptor> descriptors = service.getSupportedPropertyDescriptors();
 
             // Assert
-            assertEquals(5, descriptors.size());
+            assertEquals(6, descriptors.size());
         }
 
         @Test
@@ -130,6 +130,16 @@ class StandardJwtIssuerConfigServiceTest {
             assertNotNull(StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT);
             assertEquals("10", StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT.getDefaultValue());
             assertTrue(StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT.isRequired());
+        }
+
+        @Test
+        @DisplayName("Should include Allow Private Network Addresses property with false default")
+        void shouldIncludeAllowPrivateNetworkAddresses() {
+            // Assert
+            assertNotNull(StandardJwtIssuerConfigService.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
+            assertEquals("false",
+                    StandardJwtIssuerConfigService.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES.getDefaultValue());
+            assertTrue(StandardJwtIssuerConfigService.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES.isRequired());
         }
     }
 

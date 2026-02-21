@@ -144,7 +144,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Script |Description
 
 |`run-and-deploy.sh`
-|Full startup: builds NAR (`mvnw package`), copies to deploy dir, starts Keycloak (with health wait), starts NiFi (with health wait)
+|Full startup: always rebuilds NARs (`mvnw package`), copies to deploy dir, starts Keycloak (with health wait), starts NiFi (with health wait)
 
 |`start-nifi.sh`
 |Starts Keycloak first, then NiFi. Waits for both to be healthy (2-minute timeout). Does NOT build/deploy the NAR.
@@ -159,7 +159,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Rebuilds NAR, copies to deploy dir, restarts NiFi container (`docker compose restart nifi`)
 
 |`copy-deployment.sh`
-|Builds NAR with `./mvnw package -DskipTests -pl '!e-2-e-playwright'` and copies to `target/nifi-deploy/`
+|Copies both `nifi-cuioss-api-nar` and `nifi-cuioss-nar` to `target/nifi-deploy/`. Accepts `--skip-build` to skip the Maven build when NARs were already built by the Maven reactor (used by `deploy-and-start.sh`). Without the flag, always runs `./mvnw package -DskipTests` to ensure fresh NARs.
 |===
 
 === Diagnostic Scripts
@@ -220,12 +220,15 @@ src/main/docker/
 │   ├── oauth_integration_tests-realm.json  # Primary realm import
 │   └── other_realm-realm.json              # Secondary realm (signature testing)
 ├── maintenance/                   # Certificate and credential utilities
-├── run-and-deploy.sh             # Full build + start
+├── scripts/                       # Maven-invoked orchestration scripts
+│   ├── deploy-and-start.sh       #   Pre-integration-test: copy NAR + start containers + wait
+│   └── wait-for-containers.sh    #   Health polling: containers → NiFi UI → flow pipeline
+├── run-and-deploy.sh             # Full build + start (always rebuilds NARs)
 ├── start-nifi.sh                 # Start Keycloak + NiFi
 ├── start-keycloak.sh             # Start Keycloak only
 ├── stop-test-container.sh        # Stop all containers
-├── redeploy-nifi.sh              # Rebuild + restart NiFi
-├── copy-deployment.sh            # Build + copy NAR
+├── redeploy-nifi.sh              # Rebuild + restart NiFi (always rebuilds NARs)
+├── copy-deployment.sh            # Build + copy NAR (--skip-build to skip Maven)
 ├── check-status.sh               # Health check
 ├── debug-containers.sh           # Container diagnostics
 └── debug-nar-deployment.sh       # NAR deployment diagnostics
@@ -264,6 +267,32 @@ curl -s -X POST http://localhost:9080/realms/oauth_integration_tests/protocol/op
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
 ----
+
+== Test Execution
+
+=== Maven Integration Tests
+
+When running via Maven (`./mvnw verify -Pintegration-tests -pl integration-testing -am`), the lifecycle is:
+
+1. **Maven reactor builds** all dependent modules (processors, UI WAR, NARs) via `-am`
+2. **`deploy-and-start.sh`** (pre-integration-test phase) copies NARs to deploy dir (skipping redundant Maven build via `--skip-build`), starts Docker containers, and waits for readiness
+3. **Failsafe** runs all IT classes with **parallel class execution** (3 concurrent threads)
+4. **`cleanup-containers`** (post-integration-test phase) collects logs and stops containers
+
+=== Parallel Test Execution
+
+Integration test classes run concurrently via `junit-platform.properties`:
+
+* **Classes** run in parallel (up to 3 concurrent threads)
+* **Methods within a class** run sequentially (preserves `@Nested` ordering)
+* All tests are read-only against shared containers, so parallel execution is safe
+
+=== NAR Build Optimization
+
+`copy-deployment.sh` accepts `--skip-build` to avoid redundant Maven builds:
+
+* **Maven path** (`deploy-and-start.sh`): passes `--skip-build` because the Maven reactor already built fresh NARs
+* **Standalone path** (`run-and-deploy.sh`, `redeploy-nifi.sh`): always rebuilds to pick up code changes
 
 == Certificate Configuration
 
@@ -323,7 +352,7 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 |Verify port 9086 is reachable: `curl http://localhost:9086/health/ready`
 
 |NAR not loaded
-|Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains the NAR file
+|Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains both NAR files (`nifi-cuioss-api-nar` and `nifi-cuioss-nar`)
 
 |Certificate errors in browser
 |Expected with self-signed certs — accept the warning. Regenerate with `maintenance/generate-certificates.sh` if expired.

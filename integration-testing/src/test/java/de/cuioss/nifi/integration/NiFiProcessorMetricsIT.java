@@ -17,29 +17,21 @@
 package de.cuioss.nifi.integration;
 
 import jakarta.json.Json;
-import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Optional;
 
+import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,31 +46,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
-@Disabled("flow.json needs CS architecture update — re-enable after #137 flow migration")
 @DisplayName("NiFi Processor Metrics Integration Tests")
 class NiFiProcessorMetricsIT {
-
-    private static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
-    private static final String NIFI_USERNAME = "testUser";
-    private static final String NIFI_PASSWORD = "drowssap";
-
-    // Flow endpoint for triggering traffic before checking metrics
-    private static final String FLOW_ENDPOINT = "http://localhost:7777";
-
-    // Keycloak token endpoint for getting a valid JWT
-    private static final String KEYCLOAK_TOKEN_ENDPOINT =
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token";
-    private static final String CLIENT_ID = "test_client";
-    private static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
 
     private static HttpClient nifiClient;
     private static HttpClient plainClient;
 
     @BeforeAll
     static void setUp() throws Exception {
-        SSLContext sslContext = createTrustAllSslContext();
         nifiClient = HttpClient.newBuilder()
-                .sslContext(sslContext)
+                .sslContext(createTrustAllSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         plainClient = HttpClient.newBuilder()
@@ -92,16 +69,15 @@ class NiFiProcessorMetricsIT {
     @Test
     @DisplayName("should show JWT authenticator processor has processed FlowFiles")
     void shouldShowJwtAuthenticatorProcessedFlowFiles() throws Exception {
-        String bearerToken = authenticateToNifi();
+        String bearerToken = authenticateToNifi(nifiClient);
         JsonObject status = getProcessGroupStatus(bearerToken);
 
-        JsonArray processorStatuses = status
+        JsonObject aggregateSnapshot = status
                 .getJsonObject("processGroupStatus")
-                .getJsonObject("aggregateSnapshot")
-                .getJsonArray("processorStatusSnapshots");
+                .getJsonObject("aggregateSnapshot");
 
-        // Find the JWT authenticator processor
-        Optional<JsonObject> jwtProcessor = findProcessorByName(processorStatuses,
+        // Find the JWT authenticator processor (may be in a child process group)
+        Optional<JsonObject> jwtProcessor = findProcessorInSnapshot(aggregateSnapshot,
                 "MultiIssuerJWTTokenAuthenticator");
 
         assertTrue(jwtProcessor.isPresent(),
@@ -120,18 +96,17 @@ class NiFiProcessorMetricsIT {
     @Test
     @DisplayName("should show HandleHttpResponse processors have processed FlowFiles")
     void shouldShowResponseProcessorsProcessedFlowFiles() throws Exception {
-        String bearerToken = authenticateToNifi();
+        String bearerToken = authenticateToNifi(nifiClient);
         JsonObject status = getProcessGroupStatus(bearerToken);
 
-        JsonArray processorStatuses = status
+        JsonObject aggregateSnapshot = status
                 .getJsonObject("processGroupStatus")
-                .getJsonObject("aggregateSnapshot")
-                .getJsonArray("processorStatusSnapshots");
+                .getJsonObject("aggregateSnapshot");
 
-        // Verify both response handlers received FlowFiles
-        Optional<JsonObject> successResponse = findProcessorByName(processorStatuses,
+        // Verify both response handlers received FlowFiles (may be in a child process group)
+        Optional<JsonObject> successResponse = findProcessorInSnapshot(aggregateSnapshot,
                 "HandleHttpResponse (200)");
-        Optional<JsonObject> failureResponse = findProcessorByName(processorStatuses,
+        Optional<JsonObject> failureResponse = findProcessorInSnapshot(aggregateSnapshot,
                 "HandleHttpResponse (401)");
 
         assertTrue(successResponse.isPresent(),
@@ -152,10 +127,9 @@ class NiFiProcessorMetricsIT {
 
     // ── Helper methods ─────────────────────────────────────────────────
 
-    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status counter propagation
     private static void ensureFlowHasTraffic() throws Exception {
         // Wait for flow endpoint availability
-        IntegrationTestSupport.waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
+        waitForEndpoint(plainClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
 
         // Send a request without a token (triggers failure path)
         HttpRequest noTokenRequest = HttpRequest.newBuilder()
@@ -166,8 +140,8 @@ class NiFiProcessorMetricsIT {
         plainClient.send(noTokenRequest, HttpResponse.BodyHandlers.ofString());
 
         // Send a request with a valid token (triggers success path)
-        String token = IntegrationTestSupport.fetchKeycloakToken(plainClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, "testUser", "drowssap");
+        String token = fetchKeycloakToken(plainClient,
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
         HttpRequest validTokenRequest = HttpRequest.newBuilder()
                 .uri(URI.create(FLOW_ENDPOINT))
                 .GET()
@@ -176,28 +150,41 @@ class NiFiProcessorMetricsIT {
                 .build();
         plainClient.send(validTokenRequest, HttpResponse.BodyHandlers.ofString());
 
-        // Brief pause to let NiFi update its status counters
-        Thread.sleep(2000);
+        // Poll NiFi metrics until the processor reflects the traffic we just sent,
+        // rather than using a fixed Thread.sleep which is fragile on slow CI machines
+        waitForProcessorActivity("MultiIssuerJWTTokenAuthenticator", Duration.ofSeconds(15));
     }
 
-    private static String authenticateToNifi() throws Exception {
-        String body = IntegrationTestSupport.formEncode(Map.of(
-                "username", NIFI_USERNAME,
-                "password", NIFI_PASSWORD));
+    /**
+     * Polls the NiFi process group status API until the named processor shows
+     * at least one FlowFile processed, or the timeout expires. This replaces
+     * a fixed {@code Thread.sleep} with a condition-based wait.
+     */
+    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status polling
+    private static void waitForProcessorActivity(String processorName, Duration timeout)
+            throws Exception {
+        String bearerToken = authenticateToNifi(nifiClient);
+        long deadline = System.nanoTime() + timeout.toNanos();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(NIFI_API_BASE + "/access/token"))
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .timeout(Duration.ofSeconds(10))
-                .build();
+        while (System.nanoTime() < deadline) {
+            JsonObject status = getProcessGroupStatus(bearerToken);
+            JsonObject aggregateSnapshot = status
+                    .getJsonObject("processGroupStatus")
+                    .getJsonObject("aggregateSnapshot");
 
-        HttpResponse<String> response = nifiClient.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(201, response.statusCode(),
-                "NiFi authentication failed with status %d: %s"
-                        .formatted(response.statusCode(), response.body()));
-
-        return response.body().trim();
+            Optional<JsonObject> processor = findProcessorInSnapshot(
+                    aggregateSnapshot, processorName);
+            if (processor.isPresent()) {
+                int flowFilesIn = processor.get()
+                        .getJsonObject("processorStatusSnapshot")
+                        .getInt("flowFilesIn");
+                if (flowFilesIn > 0) {
+                    return;
+                }
+            }
+            Thread.sleep(500);
+        }
+        // Don't fail here — let the actual test assertions report the problem
     }
 
     private static JsonObject getProcessGroupStatus(String bearerToken) throws Exception {
@@ -214,44 +201,5 @@ class NiFiProcessorMetricsIT {
                         .formatted(response.statusCode(), response.body()));
 
         return Json.createReader(new StringReader(response.body())).readObject();
-    }
-
-    private static Optional<JsonObject> findProcessorByName(JsonArray processorStatuses, String name) {
-        for (JsonValue value : processorStatuses) {
-            JsonObject processorStatus = value.asJsonObject();
-            String processorName = processorStatus
-                    .getJsonObject("processorStatusSnapshot")
-                    .getString("name");
-            if (processorName.equals(name)) {
-                return Optional.of(processorStatus);
-            }
-        }
-        return Optional.empty();
-    }
-
-    @SuppressWarnings("java:S4830") // Trust-all SSL is intentional for self-signed Docker certs
-    private static SSLContext createTrustAllSslContext() throws Exception {
-        TrustManager[] trustAllManagers = {
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllManagers, new SecureRandom());
-        return sslContext;
     }
 }

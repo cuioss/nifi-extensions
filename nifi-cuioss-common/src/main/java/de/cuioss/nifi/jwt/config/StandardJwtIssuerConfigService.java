@@ -28,6 +28,7 @@ import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
+import org.apache.nifi.annotation.behavior.SupportsSensitiveDynamicProperties;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
@@ -63,6 +64,7 @@ import java.util.*;
 @CapabilityDescription("Provides shared JWT issuer configuration and token validation. " +
         "Manages JWKS key retrieval, issuer configuration, and token validation lifecycle " +
         "so that multiple processors can share the same JWT configuration.")
+@SupportsSensitiveDynamicProperties
 @RequiresInstanceClassLoading
 @EqualsAndHashCode(callSuper = true)
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
@@ -71,6 +73,8 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
 
     // --- NiFi Property Descriptors ---
+
+    private static final String BOOLEAN_FALSE = "false";
 
     static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
             .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
@@ -106,7 +110,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production.")
             .required(true)
             .defaultValue("true")
-            .allowableValues("true", "false")
+            .allowableValues("true", BOOLEAN_FALSE)
             .build();
 
     static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
@@ -118,12 +122,24 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
+    static final PropertyDescriptor JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES = new PropertyDescriptor.Builder()
+            .name(JWTAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES)
+            .displayName("Allow Private Network Addresses for JWKS")
+            .description("When true, allows JWKS URLs that resolve to private/loopback network addresses. "
+                    + "Enable this when the IdP (e.g. Keycloak) runs on an internal network. "
+                    + "Default: false (blocks private addresses for SSRF protection).")
+            .required(true)
+            .defaultValue(BOOLEAN_FALSE)
+            .allowableValues("true", BOOLEAN_FALSE)
+            .build();
+
     private static final List<PropertyDescriptor> PROPERTY_DESCRIPTORS = List.of(
             JWKS_REFRESH_INTERVAL,
             MAXIMUM_TOKEN_SIZE,
             ALLOWED_ALGORITHMS,
             REQUIRE_HTTPS_FOR_JWKS,
-            JWKS_CONNECTION_TIMEOUT
+            JWKS_CONNECTION_TIMEOUT,
+            JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES
     );
 
     // --- Internal State ---

@@ -34,6 +34,30 @@ export const KEYCLOAK_CONFIG = {
 };
 
 /**
+ * Keycloak configuration for the limited user (role-based authorization testing)
+ * Same realm (oauth_integration_tests) and client, but a user with only the
+ * 'user' role — missing the 'read' role required by the processor.
+ */
+export const LIMITED_USER_CONFIG = {
+  USERNAME: 'limitedUser',
+  PASSWORD: 'drowssap',
+};
+
+/**
+ * Keycloak configuration for the other_realm (cross-issuer testing)
+ * Separate realm with its own RSA key pair — tokens from this realm
+ * should be rejected by a processor configured for oauth_integration_tests
+ */
+export const OTHER_REALM_CONFIG = {
+  REALM: 'other_realm',
+  CLIENT_ID: 'other_client',
+  CLIENT_SECRET: 'otherClientSecretValue123456789',
+  USERNAME: 'otherUser',
+  PASSWORD: 'drowssap',
+  TOKEN_ENDPOINT: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'http://localhost:9080') + '/realms/other_realm/protocol/openid-connect/token'
+};
+
+/**
  * Service URLs
  */
 export const SERVICE_URLS = {
@@ -117,11 +141,20 @@ export const PAGE_DEFINITIONS = {
 };
 
 /**
+ * Process group name constants
+ */
+export const PROCESS_GROUPS = {
+  JWT_AUTH_PIPELINE: 'JWT Auth Pipeline',
+  REST_API_GATEWAY: 'REST API Gateway'
+};
+
+/**
  * Processor type constants
  */
 export const PROCESSOR_TYPES = {
   MULTI_ISSUER_JWT_AUTHENTICATOR: 'MultiIssuerJWTTokenAuthenticator',
-  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator'
+  JWT_TOKEN_AUTHENTICATOR: 'JWTTokenAuthenticator',
+  REST_API_GATEWAY: 'RestApiGatewayProcessor'
 };
 
 /**
@@ -178,10 +211,13 @@ export const CONSTANTS = {
   PAGE_TYPES,
   AUTH,
   KEYCLOAK_CONFIG,
+  LIMITED_USER_CONFIG,
+  OTHER_REALM_CONFIG,
   SERVICE_URLS,
   TIMEOUTS,
   SELECTORS,
   PAGE_DEFINITIONS,
+  PROCESS_GROUPS,
   PROCESSOR_TYPES,
   ERROR_PATTERNS,
   TEST_TOKENS

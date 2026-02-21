@@ -16,7 +16,6 @@
  */
 /**
  * Configuration management for JWT issuer validation.
- * Contains the {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService} interface,
- * its implementation, and configuration parsing utilities.
+ * Contains the Controller Service implementation and configuration parsing utilities.
  */
 package de.cuioss.nifi.jwt.config;

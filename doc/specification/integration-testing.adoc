@@ -11,14 +11,19 @@ xref:../Specification.adoc[Back to Main Specification]
 
 === Test Modules
 * link:../../integration-testing/[integration-testing] -- Docker-based integration tests (NiFi + Keycloak)
-* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT] -- Flow pipeline end-to-end tests
-* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT] -- Keycloak token acquisition tests
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiFlowPipelineIT.java[NiFiFlowPipelineIT] -- Flow pipeline end-to-end tests (port 7777)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java[RestApiGatewayIT] -- RestApiGateway integration tests (port 9443)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/CustomUIEndpointsIT.java[CustomUIEndpointsIT] -- Custom UI endpoint tests (port 9095)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakRealmConfigIT.java[KeycloakRealmConfigIT] -- Keycloak realm configuration tests (port 9080)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiProcessorMetricsIT.java[NiFiProcessorMetricsIT] -- NiFi REST API metrics tests (port 9095)
+* link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/IntegrationTestSupport.java[IntegrationTestSupport] -- Shared utilities (endpoint polling, token fetching)
 
 === Configuration Files
 * link:../../integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] -- NiFi flow definition (human-readable source)
 * link:../../integration-testing/src/main/docker/keycloak/oauth_integration_tests-realm.json[oauth_integration_tests-realm.json] -- Primary Keycloak realm
 * link:../../integration-testing/src/main/docker/keycloak/other_realm-realm.json[other_realm-realm.json] -- Secondary realm for signature testing
 * link:../../integration-testing/src/main/docker/docker-compose.yml[docker-compose.yml] -- Container orchestration
+* link:../../integration-testing/src/test/resources/junit-platform.properties[junit-platform.properties] -- JUnit 5 parallel execution configuration
 
 == Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-15[NIFI-AUTH-15: Integration Testing]_
@@ -50,8 +55,10 @@ The test environment consists of two Docker containers on a shared bridge networ
 │       │                           │                          │
 │  ┌────┴───────────────────────────┴────────────────────────┐ │
 │  │  Integration Tests (JUnit 5 / Maven Failsafe)          │ │
-│  │  - NiFiFlowPipelineIT                                   │ │
-│  │  - KeycloakTokenIT                                      │ │
+│  │  Parallel class execution (3 threads)                   │ │
+│  │  - NiFiFlowPipelineIT      - CustomUIEndpointsIT       │ │
+│  │  - RestApiGatewayIT         - NiFiProcessorMetricsIT    │ │
+│  │  - KeycloakRealmConfigIT                                │ │
 │  └─────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
 ----
@@ -308,7 +315,7 @@ End-to-end tests that send HTTP requests to the NiFi flow pipeline (port 7777) a
 
 ==== Setup
 
-The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 120-second timeout, retrying every 3 seconds until a connection is accepted (any HTTP status code, including 401, indicates readiness).
+The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 120-second timeout, retrying every 1 second until a connection is accepted (any HTTP status code, including 401, indicates readiness).
 
 ==== Test Cases
 
@@ -316,15 +323,10 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |===
 |Test |Scenario |Expected |Rationale
 
-|`shouldVerifyFlowEndpointIsListening`
-|Send request without token
-|Non-zero status
-|Verifies the flow pipeline is operational
-
 |`shouldReturn200ForValidJwtWithRequiredRoles`
 |`testUser` token (has `read` role)
 |200
-|Valid authentication and authorization
+|Valid authentication and authorization; verifies jwt attributes in response body
 
 |`shouldReturn401ForTokenSignedByDifferentRealm`
 |Token from `other_realm`
@@ -339,7 +341,7 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |`shouldReturn401WhenNoAuthorizationHeader`
 |No `Authorization` header
 |401
-|Missing token
+|Missing token — expects EXTRACTION_ERROR category
 
 |`shouldReturn401ForMalformedToken`
 |`Bearer not-a-valid-jwt`
@@ -347,30 +349,343 @@ The `@BeforeAll` method `waitForFlowEndpoint()` polls the flow endpoint with a 1
 |Token parsing failure
 |===
 
-==== Helper Methods
+=== RestApiGatewayIT
 
-* `fetchToken(endpoint, clientId, clientSecret, username, password)` -- Acquires an OAuth2 token using the Resource Owner Password grant
-* `sendToFlow(authorizationHeader)` -- Sends an HTTP GET to the flow endpoint with an optional `Authorization` header
-* `formEncode(params)` -- URL-encodes a parameter map for form POST bodies
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java[RestApiGatewayIT.java]
 
-=== KeycloakTokenIT
+Integration tests for the RestApiGateway processor with embedded Jetty on port 9443.
+Tests exercise JWT authentication, route matching, and HTTP method enforcement.
 
-**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakTokenIT.java[KeycloakTokenIT.java]
+==== Setup
 
-Lower-level integration tests that validate Keycloak token acquisition and JWT structure without exercising the NiFi flow.
+The `@BeforeAll` method `waitForGateway()` polls the `/api/health` endpoint with a 120-second timeout, retrying every 1 second until the gateway accepts connections.
 
 ==== Test Cases
 
-* Token acquisition from Keycloak via Resource Owner Password grant
-* JWT structure validation (header, payload, signature)
-* Token claims verification (`iss`, `sub`, `aud`, `exp`, `realm_access`)
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+4+h|Health Endpoint (`/api/health` — GET only)
+
+|`shouldAcceptHealthRequestWithValidJwt`
+|GET with valid JWT
+|200
+|Authentication and routing work
+
+|`shouldRejectHealthRequestWithoutJwt`
+|GET without `Authorization` header
+|401
+|JWT enforcement; verifies `WWW-Authenticate` header
+
+|`shouldRejectHealthRequestWithInvalidJwt`
+|GET with malformed JWT
+|401
+|RFC 9457 problem detail response validation
+
+4+h|Data Endpoint (`/api/data` — GET and POST)
+
+|`shouldAcceptDataGetWithValidJwt`
+|GET with valid JWT
+|200
+|Authenticated GET on data route
+
+|`shouldAcceptDataPostWithValidJwt`
+|POST with valid JWT and JSON body
+|202
+|Authenticated POST on data route
+
+|`shouldReturn401ForDataGetWithoutJwt`
+|GET without JWT
+|401
+|JWT enforcement on data route
+
+|`shouldReturn401ForDataGetWithInvalidJwt`
+|GET with malformed JWT
+|401
+|Token validation on data route
+
+|`shouldReturn401ForDataPostWithoutJwt`
+|POST without JWT
+|401
+|JWT enforcement on POST
+
+4+h|Management Endpoints (`/metrics`, `/config` — no auth required)
+
+|`shouldReturnPrometheusMetrics`
+|GET `/metrics`
+|200
+|Prometheus-format metrics with `text/plain` content type
+
+|`shouldReturnJsonMetrics`
+|GET `/metrics` with `Accept: application/json`
+|200
+|JSON metrics with `tokenValidation` and `gatewayEvents` sections
+
+|`shouldReturnConfig`
+|GET `/config`
+|200
+|JSON config with component, port, and routes
+
+|`shouldReturn405ForPostOnMetrics`
+|POST to `/metrics`
+|405
+|Management endpoints are GET-only
+
+4+h|Error Handling
+
+|`shouldReturn404ForUnknownRoute`
+|GET `/api/nonexistent`
+|404
+|Route not found
+
+|`shouldReturn405ForPostOnHealth`
+|POST to `/api/health`
+|405
+|Method not allowed on GET-only route
+
+|`shouldReturn405ForDeleteOnData`
+|DELETE to `/api/data`
+|405
+|Method not allowed (only GET and POST configured)
+
+|`shouldReturn401ForTokenFromWrongRealm`
+|Token from `other_realm`
+|401
+|Cross-realm signature rejection (different RSA key pair)
+|===
+
+=== CustomUIEndpointsIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/CustomUIEndpointsIT.java[CustomUIEndpointsIT.java]
+
+Integration tests for the Custom UI WAR endpoints deployed inside NiFi. Verifies that JWT verification, JWKS validation, component info, and gateway proxy servlets are accessible and respond correctly when called with NiFi authentication and the required `X-Processor-Id` header.
+
+==== Setup
+
+The `@BeforeAll` method discovers the processor IDs dynamically via the NiFi REST API, builds authenticated REST Assured specs, and waits for both the NiFi UI and the REST API Gateway's embedded Jetty to become available (120-second timeout each, retrying every 1 second).
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+4+h|Endpoint Accessibility
+
+|`verifyTokenWithValidKeycloakToken`
+|POST real Keycloak JWT to verify-token
+|200, valid=true
+|Token verification with real JWT
+
+|`verifyTokenWithInvalidToken`
+|POST invalid token string
+|200, valid=false
+|Invalid tokens must not be reported as valid
+
+|`verifyTokenWithMissingToken`
+|POST body missing `token` field
+|400
+|Input validation
+
+|`jwksContentValidationWithEmptyKeys`
+|POST JWKS with empty keys array
+|valid=false
+|Empty JWKS is invalid
+
+|`jwksContentValidationWithValidKeys`
+|POST real Keycloak JWKS content
+|valid=true, keyCount>0
+|JWKS content validation works
+
+|`jwksUrlValidationWithKeycloakUrl`
+|POST Keycloak JWKS URL (Docker network)
+|valid=true
+|SSRF allow-private-addresses setting works
+
+|`jwksFileValidationWithValidFile`
+|POST path to test-jwks.json in NiFi conf
+|valid=true
+|File-based JWKS validation works
+
+4+h|Security
+
+|`missingProcessorIdReturns401`
+|Request without X-Processor-Id header
+|401
+|Processor ID enforcement
+
+|`invalidProcessorIdReturns401`
+|X-Processor-Id with non-UUID value
+|401
+|UUID format validation
+
+4+h|Component Info
+
+|`componentInfoReturnsProcessorType`
+|GET component-info for JWT authenticator
+|type=PROCESSOR
+|Component discovery works
+
+|`componentInfoReturnsGatewayType`
+|GET component-info for gateway processor
+|type=PROCESSOR
+|Gateway component discovery works
+
+4+h|Gateway Proxy Endpoints
+
+|`gatewayConfigReturnsJson`
+|GET gateway config via Custom UI proxy
+|200, routes present
+|Gateway configuration accessible
+
+|`gatewayTestHappyPath`
+|POST test request to gateway proxy
+|200
+|Gateway proxy forwards correctly
+|===
+
+=== KeycloakRealmConfigIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/KeycloakRealmConfigIT.java[KeycloakRealmConfigIT.java]
+
+Validates that the Keycloak realm configurations (`oauth_integration_tests` and `other_realm`) are imported correctly and produce JWTs with the expected claims, roles, and issuer values.
+Does NOT test generic Keycloak behavior — instead validates the specific realm setup that downstream processors depend on.
+
+==== Setup
+
+The `@BeforeAll` method waits for the Keycloak endpoint (120-second timeout, retrying every 1 second), then builds REST Assured specs for both realms.
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+4+h|Roles Claim Mapper
+
+|`testUserShouldHaveUserAndReadRoles`
+|Decode testUser token
+|`roles` claim contains `user` and `read`
+|Realm-roles-mapper emits roles into tokens
+
+|`limitedUserShouldHaveUserRoleOnly`
+|Decode limitedUser token
+|`roles` contains `user`, NOT `read`
+|Role-based access control differentiation
+
+4+h|Issuer Configuration
+
+|`primaryRealmIssuerShouldContainRealmName`
+|Decode testUser token
+|`iss` contains `oauth_integration_tests`
+|Correct issuer for primary realm
+
+|`otherRealmIssuerShouldDiffer`
+|Compare issuers from both realms
+|Different `iss` values
+|Realms are distinct
+
+4+h|Signing Key Isolation
+
+|`realmsShouldUseDifferentSigningKeys`
+|Compare `kid` from both realm tokens
+|Different `kid` values
+|Cross-realm tokens are rejected by signature
+
+4+h|Client Configuration
+
+|`testClientShouldSupportPasswordGrant`
+|Password grant with valid credentials
+|200, access_token present
+|Direct access grants enabled
+
+|`testClientShouldRejectClientCredentialsGrant`
+|Client credentials grant
+|401
+|Only password grant is allowed
+|===
+
+=== NiFiProcessorMetricsIT
+
+**File:** link:../../integration-testing/src/test/java/de/cuioss/nifi/integration/NiFiProcessorMetricsIT.java[NiFiProcessorMetricsIT.java]
+
+Infrastructure tests that verify NiFi processor metrics via the NiFi REST API (port 9095, HTTPS). Confirms that processors actually processed FlowFiles after traffic is sent through the flow.
+
+==== Test Cases
+
+[cols="2,2,1,2"]
+|===
+|Test |Scenario |Expected |Rationale
+
+|`shouldShowJwtAuthenticatorProcessedFlowFiles`
+|Query processor status for MultiIssuerJWTTokenAuthenticator
+|flowFilesIn > 0, flowFilesOut > 0
+|Processor is operational
+
+|`shouldShowResponseProcessorsProcessedFlowFiles`
+|Query status for HandleHttpResponse (200) and (401)
+|Both have flowFilesIn > 0
+|Both success and failure paths were exercised
+|===
 
 == Test Execution
+
+=== Parallel Execution
+
+Integration test classes run concurrently via `junit-platform.properties`:
+
+[cols="1,2"]
+|===
+|Setting |Value
+
+|Class-level parallelism
+|`concurrent` — different IT classes run in parallel
+
+|Method-level parallelism
+|`same_thread` — methods within a class run sequentially (preserves `@Nested` ordering)
+
+|Thread count
+|3 fixed threads (sufficient for 5 classes, avoids overloading containers)
+|===
+
+All tests are read-only against the shared containers (no state mutations), making parallel class execution safe.
+
+=== NAR Build Optimization
+
+The `copy-deployment.sh` script supports a `--skip-build` flag:
+
+* **Maven path** (`deploy-and-start.sh` in `pre-integration-test` phase): passes `--skip-build` because the Maven reactor (`-am`) already built all NARs in the `package` phase. This avoids a redundant 30-60 second Maven invocation.
+* **Standalone path** (`run-and-deploy.sh`, `redeploy-nifi.sh`): does NOT pass the flag, so NARs are always rebuilt to reflect any code changes.
+* **Safety net**: even with `--skip-build`, if NAR files are missing (e.g., after `mvnw clean`), the Maven build runs anyway.
+
+=== Container Health Check Tuning
+
+Keycloak uses aggressive health check intervals to minimize startup wait time:
+
+[cols="1,1,1"]
+|===
+|Container |Health Check Interval |Start Period
+
+|Keycloak
+|5 seconds
+|20 seconds
+
+|NiFi
+|10 seconds
+|30 seconds
+|===
+
+The `wait-for-containers.sh` script polls in three stages:
+
+1. **Container running** — 5-second intervals
+2. **NiFi UI accessible** — continuous (part of stage 1 loop)
+3. **Flow pipeline on port 7777** — 2-second intervals
 
 === Prerequisites
 
 1. Docker containers must be running (NiFi + Keycloak)
-2. The NAR must be built and deployed to `target/nifi-deploy/`
+2. Both NARs (`nifi-cuioss-api-nar` and `nifi-cuioss-nar`) must be built and deployed to `target/nifi-deploy/`
 
 === Running Tests
 

@@ -1,8 +1,8 @@
 /**
- * @file Self-Test: Critical Error Detection
- * Tests that verify critical errors are properly detected and cause test failures
- * These tests are designed to fail when fundamental UI or JavaScript issues occur
- * @version 1.0.0
+ * @file Self-Test: Application Health Checks
+ * Tests that verify the application is free of critical errors
+ * Each test validates a specific health aspect (canvas, loading, JS errors, modules)
+ * @version 1.1.0
  */
 
 import {
@@ -17,9 +17,9 @@ import {
     cleanupCriticalErrorDetection,
     globalCriticalErrorDetector,
 } from "../utils/critical-error-detector.js";
+import { testLogger } from "../utils/test-logger.js";
 
-// Skip: references processor custom UI — re-enable after #137 UI migration
-test.describe.skip("Self-Test: Critical Error Detection", () => {
+test.describe("Self-Test: Application Health Checks", () => {
     test.beforeEach(async ({ page, processorManager }, testInfo) => {
         // Authenticate first
         const authService = new AuthService(page);
@@ -43,7 +43,7 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         cleanupCriticalErrorDetection();
     });
 
-    test("should fail when page is empty or canvas missing", async ({
+    test("should verify canvas is present and valid", async ({
         page,
     }, testInfo) => {
         // This test verifies that empty page detection works
@@ -72,7 +72,7 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         ).toBe(true);
     });
 
-    test("should fail when UI stalls at Loading JWT Validator", async ({
+    test("should verify no UI loading stalls are present", async ({
         page,
     }, testInfo) => {
         // This test checks for UI loading stalls
@@ -109,7 +109,7 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         await authService.verifyCanvasVisible();
     });
 
-    test("should fail on JavaScript Uncaught Errors", async ({
+    test("should verify no JavaScript errors are present", async ({
         page,
     }, _testInfo) => {
         // This test verifies that JavaScript errors are detected and cause failures
@@ -154,7 +154,7 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         await authService.verifyCanvasVisible();
     });
 
-    test("should fail on RequireJS module loading errors", async ({
+    test("should verify no module loading errors are present", async ({
         page,
     }, _testInfo) => {
         // This test specifically checks for RequireJS/AMD module loading issues
@@ -197,10 +197,11 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         await authService.verifyCanvasVisible();
     });
 
-    test("should detect missing processors on canvas", async ({
+    test("should verify processors are present on canvas", async ({
         page,
     }, testInfo) => {
-        // This test ensures that if processors are expected but missing, it fails
+        // This test ensures that processors are present on canvas
+        // (beforeEach ensures processor via processorManager.ensureProcessorOnCanvas())
 
         const processorService = new ProcessorService(page, testInfo);
 
@@ -209,34 +210,15 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
             failIfNotFound: false,
         });
 
-        // Check for empty canvas using critical error detector
+        // Check for processors using critical error detector
         const detector = globalCriticalErrorDetector;
         const hasProcessors = await detector.checkForProcessors(page);
 
-        // For this specific test, we'll be more lenient
-        // We'll report the status but not necessarily fail
-        if (!hasProcessors && !processor) {
-            // Verify that the canvas itself exists and is ready
-            const canvasExists = await detector.checkCanvasExists(page);
-            expect(canvasExists, "Canvas should exist even if empty").toBe(
-                true,
-            );
-
-            // Check if this is intentionally empty or a problem
-            const authService = new AuthService(page);
-            await authService.verifyCanvasVisible();
-
-             
-            console.log(
-                "Canvas is empty but functional - this may be expected in some test scenarios",
-            );
-        } else {
-            // Processors were found, which is good
-            expect(
-                hasProcessors,
-                "Processors should be detectable when present",
-            ).toBe(true);
-        }
+        // Processors must be present (ensured by beforeEach)
+        expect(
+            hasProcessors || processor !== null,
+            "Processors should be present on canvas",
+        ).toBe(true);
     });
 
     test("should perform comprehensive critical error validation", async ({
@@ -289,9 +271,6 @@ test.describe.skip("Self-Test: Critical Error Detection", () => {
         const authService = new AuthService(page);
         await authService.verifyCanvasVisible();
 
-         
-        console.log(
-            "Comprehensive critical error validation passed - application is healthy",
-        );
+        testLogger.info("SelfTest", "Comprehensive critical error validation passed - application is healthy");
     });
 });

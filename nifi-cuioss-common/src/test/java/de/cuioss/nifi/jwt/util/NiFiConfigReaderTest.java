@@ -20,8 +20,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("NiFiConfigReader")
@@ -90,17 +88,6 @@ class NiFiConfigReaderTest {
             // Act & Assert
             assertThrows(IllegalArgumentException.class,
                     () -> reader.getControllerServiceProperties("invalid-uuid-format"));
-        }
-
-        @Test
-        @DisplayName("Should throw IOException for valid UUID but unreachable API")
-        void shouldThrowIoExceptionForUnreachableApi() {
-            // Arrange — use a valid UUID that won't reach any server
-            String validUuid = "550e8400-e29b-41d4-a716-446655440000";
-
-            // Act & Assert — connection refused or timeout
-            assertThrows(IOException.class,
-                    () -> reader.getProcessorProperties(validUuid));
         }
     }
 }

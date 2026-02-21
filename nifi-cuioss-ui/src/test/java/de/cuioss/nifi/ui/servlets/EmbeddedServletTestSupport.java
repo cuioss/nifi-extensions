@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import io.restassured.RestAssured;
+import io.restassured.specification.RequestSpecification;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,10 +27,14 @@ import org.eclipse.jetty.server.ServerConnector;
 import java.io.IOException;
 import java.util.function.Consumer;
 
+import static io.restassured.RestAssured.given;
+
 /**
  * Shared test infrastructure for embedded Jetty + REST Assured servlet tests.
  * Each test class calls {@link #startServer} in {@code @BeforeAll} with a
- * configurator lambda and {@link #stopServer} in {@code @AfterAll}.
+ * configurator lambda and stores the returned {@link ServerHandle}. The handle
+ * encapsulates the Jetty server and its allocated port, avoiding global
+ * {@code RestAssured} state mutation and enabling future parallel test execution.
  */
 final class EmbeddedServletTestSupport {
 
@@ -38,16 +42,36 @@ final class EmbeddedServletTestSupport {
         // utility
     }
 
-    private static Server server;
+    /**
+     * Handle to a running embedded Jetty server. Provides a per-instance
+     * {@link RequestSpecification} instead of mutating global REST Assured state.
+     */
+    record ServerHandle(Server server, int port) implements AutoCloseable {
+
+        /**
+         * Returns a REST Assured {@link RequestSpecification} bound to this server's
+         * host and port. Use this instead of the static {@code given()}.
+         */
+        RequestSpecification spec() {
+            return given().baseUri("http://localhost").port(port);
+        }
+
+        @Override
+        public void close() throws Exception {
+            if (server != null && server.isRunning()) {
+                server.stop();
+            }
+        }
+    }
 
     /**
      * Starts an embedded Jetty server with dynamic port allocation.
      *
      * @param configurator configures the {@link ServletContextHandler} with filters/servlets
-     * @return the allocated port
+     * @return a {@link ServerHandle} encapsulating the server and its port
      */
-    static int startServer(Consumer<ServletContextHandler> configurator) throws Exception {
-        server = new Server();
+    static ServerHandle startServer(Consumer<ServletContextHandler> configurator) throws Exception {
+        Server server = new Server();
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(0);
         server.addConnector(connector);
@@ -58,21 +82,7 @@ final class EmbeddedServletTestSupport {
 
         server.start();
         int port = connector.getLocalPort();
-
-        RestAssured.baseURI = "http://localhost";
-        RestAssured.port = port;
-        return port;
-    }
-
-    /**
-     * Stops the embedded Jetty server and resets REST Assured state.
-     */
-    static void stopServer() throws Exception {
-        RestAssured.reset();
-        if (server != null && server.isRunning()) {
-            server.stop();
-        }
-        server = null;
+        return new ServerHandle(server, port);
     }
 
     /**

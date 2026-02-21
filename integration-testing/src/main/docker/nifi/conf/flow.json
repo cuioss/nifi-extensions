@@ -12,102 +12,1291 @@
   "reportingTasks": [],
   "templates": [],
   "rootGroup": {
-    "identifier": "root-group-id-001",
-    "instanceIdentifier": "root-group-instance-001",
+    "identifier": "c924c469-532b-5216-89c1-bf34a546abed",
+    "instanceIdentifier": "c10b0bcd-2388-5708-b04a-c9926d254203",
     "name": "NiFi Flow",
-    "position": { "x": 0, "y": 0 },
-    "processGroups": [],
-    "remoteProcessGroups": [],
-    "processors": [
+    "position": {
+      "x": 0,
+      "y": 0
+    },
+    "processGroups": [
       {
-        "identifier": "proc-http-request-001",
-        "instanceIdentifier": "proc-http-request-inst-001",
-        "name": "HandleHttpRequest",
-        "type": "org.apache.nifi.processors.standard.HandleHttpRequest",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
+        "identifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+        "instanceIdentifier": "bfbfae55-79b0-5ac6-9830-8a95a2230479",
+        "name": "JWT Auth Pipeline",
+        "position": {
+          "x": 0,
+          "y": 0
         },
-        "properties": {
-          "Listening Port": "7777",
-          "HTTP Context Map": "svc-http-context-map-001"
-        },
-        "propertyDescriptors": {
-          "Listening Port": {
-            "name": "Listening Port",
-            "identifiesControllerService": false,
-            "sensitive": false
+        "processGroups": [],
+        "remoteProcessGroups": [],
+        "processors": [
+          {
+            "identifier": "a5155653-5257-5972-b192-df42647b5cc5",
+            "instanceIdentifier": "6efd6c15-02e4-5a4c-8d92-b42f632cb2ca",
+            "name": "HandleHttpRequest",
+            "type": "org.apache.nifi.processors.standard.HandleHttpRequest",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Listening Port": "7777",
+              "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
+            },
+            "propertyDescriptors": {
+              "Listening Port": {
+                "name": "Listening Port",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "HTTP Context Map": {
+                "name": "HTTP Context Map",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 200,
+              "y": 200
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
           },
-          "HTTP Context Map": {
-            "name": "HTTP Context Map",
-            "identifiesControllerService": true,
-            "sensitive": false
+          {
+            "identifier": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
+            "instanceIdentifier": "8cfca2b6-4a6f-5b39-bcb8-59ccf2a7781a",
+            "name": "UpdateAttribute (Extract Token)",
+            "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-update-attribute-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "jwt.token": "${http.headers.Authorization:replaceFirst('Bearer ', '')}"
+            },
+            "propertyDescriptors": {
+              "jwt.token": {
+                "name": "jwt.token",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 200,
+              "y": 300
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
+            "instanceIdentifier": "143914df-0581-5ae2-ab51-514a7bc830e6",
+            "name": "MultiIssuerJWTTokenAuthenticator",
+            "type": "de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator",
+            "bundle": {
+              "group": "de.cuioss.nifi",
+              "artifact": "nifi-cuioss-nar",
+              "version": "1.0-SNAPSHOT"
+            },
+            "properties": {
+              "jwt.issuer.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
+              "jwt.validation.token.attribute": "jwt.token",
+              "jwt.validation.require.valid.token": "true",
+              "jwt.authorization.required.roles": "read"
+            },
+            "propertyDescriptors": {
+              "jwt.issuer.config.service": {
+                "name": "jwt.issuer.config.service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              },
+              "jwt.validation.token.attribute": {
+                "name": "jwt.validation.token.attribute",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "jwt.validation.require.valid.token": {
+                "name": "jwt.validation.require.valid.token",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "jwt.authorization.required.roles": {
+                "name": "jwt.authorization.required.roles",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 200,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "46774c0b-d633-5368-8055-6abd92e7db8f",
+            "instanceIdentifier": "db296289-62aa-599b-8e5c-bbd28845bee4",
+            "name": "LogAttribute (jwt-success)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log Level": "info",
+              "Log prefix": "jwt-success"
+            },
+            "propertyDescriptors": {
+              "Log Level": {
+                "name": "Log Level",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 0,
+              "y": 600
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
+            "instanceIdentifier": "87bee289-feb8-5a51-baea-822640aebc77",
+            "name": "LogAttribute (jwt-failed)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log Level": "info",
+              "Log prefix": "jwt-failed"
+            },
+            "propertyDescriptors": {
+              "Log Level": {
+                "name": "Log Level",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 400,
+              "y": 600
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "98a0dc6a-2b20-533f-b6de-5932583627d4",
+            "instanceIdentifier": "feb884b7-f613-5658-a19d-5926854aa8c1",
+            "name": "UpdateAttribute (200)",
+            "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-update-attribute-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "http.status.code": "200"
+            },
+            "propertyDescriptors": {
+              "http.status.code": {
+                "name": "http.status.code",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 0,
+              "y": 800
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
+            "instanceIdentifier": "b07633d4-6257-5b31-a9b4-2e51ce87bbfe",
+            "name": "UpdateAttribute (401)",
+            "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-update-attribute-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "http.status.code": "401"
+            },
+            "propertyDescriptors": {
+              "http.status.code": {
+                "name": "http.status.code",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 400,
+              "y": 800
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
+            "instanceIdentifier": "71bcb4e4-a6b0-515e-bda9-dc034504d18e",
+            "name": "AttributesToJSON (success)",
+            "type": "org.apache.nifi.processors.standard.AttributesToJSON",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "attributes-to-json-regex": "jwt\\..*",
+              "Destination": "flowfile-content",
+              "Include Core Attributes": "false"
+            },
+            "propertyDescriptors": {
+              "attributes-to-json-regex": {
+                "name": "attributes-to-json-regex",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Destination": {
+                "name": "Destination",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Include Core Attributes": {
+                "name": "Include Core Attributes",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 0,
+              "y": 900
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
+            "instanceIdentifier": "56e3712a-ae59-5f91-94c5-d355a3d6c998",
+            "name": "AttributesToJSON (failure)",
+            "type": "org.apache.nifi.processors.standard.AttributesToJSON",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "attributes-to-json-regex": "jwt\\..*",
+              "Destination": "flowfile-content",
+              "Include Core Attributes": "false"
+            },
+            "propertyDescriptors": {
+              "attributes-to-json-regex": {
+                "name": "attributes-to-json-regex",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Destination": {
+                "name": "Destination",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Include Core Attributes": {
+                "name": "Include Core Attributes",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 400,
+              "y": 900
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "1e413970-8957-590a-9e5e-cd17bed59e62",
+            "instanceIdentifier": "2a1cfede-0ab9-52b8-b252-e94dab7db7e8",
+            "name": "HandleHttpResponse (200)",
+            "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "HTTP Status Code": "${http.status.code}",
+              "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
+            },
+            "propertyDescriptors": {
+              "HTTP Status Code": {
+                "name": "HTTP Status Code",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "HTTP Context Map": {
+                "name": "HTTP Context Map",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "success",
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 0,
+              "y": 1100
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "6ad53896-c7b6-5e40-8e2c-aca4bea0954b",
+            "instanceIdentifier": "94566186-44b3-5d5f-a487-ad6e97a88575",
+            "name": "HandleHttpResponse (401)",
+            "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "HTTP Status Code": "${http.status.code}",
+              "HTTP Context Map": "1f51a687-f989-53b4-9e99-6303da713b6a"
+            },
+            "propertyDescriptors": {
+              "HTTP Status Code": {
+                "name": "HTTP Status Code",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "HTTP Context Map": {
+                "name": "HTTP Context Map",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "success",
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "position": {
+              "x": 400,
+              "y": 1100
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
           }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 200, "y": 200 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
+        ],
+        "inputPorts": [],
+        "outputPorts": [],
+        "connections": [
+          {
+            "identifier": "ef96fc35-f2e5-53ac-bc2b-3c794fb41102",
+            "instanceIdentifier": "63164e33-f621-5cc3-b421-da8aa896adee",
+            "name": "HandleHttpRequest \u2192 Extract Token",
+            "source": {
+              "id": "a5155653-5257-5972-b192-df42647b5cc5",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "HandleHttpRequest"
+            },
+            "destination": {
+              "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (Extract Token)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "1fd53156-fa4d-5acb-b968-5a51fa82074e",
+            "instanceIdentifier": "5e0adb41-5871-5779-96f8-2f96b03ecacc",
+            "name": "Extract Token \u2192 JWT Auth",
+            "source": {
+              "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (Extract Token)"
+            },
+            "destination": {
+              "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "MultiIssuerJWTTokenAuthenticator"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "b04f86fd-d3b5-5735-b00d-3de8b3f53412",
+            "instanceIdentifier": "8cd0051f-c576-5aec-892b-01567da8341f",
+            "name": "JWT Auth success \u2192 LogAttribute",
+            "source": {
+              "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "MultiIssuerJWTTokenAuthenticator"
+            },
+            "destination": {
+              "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "LogAttribute (jwt-success)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "21166bda-2e14-5efd-b823-62de1a4ad36a",
+            "instanceIdentifier": "66f5e314-af70-542b-9614-d3823367d728",
+            "name": "JWT Auth failed \u2192 LogAttribute",
+            "source": {
+              "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "MultiIssuerJWTTokenAuthenticator"
+            },
+            "destination": {
+              "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "LogAttribute (jwt-failed)"
+            },
+            "selectedRelationships": [
+              "authentication-failed"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "4c722c8c-4b25-5233-a991-092c4795e291",
+            "instanceIdentifier": "19cbe385-7057-5c81-ada1-fbcd486ee768",
+            "name": "LogAttribute success \u2192 UpdateAttribute 200",
+            "source": {
+              "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "LogAttribute (jwt-success)"
+            },
+            "destination": {
+              "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (200)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "b8c43877-4fcd-5920-abf3-c3958098bf22",
+            "instanceIdentifier": "4e0f0848-1d23-565d-a2eb-76d8bf9f5d21",
+            "name": "LogAttribute failed \u2192 UpdateAttribute 401",
+            "source": {
+              "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "LogAttribute (jwt-failed)"
+            },
+            "destination": {
+              "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (401)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "5fb30869-9720-581e-898c-fe4d75c2065b",
+            "instanceIdentifier": "5b4e157d-5ee1-5b74-8283-28be29cbd84d",
+            "name": "UpdateAttribute 200 \u2192 AttributesToJSON (success)",
+            "source": {
+              "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (200)"
+            },
+            "destination": {
+              "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "AttributesToJSON (success)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "82b3631c-6dfe-5fec-a169-bb527ccc77b8",
+            "instanceIdentifier": "1b5cc725-9d77-5bab-bd89-d247bc49d860",
+            "name": "AttributesToJSON (success) \u2192 HandleHttpResponse (200)",
+            "source": {
+              "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "AttributesToJSON (success)"
+            },
+            "destination": {
+              "id": "1e413970-8957-590a-9e5e-cd17bed59e62",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "HandleHttpResponse (200)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "9443abb1-bc95-515a-9475-7824d25433a1",
+            "instanceIdentifier": "a20cbfac-2c22-5c55-b2d8-1f340842216f",
+            "name": "UpdateAttribute 401 \u2192 AttributesToJSON (failure)",
+            "source": {
+              "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "UpdateAttribute (401)"
+            },
+            "destination": {
+              "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "AttributesToJSON (failure)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "196a796c-29b2-5a50-9f8e-07d6955f6bd7",
+            "instanceIdentifier": "4c76d5de-9dec-5369-89cb-b252c5f46960",
+            "name": "AttributesToJSON (failure) \u2192 HandleHttpResponse (401)",
+            "source": {
+              "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "AttributesToJSON (failure)"
+            },
+            "destination": {
+              "id": "6ad53896-c7b6-5e40-8e2c-aca4bea0954b",
+              "type": "PROCESSOR",
+              "groupId": "54769fd0-319b-551a-bd54-6355b0a270e2",
+              "name": "HandleHttpResponse (401)"
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2",
+            "labelIndex": 1,
+            "zIndex": 0
+          }
+        ],
+        "labels": [],
+        "funnels": [],
+        "controllerServices": [
+          {
+            "identifier": "1f51a687-f989-53b4-9e99-6303da713b6a",
+            "instanceIdentifier": "1ea86f29-d3f1-569a-b404-f86cfef61fd0",
+            "name": "StandardHttpContextMap",
+            "type": "org.apache.nifi.http.StandardHttpContextMap",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-http-context-map-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Maximum Outstanding Requests": "1000",
+              "Request Expiration": "1 min"
+            },
+            "propertyDescriptors": {
+              "Maximum Outstanding Requests": {
+                "name": "Maximum Outstanding Requests",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Request Expiration": {
+                "name": "Request Expiration",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "controllerServiceApis": [
+              {
+                "type": "org.apache.nifi.http.HttpContextMap",
+                "bundle": {
+                  "group": "org.apache.nifi",
+                  "artifact": "nifi-http-context-map-api",
+                  "version": "2.4.0"
+                }
+              }
+            ],
+            "scheduledState": "ENABLED",
+            "componentType": "CONTROLLER_SERVICE",
+            "groupIdentifier": "54769fd0-319b-551a-bd54-6355b0a270e2"
+          }
+        ],
+        "defaultFlowFileExpiration": "0 sec",
+        "defaultBackPressureObjectThreshold": 10000,
+        "defaultBackPressureDataSizeThreshold": "1 GB",
+        "componentType": "PROCESS_GROUP",
+        "flowFileConcurrency": "UNBOUNDED",
+        "flowFileOutboundPolicy": "STREAM_WHEN_AVAILABLE"
       },
       {
-        "identifier": "proc-jwt-auth-001",
-        "instanceIdentifier": "proc-jwt-auth-inst-001",
-        "name": "MultiIssuerJWTTokenAuthenticator",
-        "type": "de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator",
+        "identifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+        "instanceIdentifier": "0fd6d3ec-4be4-5fa7-927c-c5e1c60de0d3",
+        "name": "REST API Gateway",
+        "position": {
+          "x": 600,
+          "y": 0
+        },
+        "processGroups": [],
+        "remoteProcessGroups": [],
+        "processors": [
+          {
+            "identifier": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+            "instanceIdentifier": "d9aed3a4-20a8-5cbf-aa19-13400f8890a3",
+            "name": "RestApiGateway",
+            "type": "de.cuioss.nifi.rest.RestApiGatewayProcessor",
+            "bundle": {
+              "group": "de.cuioss.nifi",
+              "artifact": "nifi-cuioss-nar",
+              "version": "1.0-SNAPSHOT"
+            },
+            "properties": {
+              "rest.gateway.listening.port": "9443",
+              "rest.gateway.jwt.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
+              "rest.gateway.max.request.size": "1048576",
+              "rest.gateway.request.queue.size": "50",
+              "rest.gateway.cors.allowed.origins": "http://localhost:3000",
+              "rest.gateway.management.api-key": "integration-test-api-key",
+              "restapi.health.path": "/api/health",
+              "restapi.health.methods": "GET",
+              "restapi.data.path": "/api/data",
+              "restapi.data.methods": "GET,POST",
+              "restapi.admin.path": "/api/admin",
+              "restapi.admin.methods": "GET",
+              "restapi.admin.required-roles": "ADMIN"
+            },
+            "propertyDescriptors": {
+              "rest.gateway.listening.port": {
+                "name": "rest.gateway.listening.port",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.jwt.config.service": {
+                "name": "rest.gateway.jwt.config.service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              },
+              "rest.gateway.max.request.size": {
+                "name": "rest.gateway.max.request.size",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.request.queue.size": {
+                "name": "rest.gateway.request.queue.size",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.cors.allowed.origins": {
+                "name": "rest.gateway.cors.allowed.origins",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.management.api-key": {
+                "name": "rest.gateway.management.api-key",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.health.path": {
+                "name": "restapi.health.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.health.methods": {
+                "name": "restapi.health.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.data.path": {
+                "name": "restapi.data.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.data.methods": {
+                "name": "restapi.data.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.path": {
+                "name": "restapi.admin.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.methods": {
+                "name": "restapi.admin.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.required-roles": {
+                "name": "restapi.admin.required-roles",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 800,
+              "y": 200
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+            "instanceIdentifier": "c969f24d-aff9-5e4b-9d66-5f34527e4efb",
+            "name": "LogAttribute (gateway-health)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log Level": "info",
+              "Log prefix": "gateway-health"
+            },
+            "propertyDescriptors": {
+              "Log Level": {
+                "name": "Log Level",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "success"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 800,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
+            "instanceIdentifier": "109b5c85-dd1d-5277-9e25-4843ded7b5be",
+            "name": "LogAttribute (gateway-data)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log Level": "info",
+              "Log prefix": "gateway-data"
+            },
+            "propertyDescriptors": {
+              "Log Level": {
+                "name": "Log Level",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "success"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1000,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          }
+        ],
+        "inputPorts": [],
+        "outputPorts": [],
+        "connections": [
+          {
+            "identifier": "c9bcedd1-1006-5354-8085-e3e971e58533",
+            "instanceIdentifier": "6b11e010-3d67-5231-b74d-aa829629b96b",
+            "name": "RestApiGateway health \u2192 LogAttribute",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-health)"
+            },
+            "selectedRelationships": [
+              "health"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
+            "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
+            "name": "RestApiGateway data \u2192 LogAttribute",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-data)"
+            },
+            "selectedRelationships": [
+              "data"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "a1b2c3d4-5678-5901-abcd-ef0123456789",
+            "instanceIdentifier": "b2c3d4e5-6789-5012-bcde-f01234567890",
+            "name": "RestApiGateway admin \u2192 LogAttribute",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-health)"
+            },
+            "selectedRelationships": [
+              "admin"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          }
+        ],
+        "labels": [],
+        "funnels": [],
+        "controllerServices": [],
+        "defaultFlowFileExpiration": "0 sec",
+        "defaultBackPressureObjectThreshold": 10000,
+        "defaultBackPressureDataSizeThreshold": "1 GB",
+        "componentType": "PROCESS_GROUP",
+        "flowFileConcurrency": "UNBOUNDED",
+        "flowFileOutboundPolicy": "STREAM_WHEN_AVAILABLE"
+      }
+    ],
+    "remoteProcessGroups": [],
+    "processors": [],
+    "inputPorts": [],
+    "outputPorts": [],
+    "connections": [],
+    "labels": [],
+    "funnels": [],
+    "controllerServices": [
+      {
+        "identifier": "b731b475-3078-5b65-b962-1e7a286a8f2b",
+        "instanceIdentifier": "0770d065-7216-59d8-8f41-560c9e022981",
+        "name": "StandardJwtIssuerConfigService",
+        "type": "de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService",
         "bundle": {
           "group": "de.cuioss.nifi",
           "artifact": "nifi-cuioss-nar",
           "version": "1.0-SNAPSHOT"
         },
         "properties": {
-          "Token Location": "AUTHORIZATION_HEADER",
-          "Token Header": "Authorization",
-          "Bearer Token Prefix": "Bearer",
-          "Require Valid Token": "true",
-          "Require HTTPS for JWKS": "false",
+          "jwt.validation.require.https.for.jwks": "false",
+          "jwt.validation.jwks.allow.private.network.addresses": "true",
           "issuer.keycloak.jwks-type": "url",
           "issuer.keycloak.jwks-url": "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs",
-          "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests",
-          "issuer.keycloak.required-roles": "read"
+          "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests"
         },
         "propertyDescriptors": {
-          "Token Location": {
-            "name": "Token Location",
+          "jwt.validation.require.https.for.jwks": {
+            "name": "jwt.validation.require.https.for.jwks",
             "identifiesControllerService": false,
             "sensitive": false
           },
-          "Token Header": {
-            "name": "Token Header",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Bearer Token Prefix": {
-            "name": "Bearer Token Prefix",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Require Valid Token": {
-            "name": "Require Valid Token",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Require HTTPS for JWKS": {
-            "name": "Require HTTPS for JWKS",
+          "jwt.validation.jwks.allow.private.network.addresses": {
+            "name": "jwt.validation.jwks.allow.private.network.addresses",
             "identifiesControllerService": false,
             "sensitive": false
           },
@@ -125,691 +1314,21 @@
             "name": "issuer.keycloak.issuer",
             "identifiesControllerService": false,
             "sensitive": false
-          },
-          "issuer.keycloak.required-roles": {
-            "name": "issuer.keycloak.required-roles",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 200, "y": 400 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-log-success-001",
-        "instanceIdentifier": "proc-log-success-inst-001",
-        "name": "LogAttribute (jwt-success)",
-        "type": "org.apache.nifi.processors.standard.LogAttribute",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "Log Level": "info",
-          "Log prefix": "jwt-success"
-        },
-        "propertyDescriptors": {
-          "Log Level": {
-            "name": "Log Level",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Log prefix": {
-            "name": "Log prefix",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 0, "y": 600 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-log-failed-001",
-        "instanceIdentifier": "proc-log-failed-inst-001",
-        "name": "LogAttribute (jwt-failed)",
-        "type": "org.apache.nifi.processors.standard.LogAttribute",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "Log Level": "info",
-          "Log prefix": "jwt-failed"
-        },
-        "propertyDescriptors": {
-          "Log Level": {
-            "name": "Log Level",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Log prefix": {
-            "name": "Log prefix",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 400, "y": 600 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-update-success-001",
-        "instanceIdentifier": "proc-update-success-inst-001",
-        "name": "UpdateAttribute (200)",
-        "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-update-attribute-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "http.status.code": "200"
-        },
-        "propertyDescriptors": {
-          "http.status.code": {
-            "name": "http.status.code",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 0, "y": 800 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-update-failed-001",
-        "instanceIdentifier": "proc-update-failed-inst-001",
-        "name": "UpdateAttribute (401)",
-        "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-update-attribute-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "http.status.code": "401"
-        },
-        "propertyDescriptors": {
-          "http.status.code": {
-            "name": "http.status.code",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": [],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 400, "y": 800 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-attrs-to-json-success-001",
-        "instanceIdentifier": "proc-attrs-to-json-success-inst-001",
-        "name": "AttributesToJSON (success)",
-        "type": "org.apache.nifi.processors.standard.AttributesToJSON",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "attributes-to-json-regex": "jwt\\..*",
-          "Destination": "flowfile-content",
-          "Include Core Attributes": "false"
-        },
-        "propertyDescriptors": {
-          "attributes-to-json-regex": {
-            "name": "attributes-to-json-regex",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Destination": {
-            "name": "Destination",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Include Core Attributes": {
-            "name": "Include Core Attributes",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": ["failure"],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 0, "y": 900 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-attrs-to-json-failed-001",
-        "instanceIdentifier": "proc-attrs-to-json-failed-inst-001",
-        "name": "AttributesToJSON (failure)",
-        "type": "org.apache.nifi.processors.standard.AttributesToJSON",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "attributes-to-json-regex": "jwt\\..*",
-          "Destination": "flowfile-content",
-          "Include Core Attributes": "false"
-        },
-        "propertyDescriptors": {
-          "attributes-to-json-regex": {
-            "name": "attributes-to-json-regex",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Destination": {
-            "name": "Destination",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Include Core Attributes": {
-            "name": "Include Core Attributes",
-            "identifiesControllerService": false,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": ["failure"],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 400, "y": 900 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-http-response-success-001",
-        "instanceIdentifier": "proc-http-response-success-inst-001",
-        "name": "HandleHttpResponse (200)",
-        "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "HTTP Status Code": "${http.status.code}",
-          "HTTP Context Map": "svc-http-context-map-001"
-        },
-        "propertyDescriptors": {
-          "HTTP Status Code": {
-            "name": "HTTP Status Code",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "HTTP Context Map": {
-            "name": "HTTP Context Map",
-            "identifiesControllerService": true,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": ["success", "failure"],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 0, "y": 1100 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      },
-      {
-        "identifier": "proc-http-response-failed-001",
-        "instanceIdentifier": "proc-http-response-failed-inst-001",
-        "name": "HandleHttpResponse (401)",
-        "type": "org.apache.nifi.processors.standard.HandleHttpResponse",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-standard-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "HTTP Status Code": "${http.status.code}",
-          "HTTP Context Map": "svc-http-context-map-001"
-        },
-        "propertyDescriptors": {
-          "HTTP Status Code": {
-            "name": "HTTP Status Code",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "HTTP Context Map": {
-            "name": "HTTP Context Map",
-            "identifiesControllerService": true,
-            "sensitive": false
-          }
-        },
-        "scheduledState": "RUNNING",
-        "schedulingPeriod": "0 sec",
-        "schedulingStrategy": "TIMER_DRIVEN",
-        "penaltyDuration": "30 sec",
-        "yieldDuration": "1 sec",
-        "bulletinLevel": "WARN",
-        "runDurationMillis": 0,
-        "concurrentlySchedulableTaskCount": 1,
-        "autoTerminatedRelationships": ["success", "failure"],
-        "componentType": "PROCESSOR",
-        "groupIdentifier": "root-group-id-001",
-        "position": { "x": 400, "y": 1100 },
-        "style": {},
-        "retriedRelationships": [],
-        "retryCount": 0,
-        "executionNode": "ALL",
-        "backoffMechanism": "PENALIZE_FLOWFILE",
-        "maxBackoffPeriod": "10 mins"
-      }
-    ],
-    "inputPorts": [],
-    "outputPorts": [],
-    "connections": [
-      {
-        "identifier": "conn-request-to-jwt-001",
-        "instanceIdentifier": "conn-request-to-jwt-inst-001",
-        "name": "HandleHttpRequest → JWT Auth",
-        "source": {
-          "id": "proc-http-request-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "HandleHttpRequest"
-        },
-        "destination": {
-          "id": "proc-jwt-auth-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "MultiIssuerJWTTokenAuthenticator"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-jwt-to-log-success-001",
-        "instanceIdentifier": "conn-jwt-to-log-success-inst-001",
-        "name": "JWT Auth success → LogAttribute",
-        "source": {
-          "id": "proc-jwt-auth-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "MultiIssuerJWTTokenAuthenticator"
-        },
-        "destination": {
-          "id": "proc-log-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "LogAttribute (jwt-success)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-jwt-to-log-failed-001",
-        "instanceIdentifier": "conn-jwt-to-log-failed-inst-001",
-        "name": "JWT Auth failed → LogAttribute",
-        "source": {
-          "id": "proc-jwt-auth-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "MultiIssuerJWTTokenAuthenticator"
-        },
-        "destination": {
-          "id": "proc-log-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "LogAttribute (jwt-failed)"
-        },
-        "selectedRelationships": ["authentication-failed"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-log-success-to-update-001",
-        "instanceIdentifier": "conn-log-success-to-update-inst-001",
-        "name": "LogAttribute success → UpdateAttribute 200",
-        "source": {
-          "id": "proc-log-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "LogAttribute (jwt-success)"
-        },
-        "destination": {
-          "id": "proc-update-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "UpdateAttribute (200)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-log-failed-to-update-001",
-        "instanceIdentifier": "conn-log-failed-to-update-inst-001",
-        "name": "LogAttribute failed → UpdateAttribute 401",
-        "source": {
-          "id": "proc-log-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "LogAttribute (jwt-failed)"
-        },
-        "destination": {
-          "id": "proc-update-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "UpdateAttribute (401)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-update-success-to-attrs-json-001",
-        "instanceIdentifier": "conn-update-success-to-attrs-json-inst-001",
-        "name": "UpdateAttribute 200 → AttributesToJSON (success)",
-        "source": {
-          "id": "proc-update-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "UpdateAttribute (200)"
-        },
-        "destination": {
-          "id": "proc-attrs-to-json-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "AttributesToJSON (success)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-attrs-json-success-to-response-001",
-        "instanceIdentifier": "conn-attrs-json-success-to-response-inst-001",
-        "name": "AttributesToJSON (success) → HandleHttpResponse (200)",
-        "source": {
-          "id": "proc-attrs-to-json-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "AttributesToJSON (success)"
-        },
-        "destination": {
-          "id": "proc-http-response-success-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "HandleHttpResponse (200)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-update-failed-to-attrs-json-001",
-        "instanceIdentifier": "conn-update-failed-to-attrs-json-inst-001",
-        "name": "UpdateAttribute 401 → AttributesToJSON (failure)",
-        "source": {
-          "id": "proc-update-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "UpdateAttribute (401)"
-        },
-        "destination": {
-          "id": "proc-attrs-to-json-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "AttributesToJSON (failure)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      },
-      {
-        "identifier": "conn-attrs-json-failed-to-response-001",
-        "instanceIdentifier": "conn-attrs-json-failed-to-response-inst-001",
-        "name": "AttributesToJSON (failure) → HandleHttpResponse (401)",
-        "source": {
-          "id": "proc-attrs-to-json-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "AttributesToJSON (failure)"
-        },
-        "destination": {
-          "id": "proc-http-response-failed-001",
-          "type": "PROCESSOR",
-          "groupId": "root-group-id-001",
-          "name": "HandleHttpResponse (401)"
-        },
-        "selectedRelationships": ["success"],
-        "backPressureObjectThreshold": 10000,
-        "backPressureDataSizeThreshold": "1 GB",
-        "flowFileExpiration": "0 sec",
-        "prioritizers": [],
-        "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-        "loadBalanceCompression": "DO_NOT_COMPRESS",
-        "componentType": "CONNECTION",
-        "groupIdentifier": "root-group-id-001",
-        "labelIndex": 1,
-        "zIndex": 0
-      }
-    ],
-    "labels": [],
-    "funnels": [],
-    "controllerServices": [
-      {
-        "identifier": "svc-http-context-map-001",
-        "instanceIdentifier": "svc-http-context-map-inst-001",
-        "name": "StandardHttpContextMap",
-        "type": "org.apache.nifi.http.StandardHttpContextMap",
-        "bundle": {
-          "group": "org.apache.nifi",
-          "artifact": "nifi-http-context-map-nar",
-          "version": "2.4.0"
-        },
-        "properties": {
-          "Maximum Outstanding Requests": "1000",
-          "Request Expiration": "1 min"
-        },
-        "propertyDescriptors": {
-          "Maximum Outstanding Requests": {
-            "name": "Maximum Outstanding Requests",
-            "identifiesControllerService": false,
-            "sensitive": false
-          },
-          "Request Expiration": {
-            "name": "Request Expiration",
-            "identifiesControllerService": false,
-            "sensitive": false
           }
         },
         "controllerServiceApis": [
           {
-            "type": "org.apache.nifi.http.HttpContextMap",
+            "type": "de.cuioss.nifi.jwt.config.JwtIssuerConfigService",
             "bundle": {
-              "group": "org.apache.nifi",
-              "artifact": "nifi-http-context-map-api",
-              "version": "2.4.0"
+              "group": "de.cuioss.nifi",
+              "artifact": "nifi-cuioss-api-nar",
+              "version": "1.0-SNAPSHOT"
             }
           }
         ],
         "scheduledState": "ENABLED",
         "componentType": "CONTROLLER_SERVICE",
-        "groupIdentifier": "root-group-id-001"
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
       }
     ],
     "defaultFlowFileExpiration": "0 sec",

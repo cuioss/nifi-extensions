@@ -93,5 +93,25 @@ public final class RestApiGatewayConstants {
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
+
+        public static final PropertyDescriptor LISTENING_HOST = new PropertyDescriptor.Builder()
+                .name("rest.gateway.listening.host")
+                .displayName("Listening Host")
+                .description("The host/IP the embedded HTTP server binds to. "
+                        + "Use '127.0.0.1' to restrict to localhost, '0.0.0.0' for all interfaces.")
+                .required(false)
+                .defaultValue("0.0.0.0")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_API_KEY = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.api-key")
+                .displayName("Management API Key")
+                .description("When set, the /metrics management endpoint requires this key "
+                        + "in the X-Api-Key header. Leave empty to allow unauthenticated access.")
+                .required(false)
+                .sensitive(true)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
     }
 }
