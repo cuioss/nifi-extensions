@@ -27,6 +27,7 @@ import org.junit.jupiter.api.*;
 
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.easymock.EasyMock.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -41,20 +42,32 @@ class ComponentConfigReaderRestTest {
 
     private NiFiWebConfigurationContext mockConfigContext;
     private ComponentConfigReader reader;
-    private MockWebServer server;
+    private static MockWebServer server;
 
-    @BeforeEach
-    void setUp() throws Exception {
-        mockConfigContext = createNiceMock(NiFiWebConfigurationContext.class);
-        replay(mockConfigContext);
-        reader = new ComponentConfigReader(mockConfigContext);
+    @BeforeAll
+    static void startServer() throws Exception {
         server = new MockWebServer();
         server.start();
     }
 
-    @AfterEach
-    void tearDown() throws Exception {
+    @AfterAll
+    static void stopServer() throws Exception {
         server.close();
+    }
+
+    @BeforeEach
+    void setUp() {
+        mockConfigContext = createNiceMock(NiFiWebConfigurationContext.class);
+        replay(mockConfigContext);
+        reader = new ComponentConfigReader(mockConfigContext);
+    }
+
+    @AfterEach
+    void drainRequests() throws InterruptedException {
+        // Drain unconsumed recorded requests to prevent cross-test contamination
+        while (server.takeRequest(10, TimeUnit.MILLISECONDS) != null) {
+            // intentionally empty
+        }
     }
 
     /**

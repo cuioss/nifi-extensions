@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -37,9 +36,11 @@ import static org.hamcrest.Matchers.equalTo;
 @DisplayName("Security Headers Filter Tests")
 class SecurityHeadersFilterTest {
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx -> {
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
             ctx.addFilter(SecurityHeadersFilter.class, "/*",
                     EnumSet.of(DispatcherType.REQUEST));
             ctx.addServlet(new ServletHolder(new EmbeddedServletTestSupport.PassthroughServlet()), "/*");
@@ -48,13 +49,13 @@ class SecurityHeadersFilterTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Test
     @DisplayName("Should set all security headers on response")
     void shouldSetAllSecurityHeaders() {
-        given()
+        handle.spec()
                 .when()
                 .get("/test")
                 .then()
@@ -68,7 +69,7 @@ class SecurityHeadersFilterTest {
     @Test
     @DisplayName("Should continue filter chain after setting headers")
     void shouldContinueFilterChain() {
-        given()
+        handle.spec()
                 .when()
                 .get("/test")
                 .then()

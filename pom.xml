@@ -150,6 +150,7 @@
         <version.cui.test.keycloak.integration>1.3.0</version.cui.test.keycloak.integration>
         <version.jjwt>0.13.0</version.jjwt>
         <version.jspecify>1.0.0</version.jspecify>
+        <version.awaitility>4.2.2</version.awaitility>
     </properties>
 
     <dependencyManagement>
@@ -298,6 +299,12 @@
                 <groupId>org.webjars</groupId>
                 <artifactId>font-awesome</artifactId>
                 <version>${version.webjars.font-awesome}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${version.awaitility}</version>
+                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.hamcrest</groupId>

@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -77,9 +76,11 @@ class GatewayProxyServletTest {
         return props;
     }
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx ->
+        handle = EmbeddedServletTestSupport.startServer(ctx ->
                 ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                     @Override
                     protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
@@ -123,7 +124,7 @@ class GatewayProxyServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @BeforeEach
@@ -144,7 +145,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject non-whitelisted path")
         void shouldRejectNonWhitelistedPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/evil")
@@ -156,7 +157,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject GET with null pathInfo")
         void shouldRejectGetWithNullPathInfo() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway")
@@ -168,7 +169,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject missing processor ID")
         void shouldRejectMissingProcessorId() {
-            given()
+            handle.spec()
                     .when()
                     .get("/gateway/metrics")
                     .then()
@@ -179,7 +180,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject blank processor ID")
         void shouldRejectBlankProcessorId() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", "  ")
                     .when()
                     .get("/gateway/metrics")
@@ -200,7 +201,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should serve /config locally from processor properties")
         void shouldServeConfigLocally() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -218,7 +219,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should include route details in local config")
         void shouldIncludeRouteDetailsInLocalConfig() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -234,7 +235,7 @@ class GatewayProxyServletTest {
         void shouldProxyMetricsEndpoint() {
             gatewayGetResponse.set(SAMPLE_METRICS_JSON);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/metrics")
@@ -248,7 +249,7 @@ class GatewayProxyServletTest {
         void shouldReturn503WhenGatewayUnavailableForMetrics() {
             gatewayFailing.set(true);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/metrics")
@@ -262,7 +263,7 @@ class GatewayProxyServletTest {
         void shouldReturn503WhenConfigPropertiesUnavailable() {
             gatewayFailing.set(true);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -278,7 +279,7 @@ class GatewayProxyServletTest {
             propsWithSsl.put("rest.gateway.ssl.context.service", "ssl-service-id");
             processorProperties.set(propsWithSsl);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -294,7 +295,7 @@ class GatewayProxyServletTest {
             minimalProps.put("rest.gateway.listening.port", "9443");
             processorProperties.set(minimalProps);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -314,7 +315,7 @@ class GatewayProxyServletTest {
             propsWithBlankRoute.put("restapi.broken.methods", "GET");
             processorProperties.set(propsWithBlankRoute);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -332,7 +333,7 @@ class GatewayProxyServletTest {
                     "http://localhost:8443, https://nifi.example.com");
             processorProperties.set(propsWithCors);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -346,7 +347,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should include listening host in config response")
         void shouldIncludeListeningHost() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/gateway/config")
@@ -367,7 +368,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject POST with null pathInfo")
         void shouldRejectPostWithNullPathInfo() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("{}")
@@ -381,7 +382,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject blank processor ID on POST")
         void shouldRejectBlankProcessorIdOnPost() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", "  ")
                     .contentType("application/json")
                     .body("""
@@ -396,7 +397,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject non-test POST path")
         void shouldRejectNonTestPostPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("{}")
@@ -410,7 +411,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject missing processor ID on POST")
         void shouldRejectMissingProcessorIdOnPost() {
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("{}")
                     .when()
@@ -423,7 +424,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should proxy valid test request")
         void shouldProxyValidTestRequest() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -439,7 +440,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject missing path in test request")
         void shouldRejectMissingPath() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -454,7 +455,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should reject invalid JSON body")
         void shouldRejectInvalidJson() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("{ invalid }")
@@ -470,7 +471,7 @@ class GatewayProxyServletTest {
         void shouldReturn503WhenGatewayUnavailableForTest() {
             gatewayFailing.set(true);
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -485,7 +486,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should proxy test request with request body")
         void shouldProxyTestRequestWithBody() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -500,7 +501,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should handle test request without headers key")
         void shouldHandleTestRequestWithoutHeaders() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
@@ -515,7 +516,7 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should handle null body in test request")
         void shouldHandleNullBody() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""

@@ -26,7 +26,6 @@ import org.junit.jupiter.api.*;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -55,9 +54,11 @@ class ComponentInfoServletTest {
     private static final AtomicReference<RuntimeException> configException =
             new AtomicReference<>(null);
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx ->
+        handle = EmbeddedServletTestSupport.startServer(ctx ->
                 ctx.addServlet(new ServletHolder(new ComponentInfoServlet() {
                     @Override
                     protected ComponentConfig resolveComponentConfig(
@@ -71,7 +72,7 @@ class ComponentInfoServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @BeforeEach
@@ -88,7 +89,7 @@ class ComponentInfoServletTest {
         @Test
         @DisplayName("Should return processor type and class")
         void shouldReturnProcessorTypeAndClass() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/component-info")
@@ -105,7 +106,7 @@ class ComponentInfoServletTest {
             componentConfig.set(new ComponentConfig(
                     ComponentType.PROCESSOR, GATEWAY_CLASS, Map.of()));
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/component-info")
@@ -126,7 +127,7 @@ class ComponentInfoServletTest {
             componentConfig.set(new ComponentConfig(
                     ComponentType.CONTROLLER_SERVICE, CS_CLASS, Map.of()));
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/component-info")
@@ -148,7 +149,7 @@ class ComponentInfoServletTest {
             configException.set(new IllegalArgumentException(
                     "Component not found: " + PROCESSOR_ID));
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/component-info")
@@ -161,7 +162,7 @@ class ComponentInfoServletTest {
         @Test
         @DisplayName("Should return 400 for missing processor ID")
         void shouldReturn400ForMissingProcessorId() {
-            given()
+            handle.spec()
                     .when()
                     .get("/component-info")
                     .then()
@@ -174,7 +175,7 @@ class ComponentInfoServletTest {
         void shouldReturn500ForUnexpectedException() {
             configException.set(new RuntimeException("Unexpected error in config resolution"));
 
-            given()
+            handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
                     .get("/component-info")
@@ -187,7 +188,7 @@ class ComponentInfoServletTest {
         @Test
         @DisplayName("Should return 400 for blank processor ID")
         void shouldReturn400ForBlankProcessorId() {
-            given()
+            handle.spec()
                     .header("X-Processor-Id", "  ")
                     .when()
                     .get("/component-info")

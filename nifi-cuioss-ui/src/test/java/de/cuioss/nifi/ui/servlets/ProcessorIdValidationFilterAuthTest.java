@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.UUID;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
 /**
@@ -43,9 +42,11 @@ class ProcessorIdValidationFilterAuthTest {
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     private static final String ENDPOINT = "/nifi-api/processors/jwt/validate";
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx -> {
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
             // Wrapper filter that sets remoteUser on the request
             ctx.addFilter(new FilterHolder(new Filter() {
                 @Override
@@ -69,13 +70,13 @@ class ProcessorIdValidationFilterAuthTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Test
     @DisplayName("Should pass validation and log authenticated user")
     void shouldPassWithAuthenticatedUser() {
-        given()
+        handle.spec()
                 .header(PROCESSOR_ID_HEADER, UUID.randomUUID().toString())
                 .when()
                 .post(ENDPOINT)

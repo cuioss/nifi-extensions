@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
 import static org.easymock.EasyMock.*;
 import static org.hamcrest.Matchers.*;
 
@@ -66,13 +65,14 @@ class JwtVerificationServletTest {
     }
 
     private static volatile TokenVerifier currentVerifier;
+    private static EmbeddedServletTestSupport.ServerHandle handle;
 
     @BeforeAll
     static void startServer() throws Exception {
         NiFiWebConfigurationContext dummyContext = createNiceMock(NiFiWebConfigurationContext.class);
         replay(dummyContext);
 
-        EmbeddedServletTestSupport.startServer(ctx -> {
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
             JwtVerificationServlet servlet = new JwtVerificationServlet(
                     new JwtValidationService(dummyContext) {
                         @Override
@@ -94,7 +94,7 @@ class JwtVerificationServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Test
@@ -109,7 +109,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...","processorId":"test-processor-id"}""")
@@ -128,7 +128,7 @@ class JwtVerificationServletTest {
         currentVerifier = (token, processorId) ->
                 TokenValidationResult.failure("Invalid token signature");
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"invalid-token","processorId":"test-processor-id"}""")
@@ -146,7 +146,7 @@ class JwtVerificationServletTest {
         currentVerifier = (token, processorId) ->
                 TokenValidationResult.failure("Token expired at 2025-01-01T00:00:00Z");
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"expired-token","processorId":"test-processor-id"}""")
@@ -177,7 +177,7 @@ class JwtVerificationServletTest {
             throw new AssertionError("Service should not have been called");
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -195,7 +195,7 @@ class JwtVerificationServletTest {
             throw new IllegalStateException("Service not available");
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -214,7 +214,7 @@ class JwtVerificationServletTest {
             throw new IllegalArgumentException("Invalid processor configuration");
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -233,7 +233,7 @@ class JwtVerificationServletTest {
             throw new IllegalStateException("Connection refused");
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -262,7 +262,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"eyJhbGciOiJSUzI1NiJ9.test.sig","processorId":"test-processor-id"}""")
@@ -281,7 +281,7 @@ class JwtVerificationServletTest {
     void validTokenWithNullIssuerAndEmptyScopes() {
         currentVerifier = (token, processorId) -> TokenValidationResult.success(null);
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token-minimal","processorId":"test-processor-id"}""")
@@ -303,7 +303,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .header("X-Processor-Id", "header-processor-id")
                 .body("""
@@ -332,7 +332,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token-null-issuer","processorId":"test-processor-id"}""")
@@ -356,7 +356,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -381,7 +381,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -400,7 +400,7 @@ class JwtVerificationServletTest {
         currentVerifier = (token, processorId) ->
                 TokenValidationResult.failure("Signature verification failed");
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"bad-token","processorId":"test-processor-id"}""")
@@ -442,7 +442,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -487,7 +487,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -529,7 +529,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")
@@ -563,7 +563,7 @@ class JwtVerificationServletTest {
             return result;
         };
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"token":"test-token","processorId":"test-processor-id"}""")

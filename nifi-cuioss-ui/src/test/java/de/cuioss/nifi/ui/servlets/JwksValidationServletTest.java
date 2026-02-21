@@ -31,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,9 +49,11 @@ class JwksValidationServletTest {
     private static final String FILE_ENDPOINT = "/nifi-api/processors/jwt/validate-jwks-file";
     private static final String CONTENT_ENDPOINT = "/nifi-api/processors/jwt/validate-jwks-content";
 
+    private static EmbeddedServletTestSupport.ServerHandle handle;
+
     @BeforeAll
     static void startServer() throws Exception {
-        EmbeddedServletTestSupport.startServer(ctx -> {
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
             ServletHolder holder = new ServletHolder(new JwksValidationServlet());
             ctx.addServlet(holder, URL_ENDPOINT);
             ctx.addServlet(holder, FILE_ENDPOINT);
@@ -64,7 +65,7 @@ class JwksValidationServletTest {
 
     @AfterAll
     static void stopServer() throws Exception {
-        EmbeddedServletTestSupport.stopServer();
+        handle.close();
     }
 
     @Test
@@ -77,7 +78,7 @@ class JwksValidationServletTest {
                 {"jwksContent":"%s","processorId":"test-processor-id"}"""
                 .formatted(validJwksContent.replace("\"", "\\\""));
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -95,7 +96,7 @@ class JwksValidationServletTest {
         String requestJson = """
                 {"jwksContent":"{\\"invalid\\":\\"structure\\"}","processorId":"test-processor-id"}""";
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -112,7 +113,7 @@ class JwksValidationServletTest {
         String requestJson = """
                 {"jwksContent":"{\\"keys\\":[]}","processorId":"test-processor-id"}""";
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -126,7 +127,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should return 404 for unknown endpoint")
     void unknownEndpoint() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("{}")
                 .when()
@@ -140,7 +141,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should reject invalid JSON request")
     void invalidJsonRequest() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("{ invalid json }")
                 .when()
@@ -161,7 +162,7 @@ class JwksValidationServletTest {
         String requestJson = """
                 {"jwksUrl":"%s","processorId":"test-processor-id"}""".formatted(jwksUrl);
 
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -193,7 +194,7 @@ class JwksValidationServletTest {
     @MethodSource("missingOrEmptyFieldProvider")
     @DisplayName("Should reject missing or empty fields with 400")
     void shouldRejectMissingOrEmptyFields(String requestJson, String endpoint, String expectedError) {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body(requestJson)
                 .when()
@@ -207,7 +208,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should return validation failure for file path outside allowed base")
     void filePathOutsideAllowedBase() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksFilePath":"/nonexistent/path/to/jwks.json","processorId":"test-processor-id"}""")
@@ -235,7 +236,7 @@ class JwksValidationServletTest {
                     {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
                     .formatted(maliciousPath);
 
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body(requestJson)
                     .when()
@@ -249,7 +250,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should block private address via SSRF protection")
     void ssrfProtectionBlocksPrivateAddress() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksUrl":"https://10.0.0.1/.well-known/jwks.json","processorId":"test-processor-id"}""")
@@ -263,7 +264,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should block loopback address via SSRF protection")
     void ssrfProtectionBlocksLoopbackAddress() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksUrl":"https://127.0.0.1/.well-known/jwks.json","processorId":"test-processor-id"}""")
@@ -341,7 +342,7 @@ class JwksValidationServletTest {
         Files.writeString(jwksFile, jwksContent);
 
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("""
                             {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
@@ -361,7 +362,7 @@ class JwksValidationServletTest {
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
             Path nonExistent = tempDir.resolve("nonexistent.json");
 
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("""
                             {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
@@ -378,7 +379,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should reject malformed JSON in JWKS content")
     void invalidJsonInJwksContent() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksContent":"not valid json at all","processorId":"test-processor-id"}""")
@@ -397,7 +398,7 @@ class JwksValidationServletTest {
         Files.writeString(invalidFile, "this is not JSON at all");
 
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
-            given()
+            handle.spec()
                     .contentType("application/json")
                     .body("""
                             {"jwksFilePath":"%s","processorId":"test-processor-id"}"""
@@ -414,7 +415,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should reject JWKS content that is a JSON array instead of object")
     void jwksContentIsJsonArray() {
-        given()
+        handle.spec()
                 .contentType("application/json")
                 .body("""
                         {"jwksContent":"[1,2,3]","processorId":"test-processor-id"}""")

@@ -25,9 +25,13 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("ConfigurationManager")
@@ -293,7 +297,7 @@ class ConfigurationManagerTest {
 
         @Test
         @DisplayName("Should return false when file not modified")
-        void shouldReturnFalseWhenNotModified(@TempDir Path tempDir) throws IOException, InterruptedException {
+        void shouldReturnFalseWhenNotModified(@TempDir Path tempDir) throws IOException {
             // Arrange
             Path configFile = tempDir.resolve("jwt-validation.properties");
             String content = """
@@ -304,7 +308,6 @@ class ConfigurationManagerTest {
             System.setProperty("jwt.Config.path", configFile.toString());
             try {
                 var configManager = new ConfigurationManager();
-                Thread.sleep(100);
 
                 // Act
                 boolean reloaded = configManager.checkAndReloadConfiguration();
@@ -318,7 +321,7 @@ class ConfigurationManagerTest {
 
         @Test
         @DisplayName("Should return true when file modified")
-        void shouldReturnTrueWhenModified(@TempDir Path tempDir) throws IOException, InterruptedException {
+        void shouldReturnTrueWhenModified(@TempDir Path tempDir) throws IOException {
             // Arrange
             Path configFile = tempDir.resolve("jwt-validation.properties");
             String content = """
@@ -329,20 +332,20 @@ class ConfigurationManagerTest {
             System.setProperty("jwt.Config.path", configFile.toString());
             try {
                 var configManager = new ConfigurationManager();
-                Thread.sleep(100);
 
-                // Modify file
+                // Modify file and ensure modification time is detectably different
                 String newContent = """
                         jwt.validation.max.token.size=65536
                         """;
                 Files.writeString(configFile, newContent);
-                Thread.sleep(100);
+                Files.setLastModifiedTime(configFile,
+                        FileTime.from(Instant.now().plusSeconds(1)));
 
-                // Act
-                boolean reloaded = configManager.checkAndReloadConfiguration();
+                // Act — poll until the modification is detected
+                await().atMost(2, SECONDS)
+                        .until(configManager::checkAndReloadConfiguration);
 
                 // Assert
-                assertTrue(reloaded, "Should return true when file modified");
                 assertEquals("65536", configManager.getProperty("jwt.validation.max.token.size"));
             } finally {
                 System.clearProperty("jwt.Config.path");
@@ -695,7 +698,7 @@ class ConfigurationManagerTest {
 
         @Test
         @DisplayName("Should clear old config when reload encounters invalid YAML")
-        void shouldClearOldConfigOnReloadWithInvalidYaml(@TempDir Path tempDir) throws IOException, InterruptedException {
+        void shouldClearOldConfigOnReloadWithInvalidYaml(@TempDir Path tempDir) throws IOException {
             // Arrange
             Path configFile = tempDir.resolve("jwt-validation.yml");
             String validContent = """
@@ -713,21 +716,20 @@ class ConfigurationManagerTest {
                 assertTrue(configManager.isConfigurationLoaded());
                 assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size"));
 
-                Thread.sleep(100);
-
                 // Overwrite with invalid YAML (unmatched quote triggers YAMLException)
                 String invalidContent = "key: 'unclosed string\nanother: line";
                 Files.writeString(configFile, invalidContent);
-                Thread.sleep(100);
+                Files.setLastModifiedTime(configFile,
+                        FileTime.from(Instant.now().plusSeconds(1)));
 
-                // Act — loadConfiguration() clears properties before loading;
+                // Act — poll until the modification is detected
+                // loadConfiguration() clears properties before loading;
                 // YAMLException is caught internally in loadConfigurationFile(),
                 // so checkAndReloadConfiguration() returns true (reload completed)
-                boolean reloaded = configManager.checkAndReloadConfiguration();
+                await().atMost(2, SECONDS)
+                        .until(configManager::checkAndReloadConfiguration);
 
-                // Assert — reload returns true because loadConfiguration() completed
-                // without throwing; old config is cleared
-                assertTrue(reloaded, "Reload should return true (reload attempt completed)");
+                // Assert — old config is cleared
                 assertFalse(configManager.isConfigurationLoaded(),
                         "Configuration should not be loaded after invalid YAML");
             } finally {
