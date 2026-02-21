@@ -1,0 +1,60 @@
+= nifi-cuioss-rest-processors
+
+REST API Gateway processor for Apache NiFi.
+
+== Purpose
+
+This module provides the `RestApiGatewayProcessor` -- a self-contained REST API gateway that embeds a Jetty 12 HTTP server within a NiFi processor. It receives HTTP requests directly, validates JWT tokens, checks per-route authorization, and converts validated requests into FlowFiles.
+
+== Key Classes
+
+[cols="1,3"]
+|===
+|Class |Description
+
+|`RestApiGatewayProcessor`
+|Main NiFi processor. Manages the Jetty server lifecycle, parses route configurations from dynamic properties, and converts queued requests into FlowFiles with route/HTTP/JWT attributes.
+
+|`RestApiGatewayConstants`
+|All property descriptors (listening port, host, max request size, queue size, CORS origins, management API key, SSL context, CS reference) and relationship definitions.
+
+|`GatewayRequestHandler`
+|Jetty 12 handler implementing the 6-stage request pipeline: input sanitization, route matching, JWT authentication, authorization, body validation, and request enqueuing.
+
+|`ManagementEndpointHandler`
+|Serves the `/metrics` management endpoint in Prometheus (`text/plain`) and JSON (`application/json`) formats. Optionally secured with an API key.
+
+|`ProblemDetail`
+|RFC 9457 Problem Details builder. Generates `application/problem+json` error responses with `type` URIs linking to documentation.
+
+|`GatewaySecurityEvents`
+|Thread-safe counters for application-level security events (missing token, auth failed, role denied, scope denied, body too large, route not found, method not allowed, queue full).
+
+|`RouteConfiguration`
+|Java record defining a named route: path, allowed HTTP methods, required roles, required scopes.
+
+|`HttpRequestContainer`
+|Java record holding a validated request (route name, method, URI, query params, headers, body, content type, validated JWT token) for queue transfer to `onTrigger`.
+|===
+
+== Route Configuration
+
+Routes are configured via NiFi dynamic properties with the `restapi.` prefix:
+
+[source,properties]
+----
+restapi.users.path = /api/users
+restapi.users.methods = GET,POST
+restapi.users.required-roles = user
+
+restapi.admin.path = /api/admin
+restapi.admin.required-roles = admin
+----
+
+Each route creates a corresponding NiFi relationship.
+
+== Module Relationships
+
+* **References**: `JwtIssuerConfigService` from `nifi-cuioss-api`
+* **Uses**: `AuthorizationValidator`, `TokenClaimMapper` from `nifi-cuioss-common`
+* **Depends on**: Eclipse Jetty 12 (embedded server), cui-http (input sanitization), Jakarta JSON Processing

@@ -13,18 +13,21 @@ node "Test Environment" as TE {
 
     node "Docker" as D {
         component "NiFi Instance\nHTTPS 9095" as N
+        component "RestApiGateway\nHTTPS 9443" as GW
         component "Keycloak Server\nHTTP 9080\nHTTPS 9085" as K
 
         database "JWT Tokens" as JWT
         database "JWKS Endpoints" as JWKS
 
         N -- K : "JWT Validation"
+        N -- GW : "Gateway Processor"
         K -- JWT : "Generates"
         K -- JWKS : "Provides"
     }
 
     PW --> N : "UI Testing"
     PW --> K : "Auth Testing"
+    PW --> GW : "Gateway E2E"
 }
 
 actor "Developer" as DEV
