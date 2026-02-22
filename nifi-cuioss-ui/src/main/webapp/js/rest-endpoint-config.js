@@ -171,6 +171,7 @@ const addRouteForm = (container, routeName, properties, componentId) => {
     const idx = formCounter++;
     const form = document.createElement('div');
     form.className = 'route-form';
+    form.dataset.originalName = routeName || '';
 
     const enabledVal = properties?.enabled !== 'false';
 
@@ -195,8 +196,9 @@ const addRouteForm = (container, routeName, properties, componentId) => {
     form.appendChild(header);
 
     header.querySelector('.remove-route-button').addEventListener('click', async () => {
-        const name = header.querySelector('.route-name').value || 'Unnamed Route';
-        await confirmRemoveRoute(name, () => removeRoute(form, name));
+        const originalName = form.dataset.originalName;
+        const displayName = header.querySelector('.route-name').value || originalName || 'Unnamed Route';
+        await confirmRemoveRoute(displayName, () => removeRoute(form, originalName));
     });
 
     // ---- form fields ----
@@ -288,6 +290,9 @@ const extractFormFields = (form) => {
 
 const validateFormData = (f) => {
     if (!f.routeName) return { isValid: false, error: new Error('Route name is required.') };
+    if (!/^[a-zA-Z0-9_-]+$/.test(f.routeName)) {
+        return { isValid: false, error: new Error('Route name can only contain alphanumeric characters, hyphens, and underscores.') };
+    }
     if (!f.path) return { isValid: false, error: new Error('Path is required.') };
     return { isValid: true };
 };
@@ -296,10 +301,10 @@ const buildPropertyUpdates = (name, f) => {
     const u = {};
     u[`${ROUTE_PREFIX}${name}.path`] = f.path;
     u[`${ROUTE_PREFIX}${name}.enabled`] = String(f.enabled);
-    if (f.methods) u[`${ROUTE_PREFIX}${name}.methods`] = f.methods;
-    if (f['required-roles']) u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'];
-    if (f['required-scopes']) u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'];
-    if (f.schema) u[`${ROUTE_PREFIX}${name}.schema`] = f.schema;
+    u[`${ROUTE_PREFIX}${name}.methods`] = f.methods || null;
+    u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'] || null;
+    u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
+    u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     return u;
 };
 
@@ -307,15 +312,34 @@ const saveRoute = async (form, errEl, componentId) => {
     const f = extractFormFields(form);
     const v = validateFormData(f);
     if (!v.isValid) { displayUiError(errEl, v.error, {}, 'routeConfigEditor.error.title'); return; }
+
+    const originalName = form.dataset.originalName;
+    const nameChanged = originalName && originalName !== f.routeName;
+
     const updates = buildPropertyUpdates(f.routeName, f);
+
+    // If the route was renamed, clear old properties first
+    if (nameChanged) {
+        const prefix = `${ROUTE_PREFIX}${originalName}.`;
+        try {
+            const res = await api.getComponentProperties(componentId);
+            const props = res.properties || {};
+            for (const key of Object.keys(props)) {
+                if (key.startsWith(prefix)) updates[key] = null;
+            }
+        } catch { /* ignore — old props will remain as orphans */ }
+    }
+
     if (componentId) {
         try {
             await api.updateComponentProperties(componentId, updates);
+            form.dataset.originalName = f.routeName;
             displayUiSuccess(errEl, 'Route configuration saved successfully.');
         } catch (error) {
             displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
         }
     } else {
+        form.dataset.originalName = f.routeName;
         displayUiSuccess(errEl, 'Route configuration saved successfully (standalone mode).');
     }
 };
