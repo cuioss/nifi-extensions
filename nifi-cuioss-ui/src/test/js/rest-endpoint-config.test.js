@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Tests for rest-endpoint-config.js — Gateway endpoint configuration display.
+ * Tests for rest-endpoint-config.js — Gateway route configuration CRUD editor.
  */
 
 jest.mock('../../main/webapp/js/api.js');
@@ -11,29 +11,22 @@ import { init, cleanup } from '../../main/webapp/js/rest-endpoint-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
 
-const SAMPLE_CONFIG = {
-    component: 'RestApiGatewayProcessor',
-    port: 9443,
-    maxRequestBodySize: 1048576,
-    queueSize: 100,
-    ssl: false,
-    corsAllowedOrigins: ['*'],
-    routes: [
-        {
-            name: 'users',
-            path: '/api/users',
-            methods: ['GET', 'POST'],
-            requiredRoles: ['ADMIN'],
-            requiredScopes: []
-        },
-        {
-            name: 'health',
-            path: '/api/health',
-            methods: ['GET'],
-            requiredRoles: [],
-            requiredScopes: ['read']
-        }
-    ]
+const SAMPLE_PROPERTIES = {
+    'rest.gateway.listening.port': '9443',
+    'rest.gateway.max.request.size': '1048576',
+    'rest.gateway.request.queue.size': '100',
+    'rest.gateway.ssl.context.service': '',
+    'rest.gateway.cors.allowed.origins': '*',
+    'restapi.health.path': '/api/health',
+    'restapi.health.methods': 'GET',
+    'restapi.health.enabled': 'true',
+    'restapi.health.required-roles': '',
+    'restapi.health.required-scopes': '',
+    'restapi.data.path': '/api/data',
+    'restapi.data.methods': 'GET,POST',
+    'restapi.data.enabled': 'true',
+    'restapi.data.required-roles': 'admin',
+    'restapi.data.required-scopes': 'read,write'
 };
 
 describe('rest-endpoint-config', () => {
@@ -42,6 +35,27 @@ describe('rest-endpoint-config', () => {
     beforeEach(() => {
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
+        // Stub sanitizeHtml to pass through
+        utils.sanitizeHtml.mockImplementation((s) => s || '');
+        // Stub displayUiError/Success
+        utils.displayUiError.mockImplementation(() => {});
+        utils.displayUiSuccess.mockImplementation(() => {});
+        // Stub validateProcessorIdFromUrl to return a valid ID
+        utils.validateProcessorIdFromUrl.mockReturnValue({
+            isValid: true,
+            sanitizedValue: 'test-processor-id'
+        });
+        // Stub confirmRemoveRoute to auto-confirm
+        utils.confirmRemoveRoute.mockImplementation((name, onConfirm) => {
+            onConfirm();
+            return Promise.resolve(true);
+        });
+
+        // Mock location for component ID extraction
+        Object.defineProperty(globalThis, 'location', {
+            value: { href: 'http://localhost:8080/nifi-jwt-ui/?id=test-processor-id' },
+            writable: true
+        });
 
         container = document.createElement('div');
         container.id = 'endpoint-config';
@@ -52,66 +66,159 @@ describe('rest-endpoint-config', () => {
         document.body.innerHTML = '';
     });
 
-    it('should display routes from gateway config', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
-
-        await init(container);
-
-        const rows = container.querySelectorAll('.routes-table tbody tr');
-        expect(rows.length).toBe(2);
-        expect(rows[0].textContent).toContain('users');
-        expect(rows[0].textContent).toContain('/api/users');
-        expect(rows[1].textContent).toContain('health');
-    });
-
-    it('should display global settings', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
-
-        await init(container);
-
-        const settingsTable = container.querySelector('.global-settings');
-        expect(settingsTable.textContent).toContain('9443');
-        expect(settingsTable.textContent).toContain('100');
-        expect(settingsTable.textContent).toContain('1.0 MB');
-        expect(settingsTable.textContent).toContain('No'); // SSL
-    });
-
-    it('should handle empty routes', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            ...SAMPLE_CONFIG,
-            routes: []
+    it('should load existing routes from properties', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
         });
 
         await init(container);
 
-        expect(container.textContent).toContain('No routes configured');
-        expect(container.querySelectorAll('.routes-table').length).toBe(0);
+        const forms = container.querySelectorAll('.route-form');
+        expect(forms.length).toBe(2);
     });
 
-    it('should refresh on click', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
+    it('should display global settings', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
 
         await init(container);
-        expect(api.fetchGatewayApi).toHaveBeenCalledTimes(1);
 
-        // Click refresh
-        container.querySelector('.refresh-config-button').click();
+        const settingsDisplay = container.querySelector('.global-settings-display');
+        expect(settingsDisplay).not.toBeNull();
+        expect(settingsDisplay.textContent).toContain('Listening Port');
+        expect(settingsDisplay.textContent).toContain('9443');
+    });
+
+    it('should add a new route form', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const addBtn = container.querySelector('.add-route-button');
+        expect(addBtn).not.toBeNull();
+
+        addBtn.click();
+
+        const forms = container.querySelectorAll('.route-form');
+        expect(forms.length).toBe(3); // 2 existing + 1 new
+    });
+
+    it('should save route via API', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        const saveBtn = container.querySelector('.save-route-button');
+        saveBtn.click();
         await new Promise((r) => setTimeout(r, 10));
 
-        expect(api.fetchGatewayApi).toHaveBeenCalledTimes(2);
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-id',
+            expect.objectContaining({
+                'restapi.health.path': '/api/health'
+            })
+        );
     });
 
-    it('should show error when gateway is unavailable', async () => {
-        api.fetchGatewayApi.mockRejectedValue(new Error('Gateway unavailable'));
+    it('should remove a route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
 
         await init(container);
 
-        expect(container.textContent).toContain('Failed to load gateway configuration');
-        expect(container.querySelector('.config-error')).not.toBeNull();
+        const initialForms = container.querySelectorAll('.route-form');
+        expect(initialForms.length).toBe(2);
+
+        const removeBtn = container.querySelector('.remove-route-button');
+        removeBtn.click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        const remainingForms = container.querySelectorAll('.route-form');
+        expect(remainingForms.length).toBe(1);
+    });
+
+    it('should have enabled checkbox per route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const checkboxes = container.querySelectorAll('.route-enabled');
+        expect(checkboxes.length).toBe(2);
+        expect(checkboxes[0].checked).toBe(true);
+    });
+
+    it('should validate missing route name', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.test.path': '/api/test' },
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Clear the route name
+        const nameInput = container.querySelector('.route-name');
+        nameInput.value = '';
+
+        const saveBtn = container.querySelector('.save-route-button');
+        saveBtn.click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(utils.displayUiError).toHaveBeenCalled();
+    });
+
+    it('should validate missing path', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.test.path': '/api/test' },
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Clear the path field
+        const pathInput = container.querySelector('.field-path');
+        pathInput.value = '';
+
+        const saveBtn = container.querySelector('.save-route-button');
+        saveBtn.click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(utils.displayUiError).toHaveBeenCalled();
+    });
+
+    it('should display schema textarea', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const schemaFields = container.querySelectorAll('.field-schema');
+        expect(schemaFields.length).toBe(2);
+        expect(schemaFields[0].tagName.toLowerCase()).toBe('textarea');
     });
 
     it('should not re-initialize if already initialized', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
 
         await init(container);
         const firstContent = container.innerHTML;
@@ -121,110 +228,68 @@ describe('rest-endpoint-config', () => {
 
     it('should return early for null container', async () => {
         await init(null);
-        expect(api.fetchGatewayApi).not.toHaveBeenCalled();
+        expect(api.getComponentProperties).not.toHaveBeenCalled();
     });
 
-    it('should display method badges for route methods', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
-
-        await init(container);
-
-        const badges = container.querySelectorAll('.method-badge');
-        expect(badges.length).toBe(3); // GET, POST for users + GET for health
-        expect(badges[0].textContent).toBe('GET');
-        expect(badges[1].textContent).toBe('POST');
-    });
-
-    it('should display required roles and scopes', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
-
-        await init(container);
-
-        const rows = container.querySelectorAll('.routes-table tbody tr');
-        expect(rows[0].textContent).toContain('ADMIN');
-        expect(rows[1].textContent).toContain('read');
-    });
-
-    it('should display CORS origins', async () => {
-        api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
-
-        await init(container);
-
-        expect(container.textContent).toContain('*');
-    });
-
-    it('should display N/A for missing config fields', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            component: null,
-            port: null,
-            maxRequestBodySize: null,
-            queueSize: null,
-            ssl: false,
-            corsAllowedOrigins: null,
-            routes: []
+    it('should show sample form when no component ID', async () => {
+        utils.validateProcessorIdFromUrl.mockReturnValue({
+            isValid: false,
+            sanitizedValue: ''
         });
 
         await init(container);
 
-        const settingsTable = container.querySelector('.global-settings');
-        expect(settingsTable.textContent).toContain('N/A');
+        const forms = container.querySelectorAll('.route-form');
+        expect(forms.length).toBe(1);
     });
 
-    it('should display "none" for routes without roles or scopes', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            ...SAMPLE_CONFIG,
-            routes: [
-                {
-                    name: 'open',
-                    path: '/api/open',
-                    methods: ['GET'],
-                    requiredRoles: [],
-                    requiredScopes: []
-                }
-            ]
-        });
+    it('should show sample form when API fails', async () => {
+        api.getComponentProperties.mockRejectedValue(new Error('API error'));
 
         await init(container);
 
-        const rows = container.querySelectorAll('.routes-table tbody tr');
-        expect(rows.length).toBe(1);
-        expect(rows[0].innerHTML).toContain('none');
-    });
-
-    it('should format small byte values correctly', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            ...SAMPLE_CONFIG,
-            maxRequestBodySize: 512
-        });
-
-        await init(container);
-
-        expect(container.textContent).toContain('512 B');
-    });
-
-    it('should format KB values correctly', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            ...SAMPLE_CONFIG,
-            maxRequestBodySize: 10240
-        });
-
-        await init(container);
-
-        expect(container.textContent).toContain('10.0 KB');
-    });
-
-    it('should display "None" for empty CORS origins', async () => {
-        api.fetchGatewayApi.mockResolvedValue({
-            ...SAMPLE_CONFIG,
-            corsAllowedOrigins: []
-        });
-
-        await init(container);
-
-        expect(container.textContent).toContain('None');
+        const forms = container.querySelectorAll('.route-form');
+        expect(forms.length).toBe(1);
     });
 
     it('should call cleanup without error', () => {
         expect(() => cleanup()).not.toThrow();
+    });
+
+    it('should display route name and path in form', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const nameInputs = container.querySelectorAll('.route-name');
+        expect(nameInputs.length).toBe(2);
+
+        const pathInputs = container.querySelectorAll('.field-path');
+        expect(pathInputs.length).toBe(2);
+    });
+
+    it('should handle disabled route', async () => {
+        const props = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.disabled.path': '/api/disabled',
+            'restapi.disabled.enabled': 'false'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: props,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const forms = container.querySelectorAll('.route-form');
+        expect(forms.length).toBe(3);
+
+        // Find the disabled route's checkbox
+        const checkboxes = container.querySelectorAll('.route-enabled');
+        const disabledCheckbox = Array.from(checkboxes).find((cb) => !cb.checked);
+        expect(disabledCheckbox).toBeDefined();
     });
 });

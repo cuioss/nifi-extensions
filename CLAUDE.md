@@ -17,7 +17,8 @@ Custom Apache NiFi processors for JWT authentication and validation with a web-b
 ./mvnw clean install                                    # Full build + tests
 ./mvnw -Ppre-commit clean install -DskipTests           # Pre-commit quality checks (MANDATORY before commits)
 ./mvnw clean verify -Psonar                             # SonarQube analysis
-./mvnw verify -Pintegration-tests                   # Integration tests (Java ITs + Playwright E2E)
+./mvnw verify -Pintegration-tests -pl integration-testing -am  # Java integration tests (Docker)
+./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am    # E2E Playwright tests (Docker)
 
 # Frontend (from nifi-cuioss-ui/)
 npm test                                                # Jest tests

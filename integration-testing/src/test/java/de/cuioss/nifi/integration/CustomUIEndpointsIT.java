@@ -404,6 +404,7 @@ class CustomUIEndpointsIT {
                     .body("component", containsString("RestApiGatewayProcessor"))
                     .body("port", notNullValue())
                     .body("routes", notNullValue())
+                    .body("routes.enabled", everyItem(notNullValue()))
                     .body("maxRequestBodySize", notNullValue())
                     .body("queueSize", notNullValue());
         }

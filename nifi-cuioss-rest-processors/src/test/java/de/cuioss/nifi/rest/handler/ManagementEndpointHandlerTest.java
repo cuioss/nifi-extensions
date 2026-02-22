@@ -61,8 +61,8 @@ class ManagementEndpointHandlerTest {
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
         List<RouteConfiguration> routes = List.of(
-                new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null),
-                new RouteConfiguration("users", "/api/users", Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null));
+                new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null),
+                new RouteConfiguration("users", "/api/users", true, Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null));
 
         handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
         handler.configureManagementEndpoints(null);
@@ -241,7 +241,7 @@ class ManagementEndpointHandlerTest {
             configService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             var protectedHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     configService, queue, 1_048_576);
             protectedHandler.configureManagementEndpoints(API_KEY);
 

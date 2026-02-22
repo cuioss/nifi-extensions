@@ -965,7 +965,10 @@
               "restapi.data.methods": "GET,POST",
               "restapi.admin.path": "/api/admin",
               "restapi.admin.methods": "GET",
-              "restapi.admin.required-roles": "ADMIN"
+              "restapi.admin.required-roles": "ADMIN",
+              "restapi.disabled-test.path": "/api/disabled",
+              "restapi.disabled-test.methods": "GET",
+              "restapi.disabled-test.enabled": "false"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -1030,6 +1033,21 @@
               },
               "restapi.admin.required-roles": {
                 "name": "restapi.admin.required-roles",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.disabled-test.path": {
+                "name": "restapi.disabled-test.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.disabled-test.methods": {
+                "name": "restapi.disabled-test.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.disabled-test.enabled": {
+                "name": "restapi.disabled-test.enabled",
                 "identifiesControllerService": false,
                 "sensitive": false
               }
