@@ -121,6 +121,50 @@ class RouteConfigurationParserTest {
         }
 
         @Test
+        @DisplayName("Should default enabled to true when absent")
+        void shouldDefaultEnabledToTrue() {
+            // Arrange
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+
+            // Act
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            // Assert
+            assertTrue(routes.getFirst().enabled());
+        }
+
+        @Test
+        @DisplayName("Should parse enabled=false")
+        void shouldParseEnabledFalse() {
+            // Arrange
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.enabled", "false");
+
+            // Act
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            // Assert
+            assertFalse(routes.getFirst().enabled());
+        }
+
+        @Test
+        @DisplayName("Should parse enabled=true explicitly")
+        void shouldParseEnabledTrue() {
+            // Arrange
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.enabled", "true");
+
+            // Act
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            // Assert
+            assertTrue(routes.getFirst().enabled());
+        }
+
+        @Test
         @DisplayName("Should handle schema property")
         void shouldHandleSchemaProperty() {
             // Arrange
@@ -228,7 +272,7 @@ class RouteConfigurationParserTest {
 
             // Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> routes.add(new RouteConfiguration("x", "/x", null, null, null, null)));
+                    () -> routes.add(new RouteConfiguration("x", "/x", true, null, null, null, null)));
         }
     }
 }

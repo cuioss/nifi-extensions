@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
  * Supported properties per route:
  * <ul>
  *   <li>{@code path} — required URL path</li>
+ *   <li>{@code enabled} — whether the route is active (default: true)</li>
  *   <li>{@code methods} — comma-separated HTTP methods (default: GET,POST,PUT,DELETE)</li>
  *   <li>{@code required-roles} — comma-separated roles</li>
  *   <li>{@code required-scopes} — comma-separated scopes</li>
@@ -57,6 +58,8 @@ public class RouteConfigurationParser {
     static final String REQUIRED_SCOPES_KEY = "required-scopes";
     /** Property key for JSON Schema name. */
     static final String SCHEMA_KEY = "schema";
+    /** Property key for enabled flag. */
+    static final String ENABLED_KEY = "enabled";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -80,13 +83,14 @@ public class RouteConfigurationParser {
                 continue;
             }
 
+            boolean enabled = !"false".equalsIgnoreCase(routeProps.get(ENABLED_KEY));
             Set<String> methods = parseHttpMethods(routeProps.get(METHODS_KEY));
             Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
             Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
             String schema = routeProps.get(SCHEMA_KEY);
 
-            routes.add(new RouteConfiguration(routeName, path, methods, roles, scopes, schema));
-            LOGGER.debug("Parsed route '%s': path=%s, methods=%s", routeName, path, methods);
+            routes.add(new RouteConfiguration(routeName, path, enabled, methods, roles, scopes, schema));
+            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s", routeName, path, enabled, methods);
         }
 
         return Collections.unmodifiableList(routes);

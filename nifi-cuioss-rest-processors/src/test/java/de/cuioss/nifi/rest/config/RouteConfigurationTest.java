@@ -36,7 +36,7 @@ class RouteConfigurationTest {
         void shouldCreateWithAllFields() {
             // Arrange & Act
             var route = new RouteConfiguration(
-                    "users", "/api/users",
+                    "users", "/api/users", true,
                     Set.of("GET", "POST"),
                     Set.of("admin"),
                     Set.of("read", "write"),
@@ -45,6 +45,7 @@ class RouteConfigurationTest {
             // Assert
             assertEquals("users", route.name());
             assertEquals("/api/users", route.path());
+            assertTrue(route.enabled());
             assertEquals(Set.of("GET", "POST"), route.methods());
             assertEquals(Set.of("admin"), route.requiredRoles());
             assertEquals(Set.of("read", "write"), route.requiredScopes());
@@ -55,7 +56,7 @@ class RouteConfigurationTest {
         @DisplayName("Should create with defaults when methods/roles/scopes are null")
         void shouldCreateWithDefaults() {
             // Act
-            var route = new RouteConfiguration("health", "/api/health", null, null, null, null);
+            var route = new RouteConfiguration("health", "/api/health", true, null, null, null, null);
 
             // Assert
             assertEquals(RouteConfiguration.DEFAULT_METHODS, route.methods());
@@ -68,7 +69,7 @@ class RouteConfigurationTest {
         @DisplayName("Should have immutable sets")
         void shouldHaveImmutableSets() {
             // Arrange
-            var route = new RouteConfiguration("health", "/api/health",
+            var route = new RouteConfiguration("health", "/api/health", true,
                     Set.of("GET"), Set.of("admin"), Set.of("read"), null);
 
             // Assert
@@ -84,21 +85,40 @@ class RouteConfigurationTest {
         @DisplayName("Should reject null name")
         void shouldRejectNullName() {
             assertThrows(NullPointerException.class,
-                    () -> new RouteConfiguration(null, "/api/health", null, null, null, null));
+                    () -> new RouteConfiguration(null, "/api/health", true, null, null, null, null));
         }
 
         @Test
         @DisplayName("Should reject null path")
         void shouldRejectNullPath() {
             assertThrows(NullPointerException.class,
-                    () -> new RouteConfiguration("health", null, null, null, null, null));
+                    () -> new RouteConfiguration("health", null, true, null, null, null, null));
         }
 
         @Test
         @DisplayName("Should reject blank path")
         void shouldRejectBlankPath() {
             assertThrows(IllegalArgumentException.class,
-                    () -> new RouteConfiguration("health", "  ", null, null, null, null));
+                    () -> new RouteConfiguration("health", "  ", true, null, null, null, null));
+        }
+    }
+
+    @Nested
+    @DisplayName("Enabled Flag")
+    class EnabledFlag {
+
+        @Test
+        @DisplayName("Should be enabled when true")
+        void shouldBeEnabledWhenTrue() {
+            var route = new RouteConfiguration("health", "/api/health", true, null, null, null, null);
+            assertTrue(route.enabled());
+        }
+
+        @Test
+        @DisplayName("Should be disabled when false")
+        void shouldBeDisabledWhenFalse() {
+            var route = new RouteConfiguration("health", "/api/health", false, null, null, null, null);
+            assertFalse(route.enabled());
         }
     }
 
@@ -110,7 +130,7 @@ class RouteConfigurationTest {
         @DisplayName("Should report has roles")
         void shouldReportHasRoles() {
             var route = new RouteConfiguration("users", "/api/users",
-                    null, Set.of("admin"), Set.of(), null);
+                    true, null, Set.of("admin"), Set.of(), null);
             assertTrue(route.hasAuthorizationRequirements());
         }
 
@@ -118,7 +138,7 @@ class RouteConfigurationTest {
         @DisplayName("Should report has scopes")
         void shouldReportHasScopes() {
             var route = new RouteConfiguration("users", "/api/users",
-                    null, Set.of(), Set.of("read"), null);
+                    true, null, Set.of(), Set.of("read"), null);
             assertTrue(route.hasAuthorizationRequirements());
         }
 
@@ -126,7 +146,7 @@ class RouteConfigurationTest {
         @DisplayName("Should report no auth requirements")
         void shouldReportNoAuthRequirements() {
             var route = new RouteConfiguration("health", "/api/health",
-                    null, Set.of(), Set.of(), null);
+                    true, null, Set.of(), Set.of(), null);
             assertFalse(route.hasAuthorizationRequirements());
         }
 
@@ -135,7 +155,7 @@ class RouteConfigurationTest {
         void shouldConvertToAuthorizationRequirements() {
             // Arrange
             var route = new RouteConfiguration("users", "/api/users",
-                    null, Set.of("admin", "user"), Set.of("read"), null);
+                    true, null, Set.of("admin", "user"), Set.of("read"), null);
 
             // Act
             var authReqs = route.toAuthorizationRequirements();
