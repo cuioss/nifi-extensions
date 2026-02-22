@@ -271,6 +271,62 @@ describe('rest-endpoint-config', () => {
         expect(pathInputs.length).toBe(2);
     });
 
+    it('should validate route name format', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.test.path': '/api/test' },
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Set invalid route name with dots
+        const nameInput = container.querySelector('.route-name');
+        nameInput.value = 'invalid.name';
+
+        const saveBtn = container.querySelector('.save-route-button');
+        saveBtn.click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(utils.displayUiError).toHaveBeenCalled();
+    });
+
+    it('should set optional properties to null when empty', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.test.path': '/api/test', 'restapi.test.methods': 'GET' },
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Clear the methods field
+        const methodsInput = container.querySelector('.field-methods');
+        methodsInput.value = '';
+
+        const saveBtn = container.querySelector('.save-route-button');
+        saveBtn.click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-id',
+            expect.objectContaining({
+                'restapi.test.methods': null
+            })
+        );
+    });
+
+    it('should store original name on route form', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const form = container.querySelector('.route-form');
+        expect(form.dataset.originalName).toBe('health');
+    });
+
     it('should handle disabled route', async () => {
         const props = {
             ...SAMPLE_PROPERTIES,
