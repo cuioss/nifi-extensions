@@ -82,6 +82,13 @@
     content: "\f019" !important;
 }
 
+/* Send Icon (endpoint-tester.js) */
+.fa-paper-plane::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f1d8" !important;
+}
+
 /* Spinner Icon (metrics.js) */
 .fa-spinner::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
