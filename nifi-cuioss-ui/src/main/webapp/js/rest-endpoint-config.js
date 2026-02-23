@@ -3,7 +3,7 @@
 /**
  * Gateway route configuration CRUD editor component.
  * Reads route configuration from processor properties ({@code restapi.*})
- * and provides add/edit/remove operations following the issuer-config.js pattern.
+ * and provides a list-first UX: summary table with inline edit/add/remove.
  *
  * @module js/rest-endpoint-config
  */
@@ -16,18 +16,6 @@ import {
 
 // Counter for unique form field IDs
 let formCounter = 0;
-
-const SAMPLE = {
-    name: 'sample-route',
-    props: {
-        path: '/api/sample',
-        methods: 'GET,POST',
-        enabled: 'true',
-        'required-roles': '',
-        'required-scopes': '',
-        schema: ''
-    }
-};
 
 const SCHEMA_PLACEHOLDER = `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -69,8 +57,7 @@ export const init = async (element) => {
     addBtn.className = 'add-route-button';
     addBtn.textContent = 'Add Route';
     addBtn.addEventListener('click', () => {
-        addRouteForm(routesContainer, `${SAMPLE.name}-${Date.now()}`,
-            SAMPLE.props, componentId);
+        openInlineEditor(routesContainer, '', {}, componentId, null);
     });
     container.appendChild(addBtn);
 
@@ -147,7 +134,7 @@ const formatBytes = (bytes) => {
 
 const loadExistingConfig = async (container, routesContainer, componentId) => {
     if (!componentId) {
-        addRouteForm(routesContainer, SAMPLE.name, SAMPLE.props, componentId);
+        renderRouteSummaryTable(routesContainer, {}, componentId);
         return;
     }
     try {
@@ -155,27 +142,168 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         const props = res.properties || {};
         renderGlobalSettings(container, props);
         const routes = parseRouteProperties(props);
-        for (const name of Object.keys(routes)) {
-            addRouteForm(routesContainer, name, routes[name], componentId);
-        }
+        renderRouteSummaryTable(routesContainer, routes, componentId);
     } catch {
-        addRouteForm(routesContainer, SAMPLE.name, SAMPLE.props, componentId);
+        renderRouteSummaryTable(routesContainer, {}, componentId);
     }
 };
 
 // ---------------------------------------------------------------------------
-// Form creation
+// Summary table
 // ---------------------------------------------------------------------------
 
-const addRouteForm = (container, routeName, properties, componentId) => {
+/**
+ * Render the route summary table from parsed route data.
+ * @param {HTMLElement} container  the .routes-container element
+ * @param {Object} routes  parsed route map {name: {path, methods, enabled, ...}}
+ * @param {string} componentId  NiFi processor component ID
+ */
+const renderRouteSummaryTable = (container, routes, componentId) => {
+    // Remove any existing table
+    const existing = container.querySelector('.route-summary-table');
+    if (existing) existing.remove();
+
+    const table = document.createElement('table');
+    table.className = 'route-summary-table config-table';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Path</th>
+                <th>Methods</th>
+                <th>Enabled</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>`;
+
+    const tbody = table.querySelector('tbody');
+
+    const routeNames = Object.keys(routes);
+    if (routeNames.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="5" class="empty-state">No routes configured. Click "Add Route" to create one.</td>';
+        tbody.appendChild(emptyRow);
+    } else {
+        for (const name of routeNames) {
+            const row = createTableRow(name, routes[name], componentId, container);
+            tbody.appendChild(row);
+        }
+    }
+
+    container.prepend(table);
+};
+
+/**
+ * Create a single summary table row for a route.
+ * @param {string} name  route name
+ * @param {Object} props  route properties
+ * @param {string} componentId  NiFi processor component ID
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ * @returns {HTMLTableRowElement}
+ */
+const createTableRow = (name, props, componentId, routesContainer) => {
+    const row = document.createElement('tr');
+    row.dataset.routeName = name;
+
+    const enabledVal = props?.enabled !== 'false';
+    const methods = props?.methods || '';
+    const methodBadges = methods.split(',')
+        .filter((m) => m.trim())
+        .map((m) => `<span class="method-badge">${sanitizeHtml(m.trim())}</span>`)
+        .join(' ');
+
+    const statusClass = enabledVal ? 'status-enabled' : 'status-disabled';
+    const statusText = enabledVal ? 'Enabled' : 'Disabled';
+
+    row.innerHTML = `
+        <td>${sanitizeHtml(name)}</td>
+        <td>${sanitizeHtml(props?.path || '')}</td>
+        <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
+        <td><span class="${statusClass}">${statusText}</span></td>
+        <td>
+            <button class="edit-route-button" title="Edit route">Edit</button>
+            <button class="remove-route-button" title="Delete route">Remove</button>
+        </td>`;
+
+    row.querySelector('.edit-route-button').addEventListener('click', () => {
+        // Close any currently open editor first
+        closeActiveEditor(routesContainer);
+        row.classList.add('hidden');
+        openInlineEditor(routesContainer, name, props, componentId, row);
+    });
+
+    row.querySelector('.remove-route-button').addEventListener('click', async () => {
+        await confirmRemoveRoute(name, () => removeRoute(row, name, routesContainer, componentId));
+    });
+
+    return row;
+};
+
+/**
+ * Update a table row's cells after a successful save.
+ * @param {HTMLTableRowElement} row  the table row to update
+ * @param {Object} formData  extracted form data
+ */
+const updateTableRow = (row, formData) => {
+    const cells = row.querySelectorAll('td');
+    cells[0].textContent = formData.routeName;
+    cells[1].textContent = formData.path;
+
+    const methodBadges = (formData.methods || '').split(',')
+        .filter((m) => m.trim())
+        .map((m) => `<span class="method-badge">${sanitizeHtml(m.trim())}</span>`)
+        .join(' ');
+    cells[2].innerHTML = methodBadges || '<span class="empty-state">—</span>';
+
+    const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
+    const statusText = formData.enabled ? 'Enabled' : 'Disabled';
+    cells[3].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
+
+    row.dataset.routeName = formData.routeName;
+};
+
+/**
+ * Close any currently open inline editor in the routes container.
+ * @param {HTMLElement} routesContainer
+ */
+const closeActiveEditor = (routesContainer) => {
+    const openForm = routesContainer.querySelector('.route-form');
+    if (openForm) {
+        // Restore hidden table row if editing an existing route
+        const hiddenRow = routesContainer.querySelector('tr.hidden[data-route-name]');
+        if (hiddenRow) hiddenRow.classList.remove('hidden');
+        openForm.remove();
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Inline editor
+// ---------------------------------------------------------------------------
+
+/**
+ * Open an inline editor form below the table (or replacing a table row).
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ * @param {string} routeName  existing route name, or '' for new route
+ * @param {Object} properties  existing route properties, or {} for new route
+ * @param {string} componentId  NiFi processor component ID
+ * @param {HTMLTableRowElement|null} tableRow  the table row being edited, or null for new route
+ */
+const openInlineEditor = (routesContainer, routeName, properties, componentId, tableRow) => {
+    // Close any existing editor first
+    closeActiveEditor(routesContainer);
+    // Re-hide the current row if editing an existing route
+    if (tableRow) tableRow.classList.add('hidden');
+
     const idx = formCounter++;
     const form = document.createElement('div');
-    form.className = 'route-form';
+    form.className = 'route-form inline-edit';
     form.dataset.originalName = routeName || '';
 
     const enabledVal = properties?.enabled !== 'false';
+    const hasSchema = !!(properties?.schema && properties.schema.trim());
 
-    // ---- header (name + enabled + remove) ----
+    // ---- header (name + enabled) ----
     const header = document.createElement('div');
     header.className = 'form-header';
     header.innerHTML = `
@@ -190,16 +318,8 @@ const addRouteForm = (container, routeName, properties, componentId) => {
                    ${enabledVal ? 'checked' : ''}
                    aria-label="Route Enabled">
             Enabled
-        </label>
-        <button class="remove-route-button"
-                title="Delete this route configuration">Remove</button>`;
+        </label>`;
     form.appendChild(header);
-
-    header.querySelector('.remove-route-button').addEventListener('click', async () => {
-        const originalName = form.dataset.originalName;
-        const displayName = header.querySelector('.route-name').value || originalName || 'Unnamed Route';
-        await confirmRemoveRoute(displayName, () => removeRoute(form, originalName));
-    });
 
     // ---- form fields ----
     const fields = document.createElement('div');
@@ -218,27 +338,77 @@ const addRouteForm = (container, routeName, properties, componentId) => {
     addField({ container: fields, idx, name: 'required-scopes', label: 'Required Scopes',
         placeholder: 'read,write (comma-separated, optional)',
         value: properties?.['required-scopes'] });
-    addTextArea({ container: fields, idx, name: 'schema', label: 'JSON Schema',
-        placeholder: SCHEMA_PLACEHOLDER,
-        value: properties?.schema });
 
-    // ---- error + save ----
+    // ---- schema validation toggle ----
+    const schemaToggle = document.createElement('div');
+    schemaToggle.className = 'form-field field-container-schema-toggle';
+    schemaToggle.innerHTML = `
+        <label class="schema-toggle-label" for="schema-check-${idx}">
+            <input type="checkbox" id="schema-check-${idx}"
+                   class="schema-validation-checkbox"
+                   ${hasSchema ? 'checked' : ''}
+                   aria-label="Enable Schema Validation">
+            Schema Validation
+        </label>`;
+    form.appendChild(schemaToggle);
+
+    // ---- schema textarea (hidden by default unless route has schema) ----
+    const schemaContainer = document.createElement('div');
+    schemaContainer.className = `form-field field-container-schema${hasSchema ? '' : ' hidden'}`;
+    schemaContainer.innerHTML = `
+        <label for="field-schema-${idx}">JSON Schema:</label>
+        <textarea id="field-schema-${idx}" name="schema"
+                  class="field-schema form-input route-config-field"
+                  placeholder="${sanitizeHtml(SCHEMA_PLACEHOLDER)}"
+                  rows="5" aria-label="JSON Schema"
+        >${sanitizeHtml(properties?.schema || '')}</textarea>`;
+    form.appendChild(schemaContainer);
+
+    // Wire schema checkbox toggle
+    const schemaCheckbox = schemaToggle.querySelector('.schema-validation-checkbox');
+    schemaCheckbox.addEventListener('change', () => {
+        if (schemaCheckbox.checked) {
+            schemaContainer.classList.remove('hidden');
+        } else {
+            schemaContainer.classList.add('hidden');
+        }
+    });
+
+    // ---- error messages ----
     const errorContainer = document.createElement('div');
     errorContainer.className = 'route-form-error-messages';
     errorContainer.setAttribute('role', 'alert');
     errorContainer.setAttribute('aria-live', 'assertive');
     form.appendChild(errorContainer);
 
+    // ---- action buttons: Save + Cancel ----
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'route-form-actions';
+
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-route-button';
     saveBtn.textContent = 'Save Route';
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
-        saveRoute(form, errorContainer, componentId);
+        saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
     });
-    form.appendChild(saveBtn);
+    actionsDiv.appendChild(saveBtn);
 
-    container.appendChild(form);
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'cancel-route-button';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => {
+        if (tableRow) {
+            tableRow.classList.remove('hidden');
+        }
+        form.remove();
+    });
+    actionsDiv.appendChild(cancelBtn);
+
+    form.appendChild(actionsDiv);
+
+    // Insert form after the table
+    routesContainer.appendChild(form);
 };
 
 // ---------------------------------------------------------------------------
@@ -258,25 +428,14 @@ const addField = ({ container, idx, name, label, placeholder, value }) => {
     container.appendChild(div);
 };
 
-const addTextArea = ({ container, idx, name, label, placeholder, value }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    div.innerHTML = `
-        <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <textarea id="field-${name}-${idx}" name="${name}"
-                  class="field-${name} form-input route-config-field"
-                  placeholder="${sanitizeHtml(placeholder)}"
-                  rows="5" aria-label="${sanitizeHtml(label)}"
-        >${sanitizeHtml(value || '')}</textarea>`;
-    container.appendChild(div);
-};
-
 // ---------------------------------------------------------------------------
 // Save / Remove
 // ---------------------------------------------------------------------------
 
 const extractFormFields = (form) => {
     const q = (sel) => form.querySelector(sel)?.value?.trim() || '';
+    const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
+    const schemaEnabled = schemaCheckbox ? schemaCheckbox.checked : false;
     return {
         routeName: q('.route-name'),
         path: q('.field-path'),
@@ -284,7 +443,7 @@ const extractFormFields = (form) => {
         enabled: form.querySelector('.route-enabled')?.checked !== false,
         'required-roles': q('.field-required-roles'),
         'required-scopes': q('.field-required-scopes'),
-        schema: q('.field-schema')
+        schema: schemaEnabled ? q('.field-schema') : ''
     };
 };
 
@@ -308,7 +467,15 @@ const buildPropertyUpdates = (name, f) => {
     return u;
 };
 
-const saveRoute = async (form, errEl, componentId) => {
+/**
+ * Save route: validate, persist, update table row, close editor.
+ * @param {HTMLElement} form  the inline editor form
+ * @param {HTMLElement} errEl  error display element
+ * @param {string} componentId  NiFi processor component ID
+ * @param {HTMLTableRowElement|null} tableRow  the table row being edited (null for new)
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) => {
     const f = extractFormFields(form);
     const v = validateFormData(f);
     if (!v.isValid) { displayUiError(errEl, v.error, {}, 'routeConfigEditor.error.title'); return; }
@@ -334,14 +501,68 @@ const saveRoute = async (form, errEl, componentId) => {
         try {
             await api.updateComponentProperties(componentId, updates);
             form.dataset.originalName = f.routeName;
-            displayUiSuccess(errEl, 'Route configuration saved successfully.');
+
+            if (tableRow) {
+                // Update the existing table row and show it
+                updateTableRow(tableRow, f);
+                tableRow.classList.remove('hidden');
+            } else {
+                // New route — add a row to the table
+                addRowToTable(routesContainer, f, componentId);
+            }
+            form.remove();
+
+            const globalErr = document.querySelector('.global-error-messages');
+            if (globalErr) {
+                displayUiSuccess(globalErr, 'Route configuration saved successfully.');
+                globalErr.classList.remove('hidden');
+            }
         } catch (error) {
             displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
         }
     } else {
         form.dataset.originalName = f.routeName;
-        displayUiSuccess(errEl, 'Route configuration saved successfully (standalone mode).');
+        if (tableRow) {
+            updateTableRow(tableRow, f);
+            tableRow.classList.remove('hidden');
+        } else {
+            addRowToTable(routesContainer, f, componentId);
+        }
+        form.remove();
+
+        const globalErr = document.querySelector('.global-error-messages');
+        if (globalErr) {
+            displayUiSuccess(globalErr, 'Route configuration saved successfully (standalone mode).');
+            globalErr.classList.remove('hidden');
+        }
     }
+};
+
+/**
+ * Add a new row to the summary table after saving a new route.
+ * @param {HTMLElement} routesContainer
+ * @param {Object} formData
+ * @param {string} componentId
+ */
+const addRowToTable = (routesContainer, formData, componentId) => {
+    const table = routesContainer.querySelector('.route-summary-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+
+    // Remove empty-state row if present
+    const emptyRow = tbody.querySelector('.empty-state');
+    if (emptyRow) emptyRow.closest('tr').remove();
+
+    const props = {
+        path: formData.path,
+        methods: formData.methods,
+        enabled: String(formData.enabled),
+        'required-roles': formData['required-roles'],
+        'required-scopes': formData['required-scopes'],
+        schema: formData.schema
+    };
+    const row = createTableRow(formData.routeName, props, componentId, routesContainer);
+    tbody.appendChild(row);
 };
 
 const clearRouteProperties = async (componentId, routeName) => {
@@ -357,9 +578,22 @@ const clearRouteProperties = async (componentId, routeName) => {
     }
 };
 
-const removeRoute = async (form, routeName) => {
-    form.remove();
-    const componentId = getComponentIdFromUrl(globalThis.location.href);
+/**
+ * Remove a route: delete the table row and clear properties.
+ * @param {HTMLTableRowElement} row  the table row
+ * @param {string} routeName  route name
+ * @param {HTMLElement} routesContainer  the .routes-container
+ * @param {string} componentId  NiFi processor component ID
+ */
+const removeRoute = async (row, routeName, routesContainer, componentId) => {
+    row.remove();
+
+    // Also close any open editor for this route
+    const openForm = routesContainer.querySelector('.route-form');
+    if (openForm && openForm.dataset.originalName === routeName) {
+        openForm.remove();
+    }
+
     const globalErr = document.querySelector('.global-error-messages');
 
     if (routeName && componentId) {

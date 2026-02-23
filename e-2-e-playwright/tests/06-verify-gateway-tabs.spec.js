@@ -52,7 +52,7 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(helpTab).toBeVisible({ timeout: 5000 });
     });
 
-    test("should load gateway route CRUD editor", async ({
+    test("should load gateway route CRUD editor with summary table", async ({
         page,
         customUIFrame,
     }, testInfo) => {
@@ -67,15 +67,22 @@ test.describe("REST API Gateway Tabs", () => {
         const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
         await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
 
-        // Wait for the CRUD editor to finish loading — route forms appear after async load
-        const routeForms = endpointConfigPanel.locator(".route-form");
-        await expect(routeForms.first()).toBeVisible({ timeout: 15000 });
-        const routeCount = await routeForms.count();
-        expect(routeCount).toBeGreaterThanOrEqual(1);
+        // Wait for the summary table to appear (list-first UX)
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Verify table has route data rows
+        const tableRows = summaryTable.locator("tbody tr[data-route-name]");
+        const rowCount = await tableRows.count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
 
         // Verify "Add Route" button is visible
         const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
         await expect(addRouteBtn).toBeVisible({ timeout: 5000 });
+
+        // No inline edit form should be visible initially
+        const routeForms = endpointConfigPanel.locator(".route-form");
+        await expect(routeForms).toHaveCount(0);
 
         // Global settings section should show port info (populated async from properties)
         const globalSettingsTable = endpointConfigPanel.locator(".global-settings-display .config-table");
@@ -90,6 +97,235 @@ test.describe("REST API Gateway Tabs", () => {
             path: `${testInfo.outputDir}/gateway-endpoint-config.png`,
             fullPage: true,
         });
+    });
+
+    test("should display route summary table with correct columns", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Verify table headers: Name, Path, Methods, Enabled, Actions
+        const headers = summaryTable.locator("thead th");
+        await expect(headers).toHaveCount(5);
+        await expect(headers.nth(0)).toContainText("Name");
+        await expect(headers.nth(1)).toContainText("Path");
+        await expect(headers.nth(2)).toContainText("Methods");
+        await expect(headers.nth(3)).toContainText("Enabled");
+        await expect(headers.nth(4)).toContainText("Actions");
+
+        // Verify at least one data row exists
+        const dataRows = summaryTable.locator("tbody tr[data-route-name]");
+        const rowCount = await dataRows.count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
+    });
+
+    test("should open inline editor when clicking Edit", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on first row
+        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        await expect(firstEditBtn).toBeVisible({ timeout: 5000 });
+        await firstEditBtn.click();
+
+        // Verify inline editor form appears
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Verify form has populated fields
+        const routeName = routeForm.locator(".route-name");
+        await expect(routeName).toBeVisible({ timeout: 5000 });
+        const nameValue = await routeName.inputValue();
+        expect(nameValue.length).toBeGreaterThan(0);
+
+        const pathField = routeForm.locator(".field-path");
+        await expect(pathField).toBeVisible({ timeout: 5000 });
+
+        const methodsField = routeForm.locator(".field-methods");
+        await expect(methodsField).toBeVisible({ timeout: 5000 });
+
+        const enabledCheckbox = routeForm.locator(".route-enabled");
+        await expect(enabledCheckbox).toBeVisible({ timeout: 5000 });
+
+        // Verify Save and Cancel buttons
+        const saveBtn = routeForm.locator(".save-route-button");
+        await expect(saveBtn).toBeVisible({ timeout: 5000 });
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await expect(cancelBtn).toBeVisible({ timeout: 5000 });
+    });
+
+    test("should cancel editing and return to table row", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Remember initial row count
+        const initialRows = summaryTable.locator("tbody tr[data-route-name]:not(.hidden)");
+        const initialCount = await initialRows.count();
+
+        // Click Edit on first row
+        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        await firstEditBtn.click();
+
+        // Form is open
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Click Cancel
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+
+        // Form disappears
+        await expect(routeForm).toHaveCount(0);
+
+        // Table row count is restored
+        const restoredRows = summaryTable.locator("tbody tr[data-route-name]:not(.hidden)");
+        const restoredCount = await restoredRows.count();
+        expect(restoredCount).toBe(initialCount);
+    });
+
+    test("should add new route with empty form", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Add Route
+        const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
+        await addRouteBtn.click();
+
+        // Verify form appears with empty fields
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        const routeName = routeForm.locator(".route-name");
+        const nameValue = await routeName.inputValue();
+        expect(nameValue).toBe("");
+
+        const pathField = routeForm.locator(".field-path");
+        const pathValue = await pathField.inputValue();
+        expect(pathValue).toBe("");
+    });
+
+    test("should cancel new route and remove form", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Add Route
+        const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
+        await addRouteBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Click Cancel
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+
+        // Form removed entirely
+        await expect(routeForm).toHaveCount(0);
+    });
+
+    test("should toggle schema textarea via checkbox", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Open editor for first route
+        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        await firstEditBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Schema checkbox should exist
+        const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
+        await expect(schemaCheckbox).toBeVisible({ timeout: 5000 });
+
+        // Schema container should be hidden by default (route likely has no schema)
+        const schemaContainer = routeForm.locator(".field-container-schema");
+        await expect(schemaContainer).toBeHidden();
+
+        // Check the checkbox — schema textarea becomes visible
+        await schemaCheckbox.check();
+        await expect(schemaContainer).toBeVisible({ timeout: 3000 });
+
+        // Uncheck — hidden again
+        await schemaCheckbox.uncheck();
+        await expect(schemaContainer).toBeHidden();
     });
 
     test("should display endpoint tester with route selector and controls", async ({
@@ -244,52 +480,6 @@ test.describe("REST API Gateway Tabs", () => {
         const lastUpdated = customUIFrame.locator('[data-testid="last-updated"]');
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         await expect(lastUpdated).toContainText("Last updated:");
-    });
-
-    test("should display route forms with fields and enabled toggle", async ({
-        customUIFrame,
-    }) => {
-        // Navigate to Endpoint Configuration tab
-        const endpointConfigTab = customUIFrame.locator(
-            'a[href="#endpoint-config"]',
-        );
-        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
-        await endpointConfigTab.click();
-
-        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
-        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
-
-        // Wait for the CRUD editor to finish loading — route forms appear after async load
-        const routeForms = endpointConfigPanel.locator(".route-form");
-        await expect(routeForms.first()).toBeVisible({ timeout: 15000 });
-
-        // Global settings section (populated async from properties — may not appear in all envs)
-        const globalSettingsTable = endpointConfigPanel.locator(".global-settings-display .config-table");
-        const hasGlobalSettings = await globalSettingsTable.isVisible();
-        if (hasGlobalSettings) {
-            const settingsText = await globalSettingsTable.textContent();
-            expect(settingsText).toMatch(/Listening Port/);
-            expect(settingsText).not.toContain("Component");
-        }
-
-        // Verify route forms show route names, paths, methods
-        const routeCount = await routeForms.count();
-        expect(routeCount).toBeGreaterThanOrEqual(1);
-
-        // Verify first route form has name, path, and enabled checkbox
-        const firstForm = routeForms.first();
-        const routeName = firstForm.locator(".route-name");
-        await expect(routeName).toBeVisible({ timeout: 5000 });
-        const enabledCheckbox = firstForm.locator(".route-enabled");
-        await expect(enabledCheckbox).toBeVisible({ timeout: 5000 });
-
-        // Verify schema textarea exists per route
-        const schemaField = firstForm.locator(".field-schema");
-        await expect(schemaField).toBeVisible({ timeout: 5000 });
-
-        // Verify save button per route
-        const saveBtn = firstForm.locator(".save-route-button");
-        await expect(saveBtn).toBeVisible({ timeout: 5000 });
     });
 
     test("should show error when sending request without route selection", async ({
