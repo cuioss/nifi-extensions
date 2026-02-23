@@ -55,7 +55,7 @@ export const init = async (element) => {
     // "Add Route" button
     const addBtn = document.createElement('button');
     addBtn.className = 'add-route-button';
-    addBtn.textContent = 'Add Route';
+    addBtn.innerHTML = '<i class="fa fa-plus"></i> Add Route';
     addBtn.addEventListener('click', () => {
         openInlineEditor(routesContainer, '', {}, componentId, null);
     });
@@ -219,8 +219,8 @@ const createTableRow = (name, props, componentId, routesContainer) => {
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
         <td>
-            <button class="edit-route-button" title="Edit route">Edit</button>
-            <button class="remove-route-button" title="Delete route">Remove</button>
+            <button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> Edit</button>
+            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> Remove</button>
         </td>`;
 
     row.querySelector('.edit-route-button').addEventListener('click', () => {
@@ -384,7 +384,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-route-button';
-    saveBtn.textContent = 'Save Route';
+    saveBtn.innerHTML = '<i class="fa fa-check"></i> Save Route';
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
         saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
@@ -393,7 +393,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'cancel-route-button';
-    cancelBtn.textContent = 'Cancel';
+    cancelBtn.innerHTML = '<i class="fa fa-times"></i> Cancel';
     cancelBtn.addEventListener('click', () => {
         if (tableRow) {
             tableRow.classList.remove('hidden');

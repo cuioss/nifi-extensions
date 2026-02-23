@@ -65,7 +65,7 @@
     border: 1px solid var(--border-color, #ccc);
     border-radius: 4px;
     background: var(--primary-bg, #1565c0);
-    color: var(--primary-color, #fff);
+    color: var(--container-background, #fff);
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 600;
