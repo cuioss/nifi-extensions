@@ -129,7 +129,7 @@
         <version.slf4j>2.0.17</version.slf4j>
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
-        <version.junit.jupiter>5.14.3</version.junit.jupiter>
+        <version.junit.jupiter>6.0.2</version.junit.jupiter>
         <version.lombok>1.18.42</version.lombok>
         <version.parsson>1.1.7</version.parsson>
         <version.snakeyaml>2.5</version.snakeyaml>
@@ -186,16 +186,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- Force correct junit-platform version to match junit-jupiter 5.14.1 -->
+            <!-- Force correct junit-platform version to match junit-jupiter -->
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-commons</artifactId>
-                <version>1.14.3</version>
+                <version>${version.junit.jupiter}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-engine</artifactId>
-                <version>1.14.3</version>
+                <version>${version.junit.jupiter}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.nifi</groupId>
