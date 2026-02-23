@@ -1,38 +1,21 @@
 = Accessibility Testing Guide
 :toc: left
-:toclevels: 3
+:toclevels: 2
+:source-highlighter: highlight.js
 
 == Overview
 
-This guide covers WCAG 2.1 Level AA compliance testing for the NiFi JWT Authenticator UI using automated testing tools.
-
-=== Goals
-
-* Ensure WCAG 2.1 Level AA compliance
-* Provide comprehensive accessibility testing
-* Generate detailed accessibility reports
-* Integrate accessibility checks into CI/CD pipeline
-
-=== Testing Framework
-
-The accessibility testing framework uses:
-
-* **@axe-core/playwright**: Core accessibility testing engine
-* **Custom checks**: NiFi-specific accessibility validation
-* **Component testing**: Individual component accessibility verification
-* **Comprehensive reporting**: Detailed accessibility reports with recommendations
-
-== Quick Start
+WCAG 2.1 Level AA compliance testing for the NiFi JWT Authenticator UI using `@axe-core/playwright` and custom checks.
 
 === Prerequisites
 
-**CRITICAL**: Accessibility tests require a running NiFi instance with the JWT processor configured. Tests will fail loudly if these prerequisites are not met.
+**CRITICAL**: Accessibility tests require a running NiFi instance with the JWT processor on the canvas.
 
-1. **NiFi Service**: Must be running at https://localhost:9095/nifi
-2. **JWT Processor**: MultiIssuerJWTTokenAuthenticator must be added to the canvas
-3. **Authentication**: Valid credentials for NiFi access
+1. NiFi running at https://localhost:9095/nifi
+2. MultiIssuerJWTTokenAuthenticator on the canvas
+3. Valid authentication credentials
 
-=== Running Accessibility Tests
+=== Running Tests
 
 [source,bash]
 ----
@@ -46,53 +29,28 @@ npm run test:a11y
 npm run test:a11y:full
 ----
 
-⚠️ **IMPORTANT**: These tests use a fail-fast approach and will terminate with clear error messages if NiFi or the JWT processor is not available. This ensures proper CI/CD validation.
+Tests use a fail-fast approach — they terminate with clear error messages if NiFi or the processor is unavailable.
 
-=== Basic Test Example
-
-[source,javascript]
-----
-import { accessibilityTest, expect } from '../fixtures/test-fixtures.js';
-
-accessibilityTest('Component accessibility', async ({ page, accessibilityHelper }) => {
-  // Navigate to NiFi canvas (processor UI is accessed via the canvas)
-  await page.goto('/nifi');
-  await page.waitForLoadState('networkidle');
-
-  // Run WCAG check
-  const results = await accessibilityHelper.runWCAGCheck();
-  expect(results.passed).toBe(true);
-});
-----
-
-== Testing Components
-
-=== Available Components
-
-The framework tests these UI components:
+== Tested Components
 
 [cols="1,2,3"]
 |===
 |Component |Selector |Requirements
 
 |Tab Navigation
-|`.tab-navigation`
+|`.jwt-tabs-header`
 |Keyboard navigation, focus indicators, ARIA labels
 
 |Configuration Form
-|`.configuration-tab`
+|`#issuer-config`
 |Form labels, required indicators, error messages
 
-|JWKS Validator
-|`.jwks-validation-content`
-|Button labels, loading indicators, status messages
-
 |Token Verifier
-|`.token-verification-tab`
+|`#token-verification`
 |Textarea labels, result display, error handling
 
 |Metrics Display
-|`.metrics-tab`
+|`#metrics`
 |Table headers, data labels, chart alternatives
 
 |Help Content
@@ -100,437 +58,96 @@ The framework tests these UI components:
 |Heading structure, link text, content structure
 |===
 
-=== Component-Specific Testing
+== Writing Accessibility Tests
+
+[source,javascript]
+----
+import { accessibilityTest, expect } from '../fixtures/test-fixtures.js';
+
+accessibilityTest('Component accessibility', async ({ page, accessibilityHelper }) => {
+  await page.goto('/nifi');
+  await page.waitForLoadState('networkidle');
+
+  const results = await accessibilityHelper.runWCAGCheck();
+  expect(results.passed).toBe(true);
+});
+----
+
+For component-specific checks:
 
 [source,javascript]
 ----
 accessibilityTest('Form accessibility', async ({ page, accessibilityHelper }) => {
-  // Test specific component
   const result = await accessibilityHelper.checkComponent(
-    '.configuration-tab',
+    '#issuer-config',
     'Configuration Form'
   );
-  
   expect(result.passed).toBe(true);
-  
-  if (!result.passed) {
-    console.log('Component issues:', result.failures);
-  }
 });
 ----
 
-== WCAG 2.1 Level AA Compliance
+== WCAG 2.1 Level AA Requirements
 
-=== Core Requirements
+The framework checks these categories via axe-core (`wcag2aa`, `wcag21aa`, `best-practice` tags):
 
-The framework checks for:
+* **Perceivable** — Color contrast (4.5:1 minimum), alt text, color-independent information
+* **Operable** — Keyboard navigation, visible focus indicators, no seizure-inducing content
+* **Understandable** — Form labels, error identification, consistent navigation
+* **Robust** — Valid markup, proper ARIA usage, screen reader compatibility
 
-==== Perceivable
-* **Color contrast**: Minimum 4.5:1 ratio for normal text
-* **Images**: Alternative text for all meaningful images
-* **Color**: Information not conveyed by color alone
-
-==== Operable
-* **Keyboard navigation**: All functionality accessible via keyboard
-* **Focus indicators**: Visible focus indicators on all interactive elements
-* **No seizures**: No content flashing more than 3 times per second
-
-==== Understandable
-* **Form labels**: All form fields have associated labels
-* **Error identification**: Clear error messages and instructions
-* **Consistent navigation**: Consistent navigation mechanisms
-
-==== Robust
-* **Valid markup**: HTML validates and uses semantic markup
-* **ARIA attributes**: Proper use of ARIA roles, properties, and states
-* **Screen reader compatibility**: Content accessible to assistive technologies
-
-=== Automated Checks
-
-[source,javascript]
-----
-// WCAG compliance configuration
-const WCAG_CONFIG = {
-  axeOptions: {
-    runOnly: {
-      type: 'tag',
-      values: ['wcag2aa', 'wcag21aa', 'best-practice']
-    },
-    rules: {
-      'color-contrast': { enabled: true },
-      'keyboard-navigation': { enabled: true },
-      'focus-indicator': { enabled: true },
-      'aria-roles': { enabled: true },
-      'form-field-labels': { enabled: true }
-    }
-  }
-};
-----
-
-== Custom Accessibility Checks
-
-=== Form Field Labeling
-
-Ensures all form fields have proper labels:
-
-[source,javascript]
-----
-formLabels: {
-  description: 'All form fields must have associated labels',
-  selector: 'input:not([type="hidden"]), select, textarea',
-  check: async (page, element) => {
-    const id = await element.getAttribute('id');
-    const ariaLabel = await element.getAttribute('aria-label');
-    const ariaLabelledby = await element.getAttribute('aria-labelledby');
-    
-    // Validation logic...
-  }
-}
-----
-
-=== Keyboard Navigation
-
-Tests tab order and keyboard accessibility:
-
-[source,javascript]
-----
-keyboardAccessible: {
-  description: 'All interactive elements must be keyboard accessible',
-  selector: 'button, a, input, select, textarea, [role="button"]',
-  check: async (page, element) => {
-    const tabindex = await element.getAttribute('tabindex');
-    // Validation logic...
-  }
-}
-----
-
-=== ARIA Attributes
-
-Validates proper ARIA usage:
-
-[source,javascript]
-----
-ariaAttributes: {
-  description: 'ARIA attributes must be used correctly',
-  selector: '[aria-label], [aria-labelledby], [aria-describedby], [role]',
-  check: async (page, element) => {
-    // Check for valid role values
-    // Verify referenced elements exist
-    // Validate attribute usage
-  }
-}
-----
-
-== Test Configuration
-
-=== Basic Configuration
-
-[source,javascript]
-----
-// Configure test execution
-const testConfig = {
-  mode: 'standard', // quick, standard, comprehensive
-  components: ['configurationForm', 'tokenVerifier'],
-  timeout: 30000
-};
-----
-
-=== Component Configuration
-
-[source,javascript]
-----
-export const COMPONENT_CONFIG = {
-  configurationForm: {
-    selector: '.configuration-tab',
-    name: 'Configuration Form',
-    requirements: [
-      'form-labels',
-      'required-indicators',
-      'error-messages',
-      'field-validation'
-    ]
-  }
-};
-----
-
-=== Known Issues Management
+== Known Issues Management
 
 [source,javascript]
 ----
 export const KNOWN_ISSUES = {
-  skipRules: [
-    // 'color-contrast' - uncomment if color issues need time to fix
-  ],
-
-  skipElements: [
-    // '[data-component="legacy-element"]' - example
-  ],
-
-  expectedViolations: [
-    // {
-    //   rule: 'landmark-one-main',
-    //   reason: 'NiFi UI is embedded within existing NiFi layout'
-    // }
-  ]
+  skipRules: [],          // Rule IDs to skip temporarily
+  skipElements: [],       // CSS selectors to exclude
+  expectedViolations: []  // Documented acceptable violations with reasons
 };
 ----
 
-== Keyboard Navigation Testing
+== Maven Integration
 
-=== Tab Order Verification
+Accessibility tests run via `exec-maven-plugin` in the `integration-test` phase when the `integration-tests` profile is active. They execute after self-tests and functional tests, with fail-fast behavior.
 
-[source,javascript]
+[source,bash]
 ----
-accessibilityTest('Keyboard navigation', async ({ page, accessibilityHelper }) => {
-  const results = await accessibilityHelper.checkKeyboardNavigation();
-  
-  expect(results.passed).toBe(true);
-  expect(results.totalFocusable).toBeGreaterThan(0);
-  
-  console.log(`Total focusable elements: ${results.totalFocusable}`);
-});
+# Full suite via Maven (starts containers, runs all phases, stops containers)
+./mvnw -pl e-2-e-playwright -Pintegration-tests clean verify
 ----
-
-=== Focus Indicator Testing
-
-[source,javascript]
-----
-// Test focus indicators are visible
-const interactiveElements = await page.locator(
-  'button, a, input, select, textarea'
-).all();
-
-for (const element of interactiveElements) {
-  await element.focus();
-  
-  const hasFocusIndicator = await element.evaluate(el => {
-    const styles = window.getComputedStyle(el);
-    return styles.outline !== 'none' || 
-           styles.boxShadow !== 'none';
-  });
-  
-  expect(hasFocusIndicator).toBe(true);
-}
-----
-
-== Screen Reader Compatibility
-
-=== Heading Structure
-
-[source,javascript]
-----
-// Check logical heading hierarchy
-const headings = await page.locator('h1, h2, h3, h4, h5, h6').all();
-const headingLevels = [];
-
-for (const heading of headings) {
-  const level = await heading.evaluate(el => parseInt(el.tagName[1]));
-  const text = await heading.textContent();
-  headingLevels.push({ level, text });
-}
-
-// Verify no skipped levels
-for (let i = 1; i < headingLevels.length; i++) {
-  const diff = headingLevels[i].level - headingLevels[i-1].level;
-  expect(diff).toBeLessThanOrEqual(1);
-}
-----
-
-=== Live Regions
-
-[source,javascript]
-----
-// Check for screen reader announcements
-const results = await accessibilityHelper.checkScreenReaderAnnouncements();
-
-expect(results.passed).toBe(true);
-expect(results.announcements.length).toBeGreaterThan(0);
-----
-
-== Report Generation
-
-=== Comprehensive Reports
-
-[source,javascript]
-----
-accessibilityTest('Generate report', async ({ page, accessibilityHelper }) => {
-  const report = await accessibilityHelper.generateReport();
-  
-  // Log summary
-  console.log('Accessibility Summary:', {
-    wcagCompliant: report.summary.wcagPassed,
-    customChecksPassed: report.summary.customChecksPassed,
-    keyboardAccessible: report.summary.keyboardNavigable,
-    screenReaderReady: report.summary.screenReaderReady
-  });
-  
-  // Save detailed report
-  await page.evaluate((reportData) => {
-    console.log('Full Report:', JSON.stringify(reportData, null, 2));
-  }, report);
-});
-----
-
-=== Report Structure
-
-Reports include:
-
-* **Summary**: Overall compliance status
-* **WCAG Results**: Detailed WCAG 2.1 AA violations
-* **Custom Checks**: NiFi-specific accessibility issues
-* **Keyboard Navigation**: Tab order and focus management
-* **Screen Reader**: Semantic markup and announcements
-* **Recommendations**: Prioritized improvement suggestions
-
-== CI/CD Integration
-
-=== GitHub Actions
-
-[source,yaml]
-----
-- name: Run Accessibility Tests
-  run: |
-    cd e-2-e-playwright
-    npm run test:a11y
-    
-- name: Upload Accessibility Reports
-  uses: actions/upload-artifact@v3
-  with:
-    name: accessibility-reports
-    path: e-2-e-playwright/target/accessibility-reports/
-----
-
-=== Maven Integration
-
-Accessibility tests run via the `exec-maven-plugin` in the `integration-test` phase, after Docker containers (NiFi and Keycloak) are started in `pre-integration-test`. They are skipped unless the `integration-tests` profile is active:
-
-[source,xml]
-----
-<execution>
-  <id>run-accessibility-tests</id>
-  <goals>
-    <goal>exec</goal>
-  </goals>
-  <phase>integration-test</phase>
-  <configuration>
-    <executable>npx</executable>
-    <arguments>
-      <argument>playwright</argument>
-      <argument>test</argument>
-      <argument>accessibility</argument>
-      <argument>--reporter=dot</argument>
-    </arguments>
-    <skip>${skipPlaywrightTests}</skip>
-  </configuration>
-</execution>
-----
-
-== Best Practices
-
-=== Writing Accessible Code
-
-* Use semantic HTML elements
-* Provide meaningful labels for form fields
-* Ensure sufficient color contrast
-* Include keyboard navigation support
-* Add ARIA attributes where needed
-* Test with screen readers
-
-=== Test Development
-
-* Test each component individually
-* Include positive and negative test cases
-* Verify dynamic content accessibility
-* Test keyboard-only navigation
-* Validate error message accessibility
-* Check loading state announcements
-
-=== Maintenance
-
-* Run accessibility tests regularly
-* Update known issues list as fixes are implemented
-* Review new components for accessibility
-* Keep accessibility libraries updated
-* Monitor WCAG guideline updates
 
 == Troubleshooting
 
-=== Critical Prerequisites
-
-==== NiFi Service Not Available
-[source]
+=== NiFi Service Not Available
 ----
 CRITICAL FAILURE: NiFi service is not available at https://localhost:9095/nifi
 ----
+Start NiFi: `./integration-testing/src/main/docker/run-and-deploy.sh`
 
-**Resolution**:
-1. Start NiFi: `./integration-testing/src/main/docker/run-and-deploy.sh`
-2. Verify accessibility at https://localhost:9095/nifi
-3. Ensure authentication works
-
-==== JWT Processor Not Found
-[source]
+=== JWT Processor Not Found
 ----
 CRITICAL FAILURE: MultiIssuerJWTTokenAuthenticator processor not found on canvas!
 ----
+The processor must be on the canvas. Tests using `processorManager` fixture handle this automatically.
 
-**Resolution**:
-1. Navigate to NiFi UI at https://localhost:9095/nifi
-2. Drag a 'Processor' component onto the canvas
-3. Search for and select 'MultiIssuerJWTTokenAuthenticator'
-4. Click 'Add' to place it on the canvas
+=== Common Fixes
 
-=== Common Issues
+|===
+| Issue | Fix
 
-==== Tests Failing Due to Color Contrast
-[source,bash]
-----
-# Check actual contrast ratios
-npm run test:a11y -- --grep "color contrast"
-----
+| Color contrast failures
+| Ensure 4.5:1 ratio; run `npm run test:a11y -- --grep "color contrast"`
 
-==== Missing Focus Indicators
-[source,css]
-----
-/* Add visible focus indicators */
-button:focus, input:focus {
-  outline: 2px solid #0066cc;
-  outline-offset: 2px;
-}
-----
+| Missing focus indicators
+| Add `outline: 2px solid #0066cc; outline-offset: 2px` on `:focus`
 
-==== Form Label Issues
-[source,html]
-----
-<!-- Explicit label association -->
-<label for="username">Username:</label>
-<input type="text" id="username" name="username">
-
-<!-- Or use aria-label -->
-<input type="text" aria-label="Username" name="username">
-----
-
-=== Debugging Failed Tests
-
-1. **Review test output**: Check console logs for detailed error messages
-2. **Run single test**: Isolate specific failing test
-3. **Check configuration**: Verify accessibility config is correct
-4. **Manual testing**: Test manually with keyboard and screen reader
-5. **Update known issues**: Add temporary exceptions if needed
+| Form label issues
+| Use `<label for="id">` or `aria-label` on every input
+|===
 
 == Resources
 
-=== Documentation
 * https://www.w3.org/WAI/WCAG21/quickref/[WCAG 2.1 Quick Reference]
 * https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright[@axe-core/playwright Documentation]
 * https://playwright.dev/docs/accessibility-testing[Playwright Accessibility Testing]
-
-=== Tools
-* https://www.deque.com/axe/[axe DevTools Browser Extension]
-* https://wave.webaim.org/[WAVE Web Accessibility Evaluator]
-* https://www.nvda-project.org/[NVDA Screen Reader] (for testing)
-
-=== Guidelines
 * https://www.w3.org/WAI/ARIA/apg/[ARIA Authoring Practices Guide]
-* https://webaim.org/[WebAIM Accessibility Resources]
-* https://www.a11yproject.com/[The A11Y Project]

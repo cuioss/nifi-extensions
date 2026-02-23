@@ -57,7 +57,7 @@ export const init = async (element) => {
     // "Add Issuer" button
     const addBtn = document.createElement('button');
     addBtn.className = 'add-issuer-button';
-    addBtn.textContent = 'Add Issuer';
+    addBtn.innerHTML = '<i class="fa fa-plus"></i> Add Issuer';
     addBtn.addEventListener('click', () => {
         addIssuerForm(issuersContainer, `${SAMPLE.name}-${Date.now()}`,
             SAMPLE.props, componentId);
@@ -130,7 +130,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
                aria-label="Issuer Name"
                value="${sanitizeHtml(issuerName || '')}">
         <button class="remove-issuer-button"
-                title="Delete this issuer configuration">Remove</button>`;
+                title="Delete this issuer configuration"><i class="fa fa-trash"></i> Remove</button>`;
     form.appendChild(header);
 
     header.querySelector('.remove-issuer-button').addEventListener('click', async () => {
@@ -190,7 +190,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     testWrapper.className = 'jwks-button-wrapper';
     testWrapper.innerHTML = `
         <button type="button" class="verify-jwks-button"
-                title="Test connectivity to the JWKS endpoint">Test Connection</button>
+                title="Test connectivity to the JWKS endpoint"><i class="fa fa-plug"></i> Test Connection</button>
         <div class="verification-result" aria-live="polite"
              role="status"><em>Click the button to validate JWKS</em></div>`;
 
@@ -229,7 +229,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-issuer-button';
-    saveBtn.textContent = 'Save Issuer';
+    saveBtn.innerHTML = '<i class="fa fa-check"></i> Save Issuer';
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
         saveIssuer(form, errorContainer, componentId);

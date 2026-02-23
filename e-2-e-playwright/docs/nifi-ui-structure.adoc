@@ -15,7 +15,7 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 
 == Authentication Flow
 
-=== Keycloak OAuth Flow
+=== API Token Authentication
 
 [source,text]
 ----
@@ -33,24 +33,10 @@ Cookie: __Secure-Authorization-Bearer=[JWT-Token]
 
 === CSRF Token
 
-NiFi requires a CSRF token for API authentication. The token is obtained from cookies after initial page load:
+NiFi requires a CSRF token for API authentication:
 
 * Cookie name: `__Secure-Request-Token`
 * Header name: `Request-Token`
-
-=== JWT Token Structure
-
-[source,json]
-----
-{
-  "sub": "testUser",
-  "aud": "https://localhost:9095",
-  "preferred_username": "testUser",
-  "groups": [],
-  "exp": 1234567890,
-  "iat": 1234567890
-}
-----
 
 == Page Detection
 
@@ -162,7 +148,7 @@ Prefer selectors in this priority order:
 
 == Infrastructure
 
-=== Service Configuration
+=== Service URLs
 
 [cols="1,2"]
 |===
@@ -177,32 +163,6 @@ Prefer selectors in this priority order:
 |Keycloak
 |`http://localhost:9080`
 |===
-
-=== Container Health Checks
-
-NiFi health check (curl-based, HTTPS):
-
-[source,yaml]
-----
-healthcheck:
-  test: ["CMD-SHELL", "curl -k --fail --max-time 3 https://localhost:8443/nifi/ || exit 1"]
-  interval: 10s
-  timeout: 5s
-  retries: 12
-  start_period: 30s
-----
-
-Keycloak health check (TCP socket-based, port 9000):
-
-[source,yaml]
-----
-healthcheck:
-  test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && ... | grep -q 'UP' ..."]
-  interval: 10s
-  timeout: 5s
-  retries: 12
-  start_period: 30s
-----
 
 == Related Documentation
 

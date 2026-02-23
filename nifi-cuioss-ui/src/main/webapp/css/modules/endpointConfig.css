@@ -1,38 +1,27 @@
-/* Endpoint Configuration display styles */
+/* Endpoint Configuration / Route CRUD Editor styles */
 
-.endpoint-config-display {
-    padding: var(--spacing-md, 16px);
+.route-config-editor {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--background-color);
 }
 
-.endpoint-config-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-md, 16px);
+.route-config-editor h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text-color);
+    font-size: 1.3em;
 }
 
-.endpoint-config-header h2 {
-    margin: 0;
-}
+/* Global settings display (read-only table) */
 
-.refresh-config-button {
-    padding: 6px 12px;
-    border: 1px solid var(--border-color, #ccc);
-    border-radius: 4px;
-    background: var(--bg-secondary, #f5f5f5);
-    cursor: pointer;
-    font-size: 0.875rem;
-}
-
-.refresh-config-button:hover {
-    background: var(--bg-hover, #e8e8e8);
-}
-
-.config-section {
+.global-settings-display {
     margin-bottom: var(--spacing-lg, 24px);
 }
 
-.config-section h3 {
+.global-settings-display h3 {
     margin-bottom: var(--spacing-sm, 8px);
     border-bottom: 1px solid var(--border-color, #ccc);
     padding-bottom: var(--spacing-xs, 4px);
@@ -59,6 +48,227 @@
 .config-table tbody tr:hover {
     background: var(--bg-hover, #f9f9f9);
 }
+
+/* Route summary table */
+
+.route-summary-table {
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+.route-summary-table tbody tr.hidden {
+    display: none;
+}
+
+/* Routes container */
+
+.routes-container {
+    margin: 15px 0;
+}
+
+/* Inline edit form */
+
+.route-form {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: var(--container-background);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+
+.route-form.inline-edit {
+    border-left: 4px solid var(--primary-color, #2196f3);
+    margin-top: var(--spacing-sm, 8px);
+}
+
+.route-form .form-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.route-form .form-header label {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.route-name {
+    width: 200px;
+    padding: 5px;
+    border: 1px solid var(--border-color);
+    margin-left: 10px;
+    border-radius: 3px;
+}
+
+.route-enabled-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal !important;
+    cursor: pointer;
+}
+
+.route-enabled {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Action buttons in table cells */
+
+.edit-route-button {
+    padding: 4px 10px;
+    border: 1px solid var(--primary-color, #2196f3);
+    color: var(--primary-color, #2196f3);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-right: 4px;
+}
+
+.edit-route-button:hover {
+    background-color: var(--primary-color, #2196f3);
+    color: var(--container-background, #fff);
+}
+
+.remove-route-button {
+    padding: 4px 10px;
+    border: 1px solid var(--error-color-dark, #dc3545);
+    color: var(--error-color-dark, #dc3545);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.remove-route-button:hover {
+    background-color: var(--error-color-dark, #dc3545);
+    color: var(--container-background, #fff);
+}
+
+/* Route form actions (Save + Cancel) */
+
+.route-form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.save-route-button {
+    padding: 8px 15px;
+    border: none;
+    color: var(--container-background);
+    background-color: var(--success-color-dark);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.save-route-button:hover {
+    background-color: #1c6e2e;
+}
+
+.cancel-route-button {
+    padding: 8px 15px;
+    border: 1px solid var(--border-color, #ccc);
+    color: var(--text-color, #333);
+    background-color: var(--container-background, #fff);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.cancel-route-button:hover {
+    background-color: var(--bg-secondary, #f5f5f5);
+}
+
+/* Form fields */
+
+.route-form .form-fields {
+    margin-bottom: 15px;
+}
+
+.route-form .form-field {
+    margin-bottom: 10px;
+}
+
+.route-form .form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.route-form .form-field input,
+.route-form .form-field textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-family: inherit;
+}
+
+.route-form .form-field textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* Schema validation toggle */
+
+.field-container-schema-toggle {
+    margin-bottom: 10px;
+}
+
+.schema-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.route-form .form-field .schema-validation-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Status badges in table */
+
+.status-enabled {
+    color: var(--success-color-dark, #28a745);
+    font-weight: 600;
+}
+
+.status-disabled {
+    color: var(--text-muted, #666);
+    font-weight: normal;
+    font-style: italic;
+}
+
+/* Add route button */
+
+.add-route-button {
+    padding: 8px 15px;
+    border: none;
+    color: var(--container-background);
+    background-color: var(--primary-color);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.add-route-button:hover {
+    background-color: var(--primary-color-dark);
+}
+
+/* Error and success messages */
+
+.route-form-error-messages {
+    color: var(--error-color);
+    margin-top: 10px;
+}
+
+/* Method badges */
 
 .method-badge {
     display: inline-block;

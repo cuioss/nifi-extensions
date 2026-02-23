@@ -366,6 +366,20 @@ export const confirmRemoveIssuer = (issuerName, onConfirm) => showConfirmationDi
 });
 
 /**
+ * Show a Remove Route confirmation dialog.
+ * @param {string} routeName
+ * @param {Function} onConfirm
+ * @returns {Promise<boolean>}
+ */
+export const confirmRemoveRoute = (routeName, onConfirm) => showConfirmationDialog({
+    title: 'Remove Route Configuration',
+    message: `Are you sure you want to remove the route "${routeName}"? This action cannot be undone.`,
+    confirmText: 'Remove',
+    cancelText: 'Cancel',
+    onConfirm
+});
+
+/**
  * Show a Clear Form confirmation dialog.
  * @param {Function} onConfirm
  * @returns {Promise<boolean>}

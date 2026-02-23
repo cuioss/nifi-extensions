@@ -17,7 +17,8 @@ Custom Apache NiFi processors for JWT authentication and validation with a web-b
 ./mvnw clean install                                    # Full build + tests
 ./mvnw -Ppre-commit clean install -DskipTests           # Pre-commit quality checks (MANDATORY before commits)
 ./mvnw clean verify -Psonar                             # SonarQube analysis
-./mvnw verify -Pintegration-tests                   # Integration tests (Java ITs + Playwright E2E)
+./mvnw verify -Pintegration-tests -pl integration-testing -am  # Java integration tests (Docker)
+./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am    # E2E Playwright tests (Docker)
 
 # Frontend (from nifi-cuioss-ui/)
 npm test                                                # Jest tests
@@ -26,6 +27,17 @@ npm run lint                                            # ESLint check
 # E2E (from e-2-e-playwright/)
 npm run playwright:test                                 # Playwright tests
 ```
+
+## Docker E2E Deployment
+
+Use `/deploy` skill for full runbook. Quick reference:
+
+- **First start:** `./integration-testing/src/main/docker/run-and-deploy.sh`
+- **Redeploy after code changes:** `./integration-testing/src/main/docker/redeploy-nifi.sh`
+- **Stop containers:** `cd integration-testing/src/main/docker && docker compose down -v`
+- **Run E2E tests (containers running):** `cd e-2-e-playwright && npm run playwright:test`
+
+IMPORTANT: Always stop Docker containers before running Maven E2E (`./mvnw verify -Pintegration-tests`), as Maven manages its own container lifecycle. Running both causes port conflicts.
 
 ## Conventions
 

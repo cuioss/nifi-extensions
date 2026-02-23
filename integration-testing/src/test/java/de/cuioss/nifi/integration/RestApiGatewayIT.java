@@ -275,6 +275,16 @@ class RestApiGatewayIT {
         }
 
         @Test
+        @DisplayName("should return 404 for disabled route")
+        void disabledRouteReturns404() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/disabled")
+                    .then()
+                    .statusCode(404);
+        }
+
+        @Test
         @DisplayName("should return 405 for unsupported HTTP method on /api/health")
         void shouldReturn405ForPostOnHealth() {
             given().spec(authSpec)

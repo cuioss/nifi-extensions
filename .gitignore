@@ -20,6 +20,7 @@ jest_stderr.log
 jest_stdout.log
 
 **/.claude
+!/.claude/
 
 # Build artifacts - generated bundle files (keep bundle-wrapper.js as it's source code)
 **/bundle.js
@@ -29,7 +30,8 @@ jest_stdout.log
 # But NOT bundle-wrapper.js (it's source code, not generated)
 
 # Claude Code configuration
-.claude/
+.claude/*
+!.claude/skills/
 
 # Planning system (managed by /marshall-steward)
 .plan/*

@@ -411,7 +411,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     private Optional<RouteConfiguration> findRoute(String path) {
         for (RouteConfiguration route : routes) {
-            if (route.path().equals(path)) {
+            if (route.enabled() && route.path().equals(path)) {
                 return Optional.of(route);
             }
         }

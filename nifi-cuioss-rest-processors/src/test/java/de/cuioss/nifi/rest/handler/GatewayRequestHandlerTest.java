@@ -64,9 +64,9 @@ class GatewayRequestHandlerTest {
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
         List<RouteConfiguration> routes = List.of(
-                new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null),
-                new RouteConfiguration("users", "/api/users", Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null),
-                new RouteConfiguration("data", "/api/data", Set.of("GET", "POST"), Set.of(), Set.of("READ"), null));
+                new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null),
+                new RouteConfiguration("users", "/api/users", true, Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null),
+                new RouteConfiguration("data", "/api/data", true, Set.of("GET", "POST"), Set.of(), Set.of("READ"), null));
 
         handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
 
@@ -142,6 +142,35 @@ class GatewayRequestHandlerTest {
             assertFalse(queue.isEmpty());
             assertEquals("health", queue.poll().routeName());
             assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should return 404 for disabled route")
+        void shouldReturn404ForDisabledRoute() throws Exception {
+            // Arrange — create handler with a disabled route
+            var disabledHandler = new GatewayRequestHandler(
+                    List.of(new RouteConfiguration("disabled", "/api/disabled", false,
+                            Set.of("GET"), Set.of(), Set.of(), null)),
+                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576);
+            Server disabledServer = new Server();
+            ServerConnector connector = new ServerConnector(disabledServer);
+            connector.setPort(0);
+            disabledServer.addConnector(connector);
+            disabledServer.setHandler(disabledHandler);
+            disabledServer.start();
+            try {
+                int disabledPort = connector.getLocalPort();
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + disabledPort + "/api/disabled"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                // Assert
+                assertEquals(404, response.statusCode());
+            } finally {
+                disabledServer.stop();
+            }
         }
     }
 
@@ -302,7 +331,7 @@ class GatewayRequestHandlerTest {
             // Create a handler with a tiny queue
             var tinyQueue = new LinkedBlockingQueue<HttpRequestContainer>(1);
             var tinyHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, tinyQueue, 1_048_576);
 
             Server tinyServer = new Server();
@@ -379,7 +408,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 204 for OPTIONS preflight request with allowed origin")
         void shouldReturn204ForOptionsPreflightRequest() throws Exception {
             var corsHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, queue, 1_048_576,
                     Set.of("http://example.com"));
 
@@ -413,7 +442,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should include CORS headers on normal response when origin is allowed")
         void shouldIncludeCorsHeadersOnNormalResponse() throws Exception {
             var corsHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
                     Set.of("http://example.com"));
 
@@ -448,7 +477,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should not add CORS headers for disallowed origin")
         void shouldNotAddCorsHeadersForDisallowedOrigin() throws Exception {
             var corsHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
                     Set.of("http://example.com"));
 
@@ -479,7 +508,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should allow wildcard origin")
         void shouldAllowWildcardOrigin() throws Exception {
             var corsHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576,
                     Set.of("*"));
 
@@ -534,7 +563,7 @@ class GatewayRequestHandlerTest {
         void shouldReturn413ForOversizedBody() throws Exception {
             // Create handler with tiny max body size
             var smallHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("data", "/api/data",
+                    List.of(new RouteConfiguration("data", "/api/data", true,
                             Set.of("POST"), Set.of(), Set.of(), null)),
                     mockConfigService, queue, 10); // 10 bytes max
 
@@ -676,7 +705,7 @@ class GatewayRequestHandlerTest {
         void shouldAcceptLegitimatePattern(LegitimateTestCase testCase) throws Exception {
             // Configure a wildcard-like route for the legitimate path
             var handler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("test", testCase.legitimatePattern(),
+                    List.of(new RouteConfiguration("test", testCase.legitimatePattern(), true,
                             Set.of("GET"), Set.of(), Set.of(), null)),
                     mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576);
 

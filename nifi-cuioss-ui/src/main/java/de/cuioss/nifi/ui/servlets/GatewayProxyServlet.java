@@ -464,9 +464,15 @@ public class GatewayProxyServlet extends HttpServlet {
             JsonObjectBuilder routeObj = Json.createObjectBuilder();
             routeObj.add("name", routeEntry.getKey());
             routeObj.add("path", path);
+            routeObj.add("enabled", !"false".equalsIgnoreCase(
+                    routeProps.getOrDefault("enabled", "true")));
             routeObj.add("methods", buildStringArray(routeProps.get("methods")));
             routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
             routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
+            String schema = routeProps.get("schema");
+            if (schema != null && !schema.isBlank()) {
+                routeObj.add("schema", schema);
+            }
             routesArray.add(routeObj);
         }
         return routesArray;

@@ -33,6 +33,7 @@ import java.util.Set;
  *
  * @param name           the route name (from the property group key)
  * @param path           the URL path (e.g. {@code "/api/users"})
+ * @param enabled        whether this route is active (disabled routes are skipped during matching)
  * @param methods        allowed HTTP methods (default: GET,POST,PUT,DELETE)
  * @param requiredRoles  roles the JWT token must carry for this route
  * @param requiredScopes scopes the JWT token must carry for this route
@@ -41,6 +42,7 @@ import java.util.Set;
 public record RouteConfiguration(
 @NonNull String name,
 @NonNull String path,
+boolean enabled,
 Set<String> methods,
 Set<String> requiredRoles,
 Set<String> requiredScopes,
