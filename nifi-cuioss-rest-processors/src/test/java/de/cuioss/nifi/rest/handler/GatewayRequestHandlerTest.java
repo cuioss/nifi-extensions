@@ -825,9 +825,9 @@ class GatewayRequestHandlerTest {
         }
 
         @Test
-        @DisplayName("Should skip validation for empty body")
-        void shouldSkipValidationForEmptyBody() throws Exception {
-            // POST with empty body should not trigger schema validation
+        @DisplayName("Should reject empty body when schema is configured")
+        void shouldRejectEmptyBody() throws Exception {
+            // POST with empty body should fail schema validation
             var response = httpClient.send(
                     HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
@@ -836,8 +836,8 @@ class GatewayRequestHandlerTest {
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            assertEquals(202, response.statusCode());
-            assertEquals(0L, schemaHandler.getGatewaySecurityEvents()
+            assertEquals(422, response.statusCode());
+            assertEquals(1L, schemaHandler.getGatewaySecurityEvents()
                     .getCount(EventType.SCHEMA_VALIDATION_FAILED));
         }
     }

@@ -237,7 +237,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         Map<String, Path> routeSchemas = new HashMap<>();
         for (RouteConfiguration route : routes) {
             if (route.hasSchemaValidation()) {
-                Path schemaPath = Path.of(route.schemaPath());
+                Path schemaPath = Path.of(route.schemaPath()).normalize();
                 if (Files.isReadable(schemaPath)) {
                     routeSchemas.put(route.name(), schemaPath);
                     LOGGER.info("Schema validation enabled for route '%s': %s", route.name(), schemaPath);

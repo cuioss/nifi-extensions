@@ -389,7 +389,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private boolean validateRequestBody(
             RouteConfiguration route, byte[] body, Response response, Callback callback,
             String method, String path) {
-        if (schemaValidator == null || !route.hasSchemaValidation() || body.length == 0) {
+        if (schemaValidator == null || !route.hasSchemaValidation()) {
             return true;
         }
         List<SchemaViolation> violations = schemaValidator.validate(route.name(), body);
