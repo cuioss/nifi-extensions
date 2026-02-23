@@ -385,7 +385,7 @@ class RestApiGatewayIT {
                     .then()
                     .statusCode(422)
                     .contentType(containsString("application/problem+json"))
-                    .body("title", equalTo("Validation Error"))
+                    .body("title", equalTo("Unprocessable Content"))
                     .body("status", equalTo(422))
                     .body("violations", notNullValue())
                     .body("violations.size()", greaterThanOrEqualTo(1));
