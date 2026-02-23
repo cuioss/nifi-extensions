@@ -196,12 +196,23 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
+        // Close any leftover editor from previous test
+        const existingForm = endpointConfigPanel.locator(".route-form");
+        if (await existingForm.count() > 0) {
+            const existingCancel = existingForm.locator(".cancel-route-button");
+            if (await existingCancel.isVisible({ timeout: 1000 }).catch(() => false)) {
+                await existingCancel.click();
+                await expect(existingForm).toHaveCount(0, { timeout: 3000 });
+            }
+        }
+
         // Remember initial row count
         const initialRows = summaryTable.locator("tbody tr[data-route-name]:not(.hidden)");
         const initialCount = await initialRows.count();
 
-        // Click Edit on first row
-        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        // Click Edit on first visible row
+        const firstEditBtn = summaryTable.locator("tbody tr[data-route-name]:not(.hidden) .edit-route-button").first();
+        await expect(firstEditBtn).toBeVisible({ timeout: 5000 });
         await firstEditBtn.click();
 
         // Form is open
