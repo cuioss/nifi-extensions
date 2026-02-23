@@ -22,6 +22,10 @@ cd "${DOCKER_DIR}"
 echo "Creating deploy directory..."
 mkdir -p "${PROJECT_ROOT}/target/nifi-deploy"
 
+# Step 1b: Stop any existing containers (idempotent — safe if nothing is running)
+echo "Stopping any existing containers..."
+docker compose down -v 2>/dev/null || true
+
 # Step 2: Build and copy NAR
 echo "Building and deploying NAR files..."
 bash "${DOCKER_DIR}/copy-deployment.sh" --skip-build

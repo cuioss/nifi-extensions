@@ -28,6 +28,17 @@ npm run lint                                            # ESLint check
 npm run playwright:test                                 # Playwright tests
 ```
 
+## Docker E2E Deployment
+
+Use `/deploy` skill for full runbook. Quick reference:
+
+- **First start:** `./integration-testing/src/main/docker/run-and-deploy.sh`
+- **Redeploy after code changes:** `./integration-testing/src/main/docker/redeploy-nifi.sh`
+- **Stop containers:** `cd integration-testing/src/main/docker && docker compose down -v`
+- **Run E2E tests (containers running):** `cd e-2-e-playwright && npm run playwright:test`
+
+IMPORTANT: Always stop Docker containers before running Maven E2E (`./mvnw verify -Pintegration-tests`), as Maven manages its own container lifecycle. Running both causes port conflicts.
+
 ## Conventions
 
 - **Java 21** — Records, switch expressions, text blocks, pattern matching, sealed classes
