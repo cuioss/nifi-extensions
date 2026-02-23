@@ -374,7 +374,7 @@ public class JwksValidationServlet extends HttpServlet {
      * @throws InterruptedException if HTTP request is interrupted
      */
     private String fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
-            InetAddress resolvedAddress) throws IOException, InterruptedException {
+                                                     InetAddress resolvedAddress) throws IOException, InterruptedException {
         // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
         URI ipBasedUri;
         try {
@@ -698,10 +698,10 @@ public class JwksValidationServlet extends HttpServlet {
      * Result of JWKS validation.
      */
     private record JwksValidationResult(
-    boolean valid,
-    String error,
-    int keyCount,
-    List<String> algorithms
+            boolean valid,
+            String error,
+            int keyCount,
+            List<String> algorithms
     ) {
         public static JwksValidationResult success(int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);

@@ -165,18 +165,18 @@ class RouteConfigurationParserTest {
         }
 
         @Test
-        @DisplayName("Should handle schema property")
+        @DisplayName("Should handle schema property as file path")
         void shouldHandleSchemaProperty() {
             // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.users.path", "/api/users");
-            properties.put("restapi.users.schema", "user-schema");
+            properties.put("restapi.users.schema", "./conf/schemas/user-schema.json");
 
             // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
             // Assert
-            assertEquals("user-schema", routes.getFirst().schemaName());
+            assertEquals("./conf/schemas/user-schema.json", routes.getFirst().schemaPath());
         }
     }
 

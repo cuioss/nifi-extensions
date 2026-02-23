@@ -16,12 +16,16 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.nifi.rest.validation.SchemaViolation;
 import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonValue;
 import lombok.Builder;
 import lombok.Singular;
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,11 +46,11 @@ import java.util.Map;
  */
 @Builder
 public record ProblemDetail(
-@Nullable String type,
-String title,
-int status,
-@Nullable String detail,
-@Singular Map<String, Object> extensions) {
+        @Nullable String type,
+        String title,
+        int status,
+        @Nullable String detail,
+        @Singular Map<String, Object> extensions) {
 
     /** RFC 9457 content type. */
     public static final String CONTENT_TYPE = "application/problem+json";
@@ -101,6 +105,7 @@ int status,
             for (Map.Entry<String, Object> entry : extensions.entrySet()) {
                 Object value = entry.getValue();
                 switch (value) {
+                    case JsonValue jv -> builder.add(entry.getKey(), jv);
                     case Number n when n instanceof Integer || n instanceof Long ->
                         builder.add(entry.getKey(), n.longValue());
                     case Number n -> builder.add(entry.getKey(), n.doubleValue());
@@ -209,6 +214,32 @@ int status,
                 .title(TITLE_VALIDATION_ERROR)
                 .status(422)
                 .detail(detail)
+                .build();
+    }
+
+    /**
+     * Creates a 422 Unprocessable Content problem detail with a {@code violations} array.
+     * <p>
+     * Each violation includes a JSON Pointer ({@code pointer}) to the invalid location
+     * and a human-readable {@code message}.
+     *
+     * @param detail     human-readable summary of the validation failure
+     * @param violations the list of schema violations
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/validation-error.adoc">Error Documentation</a>
+     */
+    public static ProblemDetail validationError(String detail, List<SchemaViolation> violations) {
+        JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+        for (SchemaViolation v : violations) {
+            arrayBuilder.add(Json.createObjectBuilder()
+                    .add("pointer", v.pointer())
+                    .add("message", v.message()));
+        }
+        return ProblemDetail.builder()
+                .type(TYPE_VALIDATION_ERROR)
+                .title(TITLE_VALIDATION_ERROR)
+                .status(422)
+                .detail(detail)
+                .extension("violations", arrayBuilder.build())
                 .build();
     }
 

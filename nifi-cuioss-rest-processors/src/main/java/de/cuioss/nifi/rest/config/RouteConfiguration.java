@@ -37,16 +37,16 @@ import java.util.Set;
  * @param methods        allowed HTTP methods (default: GET,POST,PUT,DELETE)
  * @param requiredRoles  roles the JWT token must carry for this route
  * @param requiredScopes scopes the JWT token must carry for this route
- * @param schemaName     optional JSON Schema name for request body validation
+ * @param schemaPath     optional file path to a JSON Schema file for request body validation
  */
 public record RouteConfiguration(
-@NonNull String name,
-@NonNull String path,
-boolean enabled,
-Set<String> methods,
-Set<String> requiredRoles,
-Set<String> requiredScopes,
-@Nullable String schemaName) {
+        @NonNull String name,
+        @NonNull String path,
+        boolean enabled,
+        Set<String> methods,
+        Set<String> requiredRoles,
+        Set<String> requiredScopes,
+        @Nullable String schemaPath) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
@@ -62,6 +62,13 @@ Set<String> requiredScopes,
         methods = methods != null && !methods.isEmpty() ? Set.copyOf(methods) : DEFAULT_METHODS;
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
+    }
+
+    /**
+     * Whether this route has JSON Schema validation configured.
+     */
+    public boolean hasSchemaValidation() {
+        return schemaPath != null && !schemaPath.isBlank();
     }
 
     /**

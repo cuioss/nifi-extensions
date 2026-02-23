@@ -16,13 +16,16 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.nifi.rest.validation.SchemaViolation;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -124,6 +127,29 @@ class ProblemDetailTest {
         }
 
         @Test
+        @DisplayName("Should serialize JsonValue extensions")
+        void shouldSerializeJsonValueExtensions() {
+            var violationsArray = Json.createArrayBuilder()
+                    .add(Json.createObjectBuilder()
+                            .add("pointer", "/name")
+                            .add("message", "is required"))
+                    .build();
+            var problem = ProblemDetail.builder()
+                    .title(ProblemDetail.TITLE_VALIDATION_ERROR)
+                    .status(422)
+                    .extension("violations", violationsArray)
+                    .build();
+
+            JsonObject json = parseJson(problem.toJson());
+
+            assertTrue(json.containsKey("violations"));
+            JsonArray violations = json.getJsonArray("violations");
+            assertEquals(1, violations.size());
+            assertEquals("/name", violations.getJsonObject(0).getString("pointer"));
+            assertEquals("is required", violations.getJsonObject(0).getString("message"));
+        }
+
+        @Test
         @DisplayName("Should produce valid RFC 9457 content type")
         void shouldProduceValidRfc9457ContentType() {
             assertEquals("application/problem+json", ProblemDetail.CONTENT_TYPE);
@@ -203,6 +229,33 @@ class ProblemDetailTest {
             assertEquals(422, problem.status());
             assertEquals(ProblemDetail.TITLE_VALIDATION_ERROR, problem.title());
             assertEquals(ProblemDetail.TYPE_VALIDATION_ERROR, problem.type());
+        }
+
+        @Test
+        @DisplayName("Should build 422 Validation Error with violations array")
+        void shouldBuild422ValidationErrorWithViolations() {
+            var violations = List.of(
+                    new SchemaViolation("/name", "is required"),
+                    new SchemaViolation("/age", "must be integer"));
+            var problem = ProblemDetail.validationError("Request body failed validation", violations);
+
+            assertEquals(422, problem.status());
+            assertEquals(ProblemDetail.TITLE_VALIDATION_ERROR, problem.title());
+            assertEquals(ProblemDetail.TYPE_VALIDATION_ERROR, problem.type());
+
+            // Verify violations array is in extensions and serializes correctly
+            String json = problem.toJson();
+            JsonObject parsed;
+            try (var reader = Json.createReader(new StringReader(json))) {
+                parsed = reader.readObject();
+            }
+            assertTrue(parsed.containsKey("violations"));
+            JsonArray violationsArray = parsed.getJsonArray("violations");
+            assertEquals(2, violationsArray.size());
+            assertEquals("/name", violationsArray.getJsonObject(0).getString("pointer"));
+            assertEquals("is required", violationsArray.getJsonObject(0).getString("message"));
+            assertEquals("/age", violationsArray.getJsonObject(1).getString("pointer"));
+            assertEquals("must be integer", violationsArray.getJsonObject(1).getString("message"));
         }
 
         @Test

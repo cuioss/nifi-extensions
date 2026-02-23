@@ -92,7 +92,7 @@ public class ManagementEndpointHandler {
      *         {@code false} if the path should be processed by the normal pipeline
      */
     public boolean handleIfManagement(String path, String method, String accept,
-            Request request, Response response, Callback callback) {
+                                      Request request, Response response, Callback callback) {
         if (!METRICS_PATH.equals(path)) {
             return false;
         }
@@ -222,7 +222,7 @@ public class ManagementEndpointHandler {
     // -----------------------------------------------------------------------
 
     private static void sendResponse(Response response, Callback callback,
-            String contentType, String body) {
+                                     String contentType, String body) {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         response.setStatus(200);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, contentType);

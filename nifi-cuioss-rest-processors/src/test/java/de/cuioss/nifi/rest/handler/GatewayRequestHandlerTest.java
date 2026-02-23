@@ -20,6 +20,7 @@ import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
+import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
@@ -35,7 +36,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -692,6 +696,149 @@ class GatewayRequestHandlerTest {
                     "Expected rejection for: " + testCase.attackDescription());
         } catch (IllegalArgumentException e) {
             // Attack string contains characters illegal for URI — rejected at transport level
+        }
+    }
+
+    @Nested
+    @DisplayName("Schema Validation")
+    class SchemaValidation {
+
+        private Path schemaFile;
+        private int schemaPort;
+        private Server schemaServer;
+        private GatewayRequestHandler schemaHandler;
+
+        @BeforeEach
+        void setUpSchema() throws Exception {
+            schemaFile = Files.createTempFile("schema", ".json");
+            Files.writeString(schemaFile, """
+                    {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "required": ["name"],
+                      "properties": {
+                        "name": { "type": "string", "minLength": 1 },
+                        "age": { "type": "integer", "minimum": 0 }
+                      },
+                      "additionalProperties": false
+                    }
+                    """);
+
+            var schemaValidator = new JsonSchemaValidator(
+                    Map.of("validated", schemaFile));
+
+            var schemaQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            List<RouteConfiguration> routes = List.of(
+                    new RouteConfiguration("validated", "/api/validated", true,
+                            Set.of("POST"), Set.of(), Set.of(), schemaFile.toString()),
+                    new RouteConfiguration("noschema", "/api/noschema", true,
+                            Set.of("POST"), Set.of(), Set.of(), null));
+
+            schemaHandler = new GatewayRequestHandler(
+                    routes, mockConfigService, schemaQueue, 1_048_576, Set.of(), schemaValidator);
+
+            schemaServer = new Server();
+            ServerConnector connector = new ServerConnector(schemaServer);
+            connector.setPort(0);
+            schemaServer.addConnector(connector);
+            schemaServer.setHandler(schemaHandler);
+            schemaServer.start();
+            schemaPort = connector.getLocalPort();
+        }
+
+        @AfterEach
+        void tearDownSchema() throws Exception {
+            if (schemaServer != null && schemaServer.isRunning()) {
+                schemaServer.stop();
+            }
+            Files.deleteIfExists(schemaFile);
+        }
+
+        @Test
+        @DisplayName("Should return 422 for invalid body")
+        void shouldReturn422ForInvalidBody() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("""
+                                    {"age": 25}
+                                    """))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(422, response.statusCode());
+            assertTrue(response.body().contains("Unprocessable Content"));
+            assertTrue(response.headers().firstValue("Content-Type")
+                    .orElse("").contains("application/problem+json"));
+            assertEquals(1L, schemaHandler.getGatewaySecurityEvents()
+                    .getCount(EventType.SCHEMA_VALIDATION_FAILED));
+        }
+
+        @Test
+        @DisplayName("Should return 422 with violations array in response")
+        void shouldReturn422WithViolationsArray() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("""
+                                    {"age": "not-a-number"}
+                                    """))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(422, response.statusCode());
+            assertTrue(response.body().contains("violations"));
+            assertTrue(response.body().contains("pointer"));
+            assertTrue(response.body().contains("message"));
+        }
+
+        @Test
+        @DisplayName("Should return 202 for valid body")
+        void shouldReturn202ForValidBody() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("""
+                                    {"name": "Alice", "age": 30}
+                                    """))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(202, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should skip validation when no schema configured")
+        void shouldSkipValidationWhenNoSchema() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/noschema"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.ofString("any invalid json content"))
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(202, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should skip validation for empty body")
+        void shouldSkipValidationForEmptyBody() throws Exception {
+            // POST with empty body should not trigger schema validation
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Content-Type", "application/json")
+                            .POST(HttpRequest.BodyPublishers.noBody())
+                            .build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(202, response.statusCode());
+            assertEquals(0L, schemaHandler.getGatewaySecurityEvents()
+                    .getCount(EventType.SCHEMA_VALIDATION_FAILED));
         }
     }
 

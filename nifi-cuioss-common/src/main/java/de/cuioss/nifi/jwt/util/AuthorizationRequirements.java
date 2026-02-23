@@ -41,9 +41,9 @@ import java.util.stream.Collectors;
  * the configuration via {@link #from(ProcessContext)}.
  */
 public record AuthorizationRequirements(
-boolean requireValidToken,
-Set<String> requiredRoles,
-Set<String> requiredScopes) {
+        boolean requireValidToken,
+        Set<String> requiredRoles,
+        Set<String> requiredScopes) {
 
     /**
      * Compact constructor — defensive copies and null safety.

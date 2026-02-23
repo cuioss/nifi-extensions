@@ -151,6 +151,7 @@
         <version.jjwt>0.13.0</version.jjwt>
         <version.jspecify>1.0.0</version.jspecify>
         <version.awaitility>4.2.2</version.awaitility>
+        <version.json-schema>1.9.0</version.json-schema>
     </properties>
 
     <dependencyManagement>
@@ -305,6 +306,11 @@
                 <artifactId>awaitility</artifactId>
                 <version>${version.awaitility}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>dev.harrel</groupId>
+                <artifactId>json-schema</artifactId>
+                <version>${version.json-schema}</version>
             </dependency>
             <dependency>
                 <groupId>org.hamcrest</groupId>

@@ -102,7 +102,7 @@ class ProcessorIdValidationFilterTest {
         @MethodSource("invalidProcessorIdCases")
         @DisplayName("Should reject request with invalid processor ID")
         void shouldRejectRequestWithInvalidProcessorId(String processorId,
-                String expectedMessage, String scenario) {
+                                                       String expectedMessage, String scenario) {
             handle.spec()
                     .header(PROCESSOR_ID_HEADER, processorId)
                     .when()

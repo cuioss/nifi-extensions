@@ -23,6 +23,7 @@ import de.cuioss.nifi.rest.config.RouteConfigurationParser;
 import de.cuioss.nifi.rest.handler.GatewayRequestHandler;
 import de.cuioss.nifi.rest.handler.HttpRequestContainer;
 import de.cuioss.nifi.rest.server.JettyServerManager;
+import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.tools.logging.CuiLogger;
 import de.cuioss.tools.string.Splitter;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -40,6 +41,8 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
 
 import javax.net.ssl.SSLContext;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -133,7 +136,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
         Set<String> corsOrigins = parseCorsOrigins(context);
-        var handler = new GatewayRequestHandler(routes, configService, requestQueue, maxRequestSize, corsOrigins);
+
+        // Build JSON Schema validator from route configurations
+        JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
+
+        var handler = new GatewayRequestHandler(
+                routes, configService, requestQueue, maxRequestSize, corsOrigins, schemaValidator);
 
         // Resolve optional SSL context for HTTPS
         SSLContextProvider sslProvider = context.getProperty(
@@ -223,6 +231,26 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             requestQueue.clear();
         }
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_STOPPED, drained);
+    }
+
+    private static JsonSchemaValidator buildSchemaValidator(List<RouteConfiguration> routes) {
+        Map<String, Path> routeSchemas = new HashMap<>();
+        for (RouteConfiguration route : routes) {
+            if (route.hasSchemaValidation()) {
+                Path schemaPath = Path.of(route.schemaPath());
+                if (Files.isReadable(schemaPath)) {
+                    routeSchemas.put(route.name(), schemaPath);
+                    LOGGER.info("Schema validation enabled for route '%s': %s", route.name(), schemaPath);
+                } else {
+                    LOGGER.warn("Schema file not readable for route '%s', skipping validation: %s",
+                            route.name(), schemaPath);
+                }
+            }
+        }
+        if (routeSchemas.isEmpty()) {
+            return null;
+        }
+        return new JsonSchemaValidator(routeSchemas);
     }
 
     private static Set<String> parseCorsOrigins(ProcessContext context) {

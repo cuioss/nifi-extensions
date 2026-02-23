@@ -133,8 +133,8 @@ class IntegrationTestSupport {
      * @return the access token string
      */
     static String fetchKeycloakToken(HttpClient client, String endpoint,
-            String clientId, String clientSecret,
-            String username, String password) throws Exception {
+                                     String clientId, String clientSecret,
+                                     String username, String password) throws Exception {
         String body = formEncode(Map.of(
                 "grant_type", "password",
                 "client_id", clientId,
@@ -244,7 +244,7 @@ class IntegrationTestSupport {
      * @return the processor status object, or empty if not found
      */
     static Optional<JsonObject> findProcessorInSnapshot(JsonObject snapshot,
-            String processorNameSubstring) {
+                                                        String processorNameSubstring) {
         JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
         if (processorStatuses != null) {
             for (JsonValue value : processorStatuses) {
