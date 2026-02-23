@@ -49,11 +49,23 @@
     background: var(--bg-hover, #f9f9f9);
 }
 
-/* Route forms container */
+/* Route summary table */
+
+.route-summary-table {
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+.route-summary-table tbody tr.hidden {
+    display: none;
+}
+
+/* Routes container */
 
 .routes-container {
     margin: 15px 0;
 }
+
+/* Inline edit form */
 
 .route-form {
     margin-bottom: 20px;
@@ -63,9 +75,14 @@
     border-radius: 5px;
 }
 
+.route-form.inline-edit {
+    border-left: 4px solid var(--primary-color, #2196f3);
+    margin-top: var(--spacing-sm, 8px);
+}
+
 .route-form .form-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     margin-bottom: 15px;
     gap: 10px;
@@ -99,18 +116,74 @@
     cursor: pointer;
 }
 
+/* Action buttons in table cells */
+
+.edit-route-button {
+    padding: 4px 10px;
+    border: 1px solid var(--primary-color, #2196f3);
+    color: var(--primary-color, #2196f3);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-right: 4px;
+}
+
+.edit-route-button:hover {
+    background-color: var(--primary-color, #2196f3);
+    color: var(--container-background, #fff);
+}
+
 .remove-route-button {
-    padding: 5px 10px;
+    padding: 4px 10px;
+    border: 1px solid var(--error-color-dark, #dc3545);
+    color: var(--error-color-dark, #dc3545);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.remove-route-button:hover {
+    background-color: var(--error-color-dark, #dc3545);
+    color: var(--container-background, #fff);
+}
+
+/* Route form actions (Save + Cancel) */
+
+.route-form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.save-route-button {
+    padding: 8px 15px;
     border: none;
     color: var(--container-background);
-    background-color: var(--error-color-dark);
+    background-color: var(--success-color-dark);
     border-radius: 3px;
     cursor: pointer;
 }
 
-.remove-route-button:hover {
-    background-color: #c82333;
+.save-route-button:hover {
+    background-color: #1c6e2e;
 }
+
+.cancel-route-button {
+    padding: 8px 15px;
+    border: 1px solid var(--border-color, #ccc);
+    color: var(--text-color, #333);
+    background-color: var(--container-background, #fff);
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.cancel-route-button:hover {
+    background-color: var(--bg-secondary, #f5f5f5);
+}
+
+/* Form fields */
 
 .route-form .form-fields {
     margin-bottom: 15px;
@@ -140,6 +213,41 @@
     font-size: 0.85rem;
 }
 
+/* Schema validation toggle */
+
+.field-container-schema-toggle {
+    margin-bottom: 10px;
+}
+
+.schema-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.schema-validation-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Status badges in table */
+
+.status-enabled {
+    color: var(--success-color-dark, #28a745);
+    font-weight: 600;
+}
+
+.status-disabled {
+    color: var(--text-muted, #666);
+    font-weight: normal;
+    font-style: italic;
+}
+
+/* Add route button */
+
 .add-route-button {
     padding: 8px 15px;
     border: none;
@@ -153,25 +261,14 @@
     background-color: var(--primary-color-dark);
 }
 
-.save-route-button {
-    padding: 8px 15px;
-    border: none;
-    color: var(--container-background);
-    background-color: var(--success-color-dark);
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-.save-route-button:hover {
-    background-color: #1c6e2e;
-}
-
 /* Error and success messages */
 
 .route-form-error-messages {
     color: var(--error-color);
     margin-top: 10px;
 }
+
+/* Method badges */
 
 .method-badge {
     display: inline-block;
