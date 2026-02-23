@@ -627,6 +627,46 @@ describe('rest-endpoint-config', () => {
         expect(utils.displayUiError).toHaveBeenCalled();
     });
 
+    it('should reject duplicate route name on new route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.existing.path': '/api/existing', 'restapi.existing.methods': 'GET' },
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Add a new route with the same name as the existing one
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'existing';
+        form.querySelector('.field-path').value = '/api/duplicate';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(utils.displayUiError).toHaveBeenCalled();
+        expect(api.updateComponentProperties).not.toHaveBeenCalled();
+    });
+
+    it('should allow saving route with same name when editing that route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: { 'restapi.existing.path': '/api/existing', 'restapi.existing.methods': 'GET' },
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Edit the existing route — keeping the same name should be allowed
+        container.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(api.updateComponentProperties).toHaveBeenCalled();
+    });
+
     it('should set optional properties to null when empty', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: { 'restapi.test.path': '/api/test', 'restapi.test.methods': 'GET' },

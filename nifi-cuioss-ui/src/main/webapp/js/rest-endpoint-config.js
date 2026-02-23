@@ -444,10 +444,17 @@ const extractFormFields = (form) => {
     };
 };
 
-const validateFormData = (f) => {
+const validateFormData = (f, routesContainer, originalName) => {
     if (!f.routeName) return { isValid: false, error: new Error('Route name is required.') };
     if (!/^[a-zA-Z0-9_-]+$/.test(f.routeName)) {
         return { isValid: false, error: new Error('Route name can only contain alphanumeric characters, hyphens, and underscores.') };
+    }
+    // Check for duplicate route names (exclude the route being edited)
+    if (routesContainer && f.routeName !== originalName) {
+        const existing = routesContainer.querySelector(`tr[data-route-name="${CSS.escape(f.routeName)}"]`);
+        if (existing) {
+            return { isValid: false, error: new Error(`A route named "${f.routeName}" already exists.`) };
+        }
     }
     if (!f.path) return { isValid: false, error: new Error('Path is required.') };
     return { isValid: true };
@@ -474,10 +481,10 @@ const buildPropertyUpdates = (name, f) => {
  */
 const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) => {
     const f = extractFormFields(form);
-    const v = validateFormData(f);
+    const originalName = form.dataset.originalName || '';
+    const v = validateFormData(f, routesContainer, originalName);
     if (!v.isValid) { displayUiError(errEl, v.error, {}, 'routeConfigEditor.error.title'); return; }
 
-    const originalName = form.dataset.originalName;
     const nameChanged = originalName && originalName !== f.routeName;
 
     const updates = buildPropertyUpdates(f.routeName, f);
