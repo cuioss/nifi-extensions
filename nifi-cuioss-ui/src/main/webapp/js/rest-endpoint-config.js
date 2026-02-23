@@ -8,10 +8,10 @@
  * @module js/rest-endpoint-config
  */
 
+import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute,
-    validateProcessorIdFromUrl
+    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute
 } from './utils.js';
 
 // Counter for unique form field IDs
@@ -38,7 +38,7 @@ const SCHEMA_PLACEHOLDER = `{
 export const init = async (element) => {
     if (!element || element.querySelector('.route-config-editor')) return;
 
-    const componentId = getComponentIdFromUrl(globalThis.location.href);
+    const componentId = getComponentIdFromUrl();
     const container = document.createElement('div');
     container.className = 'route-config-editor';
     element.appendChild(container);
@@ -71,10 +71,7 @@ export const cleanup = () => { /* no persistent resources */ };
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getComponentIdFromUrl = (url) => {
-    const r = validateProcessorIdFromUrl(url);
-    return r.isValid ? r.sanitizedValue : '';
-};
+const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
 

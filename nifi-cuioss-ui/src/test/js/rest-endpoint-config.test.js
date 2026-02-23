@@ -46,10 +46,8 @@ describe('rest-endpoint-config', () => {
         utils.sanitizeHtml.mockImplementation((s) => s || '');
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
-        utils.validateProcessorIdFromUrl.mockReturnValue({
-            isValid: true,
-            sanitizedValue: 'test-processor-id'
-        });
+        // Mock getComponentId from api.js to return a valid processor ID
+        api.getComponentId.mockReturnValue('test-processor-id');
         utils.confirmRemoveRoute.mockImplementation((name, onConfirm) => {
             onConfirm();
             return Promise.resolve(true);
@@ -690,10 +688,7 @@ describe('rest-endpoint-config', () => {
     });
 
     it('should show empty table when no component ID', async () => {
-        utils.validateProcessorIdFromUrl.mockReturnValue({
-            isValid: false,
-            sanitizedValue: ''
-        });
+        api.getComponentId.mockReturnValue('');
 
         await init(container);
 
