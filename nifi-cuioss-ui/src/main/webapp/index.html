@@ -78,38 +78,6 @@
                         </div>
 
                         <div class="help-sections">
-                            <!-- Gateway-specific help sections -->
-                            <div class="help-section gateway-help" data-testid="help-accordion-item">
-                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-down"></i> REST API Gateway
-                                </h4>
-                                <div class="collapsible-content show" data-testid="accordion-content">
-                                    <p>The RestApiGatewayProcessor provides a secure REST API gateway with
-                                    JWT authentication and route-based access control.</p>
-                                    <h5>Key Features</h5>
-                                    <ul>
-                                        <li>Embedded HTTPS/HTTP server with configurable port</li>
-                                        <li>Route-based request matching with path patterns</li>
-                                        <li>Per-route role and scope requirements</li>
-                                        <li>CORS support with configurable allowed origins</li>
-                                        <li>Request body size limits and queue management</li>
-                                    </ul>
-                                    <h5>Tabs</h5>
-                                    <ul>
-                                        <li><strong>Endpoint Configuration:</strong> View active routes, global
-                                        settings, and security configuration</li>
-                                        <li><strong>Endpoint Tester:</strong> Send test requests to verify
-                                        route access and authentication</li>
-                                        <li><strong>Issuer Configuration:</strong> Manage JWT issuer settings
-                                        from the linked Controller Service</li>
-                                        <li><strong>Token Verification:</strong> Paste and verify JWT tokens
-                                        against configured issuers</li>
-                                        <li><strong>Metrics:</strong> Monitor token validation, HTTP security
-                                        events, and gateway activity</li>
-                                    </ul>
-                                </div>
-                            </div>
-
                             <!-- JWT-specific help sections -->
                             <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header active" data-testid="accordion-toggle">
@@ -209,6 +177,39 @@
                                 </div>
                             </div>
 
+                            <!-- Gateway-specific help sections -->
+                            <div class="help-section gateway-help" data-testid="help-accordion-item">
+                                <h4 class="collapsible-header active" data-testid="accordion-toggle">
+                                    <i class="fa fa-chevron-down"></i> REST API Gateway
+                                </h4>
+                                <div class="collapsible-content show" data-testid="accordion-content">
+                                    <p>The RestApiGatewayProcessor provides a secure REST API gateway with
+                                    JWT authentication and route-based access control.</p>
+                                    <h5>Key Features</h5>
+                                    <ul>
+                                        <li>Embedded HTTPS/HTTP server with configurable port</li>
+                                        <li>Route-based request matching with path patterns</li>
+                                        <li>Per-route role and scope requirements</li>
+                                        <li>CORS support with configurable allowed origins</li>
+                                        <li>Request body size limits and queue management</li>
+                                    </ul>
+                                    <h5>Tabs</h5>
+                                    <ul>
+                                        <li><strong>Endpoint Configuration:</strong> View active routes, global
+                                        settings, and security configuration</li>
+                                        <li><strong>Endpoint Tester:</strong> Send test requests to verify
+                                        route access and authentication</li>
+                                        <li><strong>Issuer Configuration:</strong> Manage JWT issuer settings
+                                        from the linked Controller Service</li>
+                                        <li><strong>Token Verification:</strong> Paste and verify JWT tokens
+                                        against configured issuers</li>
+                                        <li><strong>Metrics:</strong> Monitor token validation, HTTP security
+                                        events, and gateway activity</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <!-- Shared help sections -->
                             <div class="help-section" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
                                     <i class="fa fa-chevron-right"></i> Troubleshooting
