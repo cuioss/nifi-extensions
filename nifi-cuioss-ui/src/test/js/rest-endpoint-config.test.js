@@ -461,6 +461,71 @@ describe('rest-endpoint-config', () => {
     });
 
     // -----------------------------------------------------------------------
+    // Schema badge in summary table
+    // -----------------------------------------------------------------------
+
+    it('should show schema badge for route with schema', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_SCHEMA,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const badge = healthRow.querySelector('.schema-badge');
+        expect(badge).not.toBeNull();
+        expect(badge.textContent).toBe('Schema');
+    });
+
+    it('should not show schema badge for route without schema', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_SCHEMA,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        const badge = dataRow.querySelector('.schema-badge');
+        expect(badge).toBeNull();
+    });
+
+    it('should update schema badge after save', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        // No badge initially
+        expect(healthRow.querySelector('.schema-badge')).toBeNull();
+
+        healthRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        // Enable schema and enter inline JSON
+        const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
+        schemaCheckbox.checked = true;
+        schemaCheckbox.dispatchEvent(new Event('change'));
+
+        // Switch to inline mode and enter schema
+        const inlineRadio = form.querySelector('.schema-mode-inline');
+        inlineRadio.checked = true;
+        inlineRadio.dispatchEvent(new Event('change'));
+        form.querySelector('.field-schema-inline').value = '{"type":"object"}';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Badge should now appear
+        expect(healthRow.querySelector('.schema-badge')).not.toBeNull();
+    });
+
+    // -----------------------------------------------------------------------
     // Save route
     // -----------------------------------------------------------------------
 
@@ -751,7 +816,53 @@ describe('rest-endpoint-config', () => {
         expect(() => cleanup()).not.toThrow();
     });
 
-    it('should display updated schema label text', async () => {
+    // -----------------------------------------------------------------------
+    // Schema mode toggle
+    // -----------------------------------------------------------------------
+
+    it('should show file mode for file-path schema', async () => {
+        const propsWithFileSchema = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.health.schema': './conf/schemas/my-schema.json'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsWithFileSchema,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const fileRadio = form.querySelector('.schema-mode-file');
+        expect(fileRadio.checked).toBe(true);
+
+        const fileInput = form.querySelector('.field-schema-file');
+        expect(fileInput.value).toBe('./conf/schemas/my-schema.json');
+    });
+
+    it('should show inline mode for inline JSON schema', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_SCHEMA,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const inlineRadio = form.querySelector('.schema-mode-inline');
+        expect(inlineRadio.checked).toBe(true);
+
+        const inlineTextarea = form.querySelector('.field-schema-inline');
+        expect(inlineTextarea.value).toBe('{"type":"object"}');
+    });
+
+    it('should toggle between file input and textarea', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -761,13 +872,82 @@ describe('rest-endpoint-config', () => {
         container.querySelector('.edit-route-button').click();
 
         const form = container.querySelector('.route-form');
-        // Check the schema checkbox to reveal the textarea and label
+        // Enable schema
         const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
         schemaCheckbox.checked = true;
         schemaCheckbox.dispatchEvent(new Event('change'));
 
-        const schemaLabel = form.querySelector('.field-container-schema label');
-        expect(schemaLabel.textContent).toContain('Schema (JSON or file path)');
+        const fileRadio = form.querySelector('.schema-mode-file');
+        const inlineRadio = form.querySelector('.schema-mode-inline');
+        const fileDiv = form.querySelector('.schema-file-input');
+        const inlineDiv = form.querySelector('.schema-inline-input');
+
+        // File mode by default
+        expect(fileRadio.checked).toBe(true);
+        expect(fileDiv.classList.contains('hidden')).toBe(false);
+        expect(inlineDiv.classList.contains('hidden')).toBe(true);
+
+        // Switch to inline
+        inlineRadio.checked = true;
+        inlineRadio.dispatchEvent(new Event('change'));
+        expect(fileDiv.classList.contains('hidden')).toBe(true);
+        expect(inlineDiv.classList.contains('hidden')).toBe(false);
+
+        // Switch back to file
+        fileRadio.checked = true;
+        fileRadio.dispatchEvent(new Event('change'));
+        expect(fileDiv.classList.contains('hidden')).toBe(false);
+        expect(inlineDiv.classList.contains('hidden')).toBe(true);
+    });
+
+    it('should read from active mode input on save', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        // Enable schema
+        const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
+        schemaCheckbox.checked = true;
+        schemaCheckbox.dispatchEvent(new Event('change'));
+
+        // Enter file path value
+        form.querySelector('.field-schema-file').value = './conf/schemas/test.json';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-id',
+            expect.objectContaining({
+                'restapi.health.schema': './conf/schemas/test.json'
+            })
+        );
+    });
+
+    it('should show schema mode toggle labels (File path / Inline JSON)', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
+        schemaCheckbox.checked = true;
+        schemaCheckbox.dispatchEvent(new Event('change'));
+
+        const modeLabels = form.querySelectorAll('.schema-mode-label');
+        expect(modeLabels.length).toBe(2);
+        expect(modeLabels[0].textContent).toContain('File path');
+        expect(modeLabels[1].textContent).toContain('Inline JSON');
     });
 
     it('should handle disabled route in table', async () => {
@@ -789,6 +969,97 @@ describe('rest-endpoint-config', () => {
         const disabledRow = container.querySelector('tr[data-route-name="disabled"]');
         const statusBadge = disabledRow.querySelector('.status-disabled');
         expect(statusBadge).not.toBeNull();
+    });
+
+    // -----------------------------------------------------------------------
+    // Info banner (ephemeral change warning)
+    // -----------------------------------------------------------------------
+
+    it('should show info banner after saving a route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // No banner initially
+        expect(container.querySelector('.info-banner')).toBeNull();
+
+        // Edit and save
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const banner = container.querySelector('.info-banner');
+        expect(banner).not.toBeNull();
+        expect(banner.textContent).toContain('current session only');
+        expect(banner.textContent).toContain('export the properties');
+    });
+
+    // -----------------------------------------------------------------------
+    // Property export panel
+    // -----------------------------------------------------------------------
+
+    it('should render export section', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const exportSection = container.querySelector('.property-export');
+        expect(exportSection).not.toBeNull();
+        expect(exportSection.querySelector('.property-export-textarea')).not.toBeNull();
+        expect(exportSection.querySelector('.copy-properties-button')).not.toBeNull();
+    });
+
+    it('should update export after save', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Edit and save
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.health.path');
+    });
+
+    it('should copy properties to clipboard', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Trigger a save first to populate export
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        // Mock clipboard
+        const writeTextMock = jest.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: writeTextMock },
+            writable: true,
+            configurable: true
+        });
+
+        container.querySelector('.copy-properties-button').click();
+        await tick();
+
+        expect(writeTextMock).toHaveBeenCalled();
     });
 
     it('should close open editor when clicking Edit on different row', async () => {
