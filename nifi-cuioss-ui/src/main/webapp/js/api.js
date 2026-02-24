@@ -18,6 +18,16 @@ const COMPONENT_TYPES = {
 /** Cached component detection result: { type, componentClass, apiPath, propsPath } */
 let _componentInfo = null;
 
+/** UUID v4 pattern for NiFi component ID validation. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Validate that an ID matches the NiFi UUID format to prevent path traversal. */
+const assertValidUuid = (id, label = 'Component ID') => {
+    if (!id || !UUID_PATTERN.test(id)) {
+        throw new Error(`Invalid ${label}: expected UUID format`);
+    }
+};
+
 /**
  * Returns the NiFi component ID from the current URL's query string.
  * @returns {string}
@@ -213,6 +223,7 @@ export const sendGatewayTestRequest = (payload) =>
  * @returns {Promise<{properties: Object, revision: Object}>}
  */
 export const getControllerServiceProperties = async (csId) => {
+    assertValidUuid(csId, 'Controller Service ID');
     const data = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
     let props = data;
     for (const key of COMPONENT_TYPES.CONTROLLER_SERVICE.propsPath) { props = props?.[key]; }
@@ -228,6 +239,7 @@ export const getControllerServiceProperties = async (csId) => {
  * @returns {Promise<Object>}  updated CS response
  */
 export const updateControllerServiceProperties = async (csId, properties) => {
+    assertValidUuid(csId, 'Controller Service ID');
     const current = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
     return request('PUT', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`, {
         revision: current.revision,
@@ -243,6 +255,7 @@ export const updateControllerServiceProperties = async (csId, properties) => {
  * @returns {Promise<string|null>}  CS UUID or null if not configured
  */
 export const resolveJwtConfigServiceId = async (processorId) => {
+    assertValidUuid(processorId, 'Processor ID');
     const info = await detectComponentType(processorId);
     const data = await request('GET', `${info.apiPath}/${processorId}`);
     let props = data;

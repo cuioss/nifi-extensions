@@ -350,16 +350,19 @@ describe('sendGatewayTestRequest', () => {
 // ---------------------------------------------------------------------------
 
 describe('getControllerServiceProperties', () => {
+    const CS_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const CS_UUID_2 = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
     test('should fetch CS properties directly without detectComponentType', async () => {
         mockJsonResponse({
             revision: { version: 2 },
             component: { properties: { 'issuer.kc.issuer': 'https://kc.example.com' } }
         });
 
-        const result = await getControllerServiceProperties('cs-uuid-123');
+        const result = await getControllerServiceProperties(CS_UUID);
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/controller-services/cs-uuid-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(`/nifi-api/controller-services/${CS_UUID}`);
         expect(result.properties).toEqual({ 'issuer.kc.issuer': 'https://kc.example.com' });
         expect(result.revision.version).toBe(2);
     });
@@ -367,9 +370,14 @@ describe('getControllerServiceProperties', () => {
     test('should return empty properties when CS has no properties', async () => {
         mockJsonResponse({ revision: { version: 1 }, component: {} });
 
-        const result = await getControllerServiceProperties('cs-uuid-456');
+        const result = await getControllerServiceProperties(CS_UUID_2);
 
         expect(result.properties).toEqual({});
+    });
+
+    test('should reject invalid CS UUID', async () => {
+        await expect(getControllerServiceProperties('../../admin'))
+            .rejects.toThrow('Invalid Controller Service ID');
     });
 });
 
@@ -378,26 +386,33 @@ describe('getControllerServiceProperties', () => {
 // ---------------------------------------------------------------------------
 
 describe('updateControllerServiceProperties', () => {
+    const CS_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
     test('should fetch current revision then PUT update', async () => {
         // GET current
-        mockJsonResponse({ revision: { version: 3 }, component: { id: 'cs-uuid-123' } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: CS_UUID } });
         // PUT update
         mockJsonResponse({ revision: { version: 4 } });
 
-        await updateControllerServiceProperties('cs-uuid-123', {
+        await updateControllerServiceProperties(CS_UUID, {
             'issuer.kc.issuer': 'https://kc.example.com'
         });
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/controller-services/cs-uuid-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(`/nifi-api/controller-services/${CS_UUID}`);
         expect(globalThis.fetch.mock.calls[0][1].method).toBe('GET');
 
         const [putUrl, putOpts] = globalThis.fetch.mock.calls[1];
-        expect(putUrl).toBe('/nifi-api/controller-services/cs-uuid-123');
+        expect(putUrl).toBe(`/nifi-api/controller-services/${CS_UUID}`);
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(3);
         expect(putBody.component.properties['issuer.kc.issuer']).toBe('https://kc.example.com');
+    });
+
+    test('should reject invalid CS UUID', async () => {
+        await expect(updateControllerServiceProperties('../hack', {}))
+            .rejects.toThrow('Invalid Controller Service ID');
     });
 });
 
@@ -406,8 +421,12 @@ describe('updateControllerServiceProperties', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveJwtConfigServiceId', () => {
+    const GW_PROC = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+    const PROC_456 = 'd4e5f6a7-b8c9-0123-defa-234567890123';
+    const PROC_789 = 'e5f6a7b8-c9d0-1234-efab-345678901234';
+
     test('should resolve CS UUID from rest.gateway.jwt.config.service', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'gw-proc-123' };
+        globalThis.jwtAuthConfig = { processorId: GW_PROC };
         // detectComponentType call
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'RestApiGatewayProcessor' });
         // GET processor properties
@@ -420,13 +439,13 @@ describe('resolveJwtConfigServiceId', () => {
             }
         });
 
-        const csId = await resolveJwtConfigServiceId('gw-proc-123');
+        const csId = await resolveJwtConfigServiceId(GW_PROC);
 
         expect(csId).toBe('cs-uuid-abc');
     });
 
     test('should resolve CS UUID from jwt.issuer.config.service', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-456' };
+        globalThis.jwtAuthConfig = { processorId: PROC_456 };
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         mockJsonResponse({
             revision: { version: 1 },
@@ -437,22 +456,27 @@ describe('resolveJwtConfigServiceId', () => {
             }
         });
 
-        const csId = await resolveJwtConfigServiceId('proc-456');
+        const csId = await resolveJwtConfigServiceId(PROC_456);
 
         expect(csId).toBe('cs-uuid-def');
     });
 
     test('should return null when no CS property is configured', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-789' };
+        globalThis.jwtAuthConfig = { processorId: PROC_789 };
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         mockJsonResponse({
             revision: { version: 1 },
             component: { config: { properties: {} } }
         });
 
-        const csId = await resolveJwtConfigServiceId('proc-789');
+        const csId = await resolveJwtConfigServiceId(PROC_789);
 
         expect(csId).toBeNull();
+    });
+
+    test('should reject invalid processor UUID', async () => {
+        await expect(resolveJwtConfigServiceId('../../admin'))
+            .rejects.toThrow('Invalid Processor ID');
     });
 });
 

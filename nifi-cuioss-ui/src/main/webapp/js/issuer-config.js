@@ -461,7 +461,8 @@ const loadExistingIssuersGateway = async (container, ctx) => {
         const props = res.properties || {};
         const issuers = parseIssuerProperties(props);
         renderIssuerSummaryTable(container, issuers, ctx);
-    } catch {
+    } catch (err) {
+        log.error('Failed to load existing gateway issuers:', err);
         renderIssuerSummaryTable(container, {}, ctx);
     }
 };
@@ -721,7 +722,9 @@ const saveIssuerGateway = async (form, errEl, ctx, tableRow, issuersContainer) =
             for (const key of Object.keys(props)) {
                 if (key.startsWith(`issuer.${originalName}.`)) updates[key] = null;
             }
-        } catch { /* ignore — old props will remain as orphans */ }
+        } catch (err) {
+            log.warn('Failed to clean up old properties after rename:', err);
+        }
     }
 
     if (ctx.componentId) {

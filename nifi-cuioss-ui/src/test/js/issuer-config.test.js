@@ -372,7 +372,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -388,7 +388,7 @@ describe('issuer-config', () => {
             api.getControllerServiceProperties.mockResolvedValue({ properties: {} });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -406,7 +406,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -425,7 +425,7 @@ describe('issuer-config', () => {
             api.updateControllerServiceProperties.mockResolvedValue({});
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -443,7 +443,7 @@ describe('issuer-config', () => {
             await new Promise((r) => setTimeout(r, 10));
 
             expect(api.updateControllerServiceProperties).toHaveBeenCalledWith(
-                'cs-uuid-123',
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 expect.objectContaining({
                     'issuer.my-issuer.issuer': 'https://issuer.example.com',
                     'issuer.my-issuer.jwks-url': 'https://issuer.example.com/jwks'
@@ -461,7 +461,7 @@ describe('issuer-config', () => {
             api.updateControllerServiceProperties.mockResolvedValue({});
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -472,7 +472,7 @@ describe('issuer-config', () => {
             await new Promise((r) => setTimeout(r, 10));
 
             expect(api.updateControllerServiceProperties).toHaveBeenCalledWith(
-                'cs-uuid-123',
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 expect.objectContaining({
                     'issuer.kc.issuer': null,
                     'issuer.kc.jwks-url': null
@@ -489,7 +489,7 @@ describe('issuer-config', () => {
             );
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -516,7 +516,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -554,7 +554,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -578,7 +578,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -605,7 +605,7 @@ describe('issuer-config', () => {
             api.updateControllerServiceProperties.mockResolvedValue({});
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -642,7 +642,7 @@ describe('issuer-config', () => {
                 .mockRejectedValueOnce(new Error('API error'));
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -660,7 +660,7 @@ describe('issuer-config', () => {
             );
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -719,7 +719,7 @@ describe('issuer-config', () => {
             api.updateControllerServiceProperties.mockResolvedValue({});
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -738,7 +738,7 @@ describe('issuer-config', () => {
             // Should have called update with null for old props
             expect(api.updateControllerServiceProperties)
                 .toHaveBeenCalledWith(
-                    'cs-uuid-123',
+                    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                     expect.objectContaining({
                         'issuer.old-name.issuer': null,
                         'issuer.old-name.jwks-url': null,
@@ -760,7 +760,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -794,7 +794,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
@@ -854,7 +854,7 @@ describe('issuer-config', () => {
             });
 
             await init(container, {
-                targetComponentId: 'cs-uuid-123',
+                targetComponentId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 useControllerService: true,
                 isGatewayContext: true
             });
