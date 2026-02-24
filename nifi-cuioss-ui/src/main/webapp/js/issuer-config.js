@@ -131,6 +131,91 @@ const loadExistingIssuers = async (container, componentId) => {
 };
 
 // ---------------------------------------------------------------------------
+// Shared form field builders (used by both standard and gateway forms)
+// ---------------------------------------------------------------------------
+
+/** Build JWKS type selector, standard fields, type toggle, test button. */
+const buildIssuerFields = (form, fields, idx, properties) => {
+    const jwksType = properties?.['jwks-type'] || 'url';
+    const idPrefix = `field-jwks-type-${idx}`;
+    fields.innerHTML = `
+        <div class="form-field field-container-jwks-type">
+            <label for="${idPrefix}">JWKS Source Type:</label>
+            <select id="${idPrefix}" name="jwks-type"
+                    class="field-jwks-type form-input issuer-config-field"
+                    aria-label="JWKS Source Type"
+                    title="Select how JWKS keys should be retrieved">
+                <option value="url"${jwksType === 'url' ? ' selected' : ''}>URL (Remote JWKS endpoint)</option>
+                <option value="file"${jwksType === 'file' ? ' selected' : ''}>File (Local JWKS file)</option>
+                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>Memory (Inline JWKS content)</option>
+            </select>
+        </div>`;
+
+    addField({ container: fields, idx, name: 'issuer', label: 'Issuer URI',
+        placeholder: 'The URI of the token issuer (must match the iss claim)',
+        value: properties?.issuer });
+    addField({ container: fields, idx, name: 'jwks-url', label: 'JWKS URL',
+        placeholder: 'The URL of the JWKS endpoint',
+        value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
+    addField({ container: fields, idx, name: 'jwks-file', label: 'JWKS File Path',
+        placeholder: 'Path to local JWKS JSON file',
+        value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
+        hidden: jwksType !== 'file' });
+    addTextArea({ container: fields, idx, name: 'jwks-content',
+        label: 'JWKS Content',
+        placeholder: 'Inline JWKS JSON content',
+        value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
+        hidden: jwksType !== 'memory' });
+
+    // Toggle field visibility on type change
+    fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
+        const sel = e.target.value;
+        for (const f of form.querySelectorAll(
+            '.jwks-type-url, .jwks-type-file, .jwks-type-memory'
+        )) f.classList.add('hidden');
+        for (const f of form.querySelectorAll(`.jwks-type-${sel}`)) {
+            f.classList.remove('hidden');
+        }
+    });
+
+    // Test Connection button
+    const tw = document.createElement('div');
+    tw.className = 'jwks-button-wrapper';
+    tw.innerHTML = `
+        <button type="button" class="verify-jwks-button"
+                title="Test connectivity to the JWKS endpoint">
+            <i class="fa fa-plug"></i> Test Connection</button>
+        <div class="verification-result" aria-live="polite"
+             role="status">
+            <em>Click the button to validate JWKS</em></div>`;
+    const urlField = fields.querySelector('.jwks-type-url');
+    if (urlField) urlField.after(tw);
+    else fields.appendChild(tw);
+    tw.querySelector('.verify-jwks-button').addEventListener('click', () => {
+        const rc = tw.querySelector('.verification-result');
+        rc.innerHTML = 'Testing...';
+        const typeSel = fields.querySelector('.field-jwks-type');
+        const type = typeSel ? typeSel.value : 'url';
+        let value = '';
+        if (type === 'url') {
+            value = fields.querySelector('.field-jwks-url')?.value || '';
+        } else if (type === 'file') {
+            value = fields.querySelector('.field-jwks-file')?.value || '';
+        } else {
+            value = fields.querySelector('.field-jwks-content')?.value || '';
+        }
+        performJwksValidation(type, value, rc);
+    });
+
+    addField({ container: fields, idx, name: 'audience', label: 'Audience',
+        placeholder: 'The expected audience claim value',
+        value: properties?.audience });
+    addField({ container: fields, idx, name: 'client-id', label: 'Client ID',
+        placeholder: 'The client ID for token validation',
+        value: properties?.['client-id'] });
+};
+
+// ---------------------------------------------------------------------------
 // Form creation
 // ---------------------------------------------------------------------------
 
@@ -163,84 +248,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     fields.className = 'form-fields';
     form.appendChild(fields);
 
-    // JWKS type selector
-    const jwksType = properties?.['jwks-type'] || 'url';
-    fields.innerHTML = `
-        <div class="form-field field-container-jwks-type">
-            <label for="field-jwks-type-${idx}">JWKS Source Type:</label>
-            <select id="field-jwks-type-${idx}" name="jwks-type"
-                    class="field-jwks-type form-input issuer-config-field"
-                    aria-label="JWKS Source Type"
-                    title="Select how JWKS keys should be retrieved for this issuer">
-                <option value="url"${jwksType === 'url' ? ' selected' : ''}>URL (Remote JWKS endpoint)</option>
-                <option value="file"${jwksType === 'file' ? ' selected' : ''}>File (Local JWKS file)</option>
-                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>Memory (Inline JWKS content)</option>
-            </select>
-        </div>`;
-
-    // Standard text fields
-    addField({ container: fields, idx, name: 'issuer', label: 'Issuer URI',
-        placeholder: 'The URI of the token issuer (must match the iss claim)',
-        value: properties?.issuer });
-    addField({ container: fields, idx, name: 'jwks-url', label: 'JWKS URL',
-        placeholder: 'The URL of the JWKS endpoint',
-        value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
-    addField({ container: fields, idx, name: 'jwks-file', label: 'JWKS File Path',
-        placeholder: 'Path to local JWKS JSON file',
-        value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
-        hidden: jwksType !== 'file' });
-    addTextArea({ container: fields, idx, name: 'jwks-content', label: 'JWKS Content',
-        placeholder: 'Inline JWKS JSON content',
-        value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
-        hidden: jwksType !== 'memory' });
-
-    // Toggle field visibility on type change
-    fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
-        const t = e.target.value;
-        for (const f of form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
-            f.classList.add('hidden');
-        }
-        for (const f of form.querySelectorAll(`.jwks-type-${t}`)) {
-            f.classList.remove('hidden');
-        }
-    });
-
-    // "Test Connection" button
-    const testWrapper = document.createElement('div');
-    testWrapper.className = 'jwks-button-wrapper';
-    testWrapper.innerHTML = `
-        <button type="button" class="verify-jwks-button"
-                title="Test connectivity to the JWKS endpoint">
-            <i class="fa fa-plug"></i> Test Connection</button>
-        <div class="verification-result" aria-live="polite"
-             role="status">
-            <em>Click the button to validate JWKS</em></div>`;
-
-    // Position after jwks-url field
-    const jwksUrlField = fields.querySelector('.jwks-type-url');
-    if (jwksUrlField) jwksUrlField.after(testWrapper);
-    else fields.appendChild(testWrapper);
-
-    testWrapper.querySelector('.verify-jwks-button').addEventListener('click', () => {
-        const rc = testWrapper.querySelector('.verification-result');
-        rc.innerHTML = 'Testing...';
-        const sel = fields.querySelector('.field-jwks-type');
-        const type = sel ? sel.value : 'url';
-        let value = '';
-        if (type === 'url') value = fields.querySelector('.field-jwks-url')?.value || '';
-        else if (type === 'file') value = fields.querySelector('.field-jwks-file')?.value || '';
-        else value = fields.querySelector('.field-jwks-content')?.value || '';
-
-        performJwksValidation(type, value, rc);
-    });
-
-    // Optional fields
-    addField({ container: fields, idx, name: 'audience', label: 'Audience',
-        placeholder: 'The expected audience claim value',
-        value: properties?.audience });
-    addField({ container: fields, idx, name: 'client-id', label: 'Client ID',
-        placeholder: 'The client ID for token validation',
-        value: properties?.['client-id'] });
+    buildIssuerFields(form, fields, idx, properties);
 
     // ---- save button ----
     const errorContainer = document.createElement('div');
@@ -590,83 +598,12 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
                value="${sanitizeHtml(issuerName || '')}">`;
     form.appendChild(header);
 
-    // Fields
+    // Fields (reuse shared builder)
     const fields = document.createElement('div');
     fields.className = 'form-fields';
     form.appendChild(fields);
 
-    const jwksType = properties?.['jwks-type'] || 'url';
-    fields.innerHTML = `
-        <div class="form-field field-container-jwks-type">
-            <label for="field-jwks-type-gw-${idx}">JWKS Source Type:</label>
-            <select id="field-jwks-type-gw-${idx}" name="jwks-type"
-                    class="field-jwks-type form-input issuer-config-field"
-                    aria-label="JWKS Source Type"
-                    title="Select how JWKS keys should be retrieved for this issuer">
-                <option value="url"${jwksType === 'url' ? ' selected' : ''}>URL (Remote JWKS endpoint)</option>
-                <option value="file"${jwksType === 'file' ? ' selected' : ''}>File (Local JWKS file)</option>
-                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>Memory (Inline JWKS content)</option>
-            </select>
-        </div>`;
-
-    addField({ container: fields, idx, name: 'issuer', label: 'Issuer URI',
-        placeholder: 'The URI of the token issuer (must match the iss claim)',
-        value: properties?.issuer });
-    addField({ container: fields, idx, name: 'jwks-url', label: 'JWKS URL',
-        placeholder: 'The URL of the JWKS endpoint',
-        value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
-    addField({ container: fields, idx, name: 'jwks-file', label: 'JWKS File Path',
-        placeholder: 'Path to local JWKS JSON file',
-        value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
-        hidden: jwksType !== 'file' });
-    addTextArea({ container: fields, idx, name: 'jwks-content', label: 'JWKS Content',
-        placeholder: 'Inline JWKS JSON content',
-        value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
-        hidden: jwksType !== 'memory' });
-
-    fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
-        const selectedType = e.target.value;
-        for (const f of form.querySelectorAll('.jwks-type-url, .jwks-type-file, .jwks-type-memory')) {
-            f.classList.add('hidden');
-        }
-        for (const f of form.querySelectorAll(`.jwks-type-${selectedType}`)) {
-            f.classList.remove('hidden');
-        }
-    });
-
-    // Test Connection button
-    const testWrapper = document.createElement('div');
-    testWrapper.className = 'jwks-button-wrapper';
-    testWrapper.innerHTML = `
-        <button type="button" class="verify-jwks-button"
-                title="Test connectivity to the JWKS endpoint">
-            <i class="fa fa-plug"></i> Test Connection</button>
-        <div class="verification-result" aria-live="polite"
-             role="status">
-            <em>Click the button to validate JWKS</em></div>`;
-
-    const jwksUrlField = fields.querySelector('.jwks-type-url');
-    if (jwksUrlField) jwksUrlField.after(testWrapper);
-    else fields.appendChild(testWrapper);
-
-    testWrapper.querySelector('.verify-jwks-button').addEventListener('click', () => {
-        const rc = testWrapper.querySelector('.verification-result');
-        rc.innerHTML = 'Testing...';
-        const sel = fields.querySelector('.field-jwks-type');
-        const type = sel ? sel.value : 'url';
-        let value = '';
-        if (type === 'url') value = fields.querySelector('.field-jwks-url')?.value || '';
-        else if (type === 'file') value = fields.querySelector('.field-jwks-file')?.value || '';
-        else value = fields.querySelector('.field-jwks-content')?.value || '';
-        performJwksValidation(type, value, rc);
-    });
-
-    addField({ container: fields, idx, name: 'audience', label: 'Audience',
-        placeholder: 'The expected audience claim value',
-        value: properties?.audience });
-    addField({ container: fields, idx, name: 'client-id', label: 'Client ID',
-        placeholder: 'The client ID for token validation',
-        value: properties?.['client-id'] });
+    buildIssuerFields(form, fields, idx, properties);
 
     // Error container
     const errorContainer = document.createElement('div');
