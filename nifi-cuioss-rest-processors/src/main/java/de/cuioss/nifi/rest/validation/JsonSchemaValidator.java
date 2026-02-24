@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,6 +80,9 @@ public class JsonSchemaValidator {
             String content = Files.readString(schemaPath, StandardCharsets.UTF_8);
             LOGGER.info("Registered JSON Schema for route '%s' from %s", routeName, schemaPath);
             return content;
+        } catch (InvalidPathException e) {
+            throw new IllegalStateException(
+                    "Invalid schema file path for route '%s': %s".formatted(routeName, schemaSource), e);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to read JSON Schema file for route '%s': %s".formatted(routeName, schemaSource), e);
