@@ -130,6 +130,12 @@ The processor configuration dialog includes custom tabs for extended functionali
 === Properties Tab
 The standard NiFi properties tab with the processor's configuration properties.
 
+=== Gateway Configuration Tab
+For the `RestApiGatewayProcessor`, an **Endpoint Configuration** tab replaces
+the standard issuer-management UI. It provides a CRUD editor for route
+definitions and tracks persisted vs session-only changes with visual origin
+badges. See link:gateway-ui.adoc[REST API Gateway — Custom UI] for details.
+
 === Verification Tab
 Provides the token verification interface for testing tokens against the current configuration.
 

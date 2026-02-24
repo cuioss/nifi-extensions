@@ -1,0 +1,71 @@
+= REST API Gateway — Custom UI
+:toc:
+:toclevels: 2
+:toc-title: Table of Contents
+
+link:../Specification.adoc[Back to Main Specification]
+
+== Purpose
+
+The Custom UI is a configuration assistant for the `RestApiGatewayProcessor`.
+It provides a CRUD editor for route definitions (`restapi.*` properties) and
+an endpoint tester to send authenticated requests against the running gateway.
+
+== Persistence Model
+
+The REST API Gateway reads its route configuration from NiFi processor
+properties at start-up and configures a static Jetty server accordingly.
+
+[cols="1,3"]
+|===
+| Persisted routes | Defined in processor properties (`restapi.<name>.*`).
+  Survive processor restarts.
+| Session-only changes | Routes added or modified through the Custom UI during
+  the current session. Lost when the processor is restarted or the dialog is
+  closed.
+|===
+
+=== Origin Indicators
+
+Each route row in the summary table shows a visual badge indicating its origin:
+
+[cols="1,1,3"]
+|===
+| Badge | CSS class | Meaning
+
+| Lock icon (muted)
+| `.origin-persisted`
+| Loaded from processor properties, unmodified.
+
+| **Modified** (amber)
+| `.origin-modified`
+| Originally from properties, but edited in the current UI session.
+
+| **New** (blue)
+| `.origin-new`
+| Created via "Add Route" during the current UI session.
+|===
+
+== Property Export
+
+The **Export Properties** panel (collapsible `<details>` at the bottom of the
+editor) generates a text representation of all routes. Session-only routes
+(new or modified) are prefixed with `# [session-only]` so users can identify
+which lines need to be copied into the processor configuration to persist them.
+
+== Schema Modes
+
+Each route optionally supports JSON Schema validation. The schema value can be
+provided in two modes:
+
+* **File path** — a path relative to the NiFi installation directory,
+  e.g. `./conf/schemas/my-schema.json`.
+* **Inline JSON** — the full JSON Schema pasted directly into a textarea.
+
+The mode is auto-detected on load (values starting with `{` are treated as
+inline) and can be toggled via radio buttons in the editor form.
+
+== Related Topics
+
+* link:configuration-ui.adoc[UI Configuration Overview]
+* link:configuration.adoc[Configuration Overview]

@@ -298,6 +298,173 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(routeForm).toHaveCount(0);
     });
 
+    test("should show schema badge for validated route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find the 'validated' route row (which has a file-based schema)
+        const validatedRow = summaryTable.locator(
+            'tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+
+        // Schema badge should be visible in the path cell
+        const schemaBadge = validatedRow.locator(".schema-badge");
+        await expect(schemaBadge).toBeVisible({ timeout: 3000 });
+        await expect(schemaBadge).toContainText("Schema");
+    });
+
+    test("should show file mode for file-based schema", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find the 'validated' route row (which has a file-based schema)
+        const validatedRow = summaryTable.locator(
+            'tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+
+        // Click Edit on the validated route
+        const editBtn = validatedRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Schema checkbox should be checked (route has schema configured)
+        const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
+        await expect(schemaCheckbox).toBeChecked();
+
+        // File mode radio should be checked for file-based schema
+        const fileRadio = routeForm.locator(".schema-mode-file");
+        await expect(fileRadio).toBeChecked();
+
+        // File input should contain the schema file path
+        const fileInput = routeForm.locator(".field-schema-file");
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        const schemaValue = await fileInput.inputValue();
+        expect(schemaValue).toContain("./conf/schemas/user-request-schema.json");
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should toggle schema mode between file and inline", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Open editor for first route
+        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        await firstEditBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Check the schema checkbox to reveal the mode toggle
+        const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
+        await schemaCheckbox.check();
+
+        // File mode should be visible by default
+        const fileInput = routeForm.locator(".schema-file-input");
+        const inlineInput = routeForm.locator(".schema-inline-input");
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        await expect(inlineInput).toBeHidden();
+
+        // Switch to inline mode
+        const inlineRadio = routeForm.locator(".schema-mode-inline");
+        await inlineRadio.check();
+        await expect(inlineInput).toBeVisible({ timeout: 3000 });
+        await expect(fileInput).toBeHidden();
+
+        // Switch back to file mode
+        const fileRadio = routeForm.locator(".schema-mode-file");
+        await fileRadio.check();
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        await expect(inlineInput).toBeHidden();
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should display property export panel", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Export section should exist (collapsed by default)
+        const exportSection = endpointConfigPanel.locator(".property-export");
+        await expect(exportSection).toBeVisible({ timeout: 5000 });
+
+        // Expand the export section
+        const exportSummary = exportSection.locator("summary");
+        await exportSummary.click();
+
+        // Textarea and copy button should be visible
+        const exportTextarea = exportSection.locator(".property-export-textarea");
+        await expect(exportTextarea).toBeVisible({ timeout: 3000 });
+
+        const copyButton = exportSection.locator(".copy-properties-button");
+        await expect(copyButton).toBeVisible({ timeout: 3000 });
+
+        // Export text should contain route properties
+        const exportText = await exportTextarea.inputValue();
+        expect(exportText).toContain("restapi.");
+        expect(exportText).toContain(".path");
+    });
+
     test("should toggle schema textarea via checkbox", async ({
         customUIFrame,
     }) => {
@@ -337,6 +504,132 @@ test.describe("REST API Gateway Tabs", () => {
         // Uncheck — hidden again
         await schemaCheckbox.uncheck();
         await expect(schemaContainer).toBeHidden();
+    });
+
+    test("should show persisted badge for loaded routes", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // All loaded rows should have data-origin="persisted" and the lock icon badge
+        const dataRows = summaryTable.locator("tbody tr[data-route-name]");
+        const rowCount = await dataRows.count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
+
+        for (let i = 0; i < rowCount; i++) {
+            const row = dataRows.nth(i);
+            await expect(row).toHaveAttribute("data-origin", "persisted");
+            const badge = row.locator(".origin-persisted");
+            await expect(badge).toHaveCount(1);
+        }
+    });
+
+    test("should show new badge after adding a route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Add Route
+        const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
+        await addRouteBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Fill in new route details
+        const routeName = routeForm.locator(".route-name");
+        await routeName.fill("e2e-origin-test");
+        const pathField = routeForm.locator(".field-path");
+        await pathField.fill("/api/e2e-origin-test");
+        const methodsField = routeForm.locator(".field-methods");
+        await methodsField.fill("GET");
+
+        // Save
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+        await expect(routeForm).toHaveCount(0, { timeout: 5000 });
+
+        // Verify the new row has origin="new" and the blue "New" badge
+        const newRow = summaryTable.locator(
+            'tr[data-route-name="e2e-origin-test"]',
+        );
+        await expect(newRow).toBeVisible({ timeout: 5000 });
+        await expect(newRow).toHaveAttribute("data-origin", "new");
+        const badge = newRow.locator(".origin-new");
+        await expect(badge).toBeVisible({ timeout: 3000 });
+        await expect(badge).toContainText("New");
+    });
+
+    test("should show modified badge after editing a persisted route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find a persisted route and capture its name for re-location after save
+        const firstPersistedRow = summaryTable.locator(
+            'tbody tr[data-origin="persisted"]',
+        ).first();
+        await expect(firstPersistedRow).toBeVisible({ timeout: 5000 });
+        const routeName = await firstPersistedRow.getAttribute(
+            "data-route-name",
+        );
+
+        // Click Edit
+        const editBtn = firstPersistedRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Save without changing anything — the act of saving marks it modified
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+        await expect(routeForm).toHaveCount(0, { timeout: 5000 });
+
+        // Re-locate row by name (data-origin changed so old locator is stale)
+        const modifiedRow = summaryTable.locator(
+            `tbody tr[data-route-name="${routeName}"]`,
+        );
+        await expect(modifiedRow).toHaveAttribute("data-origin", "modified");
+        const badge = modifiedRow.locator(".origin-modified");
+        await expect(badge).toBeVisible({ timeout: 3000 });
+        await expect(badge).toContainText("Modified");
     });
 
     test("should display endpoint tester with route selector and controls", async ({

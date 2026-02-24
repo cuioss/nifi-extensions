@@ -46,7 +46,8 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /api/health} — GET only (authenticated)</li>
  *   <li>{@code /api/data} — GET and POST (authenticated)</li>
  *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
- *   <li>{@code /api/validated} — POST only (JSON Schema validated)</li>
+ *   <li>{@code /api/validated} — POST only (JSON Schema validated via file path)</li>
+ *   <li>{@code /api/inline-validated} — POST only (JSON Schema validated via inline JSON)</li>
  *   <li>{@code /metrics} — GET only (management, API key required)</li>
  * </ul>
  *
@@ -464,6 +465,39 @@ class RestApiGatewayIT {
                     .get("/api/validated")
                     .then()
                     .statusCode(405);
+        }
+    }
+
+    // ── Inline Schema Validation Tests ─────────────────────────────────
+
+    @Nested
+    @DisplayName("Inline Schema Validation")
+    class InlineSchemaValidationTests {
+
+        @Test
+        @DisplayName("should return 202 for POST /api/inline-validated with valid body")
+        void shouldAcceptValidBodyOnInlineSchemaRoute() {
+            given().spec(authSpec)
+                    .body("{\"name\": \"Alice\"}")
+                    .when()
+                    .post("/api/inline-validated")
+                    .then()
+                    .statusCode(202);
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/inline-validated with missing required field")
+        void shouldReject422ForInvalidBodyOnInlineSchemaRoute() {
+            given().spec(authSpec)
+                    .body("{\"age\": 25}")
+                    .when()
+                    .post("/api/inline-validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("title", equalTo("Unprocessable Content"))
+                    .body("violations", notNullValue())
+                    .body("violations.size()", greaterThanOrEqualTo(1));
         }
     }
 

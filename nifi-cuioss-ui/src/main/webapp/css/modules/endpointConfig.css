@@ -293,3 +293,124 @@
     color: var(--text-muted, #666);
     font-style: italic;
 }
+
+/* Origin badges (persisted / modified / new) */
+
+.origin-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.origin-persisted {
+    color: var(--text-muted, #888);
+    font-size: 0.7rem;
+}
+
+.origin-modified {
+    background: var(--warning-bg, #fff3cd);
+    color: var(--warning-color, #856404);
+}
+
+.origin-new {
+    background: var(--info-bg, #e3f2fd);
+    color: var(--primary-color, #2196f3);
+}
+
+/* Schema badge in summary table */
+
+.schema-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--success-bg, #e8f5e9);
+    color: var(--success-color-dark, #28a745);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Schema mode toggle (file vs inline) */
+
+.schema-mode-toggle {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.schema-mode-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.route-form .schema-mode-label input[type="radio"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Info banner (ephemeral change warning) */
+
+.info-banner {
+    padding: 10px 14px;
+    border: 1px solid var(--primary-color, #2196f3);
+    border-radius: 4px;
+    background: var(--info-bg, #e3f2fd);
+    color: var(--text-color, #333);
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+/* Property export panel */
+
+.property-export {
+    margin-top: 16px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+}
+
+.property-export summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    background: var(--bg-secondary, #f5f5f5);
+}
+
+.property-export-content {
+    padding: 12px;
+}
+
+.property-export-textarea {
+    width: 100%;
+    font-family: monospace;
+    font-size: 0.85rem;
+    background: var(--bg-secondary, #f5f5f5);
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+    padding: 8px;
+    resize: vertical;
+}
+
+.copy-properties-button {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--primary-color, #2196f3);
+    color: var(--primary-color, #2196f3);
+    background: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.copy-properties-button:hover {
+    background: var(--primary-color, #2196f3);
+    color: var(--container-background, #fff);
+}

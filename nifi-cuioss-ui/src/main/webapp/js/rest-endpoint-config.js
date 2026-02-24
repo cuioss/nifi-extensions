@@ -11,21 +11,11 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute
+    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
 
 // Counter for unique form field IDs
 let formCounter = 0;
-
-const SCHEMA_PLACEHOLDER = `{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "value": { "type": "number" }
-  },
-  "required": ["name"]
-}`;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -61,6 +51,41 @@ export const init = async (element) => {
     });
     container.appendChild(addBtn);
 
+    // Property export panel
+    const exportSection = document.createElement('details');
+    exportSection.className = 'property-export';
+    exportSection.innerHTML = `
+        <summary><i class="fa fa-code"></i> Export Properties</summary>
+        <div class="property-export-content">
+            <textarea class="property-export-textarea" readonly rows="10"></textarea>
+            <button class="copy-properties-button" type="button">
+                <i class="fa fa-clipboard"></i> Copy to Clipboard
+            </button>
+        </div>`;
+    container.appendChild(exportSection);
+
+    // Wire copy button
+    exportSection.querySelector('.copy-properties-button').addEventListener('click', () => {
+        const textarea = exportSection.querySelector('.property-export-textarea');
+        const text = textarea.value;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyFeedback(exportSection);
+            });
+        } else {
+            textarea.select();
+            document.execCommand('copy');
+            showCopyFeedback(exportSection);
+        }
+    });
+
+    // Refresh export content when panel is expanded
+    exportSection.addEventListener('toggle', () => {
+        if (exportSection.open) {
+            refreshExportPanel(routesContainer);
+        }
+    });
+
     // Load existing config
     await loadExistingConfig(container, routesContainer, componentId);
 };
@@ -74,6 +99,29 @@ export const cleanup = () => { /* no persistent resources */ };
 const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
+
+/**
+ * Detect whether a schema value is a file path or inline JSON.
+ * @param {string} schemaValue  the raw schema string
+ * @returns {'file'|'inline'} detected mode
+ */
+const detectSchemaMode = (schemaValue) => {
+    const trimmed = (schemaValue || '').trim();
+    return trimmed.startsWith('{') ? 'inline' : 'file';
+};
+
+/**
+ * Read the schema value from whichever mode input is currently active.
+ * @param {HTMLElement} form  the inline editor form
+ * @returns {string} the active schema value (trimmed)
+ */
+const getActiveSchemaValue = (form) => {
+    const fileRadio = form.querySelector('.schema-mode-file');
+    if (fileRadio && fileRadio.checked) {
+        return form.querySelector('.field-schema-file')?.value?.trim() || '';
+    }
+    return form.querySelector('.field-schema-inline')?.value?.trim() || '';
+};
 
 const parseRouteProperties = (properties) => {
     const out = {};
@@ -192,16 +240,33 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
 };
 
 /**
+ * Build an origin badge HTML snippet for a route row.
+ * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @returns {string} HTML string for the badge
+ */
+const buildOriginBadge = (origin) => {
+    if (origin === 'new') {
+        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
+    }
+    if (origin === 'modified') {
+        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
+    }
+    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+};
+
+/**
  * Create a single summary table row for a route.
  * @param {string} name  route name
  * @param {Object} props  route properties
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
+ * @param {'persisted'|'modified'|'new'} origin  the route origin state
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer) => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted') => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
+    row.dataset.origin = origin;
 
     const enabledVal = props?.enabled !== 'false';
     const methods = props?.methods || '';
@@ -213,9 +278,14 @@ const createTableRow = (name, props, componentId, routesContainer) => {
     const statusClass = enabledVal ? 'status-enabled' : 'status-disabled';
     const statusText = enabledVal ? 'Enabled' : 'Disabled';
 
+    const schemaBadge = (props?.schema?.trim())
+        ? ' <span class="schema-badge">Schema</span>' : '';
+
+    const originBadge = buildOriginBadge(origin);
+
     row.innerHTML = `
-        <td>${sanitizeHtml(name)}</td>
-        <td>${sanitizeHtml(props?.path || '')}</td>
+        <td>${sanitizeHtml(name)}${originBadge}</td>
+        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
         <td>
@@ -243,9 +313,18 @@ const createTableRow = (name, props, componentId, routesContainer) => {
  * @param {Object} formData  extracted form data
  */
 const updateTableRow = (row, formData) => {
+    // Mark persisted routes as modified after edit
+    if (row.dataset.origin === 'persisted') {
+        row.dataset.origin = 'modified';
+    }
+    const origin = row.dataset.origin || 'persisted';
+    const originBadge = buildOriginBadge(origin);
+
     const cells = row.querySelectorAll('td');
-    cells[0].textContent = formData.routeName;
-    cells[1].textContent = formData.path;
+    cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
+    const schemaBadge = formData.schema?.trim()
+        ? ' <span class="schema-badge">Schema</span>' : '';
+    cells[1].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())
@@ -349,17 +428,58 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         </label>`;
     form.appendChild(schemaToggle);
 
-    // ---- schema textarea (hidden by default unless route has schema) ----
+    // ---- schema mode toggle + inputs (hidden by default unless route has schema) ----
     const schemaContainer = document.createElement('div');
     schemaContainer.className = `form-field field-container-schema${hasSchema ? '' : ' hidden'}`;
+
+    const schemaVal = properties?.schema || '';
+    const mode = detectSchemaMode(schemaVal);
+    const fileVal = mode === 'file' ? schemaVal : '';
+    const inlineVal = mode === 'inline' ? schemaVal : '';
+
     schemaContainer.innerHTML = `
-        <label for="field-schema-${idx}">JSON Schema:</label>
-        <textarea id="field-schema-${idx}" name="schema"
-                  class="field-schema form-input route-config-field"
-                  placeholder="${sanitizeHtml(SCHEMA_PLACEHOLDER)}"
-                  rows="5" aria-label="JSON Schema"
-        >${sanitizeHtml(properties?.schema || '')}</textarea>`;
+        <div class="schema-mode-toggle">
+            <label class="schema-mode-label">
+                <input type="radio" name="schema-mode-${idx}" class="schema-mode-file"
+                       ${mode === 'file' ? 'checked' : ''}>
+                File path
+            </label>
+            <label class="schema-mode-label">
+                <input type="radio" name="schema-mode-${idx}" class="schema-mode-inline"
+                       ${mode === 'inline' ? 'checked' : ''}>
+                Inline JSON
+            </label>
+        </div>
+        <div class="schema-file-input${mode === 'file' ? '' : ' hidden'}">
+            <input type="text" id="field-schema-file-${idx}" name="schema-file"
+                   class="field-schema-file form-input route-config-field"
+                   placeholder="./conf/schemas/my-schema.json"
+                   value="${sanitizeHtml(fileVal)}"
+                   aria-label="Schema file path">
+        </div>
+        <div class="schema-inline-input${mode === 'inline' ? '' : ' hidden'}">
+            <textarea id="field-schema-inline-${idx}" name="schema-inline"
+                      class="field-schema-inline form-input route-config-field"
+                      placeholder='{"type":"object","properties":{}}'
+                      rows="5" aria-label="Inline JSON Schema"
+            >${sanitizeHtml(inlineVal)}</textarea>
+        </div>`;
     form.appendChild(schemaContainer);
+
+    // Wire radio toggle
+    const fileRadio = schemaContainer.querySelector('.schema-mode-file');
+    const inlineRadio = schemaContainer.querySelector('.schema-mode-inline');
+    const fileDiv = schemaContainer.querySelector('.schema-file-input');
+    const inlineDiv = schemaContainer.querySelector('.schema-inline-input');
+
+    fileRadio.addEventListener('change', () => {
+        fileDiv.classList.remove('hidden');
+        inlineDiv.classList.add('hidden');
+    });
+    inlineRadio.addEventListener('change', () => {
+        inlineDiv.classList.remove('hidden');
+        fileDiv.classList.add('hidden');
+    });
 
     // Wire schema checkbox toggle
     const schemaCheckbox = schemaToggle.querySelector('.schema-validation-checkbox');
@@ -440,7 +560,7 @@ const extractFormFields = (form) => {
         enabled: form.querySelector('.route-enabled')?.checked !== false,
         'required-roles': q('.field-required-roles'),
         'required-scopes': q('.field-required-scopes'),
-        schema: schemaEnabled ? q('.field-schema') : ''
+        schema: schemaEnabled ? getActiveSchemaValue(form) : ''
     };
 };
 
@@ -469,6 +589,86 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     return u;
+};
+
+// ---------------------------------------------------------------------------
+// Property export
+// ---------------------------------------------------------------------------
+
+/**
+ * Build property export text from current route table state.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ * @returns {string} property lines
+ */
+const buildExportText = (routesContainer) => {
+    const rows = routesContainer.querySelectorAll('tr[data-route-name]');
+    const lines = [];
+    for (const row of rows) {
+        const name = row.dataset.routeName;
+        const origin = row.dataset.origin || 'persisted';
+        const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
+        const cells = row.querySelectorAll('td');
+        // cells: 0=name, 1=path(+badge), 2=methods, 3=enabled, 4=actions
+        const pathText = cells[1]?.textContent?.trim() || '';
+        const methodBadges = cells[2]?.querySelectorAll('.method-badge') || [];
+        const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
+        const enabled = cells[3]?.textContent?.trim() === 'Enabled';
+        const hasSchemaBadge = !!cells[1]?.querySelector('.schema-badge');
+
+        lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
+        if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
+        if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
+        if (hasSchemaBadge) {
+            // Schema value is not stored in the table; it was saved to properties
+            lines.push(`${prefix}${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
+        }
+    }
+    return lines.join('\n');
+};
+
+/**
+ * Refresh the export panel textarea content.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const refreshExportPanel = (routesContainer) => {
+    const editor = routesContainer.closest('.route-config-editor');
+    if (!editor) return;
+    const textarea = editor.querySelector('.property-export-textarea');
+    if (textarea) {
+        textarea.value = buildExportText(routesContainer);
+    }
+};
+
+/**
+ * Show brief "Copied!" feedback on the copy button.
+ * @param {HTMLElement} exportSection  the .property-export element
+ */
+const showCopyFeedback = (exportSection) => {
+    const btn = exportSection.querySelector('.copy-properties-button');
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fa fa-check"></i> Copied!';
+    setTimeout(() => { btn.innerHTML = original; }, 2000);
+};
+
+/**
+ * Show an info banner warning that changes are session-only.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const showInfoBanner = (routesContainer) => {
+    // Remove any existing banner to avoid duplicates
+    const editor = routesContainer.closest('.route-config-editor');
+    if (!editor) return;
+    const existing = editor.querySelector('.info-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'info-banner';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML =
+        'Changes are applied to the current session only. ' +
+        'To make them permanent, export the properties below and add them to your processor configuration.';
+    // Insert before the routes container
+    routesContainer.parentNode.insertBefore(banner, routesContainer);
 };
 
 /**
@@ -516,11 +716,8 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
             }
             form.remove();
 
-            const globalErr = document.querySelector('.global-error-messages');
-            if (globalErr) {
-                displayUiSuccess(globalErr, 'Route configuration saved successfully.');
-                globalErr.classList.remove('hidden');
-            }
+            showInfoBanner(routesContainer);
+            refreshExportPanel(routesContainer);
         } catch (error) {
             displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
         }
@@ -534,11 +731,8 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
         }
         form.remove();
 
-        const globalErr = document.querySelector('.global-error-messages');
-        if (globalErr) {
-            displayUiSuccess(globalErr, 'Route configuration saved successfully (standalone mode).');
-            globalErr.classList.remove('hidden');
-        }
+        showInfoBanner(routesContainer);
+        refreshExportPanel(routesContainer);
     }
 };
 
@@ -565,7 +759,7 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         'required-scopes': formData['required-scopes'],
         schema: formData.schema
     };
-    const row = createTableRow(formData.routeName, props, componentId, routesContainer);
+    const row = createTableRow(formData.routeName, props, componentId, routesContainer, 'new');
     tbody.appendChild(row);
 };
 
@@ -617,4 +811,6 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
         displayUiSuccess(globalErr, `Route "${routeName}" removed (standalone mode).`);
         globalErr.classList.remove('hidden');
     }
+
+    refreshExportPanel(routesContainer);
 };

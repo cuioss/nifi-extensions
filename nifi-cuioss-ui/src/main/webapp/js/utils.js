@@ -29,12 +29,22 @@ const TRANSLATIONS = {
     en: {
         'jwt.validator.help.title': 'JWT Authenticator Help',
         'jwt.validator.metrics.title': 'JWT Validation Metrics',
-        'jwt.validator.help.tab.name': 'Help'
+        'jwt.validator.help.tab.name': 'Help',
+        'origin.badge.persisted.title': 'Loaded from processor properties (persisted)',
+        'origin.badge.modified.title': 'Modified in this session (not yet persisted)',
+        'origin.badge.new.title': 'Created in this session (not yet persisted)',
+        'origin.badge.modified': 'Modified',
+        'origin.badge.new': 'New'
     },
     de: {
         'jwt.validator.help.title': 'JWT-Authentifikator-Hilfe',
         'jwt.validator.metrics.title': 'JWT-Validierungsmetriken',
-        'jwt.validator.help.tab.name': 'Hilfe'
+        'jwt.validator.help.tab.name': 'Hilfe',
+        'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen (persistent)',
+        'origin.badge.modified.title': 'In dieser Sitzung geändert (noch nicht persistent)',
+        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
+        'origin.badge.modified': 'Geändert',
+        'origin.badge.new': 'Neu'
     }
 };
 
