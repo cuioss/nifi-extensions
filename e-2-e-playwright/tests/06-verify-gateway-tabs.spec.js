@@ -298,6 +298,88 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(routeForm).toHaveCount(0);
     });
 
+    test("should show schema content for route with file-based schema", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find the 'validated' route row (which has a file-based schema)
+        const validatedRow = summaryTable.locator(
+            'tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+
+        // Click Edit on the validated route
+        const editBtn = validatedRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Schema checkbox should be checked (route has schema configured)
+        const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
+        await expect(schemaCheckbox).toBeChecked();
+
+        // Schema textarea should be visible and contain the file path
+        const schemaTextarea = routeForm.locator(".field-schema");
+        await expect(schemaTextarea).toBeVisible({ timeout: 3000 });
+        const schemaValue = await schemaTextarea.inputValue();
+        expect(schemaValue).toContain("./conf/schemas/user-request-schema.json");
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should display updated schema label text", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Open editor for first route
+        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
+        await firstEditBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Check the schema checkbox to reveal the label
+        const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
+        await schemaCheckbox.check();
+
+        // Verify the label text
+        const schemaLabel = routeForm.locator(".field-container-schema label");
+        await expect(schemaLabel).toContainText("Schema (JSON or file path)");
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
     test("should toggle schema textarea via checkbox", async ({
         customUIFrame,
     }) => {

@@ -17,15 +17,8 @@ import {
 // Counter for unique form field IDs
 let formCounter = 0;
 
-const SCHEMA_PLACEHOLDER = `{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "value": { "type": "number" }
-  },
-  "required": ["name"]
-}`;
+const SCHEMA_PLACEHOLDER = `Paste a JSON Schema inline or enter a file path:
+./conf/schemas/my-schema.json`;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -353,7 +346,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     const schemaContainer = document.createElement('div');
     schemaContainer.className = `form-field field-container-schema${hasSchema ? '' : ' hidden'}`;
     schemaContainer.innerHTML = `
-        <label for="field-schema-${idx}">JSON Schema:</label>
+        <label for="field-schema-${idx}">Schema (JSON or file path):</label>
         <textarea id="field-schema-${idx}" name="schema"
                   class="field-schema form-input route-config-field"
                   placeholder="${sanitizeHtml(SCHEMA_PLACEHOLDER)}"

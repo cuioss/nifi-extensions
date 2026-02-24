@@ -751,6 +751,25 @@ describe('rest-endpoint-config', () => {
         expect(() => cleanup()).not.toThrow();
     });
 
+    it('should display updated schema label text', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        // Check the schema checkbox to reveal the textarea and label
+        const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
+        schemaCheckbox.checked = true;
+        schemaCheckbox.dispatchEvent(new Event('change'));
+
+        const schemaLabel = form.querySelector('.field-container-schema label');
+        expect(schemaLabel.textContent).toContain('Schema (JSON or file path)');
+    });
+
     it('should handle disabled route in table', async () => {
         const props = {
             ...SAMPLE_PROPERTIES,
