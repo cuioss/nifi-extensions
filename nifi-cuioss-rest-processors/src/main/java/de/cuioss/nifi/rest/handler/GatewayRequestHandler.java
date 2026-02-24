@@ -397,9 +397,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return true;
         }
         gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.SCHEMA_VALIDATION_FAILED);
+        int maxLogViolations = 5;
         String violationSummary = violations.stream()
+                .limit(maxLogViolations)
                 .map(v -> v.pointer() + ": " + v.message())
                 .collect(Collectors.joining("; "));
+        if (violations.size() > maxLogViolations) {
+            violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
+        }
         LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
         sendProblemResponse(response, callback,
                 ProblemDetail.validationError(

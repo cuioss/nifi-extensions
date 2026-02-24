@@ -42,6 +42,7 @@ import org.apache.nifi.ssl.SSLContextProvider;
 
 import javax.net.ssl.SSLContext;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -237,13 +238,18 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         Map<String, Path> routeSchemas = new HashMap<>();
         for (RouteConfiguration route : routes) {
             if (route.hasSchemaValidation()) {
-                Path schemaPath = Path.of(route.schemaPath()).normalize();
-                if (Files.isReadable(schemaPath)) {
-                    routeSchemas.put(route.name(), schemaPath);
-                    LOGGER.info("Schema validation enabled for route '%s': %s", route.name(), schemaPath);
-                } else {
-                    LOGGER.warn("Schema file not readable for route '%s', skipping validation: %s",
-                            route.name(), schemaPath);
+                try {
+                    Path schemaPath = Path.of(route.schemaPath()).normalize();
+                    if (Files.isReadable(schemaPath)) {
+                        routeSchemas.put(route.name(), schemaPath);
+                        LOGGER.info("Schema validation enabled for route '%s': %s", route.name(), schemaPath);
+                    } else {
+                        LOGGER.warn("Schema file not readable for route '%s', skipping validation: %s",
+                                route.name(), schemaPath);
+                    }
+                } catch (InvalidPathException e) {
+                    LOGGER.warn("Invalid schema path for route '%s', skipping validation: %s",
+                            route.name(), e.getMessage());
                 }
             }
         }
