@@ -38,6 +38,8 @@
                     <!-- Gateway tabs -->
                     <a href="#endpoint-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Configuration</a>
                     <a href="#endpoint-tester" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Tester</a>
+                    <a href="#gateway-issuer-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Issuer Configuration</a>
+                    <a href="#gateway-token-verification" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Token Verification</a>
                     <!-- Shared tabs -->
                     <a href="#metrics" class="tab-item" role="tab" data-toggle="tab">Metrics</a>
                     <a href="#help" class="tab-item" role="tab" data-toggle="tab">Help</a>
@@ -57,6 +59,12 @@
                 </div>
                 <div id="endpoint-tester" class="tab-pane gateway-tab hidden" role="tabpanel" data-testid="endpoint-tester-panel">
                     <!-- Endpoint tester content will be injected here -->
+                </div>
+                <div id="gateway-issuer-config" class="tab-pane gateway-tab hidden" role="tabpanel" data-testid="gateway-issuer-config-panel">
+                    <!-- Gateway issuer configuration content will be injected here -->
+                </div>
+                <div id="gateway-token-verification" class="tab-pane gateway-tab hidden" role="tabpanel" data-testid="gateway-token-verification-panel">
+                    <!-- Gateway token verification content will be injected here -->
                 </div>
                 <!-- Shared panes -->
                 <div id="metrics" class="tab-pane" role="tabpanel">
@@ -92,6 +100,10 @@
                                         settings, and security configuration</li>
                                         <li><strong>Endpoint Tester:</strong> Send test requests to verify
                                         route access and authentication</li>
+                                        <li><strong>Issuer Configuration:</strong> Manage JWT issuer settings
+                                        from the linked Controller Service</li>
+                                        <li><strong>Token Verification:</strong> Paste and verify JWT tokens
+                                        against configured issuers</li>
                                         <li><strong>Metrics:</strong> Monitor token validation, HTTP security
                                         events, and gateway activity</li>
                                     </ul>

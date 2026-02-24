@@ -111,7 +111,7 @@ const request = async (method, url, body = null) => {
  * @param {string} componentId  NiFi component UUID
  * @returns {Promise<{type: string, componentClass: string}>}
  */
-const detectComponentType = async (componentId) => {
+const detectComponentType = async (_componentId) => {
     if (_componentInfo) return _componentInfo;
 
     // Call WAR servlet — resolves within the WAR context (works both in
@@ -200,6 +200,59 @@ export const fetchGatewayApi = (path) =>
 export const sendGatewayTestRequest = (payload) =>
     request('POST', `${BASE_URL}/gateway/test`, payload);
 
+// ---------------------------------------------------------------------------
+// Direct Controller Service accessors (bypass detectComponentType cache)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch controller service properties directly by CS UUID.
+ * Unlike getComponentProperties(), this does not use detectComponentType —
+ * it always targets the controller-services endpoint.
+ *
+ * @param {string} csId  Controller Service UUID
+ * @returns {Promise<{properties: Object, revision: Object}>}
+ */
+export const getControllerServiceProperties = async (csId) => {
+    const data = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
+    let props = data;
+    for (const key of COMPONENT_TYPES.CONTROLLER_SERVICE.propsPath) { props = props?.[key]; }
+    return { properties: props || {}, revision: data.revision };
+};
+
+/**
+ * Update controller service properties directly by CS UUID.
+ * Fetches current revision first, then sends PUT.
+ *
+ * @param {string} csId  Controller Service UUID
+ * @param {Object} properties  properties to update
+ * @returns {Promise<Object>}  updated CS response
+ */
+export const updateControllerServiceProperties = async (csId, properties) => {
+    const current = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
+    return request('PUT', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`, {
+        revision: current.revision,
+        component: { id: csId, properties }
+    });
+};
+
+/**
+ * Resolve the JWT Config Service UUID from a gateway processor's properties.
+ * Looks for 'rest.gateway.jwt.config.service' or 'jwt.issuer.config.service'.
+ *
+ * @param {string} processorId  Gateway processor UUID
+ * @returns {Promise<string|null>}  CS UUID or null if not configured
+ */
+export const resolveJwtConfigServiceId = async (processorId) => {
+    const info = await detectComponentType(processorId);
+    const data = await request('GET', `${info.apiPath}/${processorId}`);
+    let props = data;
+    for (const key of info.propsPath) { props = props?.[key]; }
+    const properties = props || {};
+    return properties['rest.gateway.jwt.config.service']
+        || properties['jwt.issuer.config.service']
+        || null;
+};
+
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = (processorId) =>
@@ -214,4 +267,6 @@ export const updateProcessorProperties = async (processorId, properties) => {
     });
 };
 
-export { getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES };
+export {
+    getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES
+};

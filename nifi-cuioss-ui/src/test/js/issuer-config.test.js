@@ -347,4 +347,527 @@ describe('issuer-config', () => {
     it('should call cleanup without error', () => {
         expect(() => cleanup()).not.toThrow();
     });
+
+    // -----------------------------------------------------------------------
+    // Gateway context (options)
+    // -----------------------------------------------------------------------
+
+    describe('gateway context (isGatewayContext)', () => {
+        beforeEach(() => {
+            // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual CS stub
+            api.getControllerServiceProperties = jest.fn();
+            // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual CS stub
+            api.updateControllerServiceProperties = jest.fn();
+            // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual t() stub
+            utils.t = jest.fn().mockImplementation((key) => key);
+        });
+
+        it('should render summary table in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.keycloak.issuer': 'https://kc.example.com',
+                    'issuer.keycloak.jwks-url': 'https://kc.example.com/jwks',
+                    'issuer.keycloak.jwks-type': 'url'
+                }
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.issuer-summary-table')).not.toBeNull();
+            const rows = container.querySelectorAll('tr[data-issuer-name]');
+            expect(rows.length).toBe(1);
+            expect(rows[0].dataset.issuerName).toBe('keycloak');
+        });
+
+        it('should show empty state when no issuers in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({ properties: {} });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.empty-state')).not.toBeNull();
+        });
+
+        it('should open inline editor when edit button is clicked', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            const editBtn = container.querySelector('.edit-issuer-button');
+            editBtn.click();
+
+            expect(container.querySelector('.issuer-inline-form')).not.toBeNull();
+            const nameInput = container.querySelector('.issuer-inline-form .issuer-name');
+            expect(nameInput.value).toBe('kc');
+        });
+
+        it('should save issuer via CS API in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({ properties: {} });
+            api.updateControllerServiceProperties.mockResolvedValue({});
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Click Add Issuer
+            container.querySelector('.add-issuer-button').click();
+
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.issuer-name').value = 'my-issuer';
+            form.querySelector('.field-issuer').value = 'https://issuer.example.com';
+            form.querySelector('.field-jwks-url').value = 'https://issuer.example.com/jwks';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.updateControllerServiceProperties).toHaveBeenCalledWith(
+                'cs-uuid-123',
+                expect.objectContaining({
+                    'issuer.my-issuer.issuer': 'https://issuer.example.com',
+                    'issuer.my-issuer.jwks-url': 'https://issuer.example.com/jwks'
+                })
+            );
+        });
+
+        it('should remove issuer via CS API in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+            api.updateControllerServiceProperties.mockResolvedValue({});
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            const removeBtn = container.querySelector('.remove-issuer-gw-button');
+            removeBtn.click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.updateControllerServiceProperties).toHaveBeenCalledWith(
+                'cs-uuid-123',
+                expect.objectContaining({
+                    'issuer.kc.issuer': null,
+                    'issuer.kc.jwks-url': null
+                })
+            );
+        });
+
+        it('should handle save error in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {}
+            });
+            api.updateControllerServiceProperties.mockRejectedValue(
+                new Error('CS update failed')
+            );
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.add-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.issuer-name').value = 'fail-issuer';
+            form.querySelector('.field-issuer').value = 'https://fail.example.com';
+            form.querySelector('.field-jwks-url').value = 'https://fail.example.com/jwks';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(utils.displayUiError).toHaveBeenCalled();
+        });
+
+        it('should toggle JWKS type fields in gateway inline editor', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            const typeSelect = form.querySelector('.field-jwks-type');
+
+            typeSelect.value = 'file';
+            typeSelect.dispatchEvent(new Event('change'));
+
+            const urlField = form.querySelector('.jwks-type-url');
+            const fileField = form.querySelector('.jwks-type-file');
+            expect(urlField.classList.contains('hidden')).toBe(true);
+            expect(fileField.classList.contains('hidden')).toBe(false);
+
+            typeSelect.value = 'memory';
+            typeSelect.dispatchEvent(new Event('change'));
+
+            const memoryField = form.querySelector('.jwks-type-memory');
+            expect(fileField.classList.contains('hidden')).toBe(true);
+            expect(memoryField.classList.contains('hidden')).toBe(false);
+        });
+
+        it('should test JWKS connection from gateway inline editor', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+            api.validateJwksUrl.mockResolvedValue({
+                valid: true, keyCount: 2
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.field-jwks-url').value =
+                'https://kc.example.com/jwks';
+
+            form.querySelector('.verify-jwks-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const result = form.querySelector('.verification-result');
+            expect(result.textContent).toContain('Valid JWKS');
+        });
+
+        it('should validate required fields in gateway context', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {}
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.add-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.issuer-name').value = '';
+            form.querySelector('.field-issuer').value = '';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(utils.displayUiError).toHaveBeenCalled();
+        });
+
+        it('should update existing row after edit save', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+            api.updateControllerServiceProperties.mockResolvedValue({});
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Edit existing issuer
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.field-issuer').value =
+                'https://kc-new.example.com';
+            form.querySelector('.field-jwks-url').value =
+                'https://kc-new.example.com/jwks';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Inline form should be removed
+            expect(container.querySelector('.issuer-inline-form')).toBeNull();
+            // Row should show modified badge
+            const row = container.querySelector(
+                'tr[data-issuer-name="kc"]'
+            );
+            expect(row.dataset.origin).toBe('modified');
+        });
+
+        it('should handle API failure when removing issuer', async () => {
+            api.getControllerServiceProperties
+                .mockResolvedValueOnce({
+                    properties: {
+                        'issuer.kc.issuer': 'https://kc.example.com',
+                        'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                    }
+                })
+                .mockRejectedValueOnce(new Error('API error'));
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.remove-issuer-gw-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(utils.displayUiError).toHaveBeenCalled();
+        });
+
+        it('should handle empty summary table on API failure', async () => {
+            api.getControllerServiceProperties.mockRejectedValue(
+                new Error('CS not found')
+            );
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.issuer-summary-table'))
+                .not.toBeNull();
+            expect(container.querySelector('.empty-state'))
+                .not.toBeNull();
+        });
+
+        it('should render table without componentId in gateway mode', async () => {
+            await init(container, {
+                targetComponentId: '',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.issuer-summary-table'))
+                .not.toBeNull();
+            expect(container.querySelector('.empty-state'))
+                .not.toBeNull();
+        });
+
+        it('should save in standalone mode without componentId', async () => {
+            await init(container, {
+                targetComponentId: '',
+                useControllerService: false,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.add-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.issuer-name').value = 'standalone-issuer';
+            form.querySelector('.field-issuer').value = 'https://standalone.example.com';
+            form.querySelector('.field-jwks-url').value = 'https://standalone.example.com/jwks';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Form should be removed and row added
+            expect(container.querySelector('.issuer-inline-form')).toBeNull();
+            const row = container.querySelector('tr[data-issuer-name="standalone-issuer"]');
+            expect(row).not.toBeNull();
+        });
+
+        it('should handle rename by clearing old properties', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.old-name.issuer': 'https://old.example.com',
+                    'issuer.old-name.jwks-url': 'https://old.example.com/jwks'
+                }
+            });
+            api.updateControllerServiceProperties.mockResolvedValue({});
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            // Rename issuer
+            form.querySelector('.issuer-name').value = 'new-name';
+            form.querySelector('.field-issuer').value = 'https://old.example.com';
+            form.querySelector('.field-jwks-url').value = 'https://old.example.com/jwks';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Should have called update with null for old props
+            expect(api.updateControllerServiceProperties)
+                .toHaveBeenCalledWith(
+                    'cs-uuid-123',
+                    expect.objectContaining({
+                        'issuer.old-name.issuer': null,
+                        'issuer.old-name.jwks-url': null,
+                        'issuer.new-name.issuer': 'https://old.example.com'
+                    })
+                );
+        });
+
+        it('should test JWKS file connection in gateway editor', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-file': '/path/to/jwks.json',
+                    'issuer.kc.jwks-type': 'file'
+                }
+            });
+            api.validateJwksFile.mockResolvedValue({
+                valid: true, keyCount: 1
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+
+            // Switch to file type and test
+            const typeSelect = form.querySelector('.field-jwks-type');
+            typeSelect.value = 'file';
+            typeSelect.dispatchEvent(new Event('change'));
+
+            form.querySelector('.field-jwks-file').value = '/path/to/jwks.json';
+            form.querySelector('.verify-jwks-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.validateJwksFile)
+                .toHaveBeenCalledWith('/path/to/jwks.json');
+        });
+
+        it('should test JWKS memory content in gateway editor', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+            api.validateJwksContent.mockResolvedValue({
+                valid: true, keyCount: 1
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+
+            const typeSelect = form.querySelector('.field-jwks-type');
+            typeSelect.value = 'memory';
+            typeSelect.dispatchEvent(new Event('change'));
+
+            form.querySelector('.field-jwks-content').value = '{"keys":[]}';
+            form.querySelector('.verify-jwks-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.validateJwksContent)
+                .toHaveBeenCalledWith('{"keys":[]}');
+        });
+
+        it('should remove issuer standalone mode in gateway context', async () => {
+            await init(container, {
+                targetComponentId: '',
+                useControllerService: false,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Add an issuer first in standalone mode
+            container.querySelector('.add-issuer-button').click();
+            const form = container.querySelector('.issuer-inline-form');
+            form.querySelector('.issuer-name').value = 'test-iss';
+            form.querySelector('.field-issuer').value = 'https://test.com';
+            form.querySelector('.field-jwks-url').value = 'https://test.com/j';
+
+            form.querySelector('.save-issuer-button').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Now remove it
+            const removeBtn = container.querySelector(
+                '.remove-issuer-gw-button'
+            );
+            removeBtn.click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelectorAll(
+                'tr[data-issuer-name]'
+            ).length).toBe(0);
+        });
+
+        it('should cancel inline editor and restore row', async () => {
+            api.getControllerServiceProperties.mockResolvedValue({
+                properties: {
+                    'issuer.kc.issuer': 'https://kc.example.com',
+                    'issuer.kc.jwks-url': 'https://kc.example.com/jwks'
+                }
+            });
+
+            await init(container, {
+                targetComponentId: 'cs-uuid-123',
+                useControllerService: true,
+                isGatewayContext: true
+            });
+            await new Promise((r) => setTimeout(r, 10));
+
+            container.querySelector('.edit-issuer-button').click();
+            expect(container.querySelector('.issuer-inline-form')).not.toBeNull();
+
+            container.querySelector('.cancel-issuer-button').click();
+            expect(container.querySelector('.issuer-inline-form')).toBeNull();
+            // Row should be visible again
+            const row = container.querySelector('tr[data-issuer-name="kc"]');
+            expect(row.classList.contains('hidden')).toBe(false);
+        });
+    });
 });

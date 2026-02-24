@@ -24,7 +24,8 @@ jest.mock('../../main/webapp/js/endpoint-tester.js', () => ({
 }));
 jest.mock('../../main/webapp/js/api.js', () => ({
     getComponentId: jest.fn().mockReturnValue(''),
-    detectComponentType: jest.fn().mockResolvedValue({ type: 'PROCESSOR', componentClass: '' })
+    detectComponentType: jest.fn().mockResolvedValue({ type: 'PROCESSOR', componentClass: '' }),
+    resolveJwtConfigServiceId: jest.fn().mockResolvedValue(null)
 }));
 
 /** Full DOM structure matching index.html with both JWT and gateway tabs. */
@@ -38,6 +39,8 @@ const FULL_DOM = `
                     <a href="#token-verification" class="tab-item jwt-tab" role="tab" data-toggle="tab">Token Verification</a>
                     <a href="#endpoint-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Configuration</a>
                     <a href="#endpoint-tester" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Tester</a>
+                    <a href="#gateway-issuer-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Issuer Configuration</a>
+                    <a href="#gateway-token-verification" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Token Verification</a>
                     <a href="#metrics" class="tab-item" role="tab" data-toggle="tab">Metrics</a>
                     <a href="#help" class="tab-item" role="tab" data-toggle="tab">Help</a>
                 </div>
@@ -47,6 +50,8 @@ const FULL_DOM = `
                 <div id="token-verification" class="tab-pane jwt-tab" role="tabpanel"></div>
                 <div id="endpoint-config" class="tab-pane gateway-tab hidden" role="tabpanel"></div>
                 <div id="endpoint-tester" class="tab-pane gateway-tab hidden" role="tabpanel"></div>
+                <div id="gateway-issuer-config" class="tab-pane gateway-tab hidden" role="tabpanel"></div>
+                <div id="gateway-token-verification" class="tab-pane gateway-tab hidden" role="tabpanel"></div>
                 <div id="metrics" class="tab-pane" role="tabpanel"></div>
                 <div id="help" class="tab-pane" role="tabpanel">
                     <div class="help-sections">
@@ -323,5 +328,61 @@ describe('initComponents with component type detection', () => {
         await initComponents();
 
         expect(issuerConfig.init).toHaveBeenCalled();
+    });
+
+    it('should initialize gateway issuer tabs when CS ID is resolved', async () => {
+        const api = await import('../../main/webapp/js/api.js');
+        api.getComponentId.mockReturnValue('gw-proc-123');
+        api.detectComponentType.mockResolvedValue({
+            type: 'PROCESSOR',
+            componentClass: 'de.cuioss.nifi.rest.RestApiGatewayProcessor'
+        });
+        api.resolveJwtConfigServiceId.mockResolvedValue('cs-uuid-abc');
+
+        const issuerConfig = await import('../../main/webapp/js/issuer-config.js');
+        const tokenVerifier = await import('../../main/webapp/js/token-verifier.js');
+
+        const { initComponents } = await import('../../main/webapp/js/app.js');
+        await initComponents();
+
+        // issuer-config should be initialized with gateway options
+        expect(issuerConfig.init).toHaveBeenCalledWith(
+            expect.any(HTMLElement),
+            expect.objectContaining({
+                targetComponentId: 'cs-uuid-abc',
+                useControllerService: true,
+                isGatewayContext: true
+            })
+        );
+
+        // token-verifier should be initialized on gateway-token-verification pane
+        expect(tokenVerifier.init).toHaveBeenCalledWith(
+            document.getElementById('gateway-token-verification')
+        );
+    });
+
+    it('should show info message when no CS is configured for gateway', async () => {
+        const api = await import('../../main/webapp/js/api.js');
+        api.getComponentId.mockReturnValue('gw-proc-456');
+        api.detectComponentType.mockResolvedValue({
+            type: 'PROCESSOR',
+            componentClass: 'de.cuioss.nifi.rest.RestApiGatewayProcessor'
+        });
+        api.resolveJwtConfigServiceId.mockResolvedValue(null);
+
+        const issuerConfig = await import('../../main/webapp/js/issuer-config.js');
+
+        const { initComponents } = await import('../../main/webapp/js/app.js');
+        await initComponents();
+
+        // Issuer config should NOT have been initialized (no CS ID)
+        expect(issuerConfig.init).not.toHaveBeenCalled();
+
+        // Info message should be shown
+        const issuerPane = document.getElementById('gateway-issuer-config');
+        expect(issuerPane.querySelector('.config-info-message')).not.toBeNull();
+
+        const tokenPane = document.getElementById('gateway-token-verification');
+        expect(tokenPane.querySelector('.config-info-message')).not.toBeNull();
     });
 });

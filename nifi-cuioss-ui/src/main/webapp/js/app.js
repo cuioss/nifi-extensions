@@ -14,7 +14,7 @@ import { init as initTokenVerifier } from './token-verifier.js';
 import { init as initMetrics, cleanup as cleanupMetrics } from './metrics.js';
 import { init as initEndpointConfig } from './rest-endpoint-config.js';
 import { init as initEndpointTester } from './endpoint-tester.js';
-import { getComponentId, detectComponentType } from './api.js';
+import { getComponentId, detectComponentType, resolveJwtConfigServiceId } from './api.js';
 import { log } from './utils.js';
 
 // ---------------------------------------------------------------------------
@@ -135,6 +135,9 @@ const initComponents = async () => {
 
         const endpointTesterEl = document.getElementById('endpoint-tester');
         if (endpointTesterEl) initEndpointTester(endpointTesterEl);
+
+        // Resolve JWT Config Service for issuer config and token verification
+        await initGatewayIssuerTabs(componentId);
     } else {
         const issuerEl = document.getElementById('issuer-config');
         if (issuerEl) initIssuerConfig(issuerEl);
@@ -147,6 +150,53 @@ const initComponents = async () => {
     if (metricsEl) initMetrics(metricsEl, isGateway);
 
     // Help tab is static HTML in index.html — nothing to initialise.
+};
+
+// ---------------------------------------------------------------------------
+// Gateway issuer tabs initialization
+// ---------------------------------------------------------------------------
+
+const initGatewayIssuerTabs = async (processorId) => {
+    const issuerConfigEl = document.getElementById('gateway-issuer-config');
+    const tokenVerifEl = document.getElementById('gateway-token-verification');
+
+    let csId = null;
+    try {
+        csId = await resolveJwtConfigServiceId(processorId);
+    } catch (err) {
+        log.warn('Failed to resolve JWT Config Service ID:', err.message);
+    }
+
+    if (csId) {
+        log.info(`Resolved JWT Config Service: ${csId}`);
+        if (issuerConfigEl) {
+            initIssuerConfig(issuerConfigEl, {
+                targetComponentId: csId,
+                useControllerService: true,
+                isGatewayContext: true
+            });
+        }
+        if (tokenVerifEl) initTokenVerifier(tokenVerifEl);
+    } else {
+        log.info('No JWT Config Service configured for gateway');
+        if (issuerConfigEl) {
+            issuerConfigEl.innerHTML = `
+                <div class="config-info-message">
+                    <p><i class="fa fa-info-circle"></i>
+                    No JWT Issuer Config Service is linked to this gateway processor.
+                    Configure the <strong>JWT Issuer Config Service</strong> property
+                    in the processor settings to enable issuer management here.</p>
+                </div>`;
+        }
+        if (tokenVerifEl) {
+            tokenVerifEl.innerHTML = `
+                <div class="config-info-message">
+                    <p><i class="fa fa-info-circle"></i>
+                    Token verification requires a linked JWT Issuer Config Service.
+                    Configure the service reference in the processor settings first.</p>
+                </div>`;
+        }
+    }
 };
 
 // ---------------------------------------------------------------------------

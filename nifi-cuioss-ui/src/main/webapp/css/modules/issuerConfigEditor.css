@@ -139,3 +139,101 @@
     color: var(--error-color);
     margin-top: 10px;
 }
+
+/* Gateway context: issuer summary table (reuses config-table from endpointConfig) */
+
+.issuer-summary-table {
+    margin-bottom: var(--spacing-md, 16px);
+}
+
+.issuer-summary-table tbody tr.hidden {
+    display: none;
+}
+
+.issuer-summary-table .issuer-source {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Gateway inline issuer editor (reuses route-form pattern) */
+
+.issuer-inline-form {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: var(--container-background);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+}
+
+.issuer-inline-form .form-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.issuer-inline-form .form-field input,
+.issuer-inline-form .form-field textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-family: inherit;
+}
+
+.issuer-inline-form .form-field textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+/* Gateway action buttons (matching route table pattern) */
+
+.edit-issuer-button {
+    padding: 4px 10px;
+    border: 1px solid var(--primary-color, #2196f3);
+    color: var(--primary-color, #2196f3);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-right: 4px;
+}
+
+.edit-issuer-button:hover {
+    background-color: var(--primary-color, #2196f3);
+    color: var(--container-background, #fff);
+}
+
+.remove-issuer-gw-button {
+    padding: 4px 10px;
+    border: 1px solid var(--error-color-dark, #dc3545);
+    color: var(--error-color-dark, #dc3545);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.remove-issuer-gw-button:hover {
+    background-color: var(--error-color-dark, #dc3545);
+    color: var(--container-background, #fff);
+}
+
+/* Info message for missing CS configuration */
+
+.config-info-message {
+    padding: 16px;
+    border: 1px solid var(--primary-color, #2196f3);
+    border-radius: 4px;
+    background: var(--info-bg, #e3f2fd);
+    color: var(--text-color, #333);
+    margin: 15px 0;
+}
+
+.config-info-message i {
+    margin-right: 6px;
+    color: var(--primary-color, #2196f3);
+}
