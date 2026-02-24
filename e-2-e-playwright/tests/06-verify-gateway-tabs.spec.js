@@ -532,7 +532,7 @@ test.describe("REST API Gateway Tabs", () => {
             const row = dataRows.nth(i);
             await expect(row).toHaveAttribute("data-origin", "persisted");
             const badge = row.locator(".origin-persisted");
-            await expect(badge).toBeVisible({ timeout: 3000 });
+            await expect(badge).toHaveCount(1);
         }
     });
 

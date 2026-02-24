@@ -3,7 +3,7 @@
 :toclevels: 2
 :toc-title: Table of Contents
 
-xref:../Specification.adoc[Back to Main Specification]
+link:../Specification.adoc[Back to Main Specification]
 
 == Purpose
 
@@ -67,5 +67,5 @@ inline) and can be toggled via radio buttons in the editor form.
 
 == Related Topics
 
-* xref:configuration-ui.adoc[UI Configuration Overview]
-* xref:configuration.adoc[Configuration Overview]
+* link:configuration-ui.adoc[UI Configuration Overview]
+* link:configuration.adoc[Configuration Overview]
