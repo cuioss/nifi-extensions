@@ -298,7 +298,36 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(routeForm).toHaveCount(0);
     });
 
-    test("should show schema content for route with file-based schema", async ({
+    test("should show schema badge for validated route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find the 'validated' route row (which has a file-based schema)
+        const validatedRow = summaryTable.locator(
+            'tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+
+        // Schema badge should be visible in the path cell
+        const schemaBadge = validatedRow.locator(".schema-badge");
+        await expect(schemaBadge).toBeVisible({ timeout: 3000 });
+        await expect(schemaBadge).toContainText("Schema");
+    });
+
+    test("should show file mode for file-based schema", async ({
         customUIFrame,
     }) => {
         // Navigate to Endpoint Configuration tab
@@ -332,10 +361,14 @@ test.describe("REST API Gateway Tabs", () => {
         const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
         await expect(schemaCheckbox).toBeChecked();
 
-        // Schema textarea should be visible and contain the file path
-        const schemaTextarea = routeForm.locator(".field-schema");
-        await expect(schemaTextarea).toBeVisible({ timeout: 3000 });
-        const schemaValue = await schemaTextarea.inputValue();
+        // File mode radio should be checked for file-based schema
+        const fileRadio = routeForm.locator(".schema-mode-file");
+        await expect(fileRadio).toBeChecked();
+
+        // File input should contain the schema file path
+        const fileInput = routeForm.locator(".field-schema-file");
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        const schemaValue = await fileInput.inputValue();
         expect(schemaValue).toContain("./conf/schemas/user-request-schema.json");
 
         // Cancel to clean up
@@ -343,7 +376,7 @@ test.describe("REST API Gateway Tabs", () => {
         await cancelBtn.click();
     });
 
-    test("should display updated schema label text", async ({
+    test("should toggle schema mode between file and inline", async ({
         customUIFrame,
     }) => {
         // Navigate to Endpoint Configuration tab
@@ -367,17 +400,69 @@ test.describe("REST API Gateway Tabs", () => {
         const routeForm = endpointConfigPanel.locator(".route-form");
         await expect(routeForm).toBeVisible({ timeout: 5000 });
 
-        // Check the schema checkbox to reveal the label
+        // Check the schema checkbox to reveal the mode toggle
         const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
         await schemaCheckbox.check();
 
-        // Verify the label text
-        const schemaLabel = routeForm.locator(".field-container-schema label");
-        await expect(schemaLabel).toContainText("Schema (JSON or file path)");
+        // File mode should be visible by default
+        const fileInput = routeForm.locator(".schema-file-input");
+        const inlineInput = routeForm.locator(".schema-inline-input");
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        await expect(inlineInput).toBeHidden();
+
+        // Switch to inline mode
+        const inlineRadio = routeForm.locator(".schema-mode-inline");
+        await inlineRadio.check();
+        await expect(inlineInput).toBeVisible({ timeout: 3000 });
+        await expect(fileInput).toBeHidden();
+
+        // Switch back to file mode
+        const fileRadio = routeForm.locator(".schema-mode-file");
+        await fileRadio.check();
+        await expect(fileInput).toBeVisible({ timeout: 3000 });
+        await expect(inlineInput).toBeHidden();
 
         // Cancel to clean up
         const cancelBtn = routeForm.locator(".cancel-route-button");
         await cancelBtn.click();
+    });
+
+    test("should display property export panel", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Export section should exist (collapsed by default)
+        const exportSection = endpointConfigPanel.locator(".property-export");
+        await expect(exportSection).toBeVisible({ timeout: 5000 });
+
+        // Expand the export section
+        const exportSummary = exportSection.locator("summary");
+        await exportSummary.click();
+
+        // Textarea and copy button should be visible
+        const exportTextarea = exportSection.locator(".property-export-textarea");
+        await expect(exportTextarea).toBeVisible({ timeout: 3000 });
+
+        const copyButton = exportSection.locator(".copy-properties-button");
+        await expect(copyButton).toBeVisible({ timeout: 3000 });
+
+        // Export text should contain route properties
+        const exportText = await exportTextarea.inputValue();
+        expect(exportText).toContain("restapi.");
+        expect(exportText).toContain(".path");
     });
 
     test("should toggle schema textarea via checkbox", async ({
