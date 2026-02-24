@@ -37,7 +37,7 @@ public class IssuerPropertyDescriptorFactory {
     }
 
     public PropertyDescriptor createDescriptor(String propertyDescriptorName,
-            String issuerName, String propertyKey, String displayName) {
+                                               String issuerName, String propertyKey, String displayName) {
         Objects.requireNonNull(propertyDescriptorName, "propertyDescriptorName must not be null");
         Objects.requireNonNull(issuerName, "issuerName must not be null");
         Objects.requireNonNull(propertyKey, "propertyKey must not be null");

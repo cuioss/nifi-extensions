@@ -25,6 +25,8 @@ import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
+import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
+import de.cuioss.nifi.rest.validation.SchemaViolation;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
@@ -43,6 +45,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.stream.Collectors;
 
 /**
  * Jetty 12 Core handler implementing the REST API Gateway request pipeline.
@@ -53,8 +56,9 @@ import java.util.concurrent.BlockingQueue;
  *   <li>Extract and validate Bearer token via {@link JwtIssuerConfigService}</li>
  *   <li>Check authorization (roles/scopes) via {@link AuthorizationValidator}</li>
  *   <li>Read and size-check request body</li>
- *   <li>Send HTTP response (success or error with {@link ProblemDetail})</li>
+ *   <li>Validate request body against JSON Schema (if configured)</li>
  *   <li>Enqueue {@link HttpRequestContainer} for FlowFile creation</li>
+ *   <li>Send HTTP response (success or error with {@link ProblemDetail})</li>
  * </ol>
  */
 public class GatewayRequestHandler extends Handler.Abstract {
@@ -92,6 +96,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private final BlockingQueue<HttpRequestContainer> queue;
     private final int maxRequestSize;
     private final Set<String> corsAllowedOrigins;
+    @Nullable private final JsonSchemaValidator schemaValidator;
     private final PipelineSet securityPipelines;
     /** Transport-level HTTP security event counters from cui-http. */
     @Getter private final SecurityEventCounter httpSecurityEvents;
@@ -101,7 +106,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
     @Getter @Nullable private ManagementEndpointHandler managementHandler;
 
     /**
-     * Creates a new handler with CORS disabled.
+     * Creates a new handler with CORS disabled and no schema validation.
      *
      * @param routes         the configured routes
      * @param configService  the JWT issuer config service for token validation
@@ -113,7 +118,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             JwtIssuerConfigService configService,
             BlockingQueue<HttpRequestContainer> queue,
             int maxRequestSize) {
-        this(routes, configService, queue, maxRequestSize, Set.of());
+        this(routes, configService, queue, maxRequestSize, Set.of(), null);
     }
 
     /**
@@ -131,11 +136,32 @@ public class GatewayRequestHandler extends Handler.Abstract {
             BlockingQueue<HttpRequestContainer> queue,
             int maxRequestSize,
             Set<String> corsAllowedOrigins) {
+        this(routes, configService, queue, maxRequestSize, corsAllowedOrigins, null);
+    }
+
+    /**
+     * Creates a new handler with optional schema validation.
+     *
+     * @param routes              the configured routes
+     * @param configService       the JWT issuer config service for token validation
+     * @param queue               the queue for passing requests to the NiFi processor
+     * @param maxRequestSize      maximum allowed request body size in bytes
+     * @param corsAllowedOrigins  allowed CORS origins; use {@code Set.of("*")} for all; empty to disable
+     * @param schemaValidator     optional JSON Schema validator for request body validation
+     */
+    public GatewayRequestHandler(
+            List<RouteConfiguration> routes,
+            JwtIssuerConfigService configService,
+            BlockingQueue<HttpRequestContainer> queue,
+            int maxRequestSize,
+            Set<String> corsAllowedOrigins,
+            @Nullable JsonSchemaValidator schemaValidator) {
         this.routes = List.copyOf(routes);
         this.configService = Objects.requireNonNull(configService);
         this.queue = Objects.requireNonNull(queue);
         this.maxRequestSize = maxRequestSize;
         this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
+        this.schemaValidator = schemaValidator;
         this.httpSecurityEvents = new SecurityEventCounter();
         this.gatewaySecurityEvents = new GatewaySecurityEvents();
         this.securityPipelines = PipelineFactory.createCommonPipelines(
@@ -242,7 +268,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
 
-        // 5. Enqueue for FlowFile creation (uses sanitized query params and headers)
+        // 5. Schema validation (only if route has schema configured and body is non-empty)
+        if (!validateRequestBody(route.get(), body, response, callback, method, path)) {
+            return;
+        }
+
+        // 6. Enqueue for FlowFile creation (uses sanitized query params and headers)
         var container = new HttpRequestContainer(
                 route.get().name(), method, path,
                 sanitized.get().queryParameters(), sanitized.get().headers(), remoteHost,
@@ -256,7 +287,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
 
-        // 6. Success response
+        // 7. Success response
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.get().name(), method, path, remoteHost);
         sendSuccessResponse(request, response, callback, method);
     }
@@ -347,6 +378,37 @@ public class GatewayRequestHandler extends Handler.Abstract {
             sendProblemResponse(response, callback,
                     ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
         }
+        return false;
+    }
+
+    /**
+     * Validates the request body against the JSON Schema configured for the route.
+     *
+     * @return {@code true} if valid or no schema configured, {@code false} if an error response was sent
+     */
+    private boolean validateRequestBody(
+            RouteConfiguration route, byte[] body, Response response, Callback callback,
+            String method, String path) {
+        if (schemaValidator == null || !route.hasSchemaValidation()) {
+            return true;
+        }
+        List<SchemaViolation> violations = schemaValidator.validate(route.name(), body);
+        if (violations.isEmpty()) {
+            return true;
+        }
+        gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.SCHEMA_VALIDATION_FAILED);
+        int maxLogViolations = 5;
+        String violationSummary = violations.stream()
+                .limit(maxLogViolations)
+                .map(v -> v.pointer() + ": " + v.message())
+                .collect(Collectors.joining("; "));
+        if (violations.size() > maxLogViolations) {
+            violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
+        }
+        LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
+        sendProblemResponse(response, callback,
+                ProblemDetail.validationError(
+                        "Request body failed JSON Schema validation", violations));
         return false;
     }
 

@@ -43,15 +43,15 @@ import java.util.Objects;
  * @param token           the validated JWT access token
  */
 public record HttpRequestContainer(
-@NonNull String routeName,
-@NonNull String method,
-@NonNull String requestUri,
-Map<String, String> queryParameters,
-Map<String, String> headers,
-@NonNull String remoteHost,
-byte[] body,
-@Nullable String contentType,
-@NonNull AccessTokenContent token) {
+        @NonNull String routeName,
+        @NonNull String method,
+        @NonNull String requestUri,
+        Map<String, String> queryParameters,
+        Map<String, String> headers,
+        @NonNull String remoteHost,
+        byte[] body,
+        @Nullable String contentType,
+        @NonNull AccessTokenContent token) {
 
     /**
      * Compact constructor — defensive copies for maps, null-safe body.

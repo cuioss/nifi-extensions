@@ -81,9 +81,9 @@ public class ComponentConfigReader {
      * @param properties     the component properties
      */
     public record ComponentConfig(
-    ComponentType type,
-    String componentClass,
-    Map<String, String> properties) {
+            ComponentType type,
+            String componentClass,
+            Map<String, String> properties) {
     }
 
     private final NiFiWebConfigurationContext configContext;
@@ -426,7 +426,7 @@ public class ComponentConfigReader {
     }
 
     private ComponentDetails fetchDetails(String componentId, UiExtensionType extensionType,
-            HttpServletRequest request) {
+                                          HttpServletRequest request) {
         // Implement NiFiWebRequestContext directly instead of using HttpServletRequestContext
         // from nifi-custom-ui-utils, which is not available in the Custom UI WAR classloader.
         NiFiWebRequestContext requestContext = new NiFiWebRequestContext() {

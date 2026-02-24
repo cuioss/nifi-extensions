@@ -46,6 +46,7 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /api/health} — GET only (authenticated)</li>
  *   <li>{@code /api/data} — GET and POST (authenticated)</li>
  *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
+ *   <li>{@code /api/validated} — POST only (JSON Schema validated)</li>
  *   <li>{@code /metrics} — GET only (management, API key required)</li>
  * </ul>
  *
@@ -354,6 +355,115 @@ class RestApiGatewayIT {
                     .then()
                     .statusCode(403)
                     .contentType(containsString("application/problem+json"));
+        }
+    }
+
+    // ── Schema Validation Tests ──────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Schema Validation")
+    class SchemaValidationTests {
+
+        @Test
+        @DisplayName("should return 202 for POST /api/validated with valid body")
+        void shouldAcceptValidBody() {
+            given().spec(authSpec)
+                    .body("{\"name\": \"Alice\", \"age\": 30}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(202);
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with missing required field")
+        void shouldReject422ForMissingRequiredField() {
+            given().spec(authSpec)
+                    .body("{\"age\": 25}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("title", equalTo("Unprocessable Content"))
+                    .body("status", equalTo(422))
+                    .body("violations", notNullValue())
+                    .body("violations.size()", greaterThanOrEqualTo(1));
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with wrong field type")
+        void shouldReject422ForWrongFieldType() {
+            given().spec(authSpec)
+                    .body("{\"name\": \"Alice\", \"age\": \"not-a-number\"}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("violations", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 422 with violations array containing pointer and message")
+        void shouldReturnViolationsArrayWithPointerAndMessage() {
+            given().spec(authSpec)
+                    .body("{\"age\": 25}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .body("violations[0].pointer", notNullValue())
+                    .body("violations[0].message", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with empty body")
+        void shouldReject422ForEmptyBody() {
+            given().spec(authSpec)
+                    .contentType(ContentType.JSON)
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"));
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with malformed JSON")
+        void shouldReject422ForMalformedJson() {
+            given().spec(authSpec)
+                    .body("not valid json {{{")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("violations", notNullValue())
+                    .body("violations.size()", greaterThanOrEqualTo(1));
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with additional properties")
+        void shouldReject422ForAdditionalProperties() {
+            given().spec(authSpec)
+                    .body("{\"name\": \"Alice\", \"extra\": true}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("violations", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 405 for GET on /api/validated")
+        void shouldReturn405ForGetOnValidated() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/validated")
+                    .then()
+                    .statusCode(405);
         }
     }
 

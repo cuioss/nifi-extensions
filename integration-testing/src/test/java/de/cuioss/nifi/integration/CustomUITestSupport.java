@@ -61,7 +61,7 @@ class CustomUITestSupport {
      * @return the processor UUID
      */
     static String discoverProcessorId(HttpClient client, String bearerToken,
-            String processorNameSubstring) throws Exception {
+                                      String processorNameSubstring) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(IntegrationTestSupport.NIFI_API_BASE
                         + "/flow/process-groups/root/status?recursive=true"))
@@ -101,7 +101,7 @@ class CustomUITestSupport {
      * @return the Custom UI base URL (e.g. {@code https://localhost:9095/nifi-cuioss-ui-1.0-SNAPSHOT})
      */
     static String discoverCustomUIBasePath(HttpClient client, String bearerToken,
-            String processorId) throws Exception {
+                                           String processorId) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(IntegrationTestSupport.NIFI_API_BASE + "/processors/" + processorId))
                 .GET()
@@ -142,7 +142,7 @@ class CustomUITestSupport {
      * @return a fully configured request specification
      */
     static RequestSpecification buildAuthSpec(String customUIBase,
-            String bearerToken, String processorId) {
+                                              String bearerToken, String processorId) {
         return new RequestSpecBuilder()
                 .setBaseUri(customUIBase)
                 .setConfig(RestAssuredConfig.config()
@@ -165,7 +165,7 @@ class CustomUITestSupport {
      * @return a request specification with NiFi auth but no processor ID
      */
     static RequestSpecification buildSessionOnlySpec(String customUIBase,
-            String bearerToken) {
+                                                     String bearerToken) {
         return new RequestSpecBuilder()
                 .setBaseUri(customUIBase)
                 .setConfig(RestAssuredConfig.config()

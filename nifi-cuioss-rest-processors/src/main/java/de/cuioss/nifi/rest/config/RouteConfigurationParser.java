@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  *   <li>{@code methods} — comma-separated HTTP methods (default: GET,POST,PUT,DELETE)</li>
  *   <li>{@code required-roles} — comma-separated roles</li>
  *   <li>{@code required-scopes} — comma-separated scopes</li>
- *   <li>{@code schema} — optional JSON Schema name</li>
+ *   <li>{@code schema} — optional file path to a JSON Schema file for request body validation</li>
  * </ul>
  */
 @UtilityClass
@@ -56,7 +56,7 @@ public class RouteConfigurationParser {
     static final String REQUIRED_ROLES_KEY = "required-roles";
     /** Property key for required scopes. */
     static final String REQUIRED_SCOPES_KEY = "required-scopes";
-    /** Property key for JSON Schema name. */
+    /** Property key for JSON Schema file path. */
     static final String SCHEMA_KEY = "schema";
     /** Property key for enabled flag. */
     static final String ENABLED_KEY = "enabled";

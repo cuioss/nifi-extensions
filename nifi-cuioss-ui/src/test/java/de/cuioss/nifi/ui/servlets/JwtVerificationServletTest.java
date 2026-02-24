@@ -77,7 +77,7 @@ class JwtVerificationServletTest {
                     new JwtValidationService(dummyContext) {
                         @Override
                         public TokenValidationResult verifyToken(String token, String processorId,
-                                HttpServletRequest request)
+                                                                 HttpServletRequest request)
                                 throws IllegalArgumentException, IllegalStateException {
                             try {
                                 return currentVerifier.verify(token, processorId);

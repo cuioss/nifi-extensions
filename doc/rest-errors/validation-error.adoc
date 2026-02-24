@@ -34,14 +34,30 @@ property configured.
   "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/validation-error.adoc",
   "title": "Unprocessable Content",
   "status": 422,
-  "detail": "Schema validation failed"
+  "detail": "Request body failed JSON Schema validation",
+  "violations": [
+    {
+      "pointer": "/name",
+      "message": "required property 'name' not found"
+    },
+    {
+      "pointer": "/age",
+      "message": "Value is [string] but should be [integer]"
+    }
+  ]
 }
 ----
+
+The `violations` array is present when the body fails JSON Schema validation.
+Each entry contains:
+
+* `pointer` -- JSON Pointer (https://www.rfc-editor.org/rfc/rfc6901[RFC 6901]) to the invalid location in the request body
+* `message` -- Human-readable description of the constraint violation
 
 == Resolution
 
 Ensure the request body conforms to the JSON Schema configured for the target route.
-Review the `detail` field for specific validation errors.
+Review the `violations` array for specific field-level errors.
 
 == See Also
 

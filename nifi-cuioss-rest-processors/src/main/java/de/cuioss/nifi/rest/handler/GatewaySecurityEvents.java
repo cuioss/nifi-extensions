@@ -59,6 +59,8 @@ public class GatewaySecurityEvents {
         ROUTE_NOT_FOUND,
         /** 405 — route exists but HTTP method is not allowed. */
         METHOD_NOT_ALLOWED,
+        /** 422 — request body failed JSON Schema validation. */
+        SCHEMA_VALIDATION_FAILED,
         /** 503 — request queue at capacity, back-pressure applied. */
         QUEUE_FULL
     }

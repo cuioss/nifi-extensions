@@ -14,24 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.cuioss.nifi.rest.handler;
+package de.cuioss.nifi.rest.validation;
 
-import java.util.Map;
+import lombok.NonNull;
 
 /**
- * Holds the security-validated and normalized HTTP request components.
- * <p>
- * All values have been processed through the cui-http security validation
- * pipelines, which normalize encoding, detect attack patterns, and sanitize
- * the input. Downstream processing should use these normalized values
- * instead of raw request data.
+ * Represents a single JSON Schema validation violation.
  *
- * @param path            the normalized URL path
- * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
- * @param headers         the normalized header values (Authorization excluded, values sanitized)
+ * @param pointer JSON Pointer (RFC 6901) to the invalid location in the instance document
+ * @param message human-readable description of the validation error
  */
-public record SanitizedRequest(
-        String path,
-        Map<String, String> queryParameters,
-        Map<String, String> headers) {
+public record SchemaViolation(@NonNull String pointer, @NonNull String message) {
 }

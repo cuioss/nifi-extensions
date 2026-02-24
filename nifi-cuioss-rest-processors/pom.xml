@@ -53,6 +53,11 @@
             <artifactId>nifi-ssl-context-service-api</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- JSON Schema validation (Draft 2020-12) -->
+        <dependency>
+            <groupId>dev.harrel</groupId>
+            <artifactId>json-schema</artifactId>
+        </dependency>
         <!-- Jetty 12 Core (from NiFi BOM, provided at runtime by NiFi) -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>

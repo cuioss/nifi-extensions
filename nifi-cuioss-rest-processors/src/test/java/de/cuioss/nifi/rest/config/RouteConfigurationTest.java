@@ -40,7 +40,7 @@ class RouteConfigurationTest {
                     Set.of("GET", "POST"),
                     Set.of("admin"),
                     Set.of("read", "write"),
-                    "user-schema");
+                    "./conf/schemas/user-schema.json");
 
             // Assert
             assertEquals("users", route.name());
@@ -49,7 +49,7 @@ class RouteConfigurationTest {
             assertEquals(Set.of("GET", "POST"), route.methods());
             assertEquals(Set.of("admin"), route.requiredRoles());
             assertEquals(Set.of("read", "write"), route.requiredScopes());
-            assertEquals("user-schema", route.schemaName());
+            assertEquals("./conf/schemas/user-schema.json", route.schemaPath());
         }
 
         @Test
@@ -62,7 +62,7 @@ class RouteConfigurationTest {
             assertEquals(RouteConfiguration.DEFAULT_METHODS, route.methods());
             assertTrue(route.requiredRoles().isEmpty());
             assertTrue(route.requiredScopes().isEmpty());
-            assertNull(route.schemaName());
+            assertNull(route.schemaPath());
         }
 
         @Test
@@ -119,6 +119,35 @@ class RouteConfigurationTest {
         void shouldBeDisabledWhenFalse() {
             var route = new RouteConfiguration("health", "/api/health", false, null, null, null, null);
             assertFalse(route.enabled());
+        }
+    }
+
+    @Nested
+    @DisplayName("Schema Validation")
+    class SchemaValidation {
+
+        @Test
+        @DisplayName("Should report has schema validation when schema path is set")
+        void shouldReportHasSchemaValidation() {
+            var route = new RouteConfiguration("users", "/api/users",
+                    true, null, Set.of(), Set.of(), "./conf/schemas/user-schema.json");
+            assertTrue(route.hasSchemaValidation());
+        }
+
+        @Test
+        @DisplayName("Should report no schema validation when null")
+        void shouldReportNoSchemaValidationWhenNull() {
+            var route = new RouteConfiguration("health", "/api/health",
+                    true, null, Set.of(), Set.of(), null);
+            assertFalse(route.hasSchemaValidation());
+        }
+
+        @Test
+        @DisplayName("Should report no schema validation when blank")
+        void shouldReportNoSchemaValidationWhenBlank() {
+            var route = new RouteConfiguration("health", "/api/health",
+                    true, null, Set.of(), Set.of(), "  ");
+            assertFalse(route.hasSchemaValidation());
         }
     }
 
