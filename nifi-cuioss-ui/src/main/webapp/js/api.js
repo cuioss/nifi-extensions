@@ -15,8 +15,8 @@ const COMPONENT_TYPES = {
     CONTROLLER_SERVICE: { apiPath: '/nifi-api/controller-services', propsPath: ['component', 'properties'] }
 };
 
-/** Cached component detection result: { type, componentClass, apiPath, propsPath } */
-let _componentInfo = null;
+/** Cached component detection results keyed by component ID. */
+const _componentInfoCache = new Map();
 
 /** UUID v4 pattern for NiFi component ID validation. */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,14 +70,16 @@ const getCsrfToken = () => {
  * @param {string} method  HTTP method
  * @param {string} url     endpoint
  * @param {Object|null} [body=null]  JSON body
+ * @param {Object} [opts={}]  extra options
+ * @param {string} [opts.componentId]  explicit component ID for X-Processor-Id header
  * @returns {Promise<Object>}  parsed JSON response
  */
-const request = async (method, url, body = null) => {
+const request = async (method, url, body = null, { componentId } = {}) => {
     const headers = {};
 
     // Attach processor-id header for JWT endpoints
     if (url.includes('/jwt/')) {
-        const pid = getComponentId();
+        const pid = componentId || getComponentId();
         if (pid) headers['X-Processor-Id'] = pid;
     }
 
@@ -115,31 +117,33 @@ const request = async (method, url, body = null) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Auto-detects the component type by trying the processor API first,
- * then falling back to controller service.
+ * Auto-detects the component type by calling the WAR servlet with
+ * the given component ID.
  *
  * @param {string} componentId  NiFi component UUID
- * @returns {Promise<{type: string, componentClass: string}>}
+ * @returns {Promise<{type: string, componentClass: string, apiPath: string, propsPath: string[]}>}
  */
-const detectComponentType = async (_componentId) => {
-    if (_componentInfo) return _componentInfo;
+const detectComponentType = async (componentId) => {
+    const cached = _componentInfoCache.get(componentId);
+    if (cached) return cached;
 
-    // Call WAR servlet — resolves within the WAR context (works both in
-    // NiFi iframe and standalone E2E). The request() function adds the
-    // X-Processor-Id header automatically for URLs containing '/jwt/'.
-    const data = await request('GET', `${BASE_URL}/component-info`);
-    _componentInfo = {
+    // Call WAR servlet with the explicit component ID so the backend
+    // resolves the correct component regardless of global state.
+    const data = await request('GET', `${BASE_URL}/component-info`,
+        null, { componentId });
+    const info = {
         type: data.type,
         componentClass: data.componentClass,
         ...COMPONENT_TYPES[data.type]
     };
-    return _componentInfo;
+    _componentInfoCache.set(componentId, info);
+    return info;
 };
 
 /**
  * Resets cached component info. Useful for testing.
  */
-const resetComponentCache = () => { _componentInfo = null; };
+const resetComponentCache = () => { _componentInfoCache.clear(); };
 
 // ---------------------------------------------------------------------------
 // Public API

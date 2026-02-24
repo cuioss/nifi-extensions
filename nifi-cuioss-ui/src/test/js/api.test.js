@@ -170,7 +170,6 @@ describe('updateProcessorProperties', () => {
 
 describe('detectComponentType', () => {
     test('should detect processor type via WAR servlet', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockJsonResponse({
             type: 'PROCESSOR',
             componentClass: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator'
@@ -188,8 +187,16 @@ describe('detectComponentType', () => {
         );
     });
 
+    test('should send explicit componentId as X-Processor-Id header', async () => {
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+
+        await detectComponentType('my-explicit-id');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['X-Processor-Id']).toBe('my-explicit-id');
+    });
+
     test('should detect controller service type via WAR servlet', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
         mockJsonResponse({
             type: 'CONTROLLER_SERVICE',
             componentClass: 'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService'
@@ -205,8 +212,7 @@ describe('detectComponentType', () => {
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
-    test('should cache detection result', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+    test('should cache detection result per component ID', async () => {
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
 
         await detectComponentType('comp-123');
@@ -216,8 +222,29 @@ describe('detectComponentType', () => {
         expect(cached.type).toBe('PROCESSOR');
     });
 
+    test('should cache separately for different component IDs', async () => {
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'ProcA' });
+        mockJsonResponse({
+            type: 'CONTROLLER_SERVICE',
+            componentClass: 'ServiceB'
+        });
+
+        const infoA = await detectComponentType('id-aaa');
+        const infoB = await detectComponentType('id-bbb');
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(infoA.type).toBe('PROCESSOR');
+        expect(infoB.type).toBe('CONTROLLER_SERVICE');
+
+        // Both should be cached independently
+        const cachedA = await detectComponentType('id-aaa');
+        const cachedB = await detectComponentType('id-bbb');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(cachedA.type).toBe('PROCESSOR');
+        expect(cachedB.type).toBe('CONTROLLER_SERVICE');
+    });
+
     test('should propagate errors from component-info endpoint', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockErrorResponse(500, 'Server Error');
 
         await expect(detectComponentType('comp-123')).rejects.toThrow('HTTP 500');
