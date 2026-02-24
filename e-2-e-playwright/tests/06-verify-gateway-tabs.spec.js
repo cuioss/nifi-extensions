@@ -506,6 +506,126 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(schemaContainer).toBeHidden();
     });
 
+    test("should show persisted badge for loaded routes", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // All loaded rows should have data-origin="persisted" and the lock icon badge
+        const dataRows = summaryTable.locator("tbody tr[data-route-name]");
+        const rowCount = await dataRows.count();
+        expect(rowCount).toBeGreaterThanOrEqual(1);
+
+        for (let i = 0; i < rowCount; i++) {
+            const row = dataRows.nth(i);
+            await expect(row).toHaveAttribute("data-origin", "persisted");
+            const badge = row.locator(".origin-persisted");
+            await expect(badge).toBeVisible({ timeout: 3000 });
+        }
+    });
+
+    test("should show new badge after adding a route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Add Route
+        const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
+        await addRouteBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Fill in new route details
+        const routeName = routeForm.locator(".route-name");
+        await routeName.fill("e2e-origin-test");
+        const pathField = routeForm.locator(".field-path");
+        await pathField.fill("/api/e2e-origin-test");
+        const methodsField = routeForm.locator(".field-methods");
+        await methodsField.fill("GET");
+
+        // Save
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+        await expect(routeForm).toHaveCount(0, { timeout: 5000 });
+
+        // Verify the new row has origin="new" and the blue "New" badge
+        const newRow = summaryTable.locator(
+            'tr[data-route-name="e2e-origin-test"]',
+        );
+        await expect(newRow).toBeVisible({ timeout: 5000 });
+        await expect(newRow).toHaveAttribute("data-origin", "new");
+        const badge = newRow.locator(".origin-new");
+        await expect(badge).toBeVisible({ timeout: 3000 });
+        await expect(badge).toContainText("New");
+    });
+
+    test("should show modified badge after editing a persisted route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Find a persisted route (skip any previously added e2e-origin-test row)
+        const persistedRow = summaryTable.locator(
+            'tbody tr[data-origin="persisted"]',
+        ).first();
+        await expect(persistedRow).toBeVisible({ timeout: 5000 });
+
+        // Click Edit
+        const editBtn = persistedRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Save without changing anything — the act of saving marks it modified
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+        await expect(routeForm).toHaveCount(0, { timeout: 5000 });
+
+        // The row should now show origin="modified" and the amber badge
+        await expect(persistedRow).toHaveAttribute("data-origin", "modified");
+        const badge = persistedRow.locator(".origin-modified");
+        await expect(badge).toBeVisible({ timeout: 3000 });
+        await expect(badge).toContainText("Modified");
+    });
+
     test("should display endpoint tester with route selector and controls", async ({
         customUIFrame,
         processorService,

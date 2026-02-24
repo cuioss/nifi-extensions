@@ -240,16 +240,29 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
 };
 
 /**
+ * Build an origin badge HTML snippet for a route row.
+ * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @returns {string} HTML string for the badge
+ */
+const buildOriginBadge = (origin) => {
+    if (origin === 'new') return ' <span class="origin-badge origin-new">New</span>';
+    if (origin === 'modified') return ' <span class="origin-badge origin-modified">Modified</span>';
+    return ' <span class="origin-badge origin-persisted"><i class="fa fa-lock"></i></span>';
+};
+
+/**
  * Create a single summary table row for a route.
  * @param {string} name  route name
  * @param {Object} props  route properties
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
+ * @param {'persisted'|'modified'|'new'} origin  the route origin state
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer) => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted') => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
+    row.dataset.origin = origin;
 
     const enabledVal = props?.enabled !== 'false';
     const methods = props?.methods || '';
@@ -264,8 +277,10 @@ const createTableRow = (name, props, componentId, routesContainer) => {
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
 
+    const originBadge = buildOriginBadge(origin);
+
     row.innerHTML = `
-        <td>${sanitizeHtml(name)}</td>
+        <td>${sanitizeHtml(name)}${originBadge}</td>
         <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
@@ -294,8 +309,15 @@ const createTableRow = (name, props, componentId, routesContainer) => {
  * @param {Object} formData  extracted form data
  */
 const updateTableRow = (row, formData) => {
+    // Mark persisted routes as modified after edit
+    if (row.dataset.origin === 'persisted') {
+        row.dataset.origin = 'modified';
+    }
+    const origin = row.dataset.origin || 'persisted';
+    const originBadge = buildOriginBadge(origin);
+
     const cells = row.querySelectorAll('td');
-    cells[0].textContent = formData.routeName;
+    cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
     const schemaBadge = formData.schema?.trim()
         ? ' <span class="schema-badge">Schema</span>' : '';
     cells[1].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
@@ -579,6 +601,8 @@ const buildExportText = (routesContainer) => {
     const lines = [];
     for (const row of rows) {
         const name = row.dataset.routeName;
+        const origin = row.dataset.origin || 'persisted';
+        const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
         const cells = row.querySelectorAll('td');
         // cells: 0=name, 1=path(+badge), 2=methods, 3=enabled, 4=actions
         const pathText = cells[1]?.textContent?.trim() || '';
@@ -587,12 +611,12 @@ const buildExportText = (routesContainer) => {
         const enabled = cells[3]?.textContent?.trim() === 'Enabled';
         const hasSchemaBadge = !!cells[1]?.querySelector('.schema-badge');
 
-        lines.push(`${ROUTE_PREFIX}${name}.path = ${pathText}`);
-        if (methods) lines.push(`${ROUTE_PREFIX}${name}.methods = ${methods}`);
-        if (!enabled) lines.push(`${ROUTE_PREFIX}${name}.enabled = false`);
+        lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
+        if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
+        if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
         if (hasSchemaBadge) {
             // Schema value is not stored in the table; it was saved to properties
-            lines.push(`${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
+            lines.push(`${prefix}${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
         }
     }
     return lines.join('\n');
@@ -731,7 +755,7 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         'required-scopes': formData['required-scopes'],
         schema: formData.schema
     };
-    const row = createTableRow(formData.routeName, props, componentId, routesContainer);
+    const row = createTableRow(formData.routeName, props, componentId, routesContainer, 'new');
     tbody.appendChild(row);
 };
 

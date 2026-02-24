@@ -294,6 +294,33 @@
     font-style: italic;
 }
 
+/* Origin badges (persisted / modified / new) */
+
+.origin-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.origin-persisted {
+    color: var(--text-muted, #888);
+    font-size: 0.7rem;
+}
+
+.origin-modified {
+    background: var(--warning-bg, #fff3cd);
+    color: var(--warning-color, #856404);
+}
+
+.origin-new {
+    background: var(--info-bg, #e3f2fd);
+    color: var(--primary-color, #2196f3);
+}
+
 /* Schema badge in summary table */
 
 .schema-badge {

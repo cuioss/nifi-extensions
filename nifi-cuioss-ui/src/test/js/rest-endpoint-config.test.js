@@ -110,7 +110,7 @@ describe('rest-endpoint-config', () => {
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         expect(healthRow).not.toBeNull();
         const cells = healthRow.querySelectorAll('td');
-        expect(cells[0].textContent).toBe('health');
+        expect(cells[0].textContent).toContain('health');
         expect(cells[1].textContent).toBe('/api/health');
     });
 
@@ -948,6 +948,154 @@ describe('rest-endpoint-config', () => {
         expect(modeLabels.length).toBe(2);
         expect(modeLabels[0].textContent).toContain('File path');
         expect(modeLabels[1].textContent).toContain('Inline JSON');
+    });
+
+    // -----------------------------------------------------------------------
+    // Origin badges (persisted / modified / new)
+    // -----------------------------------------------------------------------
+
+    it('should show persisted badge for routes loaded from properties', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        const badge = healthRow.querySelector('.origin-persisted');
+        expect(badge).not.toBeNull();
+    });
+
+    it('should show new badge for UI-created route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add a new route
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'brand-new';
+        form.querySelector('.field-path').value = '/api/brand-new';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const newRow = container.querySelector('tr[data-route-name="brand-new"]');
+        expect(newRow.dataset.origin).toBe('new');
+        const badge = newRow.querySelector('.origin-new');
+        expect(badge).not.toBeNull();
+        expect(badge.textContent).toBe('New');
+    });
+
+    it('should show modified badge after editing persisted route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('persisted');
+
+        // Edit and save
+        healthRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.field-path').value = '/api/health/v2';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(healthRow.dataset.origin).toBe('modified');
+        const badge = healthRow.querySelector('.origin-modified');
+        expect(badge).not.toBeNull();
+        expect(badge.textContent).toBe('Modified');
+    });
+
+    it('should keep new badge when editing a new route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add a new route
+        container.querySelector('.add-route-button').click();
+        let form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'temp-route';
+        form.querySelector('.field-path').value = '/api/temp';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const newRow = container.querySelector('tr[data-route-name="temp-route"]');
+        expect(newRow.dataset.origin).toBe('new');
+
+        // Edit the new route
+        newRow.querySelector('.edit-route-button').click();
+        form = container.querySelector('.route-form');
+        form.querySelector('.field-path').value = '/api/temp/v2';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Should still be 'new', not 'modified'
+        expect(newRow.dataset.origin).toBe('new');
+        expect(newRow.querySelector('.origin-new')).not.toBeNull();
+    });
+
+    // -----------------------------------------------------------------------
+    // Export annotation (session-only prefix)
+    // -----------------------------------------------------------------------
+
+    it('should annotate session-only routes in export', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add a new route
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'export-test';
+        form.querySelector('.field-path').value = '/api/export-test';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('# [session-only] restapi.export-test.path');
+    });
+
+    it('should not annotate persisted routes in export', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save an existing route without changes to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        // Persisted routes should NOT have the session-only prefix
+        // The 'data' route (second row) was not edited so remains persisted
+        const lines = textarea.value.split('\n');
+        const dataLines = lines.filter((l) => l.includes('restapi.data.'));
+        for (const line of dataLines) {
+            expect(line).not.toContain('# [session-only]');
+        }
     });
 
     it('should handle disabled route in table', async () => {
