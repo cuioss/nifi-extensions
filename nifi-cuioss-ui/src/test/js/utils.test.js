@@ -99,6 +99,22 @@ describe('t (i18n)', () => {
     test('returns key as fallback for unknown key', () => {
         expect(t('unknown.key.xyz')).toBe('unknown.key.xyz');
     });
+
+    test('returns translation for origin badge keys', () => {
+        const keys = [
+            'origin.badge.persisted.title',
+            'origin.badge.modified.title',
+            'origin.badge.new.title',
+            'origin.badge.modified',
+            'origin.badge.new'
+        ];
+        for (const key of keys) {
+            const result = t(key);
+            // Must return a real translation, not the key itself
+            expect(result).not.toBe(key);
+            expect(result.length).toBeGreaterThan(0);
+        }
+    });
 });
 
 // ---------------------------------------------------------------------------

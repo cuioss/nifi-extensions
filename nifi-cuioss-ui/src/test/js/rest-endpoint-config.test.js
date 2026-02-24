@@ -44,6 +44,7 @@ describe('rest-endpoint-config', () => {
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
         utils.sanitizeHtml.mockImplementation((s) => s || '');
+        utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
         // Mock getComponentId from api.js to return a valid processor ID
@@ -989,7 +990,22 @@ describe('rest-endpoint-config', () => {
         expect(newRow.dataset.origin).toBe('new');
         const badge = newRow.querySelector('.origin-new');
         expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('New');
+        expect(badge.textContent).toBe('origin.badge.new');
+        expect(badge.title).toBe('origin.badge.new.title');
+    });
+
+    it('should show persisted badge with tooltip', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const badge = healthRow.querySelector('.origin-persisted');
+        expect(badge).not.toBeNull();
+        expect(badge.title).toBe('origin.badge.persisted.title');
     });
 
     it('should show modified badge after editing persisted route', async () => {
@@ -1014,7 +1030,8 @@ describe('rest-endpoint-config', () => {
         expect(healthRow.dataset.origin).toBe('modified');
         const badge = healthRow.querySelector('.origin-modified');
         expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('Modified');
+        expect(badge.textContent).toBe('origin.badge.modified');
+        expect(badge.title).toBe('origin.badge.modified.title');
     });
 
     it('should keep new badge when editing a new route', async () => {
@@ -1047,6 +1064,57 @@ describe('rest-endpoint-config', () => {
         // Should still be 'new', not 'modified'
         expect(newRow.dataset.origin).toBe('new');
         expect(newRow.querySelector('.origin-new')).not.toBeNull();
+    });
+
+    it('should use i18n keys for origin badge text and tooltips', async () => {
+        // Provide realistic translations to verify i18n wiring
+        utils.t.mockImplementation((key) => {
+            const translations = {
+                'origin.badge.new': 'Neu',
+                'origin.badge.new.title': 'In dieser Sitzung erstellt',
+                'origin.badge.modified': 'Geändert',
+                'origin.badge.modified.title': 'In dieser Sitzung geändert',
+                'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen'
+            };
+            return translations[key] || key;
+        });
+
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Verify persisted badge tooltip uses translated text
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const persistedBadge = healthRow.querySelector('.origin-persisted');
+        expect(persistedBadge.title).toBe('Aus Prozessor-Eigenschaften geladen');
+
+        // Add a new route and verify badge uses translated text
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'i18n-test';
+        form.querySelector('.field-path').value = '/api/i18n';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const newRow = container.querySelector('tr[data-route-name="i18n-test"]');
+        const newBadge = newRow.querySelector('.origin-new');
+        expect(newBadge.textContent).toBe('Neu');
+        expect(newBadge.title).toBe('In dieser Sitzung erstellt');
+
+        // Edit persisted route and verify modified badge uses translated text
+        healthRow.querySelector('.edit-route-button').click();
+        const editForm = container.querySelector('.route-form');
+        editForm.querySelector('.field-path').value = '/api/health/v2';
+        editForm.querySelector('.save-route-button').click();
+        await tick();
+
+        const modBadge = healthRow.querySelector('.origin-modified');
+        expect(modBadge.textContent).toBe('Geändert');
+        expect(modBadge.title).toBe('In dieser Sitzung geändert');
     });
 
     // -----------------------------------------------------------------------

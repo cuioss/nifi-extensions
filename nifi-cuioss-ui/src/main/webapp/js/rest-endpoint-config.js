@@ -11,7 +11,7 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute
+    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
 
 // Counter for unique form field IDs
@@ -245,9 +245,13 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
  * @returns {string} HTML string for the badge
  */
 const buildOriginBadge = (origin) => {
-    if (origin === 'new') return ' <span class="origin-badge origin-new">New</span>';
-    if (origin === 'modified') return ' <span class="origin-badge origin-modified">Modified</span>';
-    return ' <span class="origin-badge origin-persisted"><i class="fa fa-lock"></i></span>';
+    if (origin === 'new') {
+        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
+    }
+    if (origin === 'modified') {
+        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
+    }
+    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
 };
 
 /**
