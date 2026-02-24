@@ -311,21 +311,19 @@ spec:
 
 == Verifying with the Custom UI
 
-The processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
+The JWT processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
 
+* **Configuration** -- visually manage issuer configurations (see <<Step 2>>)
 * **Token Verification** -- paste a JWT to test it against the current configuration
+* **Help** -- built-in documentation and troubleshooting
 
 image::ui-token-verification-tab.png[Token Verification Tab]
 
-* **Metrics** -- view validation statistics (success/failure counts, response times)
-
-image::ui-metrics-tab.png[Metrics Tab]
-
-These tabs appear automatically in the processor configuration dialog.
+NOTE: The **Metrics** tab is available only for the RestApiGatewayProcessor. For the JWT processor, it displays a notice directing you to use the gateway for metrics.
 
 == RestApiGateway Quick Start
 
-The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server.
+The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server, JWT authentication, and route-based access control. It has its own custom UI with four tabs: **Endpoint Configuration**, **Endpoint Tester**, **Metrics**, and **Help**.
 
 === Step 1: Add the Processor
 
@@ -358,20 +356,49 @@ In the processor properties tab:
 |`50` (default)
 |===
 
-=== Step 4: Add Routes via Dynamic Properties
+=== Step 4: Configure Routes via the Custom UI
 
-Click the "+" button to add dynamic properties for your routes:
+The gateway provides a visual route editor in its custom UI. Right-click the processor and select **Configure** to open it.
 
-[source,properties]
-----
-restapi.users.path = /api/users
-restapi.users.methods = GET,POST
-restapi.users.required-roles = user
+The **Endpoint Configuration** tab shows global settings (read-only, derived from processor properties) and a route table with CRUD controls:
 
-restapi.admin.path = /api/admin
-restapi.admin.methods = GET,POST,PUT,DELETE
-restapi.admin.required-roles = admin
-----
+image::ui-gateway-endpoint-configuration.png[Gateway Endpoint Configuration]
+
+To add a route, click **+ Add Route** and fill in the form:
+
+image::ui-gateway-route-editor.png[Gateway Route Editor]
+
+Each route has the following fields:
+
+[cols="1,3"]
+|===
+|Field |Description
+
+|Route Name
+|Unique identifier for the route (e.g. `users`, `admin`)
+
+|Enabled
+|Checkbox to enable/disable the route without removing it
+
+|Path
+|URL path pattern (e.g. `/api/users`)
+
+|Methods
+|Comma-separated HTTP methods (e.g. `GET,POST`)
+
+|Required Roles
+|Comma-separated roles required for access (optional)
+
+|Required Scopes
+|Comma-separated scopes required for access (optional)
+
+|JSON Schema
+|Optional JSON Schema for request body validation (inline or file-based)
+|===
+
+Routes with a JSON Schema configured display a green **Schema** badge in the route table.
+
+TIP: You can also configure routes via dynamic properties on the processor (useful for automated deployments). Click the **Export Properties** panel at the bottom of the Endpoint Configuration tab to see the equivalent `restapi.*` properties.
 
 === Step 5: Connect Relationships
 
@@ -383,7 +410,21 @@ Each route creates a named relationship. Connect them to downstream processors:
 
 === Step 6: Start and Test
 
-Start the processor. The gateway listens on the configured port. Test with:
+Start the processor. The gateway listens on the configured port.
+
+==== Using the Endpoint Tester
+
+The **Endpoint Tester** tab in the custom UI lets you send test requests directly from the browser:
+
+image::ui-gateway-endpoint-tester.png[Gateway Endpoint Tester]
+
+. Select a route and HTTP method from the dropdowns.
+. Paste an authorization token (or leave empty to test unauthenticated access).
+. Click **Send Request** to see the response status, headers, and body.
+
+image::ui-gateway-endpoint-tester-response.png[Gateway Endpoint Tester with Response]
+
+==== Using curl
 
 [source,bash]
 ----
@@ -394,7 +435,25 @@ TOKEN=$(curl -s -X POST https://your-idp/token -d 'grant_type=client_credentials
 curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
 ----
 
-A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the `users` relationship.
+A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the matching route relationship.
+
+=== Gateway Metrics
+
+The **Metrics** tab provides real-time monitoring of the gateway with three sections:
+
+* **Token Validation** -- JWT validation success/failure counts
+* **HTTP Security** -- security-related HTTP events
+* **Gateway Events** -- overall gateway activity
+
+image::ui-gateway-metrics.png[Gateway Metrics Tab]
+
+Use the **Refresh** button to update metrics and **Export** to download them as JSON.
+
+=== Gateway Help
+
+The **Help** tab provides built-in documentation covering key features, tab descriptions, and troubleshooting tips.
+
+image::ui-gateway-help.png[Gateway Help Tab]
 
 == Next Steps
 
