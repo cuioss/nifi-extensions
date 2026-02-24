@@ -725,7 +725,7 @@ class GatewayRequestHandlerTest {
                     """);
 
             var schemaValidator = new JsonSchemaValidator(
-                    Map.of("validated", schemaFile));
+                    Map.of("validated", schemaFile.toString()));
 
             var schemaQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
             List<RouteConfiguration> routes = List.of(
@@ -839,6 +839,62 @@ class GatewayRequestHandlerTest {
             assertEquals(422, response.statusCode());
             assertEquals(1L, schemaHandler.getGatewaySecurityEvents()
                     .getCount(EventType.SCHEMA_VALIDATION_FAILED));
+        }
+
+        @Test
+        @DisplayName("Should validate with inline JSON schema")
+        void shouldValidateWithInlineSchema() throws Exception {
+            String inlineSchema = """
+                    {
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
+                      "type": "object",
+                      "required": ["title"],
+                      "properties": {
+                        "title": { "type": "string" }
+                      }
+                    }
+                    """;
+            var inlineValidator = new JsonSchemaValidator(Map.of("inline", inlineSchema));
+
+            var inlineQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            List<RouteConfiguration> inlineRoutes = List.of(
+                    new RouteConfiguration("inline", "/api/inline", true,
+                            Set.of("POST"), Set.of(), Set.of(), inlineSchema));
+
+            var inlineHandler = new GatewayRequestHandler(
+                    inlineRoutes, mockConfigService, inlineQueue, 1_048_576, Set.of(), inlineValidator);
+
+            Server inlineServer = new Server();
+            ServerConnector connector = new ServerConnector(inlineServer);
+            connector.setPort(0);
+            inlineServer.addConnector(connector);
+            inlineServer.setHandler(inlineHandler);
+            inlineServer.start();
+            int inlinePort = connector.getLocalPort();
+
+            try {
+                // Valid body
+                var validResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + inlinePort + "/api/inline"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("{\"title\": \"Hello\"}"))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(202, validResponse.statusCode());
+
+                // Invalid body — missing required field
+                var invalidResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + inlinePort + "/api/inline"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("{\"other\": 1}"))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(422, invalidResponse.statusCode());
+            } finally {
+                inlineServer.stop();
+            }
         }
     }
 

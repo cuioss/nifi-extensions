@@ -971,7 +971,10 @@
               "restapi.disabled-test.enabled": "false",
               "restapi.validated.path": "/api/validated",
               "restapi.validated.methods": "POST",
-              "restapi.validated.schema": "./conf/schemas/user-request-schema.json"
+              "restapi.validated.schema": "./conf/schemas/user-request-schema.json",
+              "restapi.inline-validated.path": "/api/inline-validated",
+              "restapi.inline-validated.methods": "POST",
+              "restapi.inline-validated.schema": "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -1066,6 +1069,21 @@
               },
               "restapi.validated.schema": {
                 "name": "restapi.validated.schema",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.inline-validated.path": {
+                "name": "restapi.inline-validated.path",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.inline-validated.methods": {
+                "name": "restapi.inline-validated.methods",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.inline-validated.schema": {
+                "name": "restapi.inline-validated.schema",
                 "identifiesControllerService": false,
                 "sensitive": false
               }
@@ -1186,6 +1204,56 @@
             "position": {
               "x": 1200,
               "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
+            "instanceIdentifier": "c5d6e7f8-a9b0-5123-4567-89abcdef4567",
+            "name": "LogAttribute (gateway-inline-validated)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log Level": "info",
+              "Log prefix": "gateway-inline-validated"
+            },
+            "propertyDescriptors": {
+              "Log Level": {
+                "name": "Log Level",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "success"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1200,
+              "y": 600
             },
             "style": {},
             "retriedRelationships": [],
@@ -1326,6 +1394,36 @@
             },
             "selectedRelationships": [
               "validated"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "e5f6a7b8-c9d0-5012-3456-789abcdef678",
+            "instanceIdentifier": "f6a7b8c9-d0e1-5123-4567-89abcdef7890",
+            "name": "RestApiGateway inline-validated \u2192 LogAttribute",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-inline-validated)"
+            },
+            "selectedRelationships": [
+              "inline-validated"
             ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",

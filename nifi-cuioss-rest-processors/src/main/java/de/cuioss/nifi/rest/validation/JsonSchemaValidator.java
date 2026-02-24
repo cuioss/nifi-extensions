@@ -32,12 +32,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates JSON request bodies against JSON Schema files (Draft 2020-12).
+ * Validates JSON request bodies against JSON Schema (Draft 2020-12).
  * <p>
  * Wraps {@code dev.harrel:json-schema} with the Jakarta JSON-P provider.
- * Schemas are loaded eagerly from file paths at construction time and compiled
- * into the validator's internal registry. The compiled validator is thread-safe
- * and can be shared across Jetty handler threads.
+ * Schema sources are resolved eagerly at construction time: values starting
+ * with {@code &#123;} are treated as inline JSON, all others as file paths.
+ * The compiled validator is thread-safe and can be shared across Jetty handler threads.
  */
 public class JsonSchemaValidator {
 
@@ -47,32 +47,42 @@ public class JsonSchemaValidator {
     private final Map<String, URI> schemaUris;
 
     /**
-     * Creates a new validator, eagerly loading and compiling all schema files.
+     * Creates a new validator, eagerly loading and compiling all schemas.
      *
-     * @param routeSchemas mapping of route name to schema file path
-     * @throws IllegalStateException if any schema file cannot be read or parsed
+     * @param routeSchemas mapping of route name to schema source (inline JSON or file path)
+     * @throws IllegalStateException if any schema file cannot be read or any schema is invalid
      */
-    public JsonSchemaValidator(Map<String, Path> routeSchemas) {
+    public JsonSchemaValidator(Map<String, String> routeSchemas) {
         ValidatorFactory factory = new ValidatorFactory()
                 .withJsonNodeFactory(new JakartaJsonNode.Factory());
         this.validator = factory.createValidator();
         Map<String, URI> uris = new HashMap<>();
 
-        for (Map.Entry<String, Path> entry : routeSchemas.entrySet()) {
+        for (Map.Entry<String, String> entry : routeSchemas.entrySet()) {
             String routeName = entry.getKey();
-            Path schemaPath = entry.getValue();
-            try {
-                String schemaContent = Files.readString(schemaPath, StandardCharsets.UTF_8);
-                URI schemaUri = validator.registerSchema(schemaContent);
-                uris.put(routeName, schemaUri);
-                LOGGER.info("Registered JSON Schema for route '%s' from %s", routeName, schemaPath);
-            } catch (IOException e) {
-                throw new IllegalStateException(
-                        "Failed to read JSON Schema file for route '%s': %s".formatted(routeName, schemaPath), e);
-            }
+            String schemaSource = entry.getValue();
+            String schemaContent = resolveSchemaContent(routeName, schemaSource);
+            URI schemaUri = validator.registerSchema(schemaContent);
+            uris.put(routeName, schemaUri);
         }
 
         this.schemaUris = Collections.unmodifiableMap(uris);
+    }
+
+    private static String resolveSchemaContent(String routeName, String schemaSource) {
+        if (schemaSource.strip().startsWith("{")) {
+            LOGGER.info("Registered inline JSON Schema for route '%s'", routeName);
+            return schemaSource;
+        }
+        try {
+            Path schemaPath = Path.of(schemaSource).normalize();
+            String content = Files.readString(schemaPath, StandardCharsets.UTF_8);
+            LOGGER.info("Registered JSON Schema for route '%s' from %s", routeName, schemaPath);
+            return content;
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Failed to read JSON Schema file for route '%s': %s".formatted(routeName, schemaSource), e);
+        }
     }
 
     /**
