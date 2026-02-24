@@ -416,6 +416,55 @@ class RestApiGatewayIT {
                     .body("violations[0].pointer", notNullValue())
                     .body("violations[0].message", notNullValue());
         }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with empty body")
+        void shouldReject422ForEmptyBody() {
+            given().spec(authSpec)
+                    .contentType(ContentType.JSON)
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"));
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with malformed JSON")
+        void shouldReject422ForMalformedJson() {
+            given().spec(authSpec)
+                    .body("not valid json {{{")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("violations", notNullValue())
+                    .body("violations.size()", greaterThanOrEqualTo(1));
+        }
+
+        @Test
+        @DisplayName("should return 422 for POST /api/validated with additional properties")
+        void shouldReject422ForAdditionalProperties() {
+            given().spec(authSpec)
+                    .body("{\"name\": \"Alice\", \"extra\": true}")
+                    .when()
+                    .post("/api/validated")
+                    .then()
+                    .statusCode(422)
+                    .contentType(containsString("application/problem+json"))
+                    .body("violations", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 405 for GET on /api/validated")
+        void shouldReturn405ForGetOnValidated() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/validated")
+                    .then()
+                    .statusCode(405);
+        }
     }
 
     // ── CORS Tests ───────────────────────────────────────────────────────
