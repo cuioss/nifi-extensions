@@ -32,6 +32,8 @@ See link:../../nifi-cuioss-ui/src/main/webapp/js/app.js[app.js] for the `configu
 
 * **Endpoint Configuration** -- view and manage REST endpoint route configurations
 * **Endpoint Tester** -- test gateway endpoints with sample requests
+* **Issuer Configuration** -- manage JWT issuer settings (add, edit, delete) directly from the gateway UI, reading from the linked `JwtIssuerConfigService`
+* **Token Verification** -- paste and verify JWT tokens against configured issuers (same functionality as the JWT processor tab)
 * **Metrics** -- display gateway metrics (token validation, transport security, application events) proxied via `GatewayProxyServlet`
 * **Help** -- processor documentation and troubleshooting
 

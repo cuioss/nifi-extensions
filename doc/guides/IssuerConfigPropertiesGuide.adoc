@@ -15,11 +15,11 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
  `bash
    ./integration-testing/src/main/docker/run-and-deploy.sh
 `
-. Access NiFi UI at https://localhost:9095/nifi/ (credentials: admin/adminadminadmin)
+. Access NiFi UI at https://localhost:9095/nifi/ (credentials: testUser/drowssap)
 
 == Adding the Processor to the Canvas
 
-. Log in to the NiFi UI using the credentials: admin/adminadminadmin
+. Log in to the NiFi UI using the credentials: testUser/drowssap
 . Drag and drop a new processor onto the canvas:
 * Click the processor icon in the toolbar
 * Search for "MultiIssuerJWTTokenAuthenticator"
@@ -161,4 +161,4 @@ Refer to the link:QuickStart.adoc#_static_configuration_files[Static Configurati
 
 === Using with RestApiGatewayProcessor
 
-The same `JwtIssuerConfigService` Controller Service configured here is also used by the RestApiGatewayProcessor. If you configure issuers for the JWT processor, the gateway can reuse the same Controller Service instance. See the link:QuickStart.adoc#_restapigateay_quick_start[RestApiGateway Quick Start] for gateway-specific configuration.
+The same `JwtIssuerConfigService` Controller Service configured here is also used by the RestApiGatewayProcessor. If you configure issuers for the JWT processor, the gateway can reuse the same Controller Service instance. The gateway also provides its own **Issuer Configuration** tab for managing issuers directly from the gateway UI. See the link:QuickStart.adoc#_restapigateway_quick_start[RestApiGateway Quick Start] for gateway-specific configuration.

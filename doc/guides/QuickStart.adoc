@@ -323,7 +323,7 @@ NOTE: The **Metrics** tab is available only for the RestApiGatewayProcessor. For
 
 == RestApiGateway Quick Start
 
-The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server, JWT authentication, and route-based access control. It has its own custom UI with four tabs: **Endpoint Configuration**, **Endpoint Tester**, **Metrics**, and **Help**.
+The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server, JWT authentication, and route-based access control. It has its own custom UI with six tabs: **Endpoint Configuration**, **Endpoint Tester**, **Issuer Configuration**, **Token Verification**, **Metrics**, and **Help**.
 
 === Step 1: Add the Processor
 
@@ -436,6 +436,20 @@ curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
 ----
 
 A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the matching route relationship.
+
+=== Issuer Configuration
+
+The **Issuer Configuration** tab lets you manage JWT issuer settings directly from the gateway UI. It reads from the linked `JwtIssuerConfigService` Controller Service and displays a table of configured issuers with their JWKS source, type, and issuer URI.
+
+image::ui-gateway-issuer-configuration.png[Gateway Issuer Configuration Tab]
+
+You can add, edit, or remove issuers without leaving the gateway UI. Changes are persisted to the Controller Service properties.
+
+=== Token Verification
+
+The **Token Verification** tab lets you paste a JWT and verify it against the configured issuers, the same functionality available on the JWT processor.
+
+image::ui-gateway-token-verification.png[Gateway Token Verification Tab]
 
 === Gateway Metrics
 
