@@ -471,7 +471,9 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         if (r.dataset.routeName === routeName) continue; // exclude current route
         const cell = r.querySelectorAll('td')[1];
         if (!cell || cell.querySelector('.empty-state')) continue; // skip create-flowfile=false
-        const text = cell.textContent.replace('custom', '').trim();
+        const textNode = Array.from(cell.childNodes)
+            .find((node) => node.nodeType === Node.TEXT_NODE);
+        const text = (textNode?.textContent || '').trim();
         if (text && !existingNames.includes(text)) existingNames.push(text);
     }
     const datalistOptions = existingNames.map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
@@ -755,7 +757,9 @@ const refreshConnectionMap = (routesContainer) => {
         const name = row.dataset.routeName;
         const cell = row.querySelectorAll('td')[1];
         if (!cell || cell.querySelector('.empty-state')) continue; // skip create-flowfile=false
-        const connectionName = cell.textContent.replace('custom', '').trim();
+        const textNode = Array.from(cell.childNodes)
+            .find((node) => node.nodeType === Node.TEXT_NODE);
+        const connectionName = (textNode?.textContent || '').trim();
         if (!groups[connectionName]) groups[connectionName] = [];
         groups[connectionName].push(name);
     }
