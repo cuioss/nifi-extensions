@@ -35,12 +35,13 @@ class RouteConfigurationTest {
         @DisplayName("Should create with all fields")
         void shouldCreateWithAllFields() {
             // Arrange & Act
-            var route = new RouteConfiguration(
-                    "users", "/api/users", true,
-                    Set.of("GET", "POST"),
-                    Set.of("admin"),
-                    Set.of("read", "write"),
-                    "./conf/schemas/user-schema.json");
+            var route = RouteConfiguration.builder()
+                    .name("users").path("/api/users")
+                    .method("GET").method("POST")
+                    .requiredRole("admin")
+                    .requiredScope("read").requiredScope("write")
+                    .schemaPath("./conf/schemas/user-schema.json")
+                    .build();
 
             // Assert
             assertEquals("users", route.name());
@@ -50,29 +51,32 @@ class RouteConfigurationTest {
             assertEquals(Set.of("admin"), route.requiredRoles());
             assertEquals(Set.of("read", "write"), route.requiredScopes());
             assertEquals("./conf/schemas/user-schema.json", route.schemaPath());
+            assertNull(route.successOutcome());
+            assertTrue(route.createFlowFile());
         }
 
         @Test
         @DisplayName("Should create with defaults when methods/roles/scopes are null")
         void shouldCreateWithDefaults() {
-            // Act
-            var route = new RouteConfiguration("health", "/api/health", true, null, null, null, null);
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").build();
 
-            // Assert
             assertEquals(RouteConfiguration.DEFAULT_METHODS, route.methods());
             assertTrue(route.requiredRoles().isEmpty());
             assertTrue(route.requiredScopes().isEmpty());
             assertNull(route.schemaPath());
+            assertTrue(route.enabled());
+            assertTrue(route.createFlowFile());
         }
 
         @Test
         @DisplayName("Should have immutable sets")
         void shouldHaveImmutableSets() {
-            // Arrange
-            var route = new RouteConfiguration("health", "/api/health", true,
-                    Set.of("GET"), Set.of("admin"), Set.of("read"), null);
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health")
+                    .method("GET").requiredRole("admin").requiredScope("read")
+                    .build();
 
-            // Assert
             assertThrows(UnsupportedOperationException.class,
                     () -> route.methods().add("POST"));
             assertThrows(UnsupportedOperationException.class,
@@ -85,21 +89,21 @@ class RouteConfigurationTest {
         @DisplayName("Should reject null name")
         void shouldRejectNullName() {
             assertThrows(NullPointerException.class,
-                    () -> new RouteConfiguration(null, "/api/health", true, null, null, null, null));
+                    () -> RouteConfiguration.builder().name(null).path("/api/health").build());
         }
 
         @Test
         @DisplayName("Should reject null path")
         void shouldRejectNullPath() {
             assertThrows(NullPointerException.class,
-                    () -> new RouteConfiguration("health", null, true, null, null, null, null));
+                    () -> RouteConfiguration.builder().name("health").path(null).build());
         }
 
         @Test
         @DisplayName("Should reject blank path")
         void shouldRejectBlankPath() {
             assertThrows(IllegalArgumentException.class,
-                    () -> new RouteConfiguration("health", "  ", true, null, null, null, null));
+                    () -> RouteConfiguration.builder().name("health").path("  ").build());
         }
     }
 
@@ -108,16 +112,17 @@ class RouteConfigurationTest {
     class EnabledFlag {
 
         @Test
-        @DisplayName("Should be enabled when true")
-        void shouldBeEnabledWhenTrue() {
-            var route = new RouteConfiguration("health", "/api/health", true, null, null, null, null);
+        @DisplayName("Should be enabled by default")
+        void shouldBeEnabledByDefault() {
+            var route = RouteConfiguration.builder().name("health").path("/api/health").build();
             assertTrue(route.enabled());
         }
 
         @Test
-        @DisplayName("Should be disabled when false")
+        @DisplayName("Should be disabled when set to false")
         void shouldBeDisabledWhenFalse() {
-            var route = new RouteConfiguration("health", "/api/health", false, null, null, null, null);
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").enabled(false).build();
             assertFalse(route.enabled());
         }
     }
@@ -129,25 +134,76 @@ class RouteConfigurationTest {
         @Test
         @DisplayName("Should report has schema validation when schema path is set")
         void shouldReportHasSchemaValidation() {
-            var route = new RouteConfiguration("users", "/api/users",
-                    true, null, Set.of(), Set.of(), "./conf/schemas/user-schema.json");
+            var route = RouteConfiguration.builder()
+                    .name("users").path("/api/users")
+                    .schemaPath("./conf/schemas/user-schema.json").build();
             assertTrue(route.hasSchemaValidation());
         }
 
         @Test
         @DisplayName("Should report no schema validation when null")
         void shouldReportNoSchemaValidationWhenNull() {
-            var route = new RouteConfiguration("health", "/api/health",
-                    true, null, Set.of(), Set.of(), null);
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").build();
             assertFalse(route.hasSchemaValidation());
         }
 
         @Test
         @DisplayName("Should report no schema validation when blank")
         void shouldReportNoSchemaValidationWhenBlank() {
-            var route = new RouteConfiguration("health", "/api/health",
-                    true, null, Set.of(), Set.of(), "  ");
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").schemaPath("  ").build();
             assertFalse(route.hasSchemaValidation());
+        }
+    }
+
+    @Nested
+    @DisplayName("SuccessOutcome")
+    class SuccessOutcome {
+
+        @Test
+        @DisplayName("Should resolve to route name when successOutcome is null")
+        void shouldResolveToNameWhenNull() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").build();
+            assertEquals("health", route.resolveSuccessOutcome());
+        }
+
+        @Test
+        @DisplayName("Should resolve to route name when successOutcome is blank")
+        void shouldResolveToNameWhenBlank() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").successOutcome("  ").build();
+            assertEquals("health", route.resolveSuccessOutcome());
+        }
+
+        @Test
+        @DisplayName("Should resolve to custom outcome when set")
+        void shouldResolveToCustomOutcome() {
+            var route = RouteConfiguration.builder()
+                    .name("health-get").path("/api/health").successOutcome("health").build();
+            assertEquals("health", route.resolveSuccessOutcome());
+        }
+    }
+
+    @Nested
+    @DisplayName("CreateFlowFile")
+    class CreateFlowFile {
+
+        @Test
+        @DisplayName("Should be true by default")
+        void shouldBeTrueByDefault() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").build();
+            assertTrue(route.createFlowFile());
+        }
+
+        @Test
+        @DisplayName("Should be false when set to false")
+        void shouldBeFalseWhenSetToFalse() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").createFlowFile(false).build();
+            assertFalse(route.createFlowFile());
         }
     }
 
@@ -158,38 +214,37 @@ class RouteConfigurationTest {
         @Test
         @DisplayName("Should report has roles")
         void shouldReportHasRoles() {
-            var route = new RouteConfiguration("users", "/api/users",
-                    true, null, Set.of("admin"), Set.of(), null);
+            var route = RouteConfiguration.builder()
+                    .name("users").path("/api/users").requiredRole("admin").build();
             assertTrue(route.hasAuthorizationRequirements());
         }
 
         @Test
         @DisplayName("Should report has scopes")
         void shouldReportHasScopes() {
-            var route = new RouteConfiguration("users", "/api/users",
-                    true, null, Set.of(), Set.of("read"), null);
+            var route = RouteConfiguration.builder()
+                    .name("users").path("/api/users").requiredScope("read").build();
             assertTrue(route.hasAuthorizationRequirements());
         }
 
         @Test
         @DisplayName("Should report no auth requirements")
         void shouldReportNoAuthRequirements() {
-            var route = new RouteConfiguration("health", "/api/health",
-                    true, null, Set.of(), Set.of(), null);
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").build();
             assertFalse(route.hasAuthorizationRequirements());
         }
 
         @Test
         @DisplayName("Should convert to AuthorizationRequirements")
         void shouldConvertToAuthorizationRequirements() {
-            // Arrange
-            var route = new RouteConfiguration("users", "/api/users",
-                    true, null, Set.of("admin", "user"), Set.of("read"), null);
+            var route = RouteConfiguration.builder()
+                    .name("users").path("/api/users")
+                    .requiredRole("admin").requiredRole("user").requiredScope("read")
+                    .build();
 
-            // Act
             var authReqs = route.toAuthorizationRequirements();
 
-            // Assert
             assertTrue(authReqs.requireValidToken());
             assertEquals(Set.of("admin", "user"), authReqs.requiredRoles());
             assertEquals(Set.of("read"), authReqs.requiredScopes());

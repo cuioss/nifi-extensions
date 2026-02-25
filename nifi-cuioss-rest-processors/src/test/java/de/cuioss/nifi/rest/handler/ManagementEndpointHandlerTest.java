@@ -33,7 +33,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -61,8 +60,8 @@ class ManagementEndpointHandlerTest {
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
         List<RouteConfiguration> routes = List.of(
-                new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null),
-                new RouteConfiguration("users", "/api/users", true, Set.of("GET", "POST"), Set.of("ADMIN"), Set.of(), null));
+                RouteConfiguration.builder().name("health").path("/api/health").method("GET").build(),
+                RouteConfiguration.builder().name("users").path("/api/users").method("GET").method("POST").requiredRole("ADMIN").build());
 
         handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
         handler.configureManagementEndpoints(null);
@@ -241,7 +240,7 @@ class ManagementEndpointHandlerTest {
             configService.configureValidToken(tokenHolder.asAccessTokenContent());
 
             var protectedHandler = new GatewayRequestHandler(
-                    List.of(new RouteConfiguration("health", "/api/health", true, Set.of("GET"), Set.of(), Set.of(), null)),
+                    List.of(RouteConfiguration.builder().name("health").path("/api/health").method("GET").build()),
                     configService, queue, 1_048_576);
             protectedHandler.configureManagementEndpoints(API_KEY);
 

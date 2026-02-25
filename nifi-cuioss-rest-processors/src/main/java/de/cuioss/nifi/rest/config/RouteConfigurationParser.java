@@ -38,6 +38,8 @@ import java.util.stream.Collectors;
  *   <li>{@code required-roles} — comma-separated roles</li>
  *   <li>{@code required-scopes} — comma-separated scopes</li>
  *   <li>{@code schema} — optional file path to a JSON Schema file for request body validation</li>
+ *   <li>{@code success-outcome} — optional NiFi relationship name override (default: route name)</li>
+ *   <li>{@code create-flowfile} — whether to create a FlowFile for this route (default: true)</li>
  * </ul>
  */
 @UtilityClass
@@ -60,6 +62,10 @@ public class RouteConfigurationParser {
     static final String SCHEMA_KEY = "schema";
     /** Property key for enabled flag. */
     static final String ENABLED_KEY = "enabled";
+    /** Property key for NiFi relationship name override. */
+    static final String SUCCESS_OUTCOME_KEY = "success-outcome";
+    /** Property key for FlowFile creation flag. */
+    static final String CREATE_FLOWFILE_KEY = "create-flowfile";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -88,8 +94,14 @@ public class RouteConfigurationParser {
             Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
             Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
             String schema = routeProps.get(SCHEMA_KEY);
+            String successOutcome = routeProps.get(SUCCESS_OUTCOME_KEY);
+            boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
 
-            routes.add(new RouteConfiguration(routeName, path, enabled, methods, roles, scopes, schema));
+            routes.add(RouteConfiguration.builder()
+                    .name(routeName).path(path).enabled(enabled)
+                    .methods(methods).requiredRoles(roles).requiredScopes(scopes)
+                    .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
+                    .build());
             LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s", routeName, path, enabled, methods);
         }
 

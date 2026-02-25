@@ -181,6 +181,72 @@ class RouteConfigurationParserTest {
     }
 
     @Nested
+    @DisplayName("SuccessOutcome and CreateFlowFile")
+    class SuccessOutcomeAndCreateFlowFile {
+
+        @Test
+        @DisplayName("Should parse success-outcome property")
+        void shouldParseSuccessOutcome() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health-get.path", "/api/health");
+            properties.put("restapi.health-get.success-outcome", "health");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(1, routes.size());
+            assertEquals("health", routes.getFirst().successOutcome());
+            assertEquals("health", routes.getFirst().resolveSuccessOutcome());
+        }
+
+        @Test
+        @DisplayName("Should default success-outcome to null when absent")
+        void shouldDefaultSuccessOutcomeToNull() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertNull(routes.getFirst().successOutcome());
+            assertEquals("health", routes.getFirst().resolveSuccessOutcome());
+        }
+
+        @Test
+        @DisplayName("Should parse create-flowfile=false")
+        void shouldParseCreateFlowFileFalse() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.create-flowfile", "false");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertFalse(routes.getFirst().createFlowFile());
+        }
+
+        @Test
+        @DisplayName("Should default create-flowfile to true when absent")
+        void shouldDefaultCreateFlowFileToTrue() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertTrue(routes.getFirst().createFlowFile());
+        }
+
+        @Test
+        @DisplayName("Should parse create-flowfile=FALSE case-insensitive")
+        void shouldParseCreateFlowFileCaseInsensitive() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.create-flowfile", "FALSE");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertFalse(routes.getFirst().createFlowFile());
+        }
+    }
+
+    @Nested
     @DisplayName("Validation")
     class Validation {
 
@@ -272,7 +338,7 @@ class RouteConfigurationParserTest {
 
             // Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> routes.add(new RouteConfiguration("x", "/x", true, null, null, null, null)));
+                    () -> routes.add(RouteConfiguration.builder().name("x").path("/x").build()));
         }
     }
 }

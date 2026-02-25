@@ -35,6 +35,16 @@ const PROPERTIES_WITH_SCHEMA = {
     'restapi.health.schema': '{"type":"object"}'
 };
 
+const PROPERTIES_WITH_OUTCOME = {
+    ...SAMPLE_PROPERTIES,
+    'restapi.data.success-outcome': 'api-data'
+};
+
+const PROPERTIES_NO_FLOWFILE = {
+    ...SAMPLE_PROPERTIES,
+    'restapi.health.create-flowfile': 'false'
+};
+
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
 describe('rest-endpoint-config', () => {
@@ -97,7 +107,7 @@ describe('rest-endpoint-config', () => {
 
         const headers = container.querySelectorAll('.route-summary-table thead th');
         const headerTexts = Array.from(headers).map((th) => th.textContent.trim());
-        expect(headerTexts).toEqual(['Name', 'Path', 'Methods', 'Enabled', 'Actions']);
+        expect(headerTexts).toEqual(['Name', 'Connection', 'Path', 'Methods', 'Enabled', 'Actions']);
     });
 
     it('should display route name and path in table cells', async () => {
@@ -112,7 +122,8 @@ describe('rest-endpoint-config', () => {
         expect(healthRow).not.toBeNull();
         const cells = healthRow.querySelectorAll('td');
         expect(cells[0].textContent).toContain('health');
-        expect(cells[1].textContent).toBe('/api/health');
+        expect(cells[1].textContent).toContain('health'); // Connection defaults to route name
+        expect(cells[2].textContent).toBe('/api/health');
     });
 
     it('should display method badges in table', async () => {
@@ -576,7 +587,7 @@ describe('rest-endpoint-config', () => {
         // Form should be removed, row should be visible with updated data
         expect(container.querySelector('.route-form')).toBeNull();
         expect(healthRow.classList.contains('hidden')).toBe(false);
-        expect(healthRow.querySelectorAll('td')[1].textContent).toBe('/api/health/v2');
+        expect(healthRow.querySelectorAll('td')[2].textContent).toBe('/api/health/v2');
     });
 
     it('should add new row to table after saving new route', async () => {
@@ -603,7 +614,7 @@ describe('rest-endpoint-config', () => {
         expect(container.querySelector('.route-form')).toBeNull();
         const newRow = container.querySelector('tr[data-route-name="new-route"]');
         expect(newRow).not.toBeNull();
-        expect(newRow.querySelectorAll('td')[1].textContent).toBe('/api/new');
+        expect(newRow.querySelectorAll('td')[2].textContent).toBe('/api/new');
     });
 
     // -----------------------------------------------------------------------
@@ -1164,6 +1175,242 @@ describe('rest-endpoint-config', () => {
         for (const line of dataLines) {
             expect(line).not.toContain('# [session-only]');
         }
+    });
+
+    it('should show dash in Connection column when create-flowfile is false', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_NO_FLOWFILE,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const outcomeCell = healthRow.querySelectorAll('td')[1];
+        expect(outcomeCell.querySelector('.empty-state')).toBeTruthy();
+        expect(outcomeCell.textContent).toContain('—');
+    });
+
+    it('should show custom badge in Connection column for custom success-outcome', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        const outcomeCell = dataRow.querySelectorAll('td')[1];
+        expect(outcomeCell.textContent).toContain('api-data');
+        expect(outcomeCell.querySelector('.outcome-badge')).toBeTruthy();
+    });
+
+    it('should toggle connection name field visibility via create-flowfile checkbox', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Open editor
+        container.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+        const checkbox = form.querySelector('.create-flowfile-checkbox');
+        const outcomeContainer = form.querySelector('.field-container-success-outcome');
+
+        // Initially visible (create-flowfile is checked)
+        expect(checkbox.checked).toBe(true);
+        expect(outcomeContainer.classList.contains('hidden')).toBe(false);
+
+        // Uncheck — should hide
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(outcomeContainer.classList.contains('hidden')).toBe(true);
+
+        // Re-check — should show
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(outcomeContainer.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should include create-flowfile=false in export text', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_NO_FLOWFILE,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save a route to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('create-flowfile = false');
+    });
+
+    it('should include success-outcome in export text for custom outcome', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save a route to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('success-outcome = api-data');
+    });
+
+    // -----------------------------------------------------------------------
+    // Datalist autocomplete for connection name
+    // -----------------------------------------------------------------------
+
+    it('should populate datalist with existing connection names when editing', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Edit the health route (which has default connection name "health")
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const datalist = form.querySelector('datalist');
+        expect(datalist).not.toBeNull();
+
+        // Should contain "api-data" from the data route's custom outcome
+        const options = Array.from(datalist.querySelectorAll('option')).map((o) => o.value);
+        expect(options).toContain('api-data');
+    });
+
+    it('should exclude current route name from datalist suggestions', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Edit the health route
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const datalist = form.querySelector('datalist');
+        const options = Array.from(datalist.querySelectorAll('option')).map((o) => o.value);
+
+        // "health" is the current route's connection name — should not be in datalist
+        // "data" is the other route — should be in datalist
+        expect(options).not.toContain('health');
+        expect(options).toContain('data');
+    });
+
+    // -----------------------------------------------------------------------
+    // Connection map
+    // -----------------------------------------------------------------------
+
+    it('should render connection map section after loading routes', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const connectionMap = container.querySelector('.connection-map');
+        expect(connectionMap).not.toBeNull();
+        expect(connectionMap.tagName.toLowerCase()).toBe('details');
+
+        const summary = connectionMap.querySelector('summary');
+        expect(summary.textContent).toContain('NiFi Connections');
+        expect(summary.textContent).toContain('relationships');
+    });
+
+    it('should group routes by connection name in connection map', async () => {
+        const propsShared = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.data.success-outcome': 'health' // data route shares health's connection
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsShared,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const mapTable = container.querySelector('.connection-map-table');
+        const rows = mapTable.querySelectorAll('tbody tr');
+        // Should have "health" (grouping health + data) and "failure"
+        expect(rows.length).toBe(2);
+        expect(rows[0].querySelectorAll('td')[0].textContent).toBe('health');
+        expect(rows[0].querySelectorAll('td')[1].textContent).toContain('health');
+        expect(rows[0].querySelectorAll('td')[1].textContent).toContain('data');
+    });
+
+    it('should show failure as always present in connection map', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const mapTable = container.querySelector('.connection-map-table');
+        const rows = mapTable.querySelectorAll('tbody tr');
+        const lastRow = rows[rows.length - 1];
+        expect(lastRow.querySelectorAll('td')[0].textContent).toBe('failure');
+        expect(lastRow.querySelector('em').textContent).toBe('(always present)');
+    });
+
+    it('should update connection map after save', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Edit health route and change its success-outcome
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.field-success-outcome').value = 'api-shared';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const mapTable = container.querySelector('.connection-map-table');
+        expect(mapTable.textContent).toContain('api-shared');
+    });
+
+    it('should exclude create-flowfile=false routes from connection map', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_NO_FLOWFILE,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const mapTable = container.querySelector('.connection-map-table');
+        const rows = mapTable.querySelectorAll('tbody tr');
+        // health has create-flowfile=false, so only "data" + "failure" rows
+        expect(rows.length).toBe(2);
+        const connectionNames = Array.from(rows).map((r) => r.querySelectorAll('td')[0].textContent);
+        expect(connectionNames).toContain('data');
+        expect(connectionNames).toContain('failure');
+        expect(connectionNames).not.toContain('health');
     });
 
     it('should handle disabled route in table', async () => {

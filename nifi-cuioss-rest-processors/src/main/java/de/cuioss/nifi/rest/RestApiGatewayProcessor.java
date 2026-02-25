@@ -78,6 +78,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
+    /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
+    private final ConcurrentHashMap<String, String> routeToOutcome = new ConcurrentHashMap<>();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -193,6 +195,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             // Map JWT claims
             attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
 
+            // Resolve outcome relationship name
+            String outcome = routeToOutcome.getOrDefault(container.routeName(), container.routeName());
+            attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
+
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             // Write body content
@@ -200,12 +206,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 flowFile = session.write(flowFile, out -> out.write(container.body()));
             }
 
-            // Route to the named relationship (reuse pre-built instance)
-            Relationship target = dynamicRelationships.get(container.routeName());
+            // Route to the outcome relationship (reuse pre-built instance)
+            Relationship target = dynamicRelationships.get(outcome);
             if (target == null) {
                 throw new ProcessException(
-                        "No relationship found for route '%s' — this indicates an internal state inconsistency"
-                                .formatted(container.routeName()));
+                        "No relationship found for route '%s' (outcome '%s') — this indicates an internal state inconsistency"
+                                .formatted(container.routeName(), outcome));
             }
             session.transfer(flowFile, target);
 
@@ -259,10 +265,19 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {
         dynamicRelationships.clear();
-        routes.forEach(route -> dynamicRelationships.put(route.name(),
-                new Relationship.Builder()
-                        .name(route.name())
-                        .description("Requests matching route '%s' (path: %s)".formatted(route.name(), route.path()))
-                        .build()));
+        routeToOutcome.clear();
+        for (RouteConfiguration route : routes) {
+            if (!route.createFlowFile()) {
+                LOGGER.info("Route '%s' has createFlowFile=false — no NiFi relationship created", route.name());
+                continue;
+            }
+            String outcome = route.resolveSuccessOutcome();
+            routeToOutcome.put(route.name(), outcome);
+            dynamicRelationships.computeIfAbsent(outcome, k ->
+                    new Relationship.Builder()
+                            .name(k)
+                            .description("Requests matching outcome '%s'".formatted(k))
+                            .build());
+        }
     }
 }

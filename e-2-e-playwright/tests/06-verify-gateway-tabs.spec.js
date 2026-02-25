@@ -116,14 +116,15 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Verify table headers: Name, Path, Methods, Enabled, Actions
+        // Verify table headers: Name, Connection, Path, Methods, Enabled, Actions
         const headers = summaryTable.locator("thead th");
-        await expect(headers).toHaveCount(5);
+        await expect(headers).toHaveCount(6);
         await expect(headers.nth(0)).toContainText("Name");
-        await expect(headers.nth(1)).toContainText("Path");
-        await expect(headers.nth(2)).toContainText("Methods");
-        await expect(headers.nth(3)).toContainText("Enabled");
-        await expect(headers.nth(4)).toContainText("Actions");
+        await expect(headers.nth(1)).toContainText("Connection");
+        await expect(headers.nth(2)).toContainText("Path");
+        await expect(headers.nth(3)).toContainText("Methods");
+        await expect(headers.nth(4)).toContainText("Enabled");
+        await expect(headers.nth(5)).toContainText("Actions");
 
         // Verify at least one data row exists
         const dataRows = summaryTable.locator("tbody tr[data-route-name]");
@@ -325,6 +326,175 @@ test.describe("REST API Gateway Tabs", () => {
         const schemaBadge = validatedRow.locator(".schema-badge");
         await expect(schemaBadge).toBeVisible({ timeout: 3000 });
         await expect(schemaBadge).toContainText("Schema");
+    });
+
+    test("should display Connection column with default connection name for routes", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Verify the health route shows its name as the default connection
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        await expect(healthRow).toBeVisible({ timeout: 5000 });
+
+        // Connection is in the second column (index 1)
+        const connectionCell = healthRow.locator("td").nth(1);
+        await expect(connectionCell).toContainText("health");
+    });
+
+    test("should display create-flowfile checkbox in route editor form", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the health route
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        const editBtn = healthRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Create FlowFile checkbox should be present and checked by default
+        const createFlowFileCheckbox = routeForm.locator(
+            ".create-flowfile-checkbox",
+        );
+        await expect(createFlowFileCheckbox).toBeVisible({ timeout: 5000 });
+        await expect(createFlowFileCheckbox).toBeChecked();
+
+        // Connection name container should be visible when create-flowfile is checked
+        const outcomeContainer = routeForm.locator(
+            ".field-container-success-outcome",
+        );
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should hide connection name field when create-flowfile is unchecked", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the health route
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        const editBtn = healthRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Connection name container should be visible initially
+        const outcomeContainer = routeForm.locator(
+            ".field-container-success-outcome",
+        );
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Uncheck create-flowfile
+        const createFlowFileCheckbox = routeForm.locator(
+            ".create-flowfile-checkbox",
+        );
+        await createFlowFileCheckbox.uncheck();
+
+        // Connection name container should now be hidden
+        await expect(outcomeContainer).toBeHidden();
+
+        // Re-check create-flowfile
+        await createFlowFileCheckbox.check();
+
+        // Connection name container should be visible again
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should display connection map section", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table to load first
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Connection map should be present
+        const connectionMap = endpointConfigPanel.locator(
+            "details.connection-map",
+        );
+        await expect(connectionMap).toBeVisible({ timeout: 5000 });
+
+        // Summary should mention "NiFi Connections" and "relationships"
+        const summary = connectionMap.locator("summary");
+        await expect(summary).toContainText("NiFi Connections");
+        await expect(summary).toContainText("relationships");
+
+        // Expand the details to reveal the connection map table
+        await summary.click();
+
+        // Should contain a table with connection names
+        const mapTable = connectionMap.locator(".connection-map-table");
+        await expect(mapTable).toBeVisible({ timeout: 3000 });
+
+        // Failure should always be present
+        await expect(mapTable).toContainText("failure");
+        await expect(mapTable).toContainText("(always present)");
+
+        // Collapse back to clean up for next test
+        await summary.click();
     });
 
     test("should show file mode for file-based schema", async ({

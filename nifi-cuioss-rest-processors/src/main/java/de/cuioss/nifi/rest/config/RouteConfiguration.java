@@ -17,7 +17,9 @@
 package de.cuioss.nifi.rest.config;
 
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
+import lombok.Builder;
 import lombok.NonNull;
+import lombok.Singular;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
@@ -31,22 +33,27 @@ import java.util.Set;
  * via {@code restapi.<name>.<property>} dynamic properties on the
  * RestApiGateway processor.
  *
- * @param name           the route name (from the property group key)
- * @param path           the URL path (e.g. {@code "/api/users"})
- * @param enabled        whether this route is active (disabled routes are skipped during matching)
- * @param methods        allowed HTTP methods (default: GET,POST,PUT,DELETE)
- * @param requiredRoles  roles the JWT token must carry for this route
- * @param requiredScopes scopes the JWT token must carry for this route
- * @param schemaPath     optional file path to a JSON Schema file for request body validation
+ * @param name            the route name (from the property group key)
+ * @param path            the URL path (e.g. {@code "/api/users"})
+ * @param enabled         whether this route is active (disabled routes are skipped during matching)
+ * @param methods         allowed HTTP methods (default: GET,POST,PUT,DELETE)
+ * @param requiredRoles   roles the JWT token must carry for this route
+ * @param requiredScopes  scopes the JWT token must carry for this route
+ * @param schemaPath      optional file path to a JSON Schema file for request body validation
+ * @param successOutcome  optional NiFi relationship name override; defaults to {@code name} when null or blank
+ * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
  */
+@Builder
 public record RouteConfiguration(
         @NonNull String name,
         @NonNull String path,
         boolean enabled,
-        Set<String> methods,
-        Set<String> requiredRoles,
-        Set<String> requiredScopes,
-        @Nullable String schemaPath) {
+        @Singular("method") Set<String> methods,
+        @Singular("requiredRole") Set<String> requiredRoles,
+        @Singular("requiredScope") Set<String> requiredScopes,
+        @Nullable String schemaPath,
+        @Nullable String successOutcome,
+        boolean createFlowFile) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
@@ -62,6 +69,14 @@ public record RouteConfiguration(
         methods = methods != null && !methods.isEmpty() ? Set.copyOf(methods) : DEFAULT_METHODS;
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
+    }
+
+    /**
+     * Returns the NiFi relationship name for this route.
+     * Uses {@code successOutcome} if non-blank, otherwise falls back to {@code name}.
+     */
+    public String resolveSuccessOutcome() {
+        return successOutcome != null && !successOutcome.isBlank() ? successOutcome : name;
     }
 
     /**
@@ -86,5 +101,14 @@ public record RouteConfiguration(
      */
     public AuthorizationRequirements toAuthorizationRequirements() {
         return new AuthorizationRequirements(true, requiredRoles, requiredScopes);
+    }
+
+    /**
+     * Custom builder with sensible defaults for boolean fields.
+     */
+    @SuppressWarnings("java:S2094")
+    public static class RouteConfigurationBuilder {
+        private boolean enabled = true;
+        private boolean createFlowFile = true;
     }
 }
