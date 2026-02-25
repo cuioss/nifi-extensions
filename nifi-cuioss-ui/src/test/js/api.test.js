@@ -5,6 +5,8 @@ import {
     verifyToken,
     getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
+    getControllerServiceProperties, updateControllerServiceProperties,
+    resolveJwtConfigServiceId,
     getComponentId, detectComponentType, resetComponentCache,
     fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES
 } from '../../main/webapp/js/api.js';
@@ -168,7 +170,6 @@ describe('updateProcessorProperties', () => {
 
 describe('detectComponentType', () => {
     test('should detect processor type via WAR servlet', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockJsonResponse({
             type: 'PROCESSOR',
             componentClass: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator'
@@ -186,8 +187,16 @@ describe('detectComponentType', () => {
         );
     });
 
+    test('should send explicit componentId as X-Processor-Id header', async () => {
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+
+        await detectComponentType('my-explicit-id');
+
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['X-Processor-Id']).toBe('my-explicit-id');
+    });
+
     test('should detect controller service type via WAR servlet', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
         mockJsonResponse({
             type: 'CONTROLLER_SERVICE',
             componentClass: 'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService'
@@ -203,8 +212,7 @@ describe('detectComponentType', () => {
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
-    test('should cache detection result', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+    test('should cache detection result per component ID', async () => {
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
 
         await detectComponentType('comp-123');
@@ -214,8 +222,29 @@ describe('detectComponentType', () => {
         expect(cached.type).toBe('PROCESSOR');
     });
 
+    test('should cache separately for different component IDs', async () => {
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'ProcA' });
+        mockJsonResponse({
+            type: 'CONTROLLER_SERVICE',
+            componentClass: 'ServiceB'
+        });
+
+        const infoA = await detectComponentType('id-aaa');
+        const infoB = await detectComponentType('id-bbb');
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(infoA.type).toBe('PROCESSOR');
+        expect(infoB.type).toBe('CONTROLLER_SERVICE');
+
+        // Both should be cached independently
+        const cachedA = await detectComponentType('id-aaa');
+        const cachedB = await detectComponentType('id-bbb');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(cachedA.type).toBe('PROCESSOR');
+        expect(cachedB.type).toBe('CONTROLLER_SERVICE');
+    });
+
     test('should propagate errors from component-info endpoint', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
         mockErrorResponse(500, 'Server Error');
 
         await expect(detectComponentType('comp-123')).rejects.toThrow('HTTP 500');
@@ -340,6 +369,141 @@ describe('sendGatewayTestRequest', () => {
         );
         expect(globalThis.fetch.mock.calls[0][1].method).toBe('POST');
         expect(result.status).toBe(200);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getControllerServiceProperties
+// ---------------------------------------------------------------------------
+
+describe('getControllerServiceProperties', () => {
+    const CS_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const CS_UUID_2 = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
+    test('should fetch CS properties directly without detectComponentType', async () => {
+        mockJsonResponse({
+            revision: { version: 2 },
+            component: { properties: { 'issuer.kc.issuer': 'https://kc.example.com' } }
+        });
+
+        const result = await getControllerServiceProperties(CS_UUID);
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(`/nifi-api/controller-services/${CS_UUID}`);
+        expect(result.properties).toEqual({ 'issuer.kc.issuer': 'https://kc.example.com' });
+        expect(result.revision.version).toBe(2);
+    });
+
+    test('should return empty properties when CS has no properties', async () => {
+        mockJsonResponse({ revision: { version: 1 }, component: {} });
+
+        const result = await getControllerServiceProperties(CS_UUID_2);
+
+        expect(result.properties).toEqual({});
+    });
+
+    test('should reject invalid CS UUID', async () => {
+        await expect(getControllerServiceProperties('../../admin'))
+            .rejects.toThrow('Invalid Controller Service ID');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// updateControllerServiceProperties
+// ---------------------------------------------------------------------------
+
+describe('updateControllerServiceProperties', () => {
+    const CS_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+    test('should fetch current revision then PUT update', async () => {
+        // GET current
+        mockJsonResponse({ revision: { version: 3 }, component: { id: CS_UUID } });
+        // PUT update
+        mockJsonResponse({ revision: { version: 4 } });
+
+        await updateControllerServiceProperties(CS_UUID, {
+            'issuer.kc.issuer': 'https://kc.example.com'
+        });
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(`/nifi-api/controller-services/${CS_UUID}`);
+        expect(globalThis.fetch.mock.calls[0][1].method).toBe('GET');
+
+        const [putUrl, putOpts] = globalThis.fetch.mock.calls[1];
+        expect(putUrl).toBe(`/nifi-api/controller-services/${CS_UUID}`);
+        expect(putOpts.method).toBe('PUT');
+        const putBody = JSON.parse(putOpts.body);
+        expect(putBody.revision.version).toBe(3);
+        expect(putBody.component.properties['issuer.kc.issuer']).toBe('https://kc.example.com');
+    });
+
+    test('should reject invalid CS UUID', async () => {
+        await expect(updateControllerServiceProperties('../hack', {}))
+            .rejects.toThrow('Invalid Controller Service ID');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// resolveJwtConfigServiceId
+// ---------------------------------------------------------------------------
+
+describe('resolveJwtConfigServiceId', () => {
+    const GW_PROC = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+    const PROC_456 = 'd4e5f6a7-b8c9-0123-defa-234567890123';
+    const PROC_789 = 'e5f6a7b8-c9d0-1234-efab-345678901234';
+
+    test('should resolve CS UUID from rest.gateway.jwt.config.service', async () => {
+        globalThis.jwtAuthConfig = { processorId: GW_PROC };
+        // detectComponentType call
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'RestApiGatewayProcessor' });
+        // GET processor properties
+        mockJsonResponse({
+            revision: { version: 1 },
+            component: {
+                config: {
+                    properties: { 'rest.gateway.jwt.config.service': 'cs-uuid-abc' }
+                }
+            }
+        });
+
+        const csId = await resolveJwtConfigServiceId(GW_PROC);
+
+        expect(csId).toBe('cs-uuid-abc');
+    });
+
+    test('should resolve CS UUID from jwt.issuer.config.service', async () => {
+        globalThis.jwtAuthConfig = { processorId: PROC_456 };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        mockJsonResponse({
+            revision: { version: 1 },
+            component: {
+                config: {
+                    properties: { 'jwt.issuer.config.service': 'cs-uuid-def' }
+                }
+            }
+        });
+
+        const csId = await resolveJwtConfigServiceId(PROC_456);
+
+        expect(csId).toBe('cs-uuid-def');
+    });
+
+    test('should return null when no CS property is configured', async () => {
+        globalThis.jwtAuthConfig = { processorId: PROC_789 };
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        mockJsonResponse({
+            revision: { version: 1 },
+            component: { config: { properties: {} } }
+        });
+
+        const csId = await resolveJwtConfigServiceId(PROC_789);
+
+        expect(csId).toBeNull();
+    });
+
+    test('should reject invalid processor UUID', async () => {
+        await expect(resolveJwtConfigServiceId('../../admin'))
+            .rejects.toThrow('Invalid Processor ID');
     });
 });
 

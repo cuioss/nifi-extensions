@@ -15,8 +15,18 @@ const COMPONENT_TYPES = {
     CONTROLLER_SERVICE: { apiPath: '/nifi-api/controller-services', propsPath: ['component', 'properties'] }
 };
 
-/** Cached component detection result: { type, componentClass, apiPath, propsPath } */
-let _componentInfo = null;
+/** Cached component detection results keyed by component ID. */
+const _componentInfoCache = new Map();
+
+/** UUID v4 pattern for NiFi component ID validation. */
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Validate that an ID matches the NiFi UUID format to prevent path traversal. */
+const assertValidUuid = (id, label = 'Component ID') => {
+    if (!id || !UUID_PATTERN.test(id)) {
+        throw new Error(`Invalid ${label}: expected UUID format`);
+    }
+};
 
 /**
  * Returns the NiFi component ID from the current URL's query string.
@@ -60,14 +70,16 @@ const getCsrfToken = () => {
  * @param {string} method  HTTP method
  * @param {string} url     endpoint
  * @param {Object|null} [body=null]  JSON body
+ * @param {Object} [opts={}]  extra options
+ * @param {string} [opts.componentId]  explicit component ID for X-Processor-Id header
  * @returns {Promise<Object>}  parsed JSON response
  */
-const request = async (method, url, body = null) => {
+const request = async (method, url, body = null, { componentId } = {}) => {
     const headers = {};
 
     // Attach processor-id header for JWT endpoints
     if (url.includes('/jwt/')) {
-        const pid = getComponentId();
+        const pid = componentId || getComponentId();
         if (pid) headers['X-Processor-Id'] = pid;
     }
 
@@ -105,31 +117,33 @@ const request = async (method, url, body = null) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Auto-detects the component type by trying the processor API first,
- * then falling back to controller service.
+ * Auto-detects the component type by calling the WAR servlet with
+ * the given component ID.
  *
  * @param {string} componentId  NiFi component UUID
- * @returns {Promise<{type: string, componentClass: string}>}
+ * @returns {Promise<{type: string, componentClass: string, apiPath: string, propsPath: string[]}>}
  */
 const detectComponentType = async (componentId) => {
-    if (_componentInfo) return _componentInfo;
+    const cached = _componentInfoCache.get(componentId);
+    if (cached) return cached;
 
-    // Call WAR servlet — resolves within the WAR context (works both in
-    // NiFi iframe and standalone E2E). The request() function adds the
-    // X-Processor-Id header automatically for URLs containing '/jwt/'.
-    const data = await request('GET', `${BASE_URL}/component-info`);
-    _componentInfo = {
+    // Call WAR servlet with the explicit component ID so the backend
+    // resolves the correct component regardless of global state.
+    const data = await request('GET', `${BASE_URL}/component-info`,
+        null, { componentId });
+    const info = {
         type: data.type,
         componentClass: data.componentClass,
         ...COMPONENT_TYPES[data.type]
     };
-    return _componentInfo;
+    _componentInfoCache.set(componentId, info);
+    return info;
 };
 
 /**
  * Resets cached component info. Useful for testing.
  */
-const resetComponentCache = () => { _componentInfo = null; };
+const resetComponentCache = () => { _componentInfoCache.clear(); };
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -200,6 +214,62 @@ export const fetchGatewayApi = (path) =>
 export const sendGatewayTestRequest = (payload) =>
     request('POST', `${BASE_URL}/gateway/test`, payload);
 
+// ---------------------------------------------------------------------------
+// Direct Controller Service accessors (bypass detectComponentType cache)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch controller service properties directly by CS UUID.
+ * Unlike getComponentProperties(), this does not use detectComponentType —
+ * it always targets the controller-services endpoint.
+ *
+ * @param {string} csId  Controller Service UUID
+ * @returns {Promise<{properties: Object, revision: Object}>}
+ */
+export const getControllerServiceProperties = async (csId) => {
+    assertValidUuid(csId, 'Controller Service ID');
+    const data = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
+    let props = data;
+    for (const key of COMPONENT_TYPES.CONTROLLER_SERVICE.propsPath) { props = props?.[key]; }
+    return { properties: props || {}, revision: data.revision };
+};
+
+/**
+ * Update controller service properties directly by CS UUID.
+ * Fetches current revision first, then sends PUT.
+ *
+ * @param {string} csId  Controller Service UUID
+ * @param {Object} properties  properties to update
+ * @returns {Promise<Object>}  updated CS response
+ */
+export const updateControllerServiceProperties = async (csId, properties) => {
+    assertValidUuid(csId, 'Controller Service ID');
+    const current = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
+    return request('PUT', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`, {
+        revision: current.revision,
+        component: { id: csId, properties }
+    });
+};
+
+/**
+ * Resolve the JWT Config Service UUID from a gateway processor's properties.
+ * Looks for 'rest.gateway.jwt.config.service' or 'jwt.issuer.config.service'.
+ *
+ * @param {string} processorId  Gateway processor UUID
+ * @returns {Promise<string|null>}  CS UUID or null if not configured
+ */
+export const resolveJwtConfigServiceId = async (processorId) => {
+    assertValidUuid(processorId, 'Processor ID');
+    const info = await detectComponentType(processorId);
+    const data = await request('GET', `${info.apiPath}/${processorId}`);
+    let props = data;
+    for (const key of info.propsPath) { props = props?.[key]; }
+    const properties = props || {};
+    return properties['rest.gateway.jwt.config.service']
+        || properties['jwt.issuer.config.service']
+        || null;
+};
+
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = (processorId) =>
@@ -214,4 +284,6 @@ export const updateProcessorProperties = async (processorId, properties) => {
     });
 };
 
-export { getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES };
+export {
+    getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES
+};
