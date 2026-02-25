@@ -116,14 +116,15 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Verify table headers: Name, Path, Methods, Enabled, Actions
+        // Verify table headers: Name, Outcome, Path, Methods, Enabled, Actions
         const headers = summaryTable.locator("thead th");
-        await expect(headers).toHaveCount(5);
+        await expect(headers).toHaveCount(6);
         await expect(headers.nth(0)).toContainText("Name");
-        await expect(headers.nth(1)).toContainText("Path");
-        await expect(headers.nth(2)).toContainText("Methods");
-        await expect(headers.nth(3)).toContainText("Enabled");
-        await expect(headers.nth(4)).toContainText("Actions");
+        await expect(headers.nth(1)).toContainText("Outcome");
+        await expect(headers.nth(2)).toContainText("Path");
+        await expect(headers.nth(3)).toContainText("Methods");
+        await expect(headers.nth(4)).toContainText("Enabled");
+        await expect(headers.nth(5)).toContainText("Actions");
 
         // Verify at least one data row exists
         const dataRows = summaryTable.locator("tbody tr[data-route-name]");
@@ -325,6 +326,132 @@ test.describe("REST API Gateway Tabs", () => {
         const schemaBadge = validatedRow.locator(".schema-badge");
         await expect(schemaBadge).toBeVisible({ timeout: 3000 });
         await expect(schemaBadge).toContainText("Schema");
+    });
+
+    test("should display Outcome column with default outcome for routes", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Verify the health route shows its name as the default outcome
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        await expect(healthRow).toBeVisible({ timeout: 5000 });
+
+        // Outcome is in the second column (index 1)
+        const outcomeCell = healthRow.locator("td").nth(1);
+        await expect(outcomeCell).toContainText("health");
+    });
+
+    test("should display create-flowfile checkbox in route editor form", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the health route
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        const editBtn = healthRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Create FlowFile checkbox should be present and checked by default
+        const createFlowFileCheckbox = routeForm.locator(
+            ".create-flowfile-checkbox",
+        );
+        await expect(createFlowFileCheckbox).toBeVisible({ timeout: 5000 });
+        await expect(createFlowFileCheckbox).toBeChecked();
+
+        // Success outcome container should be visible when create-flowfile is checked
+        const outcomeContainer = routeForm.locator(
+            ".field-container-success-outcome",
+        );
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should hide success-outcome field when create-flowfile is unchecked", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the health route
+        const healthRow = summaryTable.locator(
+            'tr[data-route-name="health"]',
+        );
+        const editBtn = healthRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Success outcome container should be visible initially
+        const outcomeContainer = routeForm.locator(
+            ".field-container-success-outcome",
+        );
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Uncheck create-flowfile
+        const createFlowFileCheckbox = routeForm.locator(
+            ".create-flowfile-checkbox",
+        );
+        await createFlowFileCheckbox.uncheck();
+
+        // Success outcome container should now be hidden
+        await expect(outcomeContainer).toBeHidden();
+
+        // Re-check create-flowfile
+        await createFlowFileCheckbox.check();
+
+        // Success outcome container should be visible again
+        await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
     });
 
     test("should show file mode for file-based schema", async ({

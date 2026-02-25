@@ -405,8 +405,23 @@ class CustomUIEndpointsIT {
                     .body("port", notNullValue())
                     .body("routes", notNullValue())
                     .body("routes.enabled", everyItem(notNullValue()))
+                    .body("routes.createFlowFile", everyItem(notNullValue()))
                     .body("maxRequestBodySize", notNullValue())
                     .body("queueSize", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should include successOutcome and createFlowFile in route config")
+        void gatewayConfigIncludesOutcomeFields() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.find { it.name == 'health' }.createFlowFile", equalTo(true))
+                    .body("routes.find { it.name == 'health' }.successOutcome", nullValue())
+                    .body("routes.find { it.name == 'data' }.createFlowFile", equalTo(true));
         }
 
         @Test
