@@ -288,7 +288,7 @@
     margin-top: 10px;
 }
 
-/* Method badges */
+/* Method badges (table display) */
 
 .method-badge {
     display: inline-block;
@@ -299,6 +299,125 @@
     background: var(--badge-bg, #e3f2fd);
     color: var(--badge-color, #1565c0);
     margin-right: 4px;
+}
+
+/* Method chip input (form editor) */
+
+.method-chip-area {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 38px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+    background: var(--container-background, #fff);
+    cursor: text;
+}
+
+.method-chip-area:focus-within {
+    border-color: var(--primary-color, #2196f3);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+}
+
+.method-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.method-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--badge-bg, #e3f2fd);
+    color: var(--badge-color, #1565c0);
+    white-space: nowrap;
+}
+
+.method-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--badge-color, #1565c0);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+.method-chip-remove:hover {
+    opacity: 1;
+    background: rgba(21, 101, 192, 0.15);
+}
+
+.method-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 120px;
+}
+
+.method-chip-text-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 4px 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    background: transparent;
+}
+
+/* Override the form-field input styles for the chip text input */
+.route-form .form-field .method-chip-text-input {
+    width: 100%;
+    padding: 4px 0;
+    border: none;
+    border-radius: 0;
+}
+
+.method-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 4px 0 0;
+    padding: 4px 0;
+    list-style: none;
+    background: var(--container-background, #fff);
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.method-dropdown.open {
+    display: block;
+}
+
+.method-dropdown-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.method-dropdown-item:hover,
+.method-dropdown-item.highlighted {
+    background: var(--bg-hover, #f0f0f0);
 }
 
 .config-error {

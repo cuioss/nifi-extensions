@@ -167,8 +167,8 @@ test.describe("REST API Gateway Tabs", () => {
         const pathField = routeForm.locator(".field-path");
         await expect(pathField).toBeVisible({ timeout: 5000 });
 
-        const methodsField = routeForm.locator(".field-methods");
-        await expect(methodsField).toBeVisible({ timeout: 5000 });
+        const methodChipArea = routeForm.locator(".method-chip-area");
+        await expect(methodChipArea).toBeVisible({ timeout: 5000 });
 
         const enabledCheckbox = routeForm.locator(".route-enabled");
         await expect(enabledCheckbox).toBeVisible({ timeout: 5000 });
@@ -735,8 +735,10 @@ test.describe("REST API Gateway Tabs", () => {
         await routeName.fill("e2e-origin-test");
         const pathField = routeForm.locator(".field-path");
         await pathField.fill("/api/e2e-origin-test");
-        const methodsField = routeForm.locator(".field-methods");
-        await methodsField.fill("GET");
+        // Select GET via the method chip input
+        const methodInput = routeForm.locator(".method-chip-text-input");
+        await methodInput.fill("GET");
+        await methodInput.press("Enter");
 
         // Save
         const saveBtn = routeForm.locator(".save-route-button");
