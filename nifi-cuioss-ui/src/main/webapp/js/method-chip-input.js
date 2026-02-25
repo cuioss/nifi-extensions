@@ -158,64 +158,73 @@ export const createMethodChipInput = ({ container, idx, value }) => {
         }
     };
 
-    // -- Event handlers --
-    input.addEventListener('input', () => {
-        renderDropdown();
-    });
+    // -- Event handlers (named for cleanup) --
+    let blurTimeout = null;
 
-    input.addEventListener('focus', () => {
-        renderDropdown();
-    });
+    const onInput = () => renderDropdown();
 
-    input.addEventListener('blur', () => {
+    const onFocus = () => renderDropdown();
+
+    const onBlur = () => {
         // Small delay to allow mousedown on dropdown items
-        setTimeout(closeDropdown, 150);
-    });
+        blurTimeout = setTimeout(closeDropdown, 150);
+    };
 
-    input.addEventListener('keydown', (e) => {
+    const onKeydown = (e) => {
         const items = dropdown.querySelectorAll('.method-dropdown-item');
         const filtered = getFilteredMethods();
 
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (!dropdown.classList.contains('open')) {
-                renderDropdown();
-                return;
-            }
-            highlightIndex = Math.min(highlightIndex + 1, items.length - 1);
-            highlightItem(highlightIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            highlightIndex = Math.max(highlightIndex - 1, 0);
-            highlightItem(highlightIndex);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (highlightIndex >= 0 && highlightIndex < filtered.length) {
-                addMethod(filtered[highlightIndex]);
-            } else if (input.value.trim()) {
-                // Allow adding the typed value if it matches a known method
-                const typed = input.value.trim().toUpperCase();
-                if (HTTP_METHODS.includes(typed)) {
-                    addMethod(typed);
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                if (!dropdown.classList.contains('open')) {
+                    renderDropdown();
+                    return;
                 }
-            }
-        } else if (e.key === 'Backspace' && !input.value) {
-            // Remove last chip on backspace in empty input
-            const chips = Array.from(selected);
-            if (chips.length > 0) {
-                removeMethod(chips[chips.length - 1]);
-            }
-        } else if (e.key === 'Escape') {
-            closeDropdown();
+                highlightIndex = Math.min(highlightIndex + 1, items.length - 1);
+                highlightItem(highlightIndex);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                highlightIndex = Math.max(highlightIndex - 1, 0);
+                highlightItem(highlightIndex);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (highlightIndex >= 0 && highlightIndex < filtered.length) {
+                    addMethod(filtered[highlightIndex]);
+                } else if (input.value.trim()) {
+                    const typed = input.value.trim().toUpperCase();
+                    if (HTTP_METHODS.includes(typed)) {
+                        addMethod(typed);
+                    }
+                }
+                break;
+            case 'Backspace':
+                if (!input.value) {
+                    const chips = Array.from(selected);
+                    if (chips.length > 0) {
+                        removeMethod(chips[chips.length - 1]);
+                    }
+                }
+                break;
+            case 'Escape':
+                closeDropdown();
+                break;
         }
-    });
+    };
 
-    // Click on chip area focuses input
-    chipArea.addEventListener('click', (e) => {
+    const onChipAreaClick = (e) => {
         if (e.target === chipArea || e.target === chipsContainer) {
             input.focus();
         }
-    });
+    };
+
+    input.addEventListener('input', onInput);
+    input.addEventListener('focus', onFocus);
+    input.addEventListener('blur', onBlur);
+    input.addEventListener('keydown', onKeydown);
+    chipArea.addEventListener('click', onChipAreaClick);
 
     // -- Init --
     if (value) {
@@ -231,6 +240,12 @@ export const createMethodChipInput = ({ container, idx, value }) => {
         /** @returns {string} comma-separated selected methods */
         getValue: () => hidden.value,
         destroy: () => {
+            if (blurTimeout) clearTimeout(blurTimeout);
+            input.removeEventListener('input', onInput);
+            input.removeEventListener('focus', onFocus);
+            input.removeEventListener('blur', onBlur);
+            input.removeEventListener('keydown', onKeydown);
+            chipArea.removeEventListener('click', onChipAreaClick);
             wrapper.remove();
         }
     };
