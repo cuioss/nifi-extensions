@@ -195,6 +195,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             // Map JWT claims
             attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
 
+            // Resolve outcome relationship name
+            String outcome = routeToOutcome.getOrDefault(container.routeName(), container.routeName());
+            attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
+
             flowFile = session.putAllAttributes(flowFile, attributes);
 
             // Write body content
@@ -203,8 +207,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             }
 
             // Route to the outcome relationship (reuse pre-built instance)
-            String outcome = routeToOutcome.getOrDefault(container.routeName(), container.routeName());
-            attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
             Relationship target = dynamicRelationships.get(outcome);
             if (target == null) {
                 throw new ProcessException(
