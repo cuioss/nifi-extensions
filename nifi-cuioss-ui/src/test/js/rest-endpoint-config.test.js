@@ -35,6 +35,16 @@ const PROPERTIES_WITH_SCHEMA = {
     'restapi.health.schema': '{"type":"object"}'
 };
 
+const PROPERTIES_WITH_OUTCOME = {
+    ...SAMPLE_PROPERTIES,
+    'restapi.data.success-outcome': 'api-data'
+};
+
+const PROPERTIES_NO_FLOWFILE = {
+    ...SAMPLE_PROPERTIES,
+    'restapi.health.create-flowfile': 'false'
+};
+
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
 describe('rest-endpoint-config', () => {
@@ -1165,6 +1175,99 @@ describe('rest-endpoint-config', () => {
         for (const line of dataLines) {
             expect(line).not.toContain('# [session-only]');
         }
+    });
+
+    it('should show dash in Outcome column when create-flowfile is false', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_NO_FLOWFILE,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const outcomeCell = healthRow.querySelectorAll('td')[1];
+        expect(outcomeCell.querySelector('.empty-state')).toBeTruthy();
+        expect(outcomeCell.textContent).toContain('—');
+    });
+
+    it('should show custom badge in Outcome column for custom success-outcome', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        const outcomeCell = dataRow.querySelectorAll('td')[1];
+        expect(outcomeCell.textContent).toContain('api-data');
+        expect(outcomeCell.querySelector('.outcome-badge')).toBeTruthy();
+    });
+
+    it('should toggle success-outcome field visibility via create-flowfile checkbox', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Open editor
+        container.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+        const checkbox = form.querySelector('.create-flowfile-checkbox');
+        const outcomeContainer = form.querySelector('.field-container-success-outcome');
+
+        // Initially visible (create-flowfile is checked)
+        expect(checkbox.checked).toBe(true);
+        expect(outcomeContainer.classList.contains('hidden')).toBe(false);
+
+        // Uncheck — should hide
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(outcomeContainer.classList.contains('hidden')).toBe(true);
+
+        // Re-check — should show
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(outcomeContainer.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should include create-flowfile=false in export text', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_NO_FLOWFILE,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save a route to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('create-flowfile = false');
+    });
+
+    it('should include success-outcome in export text for custom outcome', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save a route to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('success-outcome = api-data');
     });
 
     it('should handle disabled route in table', async () => {
