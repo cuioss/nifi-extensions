@@ -51,6 +51,11 @@ export const init = async (element) => {
     });
     container.appendChild(addBtn);
 
+    // Connection map panel
+    const connectionMapContainer = document.createElement('div');
+    connectionMapContainer.className = 'connection-map-container';
+    container.appendChild(connectionMapContainer);
+
     // Property export panel
     const exportSection = document.createElement('details');
     exportSection.className = 'property-export';
@@ -88,6 +93,7 @@ export const init = async (element) => {
 
     // Load existing config
     await loadExistingConfig(container, routesContainer, componentId);
+    refreshConnectionMap(routesContainer);
 };
 
 export const cleanup = () => { /* no persistent resources */ };
@@ -214,7 +220,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Outcome</th>
+                <th>Connection</th>
                 <th>Path</th>
                 <th>Methods</th>
                 <th>Enabled</th>
@@ -285,7 +291,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const originBadge = buildOriginBadge(origin);
 
-    // Outcome column: show "—" when create-flowfile=false, custom badge when differs from name
+    // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
     if (!createFlowFileVal) {
         outcomeCell = '<span class="empty-state">\u2014</span>';
@@ -335,10 +341,10 @@ const updateTableRow = (row, formData) => {
     const originBadge = buildOriginBadge(origin);
 
     const cells = row.querySelectorAll('td');
-    // cells: 0=name, 1=outcome, 2=path, 3=methods, 4=enabled, 5=actions
+    // cells: 0=name, 1=connection, 2=path, 3=methods, 4=enabled, 5=actions
     cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
 
-    // Outcome column
+    // Connection column
     const createFlowFileVal = formData['create-flowfile'] !== false && formData['create-flowfile'] !== 'false';
     if (!createFlowFileVal) {
         cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
@@ -457,13 +463,28 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     const outcomeContainer = document.createElement('div');
     outcomeContainer.className = `form-field field-container-success-outcome${createFlowFileVal ? '' : ' hidden'}`;
+
+    // Build datalist options from existing route connection names
+    const existingNames = [];
+    const allRows = routesContainer.querySelectorAll('tr[data-route-name]');
+    for (const r of allRows) {
+        if (r.dataset.routeName === routeName) continue; // exclude current route
+        const cell = r.querySelectorAll('td')[1];
+        if (!cell || cell.querySelector('.empty-state')) continue; // skip create-flowfile=false
+        const text = cell.textContent.replace('custom', '').trim();
+        if (text && !existingNames.includes(text)) existingNames.push(text);
+    }
+    const datalistOptions = existingNames.map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
+
     outcomeContainer.innerHTML = `
-        <label for="field-success-outcome-${idx}">Success Outcome:</label>
+        <label for="field-success-outcome-${idx}">NiFi Connection Name:</label>
         <input type="text" id="field-success-outcome-${idx}" name="success-outcome"
                class="field-success-outcome form-input route-config-field"
-               placeholder="NiFi relationship name (default: route name)"
+               placeholder="Connection label on NiFi canvas (default: route name)"
                value="${sanitizeHtml(properties?.['success-outcome'] || '')}"
-               aria-label="Success Outcome">`;
+               aria-label="NiFi Connection Name"
+               list="connection-names-${idx}">
+        <datalist id="connection-names-${idx}">${datalistOptions}</datalist>`;
     form.appendChild(outcomeContainer);
 
     // Wire create-flowfile checkbox toggle
@@ -674,7 +695,7 @@ const buildExportText = (routesContainer) => {
         const origin = row.dataset.origin || 'persisted';
         const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
         const cells = row.querySelectorAll('td');
-        // cells: 0=name, 1=outcome, 2=path(+badge), 3=methods, 4=enabled, 5=actions
+        // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=enabled, 5=actions
         const pathText = cells[2]?.textContent?.trim() || '';
         const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
@@ -711,6 +732,57 @@ const refreshExportPanel = (routesContainer) => {
     if (textarea) {
         textarea.value = buildExportText(routesContainer);
     }
+};
+
+// ---------------------------------------------------------------------------
+// Connection map
+// ---------------------------------------------------------------------------
+
+/**
+ * Refresh the connection map panel from current route table state.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const refreshConnectionMap = (routesContainer) => {
+    const editor = routesContainer.closest('.route-config-editor');
+    if (!editor) return;
+    const mapContainer = editor.querySelector('.connection-map-container');
+    if (!mapContainer) return;
+
+    const rows = routesContainer.querySelectorAll('tr[data-route-name]');
+    // Group routes by connection name
+    const groups = {};
+    for (const row of rows) {
+        const name = row.dataset.routeName;
+        const cell = row.querySelectorAll('td')[1];
+        if (!cell || cell.querySelector('.empty-state')) continue; // skip create-flowfile=false
+        const connectionName = cell.textContent.replace('custom', '').trim();
+        if (!groups[connectionName]) groups[connectionName] = [];
+        groups[connectionName].push(name);
+    }
+
+    const connectionNames = Object.keys(groups);
+    // Always add failure as always present
+    const totalRelationships = connectionNames.length + 1; // +1 for failure
+
+    let tableRows = '';
+    for (const [conn, routes] of Object.entries(groups)) {
+        const routeList = routes
+            .map((r) => sanitizeHtml(r)).join(', ');
+        tableRows += '<tr><td>' + sanitizeHtml(conn)
+            + '</td><td>' + routeList + '</td></tr>';
+    }
+    tableRows += '<tr><td>failure</td><td><em>(always present)</em></td></tr>';
+
+    const summaryText = '<i class="fa fa-sitemap"></i>'
+        + ` NiFi Connections (${totalRelationships} relationships)`;
+    mapContainer.innerHTML = `
+        <details class="connection-map">
+            <summary>${summaryText}</summary>
+            <table class="connection-map-table config-table">
+                <thead><tr><th>Connection Name</th><th>Routes</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </details>`;
 };
 
 /**
@@ -792,6 +864,7 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
 
             showInfoBanner(routesContainer);
             refreshExportPanel(routesContainer);
+            refreshConnectionMap(routesContainer);
         } catch (error) {
             displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
         }
@@ -807,6 +880,7 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
 
         showInfoBanner(routesContainer);
         refreshExportPanel(routesContainer);
+        refreshConnectionMap(routesContainer);
     }
 };
 
@@ -889,4 +963,5 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
     }
 
     refreshExportPanel(routesContainer);
+    refreshConnectionMap(routesContainer);
 };

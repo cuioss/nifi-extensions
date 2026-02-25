@@ -52,8 +52,14 @@ note right of route
 end note
 
 note right of flowfile
+  Each route creates a named
+  NiFi relationship (canvas arrow).
+  Routes can share a connection
+  via success-outcome property.
+
   FlowFile attributes:
   rest.route.name
+  rest.route.outcome
   http.method
   http.request.uri
   jwt.content.*

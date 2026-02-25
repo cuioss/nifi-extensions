@@ -389,6 +389,25 @@
     margin-bottom: 12px;
 }
 
+/* Connection map */
+
+.connection-map {
+    margin: 15px 0;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+}
+
+.connection-map summary {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.connection-map-table {
+    margin: 0;
+    border-top: 1px solid var(--border-color, #ccc);
+}
+
 /* Property export panel */
 
 .property-export {
