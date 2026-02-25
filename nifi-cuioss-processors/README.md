@@ -1,60 +1,29 @@
-# NiFi CUI-OSS Processors
+# nifi-cuioss-processors
 
-This module contains custom Apache NiFi processors developed by CUI-OSS.
+`MultiIssuerJWTTokenAuthenticator` processor for Apache NiFi.
 
-## JavaScript Development
+## Purpose
 
-This project includes JavaScript components for the MultiIssuerJWTTokenAuthenticator processor. The JavaScript code is located in the `src/main/webapp/js` directory.
+This module contains the `MultiIssuerJWTTokenAuthenticator` NiFi processor, which validates JWT tokens from FlowFile attributes against multiple identity providers. It extracts the JWT from a configurable FlowFile attribute, validates it via the shared `JwtIssuerConfigService` Controller Service, and routes FlowFiles to `success` or `authentication-failed` relationships.
 
-### Code Structure
+## Key Classes
 
-- `src/main/webapp/js/components/` - UI components
-- `src/main/webapp/js/services/` - Service modules
-- `src/main/webapp/js/utils/` - Utility functions
-- `src/main/webapp/js/main.js` - Main entry point
+| Class | Description |
+|---|---|
+| `MultiIssuerJWTTokenAuthenticator` | Main NiFi processor extending `AbstractProcessor`. Reads JWT from FlowFile attributes, validates via CS, writes token claims as output attributes. |
+| `JWTProcessorConstants` | Property descriptors (token attribute name, require valid token, required roles/scopes, CS reference) and relationship definitions. |
+| `AuthLogMessages` | Standardized log messages with `AUTH` prefix for token validation events. |
 
-### Development Tools
+## Module Relationships
 
-This project follows the centralized JavaScript and ESLint standards defined in the organization's coding standards repository.
+- **References**: `JwtIssuerConfigService` from `nifi-cuioss-api`
+- **Uses**: `AuthorizationValidator`, `ErrorContext` from `nifi-cuioss-common`
+- **Packaged in**: `nifi-cuioss-nar` (the main deployable NAR)
 
-[NOTE]
-====
-For complete ESLint configuration, rules, and implementation guidelines, see:
-* **JavaScript Standards**: [JavaScript Standards](https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript)
-* **JavaScript Linting Standards**: [JavaScript Linting Standards](https://github.com/cuioss/cui-llm-rules/blob/main/standards/javascript/linting-standards.adoc)
-====
+## Building
 
-#### JavaScript Development
-
-The project uses:
-- **ESLint** for code quality and standards enforcement
-- **Jest** for JavaScript testing and coverage
-- **Prettier** for code formatting
-- **Babel** for modern JavaScript transpilation
-
-#### Available Commands
+This module is built as part of the parent project:
 
 ```bash
-# Run ESLint checks
-npm run lint
-
-# Run ESLint with automatic fixes
-npm run lint:fix
-
-# Run JavaScript tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
+./mvnw clean install
 ```
-
-### Development Workflow
-
-1. Follow centralized JavaScript coding standards
-2. Write tests for your code using Jest
-3. Run linting and tests before committing
-4. Ensure all quality gates pass
-
-## Building the Project
-
-This module is built as part of the parent project. See the parent project's README for build instructions.

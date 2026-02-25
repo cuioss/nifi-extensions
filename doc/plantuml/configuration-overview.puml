@@ -4,7 +4,7 @@ skinparam backgroundColor white
 skinparam componentStyle rectangle
 skinparam defaultTextAlignment center
 
-title JWT Token Authenticator Configuration Overview
+title NiFi Extensions Configuration Overview
 
 package "Configuration Sources" as sources {
   [UI Configuration] as ui
@@ -12,32 +12,49 @@ package "Configuration Sources" as sources {
   [Environment Variables] as env
 }
 
-package "Configuration Categories" as categories {
-  [Core Properties] as core
-  [Issuers Configuration] as issuers
-  [Performance Settings] as perf
+package "Controller Service\n(JwtIssuerConfigService)" as cs_config {
+  [Issuer Configuration\n(dynamic properties)] as issuers
+  [JWKS Settings\n(refresh, timeout, HTTPS)] as jwks_settings
+  [Token Validation\n(size, algorithms)] as token_settings
 }
 
-package "Configuration Components" as components {
-  [Token Location] as token
-  [Validation Rules] as validation
-  [JWKS Endpoints] as jwks
-  [Identity Providers] as idp
+package "MultiIssuerJWTTokenAuthenticator\nProcessor Properties" as jwt_config {
+  [Token Attribute Name] as token_attr
+  [Require Valid Token] as require_token
+  [Required Roles / Scopes] as jwt_authz
+  [CS Reference] as jwt_cs_ref
 }
 
-ui --> categories : provides
-files --> categories : provides
-env --> categories : provides
+package "RestApiGatewayProcessor\nProperties" as gw_config {
+  [Listening Port / Host] as listen
+  [SSL Context Service] as ssl
+  [Max Request Size / Queue] as limits
+  [CORS Allowed Origins] as cors
+  [Management API Key] as mgmt_key
+  [CS Reference] as gw_cs_ref
+  [Route Configuration\n(dynamic properties)] as routes
+}
 
-core --> components : includes
-issuers --> components : includes 
-perf --> components : includes
+ui --> cs_config : provides
+files --> cs_config : provides
+env --> cs_config : provides
+
+jwt_cs_ref --> cs_config : references
+gw_cs_ref --> cs_config : references
 
 note bottom of sources
   Precedence:
   1. Static Config Files
   2. Environment Variables
   3. UI Configuration
+end note
+
+note right of routes
+  Dynamic property DSL:
+  restapi.<name>.path
+  restapi.<name>.methods
+  restapi.<name>.required-roles
+  restapi.<name>.required-scopes
 end note
 
 note right of issuers

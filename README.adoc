@@ -1,4 +1,4 @@
-= NiFi JWT Authentication Processor
+= NiFi Extensions -- JWT Authentication and REST API Gateway
 :toc:
 :toclevels: 2
 
@@ -17,21 +17,26 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 
 == What is it?
 
-A custom https://nifi.apache.org/[Apache NiFi] processor that validates JWT tokens against multiple identity providers in a single flow. It validates JWT signatures, checks expiration and audience claims, and supports multiple identity providers (e.g. Keycloak, Entra ID, Auth0) simultaneously -- with automatic JWKS key rotation and caching.
+Custom https://nifi.apache.org/[Apache NiFi] processors for JWT-authenticated REST API handling. The project provides two complementary processors:
+
+* **MultiIssuerJWTTokenAuthenticator** -- validates JWT tokens from FlowFile attributes against multiple identity providers (Keycloak, Entra ID, Auth0) with automatic JWKS key rotation and caching
+* **RestApiGatewayProcessor** -- a self-contained REST API gateway with an embedded Jetty HTTP server, route-based dispatching, per-route JWT authorization, and RFC 9457 error responses
+
+Both processors share JWT validation through a common **JwtIssuerConfigService** Controller Service.
 
 == The Problem
 
-NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests. Out of the box, NiFi has no processor to validate these tokens. This forces teams to either:
-
-* write custom scripts inside `ExecuteScript` processors with no key rotation or caching,
-* call an external validation service, adding latency and a point of failure, or
-* skip token validation entirely and trust the upstream reverse proxy.
+NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests. Out of the box, NiFi has no processor to validate these tokens. Building a REST API gateway manually requires chaining `HandleHttpRequest` + custom validation + `HandleHttpResponse` with complex error routing.
 
 == The Solution
 
-This processor drops into any NiFi flow as a single node. It reads the JWT from a FlowFile attribute, validates it against one or more JWKS endpoints via a shared Controller Service, and writes the token claims as FlowFile attributes -- ready for downstream routing and processing.
+**For FlowFile-based JWT validation**: The `MultiIssuerJWTTokenAuthenticator` drops into any NiFi flow as a single node. It reads the JWT from a FlowFile attribute, validates it via a shared Controller Service, and writes the token claims as FlowFile attributes.
 
 image::doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
+
+**For REST API endpoints**: The `RestApiGatewayProcessor` is a single processor that embeds an HTTP server, authenticates and authorizes requests per-route, and converts them into FlowFiles -- replacing multi-processor gateway patterns.
+
+image::doc/plantuml/api-gateway-pattern.png[RestApiGateway Pattern]
 
 == Installation
 
@@ -52,7 +57,7 @@ NiFi 2.x requires that Controller Service API interfaces reside in a separate NA
 cp nifi-cuioss-api-nar-*.nar nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 ----
 . Restart NiFi (or wait for NiFi's auto-detection if configured).
-. The processor **MultiIssuerJWTTokenAuthenticator** appears in the "Add Processor" dialog under the tags `jwt`, `oauth`, `authentication`.
+. The processors **MultiIssuerJWTTokenAuthenticator** and **RestApiGatewayProcessor** appear in the "Add Processor" dialog under the tags `jwt`, `oauth`, `authentication`.
 
 === From Source
 
@@ -120,6 +125,22 @@ To run the full integration test suite locally:
 
 See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
 
+=== Working Example: RestApiGateway
+
+The integration tests also include a `RestApiGatewayProcessor` configured on port 9443 with JWT authentication via Keycloak. The gateway demonstrates:
+
+* Multi-route configuration via dynamic properties
+* Per-route JWT authorization with required roles
+* RFC 9457 error responses for authentication/authorization failures
+* `/metrics` management endpoint with Prometheus-compatible output
+
+To test the gateway:
+
+[source,bash]
+----
+./mvnw verify -Pintegration-tests
+----
+
 == Components
 
 [cols="1,3"]
@@ -135,11 +156,14 @@ See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for th
 |link:nifi-cuioss-common/[nifi-cuioss-common]
 |Shared JWT infrastructure: Controller Service implementation, configuration, utilities
 
-|link:nifi-cuioss-processors/README.md[nifi-cuioss-processors]
-|JWT processor implementation
+|link:nifi-cuioss-processors/[nifi-cuioss-processors]
+|`MultiIssuerJWTTokenAuthenticator` -- FlowFile-based JWT validation processor
+
+|link:nifi-cuioss-rest-processors/[nifi-cuioss-rest-processors]
+|`RestApiGatewayProcessor` -- REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
 
 |link:nifi-cuioss-ui/[nifi-cuioss-ui]
-|Custom NiFi UI with JWKS validation, token verification, and metrics tabs
+|Unified Custom UI serving both processors -- issuer configuration, token verification, endpoint configuration, metrics
 
 |link:nifi-cuioss-nar/[nifi-cuioss-nar]
 |NiFi Archive (NAR) -- the main deployable artifact bundling processors + UI
@@ -178,6 +202,7 @@ See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for th
 === Development
 
 * link:doc/specification/error-handling.adoc[Error Handling]
+* link:doc/rest-errors/index.adoc[REST API Error Reference (RFC 9457)]
 * link:doc/specification/internationalization.adoc[Internationalization]
 * link:doc/specification/observability.adoc[Observability & Metrics]
 * link:doc/LogMessages.adoc[Log Messages Reference]

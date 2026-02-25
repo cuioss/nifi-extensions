@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Observability
+= NiFi Extensions Observability
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -9,24 +9,28 @@ link:../Specification.adoc[Back to Main Specification]
 == Observability Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security Event Monitoring]_
 
-The MultiIssuerJWTTokenAuthenticator implements comprehensive observability features for monitoring token validation, security events, and processor performance. This document outlines the metrics collection, monitoring integration, and security event tracking provided by the processor.
+The NiFi Extensions project implements comprehensive observability features for monitoring token validation, security events, and processor performance. Both processors expose metrics through different mechanisms:
+
+* **MultiIssuerJWTTokenAuthenticator** -- exposes OAuth-Sheriff `SecurityEventCounter` metrics through the Custom UI metrics tab
+* **RestApiGatewayProcessor** -- exposes three metric sources through a dedicated `/metrics` management endpoint (Prometheus and JSON formats)
 
 == Implementation Status
 
 === Implementation Classes
 * link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Token validation with security event tracking
 * link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler] -- Gateway `/metrics` management endpoint
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet] -- Proxies `/metrics` from UI to gateway
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewaySecurityEvents.java[GatewaySecurityEvents] -- Application-level security event counters
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet] -- Proxies `/metrics` from Custom UI to gateway
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 
-== Security Event Metrics
+== JWT Processor Metrics
 
-=== Available Metrics
+=== SecurityEventCounter Metrics
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
-The processor leverages the SecurityEventCounter from the OAuth-Sheriff library to track key security events:
+The JWT processor leverages the `SecurityEventCounter` from the OAuth-Sheriff library to track key security events:
 
 [cols="2,4"]
 |===
@@ -60,188 +64,164 @@ The processor leverages the SecurityEventCounter from the OAuth-Sheriff library 
 |Number of unexpected errors during token processing
 |===
 
-=== Metrics Implementation
+These metrics are displayed in the Custom UI "Metrics" tab.
 
-The processor collects metrics using the SecurityEventCounter provided by the OAuth-Sheriff library. See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the metrics collection implementation.
+== REST API Gateway Metrics
 
-For more information on token validation implementation, see link:token-validation.adoc#_security_event_monitoring[Security Event Monitoring].
+The RestApiGatewayProcessor provides a dedicated `/metrics` management endpoint via link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler]. This endpoint aggregates three metric sources:
+
+=== Metric Sources
+
+1. **OAuth-Sheriff Token Validation** (`tokenValidation`) -- Token validation events from the `SecurityEventCounter` (same metrics as the JWT processor)
+2. **cui-http Transport Security** (`httpSecurity`) -- Transport-level security events from the cui-http `SecurityEventCounter` (input sanitization, suspicious requests)
+3. **Gateway Application Events** (`gatewayEvents`) -- Application-level events from link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewaySecurityEvents.java[GatewaySecurityEvents]
+
+=== Gateway Security Event Types
+
+[cols="2,1,3"]
+|===
+|Event Type |HTTP Status |Description
+
+|MISSING_BEARER_TOKEN
+|401
+|No Authorization header or malformed Bearer prefix
+
+|AUTH_FAILED
+|401
+|Token validation failed (expired, bad signature, etc.)
+
+|AUTHZ_ROLE_DENIED
+|403
+|Valid token but missing required roles
+
+|AUTHZ_SCOPE_DENIED
+|401
+|Valid token but missing required scopes
+
+|BODY_TOO_LARGE
+|413
+|Request body exceeds configured maximum
+
+|ROUTE_NOT_FOUND
+|404
+|No route configured for requested path
+
+|METHOD_NOT_ALLOWED
+|405
+|Route exists but HTTP method not allowed
+
+|QUEUE_FULL
+|503
+|Request queue at capacity (back-pressure)
+|===
+
+=== /metrics Endpoint
+
+The `/metrics` endpoint is served on the same port as the gateway (e.g., `https://host:9443/metrics`).
+
+==== Authentication
+
+When `rest.gateway.management.api-key` is configured, the endpoint requires the key in the `X-Api-Key` header. Returns 401 if the key is missing or incorrect.
+
+==== Prometheus Format (default)
+
+Requested with `Accept: text/plain` or by default:
+
+[source]
+----
+# Token validation metrics
+nifi_jwt_validations_total{result="validTokens"} 15126
+nifi_jwt_validations_total{result="invalidTokens"} 297
+nifi_jwt_validations_total{result="expiredTokens"} 198
+
+# Transport security metrics (cui-http)
+nifi_gateway_http_security_events_total{type="sanitized_path"} 42
+
+# Gateway application metrics
+nifi_gateway_events_total{type="MISSING_BEARER_TOKEN"} 12
+nifi_gateway_events_total{type="AUTH_FAILED"} 85
+nifi_gateway_events_total{type="ROUTE_NOT_FOUND"} 3
+nifi_gateway_events_total{type="QUEUE_FULL"} 0
+----
+
+==== JSON Format
+
+Requested with `Accept: application/json`:
+
+[source,json]
+----
+{
+  "tokenValidation": {
+    "validTokens": 15126,
+    "invalidTokens": 297,
+    "expiredTokens": 198
+  },
+  "httpSecurity": {
+    "sanitized_path": 42
+  },
+  "gatewayEvents": {
+    "MISSING_BEARER_TOKEN": 12,
+    "AUTH_FAILED": 85,
+    "ROUTE_NOT_FOUND": 3,
+    "QUEUE_FULL": 0
+  }
+}
+----
+
+=== Custom UI Integration
+
+The Custom UI proxies gateway metrics through link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java[GatewayProxyServlet], allowing the Metrics tab to display real-time gateway metrics alongside token validation metrics.
 
 == NiFi UI Integration
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18.1[NIFI-AUTH-18.1: NiFi UI Integration]_
 
-The processor integrates metrics into the NiFi UI for operational visibility.
-
-=== Processor Status Display
-
-The processor displays key metrics directly in the NiFi UI status:
-
-[source]
-----
-Running | Processed: 15,423 | Valid: 15,126 | Invalid: 297
-----
-
-=== Processor Details View
-
-When selecting the processor, detailed metrics are displayed in the Processor Details pane:
-
-[cols="2,2"]
-|===
-|Metric |Value
-
-|Tokens Processed
-|15,423
-
-|Valid Tokens
-|15,126 (98.1%)
-
-|Invalid Tokens
-|297 (1.9%)
-
-|Malformed
-|42
-
-|Expired
-|198
-
-|Invalid Signature
-|37
-
-|Missing Claims
-|15
-
-|Invalid Claims
-|5
-|===
-
-=== Configuration Dialog Metrics Tab
-
-A dedicated "Metrics" tab in the processor configuration dialog provides:
+Both processors integrate metrics into the NiFi UI for operational visibility through the Custom UI Metrics tab. The tab shows:
 
 1. Detailed breakdown of all security event metrics
 2. Percentage calculations and trend indicators
 3. A "Reset Metrics" button to clear counters
-4. Historical metrics chart (last 24 hours)
 
 For more information on the UI components, see link:configuration-ui.adoc[UI Configuration].
-
-== NiFi Metrics Integration
-_See Requirement link:../Requirements.adoc#NIFI-AUTH-18.2[NIFI-AUTH-18.2: Metrics System Integration]_
-
-The processor registers metrics with NiFi's metrics system for integration with monitoring tools.
-
-=== NiFi Metrics Registry
-
-The processor registers security event metrics with NiFi's metrics registry during initialization. See the `onScheduled` method in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the registration implementation.
-
-=== Metrics Naming Convention
-
-All metrics follow the standard NiFi naming convention:
-
-[source]
-----
-namespace=jwt-processor
-group=security-events
-metric_name=<event-type>
-----
-
-Example of full metric names:
-
-* `jwt-processor.security-events.total-processed-tokens`
-* `jwt-processor.security-events.valid-tokens`
-* `jwt-processor.security-events.invalid-tokens`
 
 == External Monitoring Integration
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18.3[NIFI-AUTH-18.3: External Monitoring System Support]_
 
 === Prometheus Integration
 
-==== NiFi Prometheus Endpoint
-
-The processor exposes metrics through NiFi's built-in Prometheus endpoint:
-
-[source]
-----
-http(s)://<nifi-host>:<nifi-port>/nifi-api/metrics/prometheus
-----
-
-The metrics are formatted according to Prometheus exposition format:
-
-[source]
-----
-# HELP jwt_processor_total_processed_tokens Total number of tokens processed
-# TYPE jwt_processor_total_processed_tokens counter
-jwt_processor_total_processed_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="MultiIssuerJWTTokenAuthenticator",component_name="ValidateJWT"} 15423
-
-# HELP jwt_processor_valid_tokens Number of tokens successfully validated
-# TYPE jwt_processor_valid_tokens counter
-jwt_processor_valid_tokens{component_id="f23a6614-0173-1000-ffff-ffffa96fffff",component_type="MultiIssuerJWTTokenAuthenticator",component_name="ValidateJWT"} 15126
-
-# ... other metrics
-----
-
-==== Labels and Metadata
-
-All Prometheus metrics include the following labels:
-
-* `component_id`: The processor instance ID
-* `component_type`: Always "MultiIssuerJWTTokenAuthenticator"
-* `component_name`: The processor name assigned in NiFi
-* `instance`: The NiFi instance name/ID
-
-==== Prometheus Configuration Example
-
-Sample Prometheus scrape configuration:
+The RestApiGateway's `/metrics` endpoint natively supports Prometheus scraping:
 
 [source,yaml]
 ----
 scrape_configs:
-  - job_name: 'nifi'
-    metrics_path: '/nifi-api/metrics/prometheus'
-    basic_auth:
-      username: 'monitor'
-      password: 'monitor-password'
+  - job_name: 'nifi-gateway'
+    metrics_path: '/metrics'
     static_configs:
-      - targets: ['nifi-server:8443']
+      - targets: ['nifi-gateway:9443']
     scheme: https
     tls_config:
       insecure_skip_verify: false
-      ca_file: /etc/prometheus/certs/nifi-ca.crt
+    # If management API key is configured:
+    # authorization:
+    #   credentials: '<api-key>'
+    #   type: 'X-Api-Key'
 ----
 
-=== Grafana Dashboard
+=== Grafana Dashboard Panels
 
-When using Prometheus as a data source, a Grafana dashboard can visualize these panels:
+When using Prometheus as a data source, recommended panels include:
 
-1. Total tokens processed (counter)
-2. Token validation success rate (gauge)
-3. Error breakdown by type (pie chart)
-4. Token validation trends over time (time series)
-5. Alert thresholds for high error rates
-
-For more information on monitoring integration, see link:security.adoc#_security_event_monitoring[Security Event Monitoring].
-
-== Implementation Details
-
-=== SecurityEventCounter Integration
-
-The processor integrates with the OAuth-Sheriff SecurityEventCounter as follows:
-
-1. Initialize TokenValidator with SecurityEventCounter
-2. Track all validation events through TokenValidator
-3. Expose counter through NiFi metrics registry
-4. Periodically log metrics for operational visibility
-
-See link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] for the full lifecycle implementation (`init`, `onScheduled`, `onUnscheduled`, `onTrigger`).
+1. Token validation success rate over time
+2. Error breakdown by type (pie chart)
+3. Gateway events timeline (QUEUE_FULL indicates back-pressure)
+4. Alert thresholds for high error rates
 
 == Security Considerations
 
 === Metric Access Control
 
-Metrics should be secured with appropriate access controls:
-
-1. Access to metrics endpoints should be secured with authentication
-2. Consider creating a dedicated "metrics" role with limited permissions
-3. Monitoring systems should use dedicated service accounts
+* The gateway `/metrics` endpoint can be secured with an API key (`rest.gateway.management.api-key`)
+* The Custom UI metrics tab inherits NiFi's authentication and authorization
+* Metrics contain only aggregate counts, no token content or PII
 
 === Data Privacy
 
@@ -267,5 +247,6 @@ Security events can be integrated with NiFi's Provenance Repository for complian
 === Related Implementation
 * link:security.adoc[Security]
 * link:token-validation.adoc[Token Validation]
+* link:error-handling.adoc[Error Handling]
 * link:configuration-ui.adoc[UI Configuration]
 * link:technical-components.adoc[Technical Components]

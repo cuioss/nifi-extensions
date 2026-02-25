@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Internationalization
+= NiFi Extensions Internationalization
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -9,7 +9,7 @@ link:../Specification.adoc[Back to Main Specification]
 == Internationalization Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
-The MultiIssuerJWTTokenAuthenticator implements comprehensive internationalization (i18n) support for all user-facing content, with initial support for English and German languages. This document outlines the internationalization approach, resource bundle structure, and implementation details.
+The NiFi Extensions project implements comprehensive internationalization (i18n) support for all user-facing content, with initial support for English and German languages. Both the MultiIssuerJWTTokenAuthenticator and RestApiGatewayProcessor processors support i18n through NiFi resource bundles. This document outlines the internationalization approach, resource bundle structure, and implementation details.
 
 == Implementation Status
 
@@ -197,7 +197,7 @@ To ensure all keys are properly maintained:
 
 === Key Existence Testing
 
-Resource bundle completeness is verified in link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/i18n/NiFiI18nResolverTest.java[NiFiI18nResolverTest] and link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorI18nTest.java[MultiIssuerJWTTokenAuthenticatorI18nTest].
+Resource bundle completeness is verified in link:../../nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolverTest.java[NiFiI18nResolverTest] and link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorI18nTest.java[MultiIssuerJWTTokenAuthenticatorI18nTest].
 
 === UI Testing
 

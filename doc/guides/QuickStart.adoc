@@ -5,7 +5,7 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-Get the MultiIssuerJWTTokenAuthenticator processor running in under 5 minutes.
+Get the NiFi Extensions processors running in under 5 minutes. This guide covers both the **MultiIssuerJWTTokenAuthenticator** (FlowFile-based JWT validation) and the **RestApiGatewayProcessor** (self-contained REST API gateway).
 
 == Prerequisites
 
@@ -311,20 +311,167 @@ spec:
 
 == Verifying with the Custom UI
 
-The processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
+The JWT processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
 
+* **Configuration** -- visually manage issuer configurations (see <<Step 2>>)
 * **Token Verification** -- paste a JWT to test it against the current configuration
+* **Help** -- built-in documentation and troubleshooting
 
 image::ui-token-verification-tab.png[Token Verification Tab]
 
-* **Metrics** -- view validation statistics (success/failure counts, response times)
+NOTE: The **Metrics** tab is available only for the RestApiGatewayProcessor. For the JWT processor, it displays a notice directing you to use the gateway for metrics.
 
-image::ui-metrics-tab.png[Metrics Tab]
+== RestApiGateway Quick Start
 
-These tabs appear automatically in the processor configuration dialog.
+The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server, JWT authentication, and route-based access control. It has its own custom UI with six tabs: **Endpoint Configuration**, **Endpoint Tester**, **Issuer Configuration**, **Token Verification**, **Metrics**, and **Help**.
+
+=== Step 1: Add the Processor
+
+. Open the NiFi UI.
+. Drag a new processor onto the canvas.
+. Search for **RestApiGatewayProcessor** and select it.
+
+=== Step 2: Configure the Controller Service
+
+The gateway uses the same `JwtIssuerConfigService` Controller Service as the JWT processor. If you already have one configured, you can reuse it. Otherwise, create one as described in the JWT Quick Start above.
+
+=== Step 3: Set Gateway Properties
+
+In the processor properties tab:
+
+[cols="1,2"]
+|===
+|Property |Value
+
+|Listening Port
+|`9443` (or your preferred port)
+
+|JWT Issuer Config Service
+|Select your configured CS
+
+|Max Request Body Size
+|`1048576` (1 MB default)
+
+|Request Queue Size
+|`50` (default)
+|===
+
+=== Step 4: Configure Routes via the Custom UI
+
+The gateway provides a visual route editor in its custom UI. Right-click the processor and select **Configure** to open it.
+
+The **Endpoint Configuration** tab shows global settings (read-only, derived from processor properties) and a route table with CRUD controls:
+
+image::ui-gateway-endpoint-configuration.png[Gateway Endpoint Configuration]
+
+To add a route, click **+ Add Route** and fill in the form:
+
+image::ui-gateway-route-editor.png[Gateway Route Editor]
+
+Each route has the following fields:
+
+[cols="1,3"]
+|===
+|Field |Description
+
+|Route Name
+|Unique identifier for the route (e.g. `users`, `admin`)
+
+|Enabled
+|Checkbox to enable/disable the route without removing it
+
+|Path
+|URL path pattern (e.g. `/api/users`)
+
+|Methods
+|Comma-separated HTTP methods (e.g. `GET,POST`)
+
+|Required Roles
+|Comma-separated roles required for access (optional)
+
+|Required Scopes
+|Comma-separated scopes required for access (optional)
+
+|JSON Schema
+|Optional JSON Schema for request body validation (inline or file-based)
+|===
+
+Routes with a JSON Schema configured display a green **Schema** badge in the route table.
+
+TIP: You can also configure routes via dynamic properties on the processor (useful for automated deployments). Click the **Export Properties** panel at the bottom of the Endpoint Configuration tab to see the equivalent `restapi.*` properties.
+
+=== Step 5: Connect Relationships
+
+Each route creates a named relationship. Connect them to downstream processors:
+
+* `users` -> your user-handling processor
+* `admin` -> your admin-handling processor
+* `failure` -> error handling
+
+=== Step 6: Start and Test
+
+Start the processor. The gateway listens on the configured port.
+
+==== Using the Endpoint Tester
+
+The **Endpoint Tester** tab in the custom UI lets you send test requests directly from the browser:
+
+image::ui-gateway-endpoint-tester.png[Gateway Endpoint Tester]
+
+. Select a route and HTTP method from the dropdowns.
+. Paste an authorization token (or leave empty to test unauthenticated access).
+. Click **Send Request** to see the response status, headers, and body.
+
+image::ui-gateway-endpoint-tester-response.png[Gateway Endpoint Tester with Response]
+
+==== Using curl
+
+[source,bash]
+----
+# Get a token from your identity provider
+TOKEN=$(curl -s -X POST https://your-idp/token -d 'grant_type=client_credentials' | jq -r '.access_token')
+
+# Send a request to the gateway
+curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
+----
+
+A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the matching route relationship.
+
+=== Issuer Configuration
+
+The **Issuer Configuration** tab lets you manage JWT issuer settings directly from the gateway UI. It reads from the linked `JwtIssuerConfigService` Controller Service and displays a table of configured issuers with their JWKS source, type, and issuer URI.
+
+image::ui-gateway-issuer-configuration.png[Gateway Issuer Configuration Tab]
+
+You can add, edit, or remove issuers without leaving the gateway UI. Changes are persisted to the Controller Service properties.
+
+=== Token Verification
+
+The **Token Verification** tab lets you paste a JWT and verify it against the configured issuers, the same functionality available on the JWT processor.
+
+image::ui-gateway-token-verification.png[Gateway Token Verification Tab]
+
+=== Gateway Metrics
+
+The **Metrics** tab provides real-time monitoring of the gateway with three sections:
+
+* **Token Validation** -- JWT validation success/failure counts
+* **HTTP Security** -- security-related HTTP events
+* **Gateway Events** -- overall gateway activity
+
+image::ui-gateway-metrics.png[Gateway Metrics Tab]
+
+Use the **Refresh** button to update metrics and **Export** to download them as JSON.
+
+=== Gateway Help
+
+The **Help** tab provides built-in documentation covering key features, tab descriptions, and troubleshooting tips.
+
+image::ui-gateway-help.png[Gateway Help Tab]
 
 == Next Steps
 
 * link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough] -- step-by-step guide with test environment setup and troubleshooting
 * link:../../doc/specification/configuration.adoc[Configuration specification] -- complete configuration reference
 * link:../../doc/specification/security.adoc[Security specification] -- algorithm restrictions, SSRF protection, security headers
+* link:../../doc/rest-errors/index.adoc[REST API error reference] -- RFC 9457 error types returned by the gateway

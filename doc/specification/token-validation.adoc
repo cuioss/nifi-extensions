@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Token Validation
+= NiFi Extensions Token Validation
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents

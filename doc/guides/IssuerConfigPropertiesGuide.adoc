@@ -1,6 +1,6 @@
 = Step-by-Step Guide: Working with IssuerConfig Properties in NiFi UI
 
-This guide provides detailed instructions for working with the MultiIssuerJWTTokenAuthenticator processor and its IssuerConfig properties in the NiFi UI.
+This guide provides detailed instructions for working with the MultiIssuerJWTTokenAuthenticator processor and its IssuerConfig properties in the NiFi UI. The issuer configuration is managed through the `JwtIssuerConfigService` Controller Service, which is shared between both the JWT processor and the RestApiGatewayProcessor.
 
 == Prerequisites
 
@@ -15,11 +15,11 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
  `bash
    ./integration-testing/src/main/docker/run-and-deploy.sh
 `
-. Access NiFi UI at https://localhost:9095/nifi/ (credentials: admin/adminadminadmin)
+. Access NiFi UI at https://localhost:9095/nifi/ (credentials: testUser/drowssap)
 
 == Adding the Processor to the Canvas
 
-. Log in to the NiFi UI using the credentials: admin/adminadminadmin
+. Log in to the NiFi UI using the credentials: testUser/drowssap
 . Drag and drop a new processor onto the canvas:
 * Click the processor icon in the toolbar
 * Search for "MultiIssuerJWTTokenAuthenticator"
@@ -46,8 +46,8 @@ There are two ways to configure issuer properties:
 
 ==== Method 1: Using the Custom Issuer Configuration Tab
 
-. In the processor configuration dialog, look for the "Issuer Configuration" tab (it should appear alongside the standard "Settings", "Scheduling", and "Properties" tabs)
-. If the tab is visible, click on it to access the issuer configuration interface
+. In the processor configuration dialog, look for the "Configuration" tab in the custom UI (it appears as the first tab alongside "Token Verification", "Metrics", and "Help")
+. Click on it to access the issuer configuration interface
 . The interface should display:
 * A list of existing issuer configurations (if any)
 * An "Add Issuer" button to create new configurations
@@ -157,4 +157,8 @@ The processor also supports loading configuration from external sources:
 . Environment variables
 . Configuration files
 
-Refer to the processor documentation for details on external configuration options.
+Refer to the link:QuickStart.adoc#_static_configuration_files[Static Configuration Files] and link:QuickStart.adoc#_environment_variables[Environment Variables] sections in the Quick Start Guide for details.
+
+=== Using with RestApiGatewayProcessor
+
+The same `JwtIssuerConfigService` Controller Service configured here is also used by the RestApiGatewayProcessor. If you configure issuers for the JWT processor, the gateway can reuse the same Controller Service instance. The gateway also provides its own **Issuer Configuration** tab for managing issuers directly from the gateway UI. See the link:QuickStart.adoc#_restapigateway_quick_start[RestApiGateway Quick Start] for gateway-specific configuration.

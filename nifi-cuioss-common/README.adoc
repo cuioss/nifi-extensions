@@ -1,0 +1,38 @@
+= nifi-cuioss-common
+
+Shared JWT infrastructure for the NiFi Extensions project.
+
+== Purpose
+
+This module contains the Controller Service implementation and shared utility classes used by both processors. It provides the core JWT validation infrastructure that bridges the NiFi API interfaces (in `nifi-cuioss-api`) with the OAuth-Sheriff token validation library.
+
+== Key Classes
+
+[cols="1,3"]
+|===
+|Class |Description
+
+|`StandardJwtIssuerConfigService`
+|Controller Service implementation. Manages `TokenValidator` lifecycle, parses issuer configurations from dynamic properties, and provides token validation to both processors.
+
+|`AuthorizationValidator`
+|Utility class for validating JWT token roles and scopes against configured requirements. Returns `AuthorizationResult` with details about missing roles/scopes.
+
+|`TokenClaimMapper`
+|Maps JWT `AccessTokenContent` claims to NiFi FlowFile attributes with the `jwt.content.` prefix.
+
+|`ErrorContext`
+|Structured error context builder providing component identification, operation context, and standardized error codes.
+
+|`IssuerConfigurationParser`
+|Parses NiFi dynamic properties into issuer configurations for the OAuth-Sheriff `TokenValidator`.
+
+|`JWTAttributes`
+|Constants for FlowFile attribute keys (`jwt.subject`, `jwt.issuer`, `jwt.error.code`, etc.).
+|===
+
+== Module Relationships
+
+* **Implements**: `JwtIssuerConfigService` from `nifi-cuioss-api`
+* **Used by**: `nifi-cuioss-processors`, `nifi-cuioss-rest-processors`, `nifi-cuioss-ui`
+* **Depends on**: OAuth-Sheriff (`oauth-sheriff-core`), cui-java-tools

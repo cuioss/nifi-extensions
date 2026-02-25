@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Integration Patterns
+= NiFi Extensions Integration Patterns
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -10,7 +10,65 @@ link:../Specification.adoc[Back to Main Specification]
 == Referenced Implementation
 
 === Implementation Classes
-* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- Main processor used in all integration patterns
+* link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] -- JWT processor for FlowFile-based token validation
+* link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayProcessor.java[RestApiGatewayProcessor] -- Self-contained REST API gateway with embedded Jetty
+
+== RestApiGateway Pattern (Primary)
+
+The `RestApiGatewayProcessor` is the preferred approach for building JWT-authenticated REST API gateways in NiFi. It replaces the manual combination of `HandleHttpRequest` + `MultiIssuerJWTTokenAuthenticator` + `HandleHttpResponse` with a single self-contained processor.
+
+image::api-gateway-pattern.png[RestApiGateway Pattern]
+
+=== Advantages over Manual Gateway
+
+[cols="1,1"]
+|===
+|Manual (HandleHttpRequest + JWT Processor) |RestApiGatewayProcessor
+
+|Requires 3+ processors and complex routing
+|Single processor with built-in HTTP server
+
+|Error responses require HandleHttpResponse
+|RFC 9457 error responses returned automatically
+
+|No built-in CORS support
+|CORS handled automatically with configurable origins
+
+|No built-in metrics endpoint
+|`/metrics` endpoint with Prometheus/JSON formats
+
+|Back-pressure requires manual queue management
+|Built-in request queue with 503 back-pressure
+
+|Route configuration requires NiFi flow design
+|Routes configured via dynamic properties
+|===
+
+=== Configuration Example
+
+[source,properties]
+----
+# Processor properties
+rest.gateway.listening.port = 9443
+rest.gateway.jwt.config.service = <CS-reference>
+rest.gateway.cors.allowed.origins = https://app.example.com
+rest.gateway.management.api-key = my-secret-key
+
+# Route: User API
+restapi.users.path = /api/users
+restapi.users.methods = GET,POST
+restapi.users.required-roles = user
+
+# Route: Admin API
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+----
+
+=== When to Use RestApiGateway vs MultiIssuerJWT
+
+* **Use RestApiGateway** when building a REST API endpoint that needs JWT authentication, route-based dispatching, and standardized error responses.
+* **Use MultiIssuerJWTTokenAuthenticator** when you need to validate JWT tokens on existing FlowFiles in a NiFi flow (e.g., tokens extracted from message queues, files, or upstream processors).
 
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]

@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator UI Configuration
+= NiFi Extensions UI Configuration
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -9,7 +9,41 @@ xref:../Specification.adoc[Back to Main Specification]
 == UI Configuration Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
 
-This document covers the user interface elements and interaction patterns for configuring the MultiIssuerJWTTokenAuthenticator processor. For general configuration properties and options, see xref:configuration.adoc[Configuration].
+This document covers the user interface elements and interaction patterns for configuring both the MultiIssuerJWTTokenAuthenticator and RestApiGatewayProcessor. For general configuration properties and options, see xref:configuration.adoc[Configuration].
+
+=== Unified Custom UI Architecture
+
+The Custom UI WAR (`nifi-cuioss-ui`) serves both processors through a component type detection mechanism:
+
+1. On load, the UI calls the `ComponentInfoServlet` to determine the processor type
+2. If the processor class name contains `RestApiGateway`, the UI switches to gateway mode
+3. Tab visibility is toggled: JWT tabs are hidden and gateway tabs are shown (or vice versa)
+
+See link:../../nifi-cuioss-ui/src/main/webapp/js/app.js[app.js] for the `configureTabsForType()` implementation.
+
+=== JWT Processor Tabs
+
+* **Issuer Configuration** -- manage issuer configurations (add, edit, delete, validate JWKS)
+* **Token Verification** -- paste and verify JWT tokens against current configuration
+* **Metrics** -- display OAuth-Sheriff SecurityEventCounter metrics
+* **Help** -- processor documentation and troubleshooting
+
+=== Gateway Processor Tabs
+
+* **Endpoint Configuration** -- view and manage REST endpoint route configurations
+* **Endpoint Tester** -- test gateway endpoints with sample requests
+* **Issuer Configuration** -- manage JWT issuer settings (add, edit, delete) directly from the gateway UI, reading from the linked `JwtIssuerConfigService`
+* **Token Verification** -- paste and verify JWT tokens against configured issuers (same functionality as the JWT processor tab)
+* **Metrics** -- display gateway metrics (token validation, transport security, application events) proxied via `GatewayProxyServlet`
+* **Help** -- processor documentation and troubleshooting
+
+=== Gateway UI Sub-Endpoints
+
+The `GatewayProxyServlet` proxies requests from the Custom UI to the running gateway:
+
+* `/api/gateway/config` -- retrieves current route configuration
+* `/api/gateway/metrics` -- retrieves metrics from the gateway's `/metrics` endpoint
+* `/api/gateway/test` -- sends test requests to the gateway
 
 [.text-center]
 image::../plantuml/configuration-workflow.png[Configuration Workflow Diagram, align="center"]

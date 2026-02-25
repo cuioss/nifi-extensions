@@ -1,4 +1,4 @@
-= MultiIssuerJWTTokenAuthenticator Security Specification
+= NiFi Extensions Security Specification
 :toc:
 :toclevels: 3
 :toc-title: Table of Contents
@@ -15,14 +15,14 @@ _See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Re
 
 === Implementation Classes
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet] -- JWKS URL/file/content validation with SSRF and path traversal protection
-* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ProcessorConfigReader.java[ProcessorConfigReader] -- Secure processor configuration retrieval via NiFi REST API
+* link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ComponentConfigReader.java[ComponentConfigReader] -- Secure processor configuration retrieval via NiFi REST API
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/SecurityHeadersFilter.java[SecurityHeadersFilter] -- Defense-in-depth security response headers
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java[ProcessorIdValidationFilter] -- Processor ID validation for API endpoints
 * link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/TokenMasking.java[TokenMasking] -- Sensitive token masking for log output
 
 === Verification
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/JwksValidationServletTest.java[JwksValidationServletTest]
-* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/util/ProcessorConfigReaderTest.java[ProcessorConfigReaderTest]
+* link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/util/ComponentConfigReaderTest.java[ComponentConfigReaderTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/SecurityHeadersFilterTest.java[SecurityHeadersFilterTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilterTest.java[ProcessorIdValidationFilterTest]
 * link:../../nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/util/TokenMaskingTest.java[TokenMaskingTest]

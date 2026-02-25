@@ -1,4 +1,4 @@
-= Log Messages for MultiIssuerJWTTokenAuthenticator
+= NiFi Extensions Log Messages
 :toc: left
 :toclevels: 2
 

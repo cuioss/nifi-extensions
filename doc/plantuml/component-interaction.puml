@@ -14,15 +14,34 @@ cloud "External Services" {
   [Identity Provider] as IDP
 }
 
+actor "API Client" as APIClient
+
 package "Apache NiFi" {
   [NiFi Core] as NiFiCore
 
-  package "CUI OSS Extensions" {
-    [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
-    [JWTToken\nAuthenticator] as SimpleAuth
-    [ConfigurationManager] as ConfigManager
+  package "nifi-cuioss-api" {
+    [JwtIssuerConfigService\n(CS Interface)] as CSInterface
+  }
+
+  package "nifi-cuioss-common" {
+    [StandardJwtIssuer\nConfigService] as CSImpl
+    [AuthorizationValidator] as AuthzValidator
     [IssuerConfigurationParser] as ConfigParser
     [ErrorContext] as ErrorContext
+  }
+
+  package "nifi-cuioss-processors" {
+    [MultiIssuerJWTToken\nAuthenticator] as MultiIssuer
+  }
+
+  package "nifi-cuioss-rest-processors" {
+    [RestApiGateway\nProcessor] as Gateway
+    [GatewayRequestHandler] as ReqHandler
+    [ManagementEndpoint\nHandler] as MgmtHandler
+  }
+
+  package "nifi-cuioss-ui" {
+    [Unified Custom UI] as UI
   }
 }
 
@@ -30,20 +49,24 @@ package "OAuth-Sheriff" {
   [TokenValidator] as TokenValidator
 }
 
-database "Properties Repository" as PropsRepo
+NiFiCore ..> CSInterface : uses
+CSImpl ..|> CSInterface : implements
+CSImpl --> ConfigParser : parses issuer configs
+CSImpl --> TokenValidator : creates and manages
 
-NiFiCore ..> [CUI OSS Extensions] : uses
-MultiIssuer --> TokenValidator : validates tokens
-SimpleAuth --> TokenValidator : validates tokens
+MultiIssuer --> CSInterface : validates tokens via CS
+Gateway --> CSInterface : validates tokens via CS
+Gateway --> ReqHandler : handles HTTP requests
+ReqHandler --> AuthzValidator : checks roles/scopes
+ReqHandler --> MgmtHandler : /metrics endpoint
+
 TokenValidator --> IDP : retrieves JWKS keys
-MultiIssuer --> ConfigManager : reads configuration
-SimpleAuth --> ConfigManager : reads configuration
-ConfigManager --> ConfigParser : parses issuer configs
-ConfigManager --> PropsRepo : loads/stores configs
-MultiIssuer --> ErrorContext : captures errors
-SimpleAuth --> ErrorContext : captures errors
+APIClient --> Gateway : HTTP requests (embedded Jetty)
 
-note right of MultiIssuer: Full JWT validation with\nmulti-issuer support
-note right of SimpleAuth: Simple token extraction\nand validation
-note bottom of ConfigManager: Provides centralized\nconfiguration management
+UI ..> MultiIssuer : configures (JWT tabs)
+UI ..> Gateway : configures (gateway tabs)
+
+note right of MultiIssuer: JWT validation from\nFlowFile attributes
+note right of Gateway: Self-contained REST gateway\nwith embedded Jetty server
+note bottom of CSImpl: Shared Controller Service\nused by both processors
 @enduml

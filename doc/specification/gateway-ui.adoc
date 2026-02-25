@@ -8,8 +8,9 @@ link:../Specification.adoc[Back to Main Specification]
 == Purpose
 
 The Custom UI is a configuration assistant for the `RestApiGatewayProcessor`.
-It provides a CRUD editor for route definitions (`restapi.*` properties) and
-an endpoint tester to send authenticated requests against the running gateway.
+It provides six tabs: a CRUD editor for route definitions (`restapi.*` properties),
+an endpoint tester to send authenticated requests against the running gateway,
+issuer configuration management, token verification, metrics, and help.
 
 == Persistence Model
 
@@ -65,7 +66,16 @@ provided in two modes:
 The mode is auto-detected on load (values starting with `{` are treated as
 inline) and can be toggled via radio buttons in the editor form.
 
+== Issuer Configuration
+
+The **Issuer Configuration** tab reads from the linked `JwtIssuerConfigService` Controller Service and displays a table of configured issuers with their JWKS source, type, and issuer URI. Users can add, edit, or remove issuers directly from the gateway UI without switching to the Controller Service dialog. Changes are persisted to the Controller Service properties.
+
+== Token Verification
+
+The **Token Verification** tab lets users paste a JWT and verify it against the configured issuers. This is the same functionality available on the JWT processor's Token Verification tab, providing a convenient way to test tokens without leaving the gateway UI. See xref:configuration-ui.adoc#_token_verification_interface[Token Verification Interface] for backend details.
+
 == Related Topics
 
 * link:configuration-ui.adoc[UI Configuration Overview]
 * link:configuration.adoc[Configuration Overview]
+* link:token-validation.adoc[Token Validation]
