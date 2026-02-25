@@ -214,6 +214,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Outcome</th>
                 <th>Path</th>
                 <th>Methods</th>
                 <th>Enabled</th>
@@ -227,7 +228,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
     const routeNames = Object.keys(routes);
     if (routeNames.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = '<td colspan="5" class="empty-state">No routes configured. Click "Add Route" to create one.</td>';
+        emptyRow.innerHTML = '<td colspan="6" class="empty-state">No routes configured. Click "Add Route" to create one.</td>';
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
@@ -269,6 +270,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     row.dataset.origin = origin;
 
     const enabledVal = props?.enabled !== 'false';
+    const createFlowFileVal = props?.['create-flowfile'] !== 'false';
     const methods = props?.methods || '';
     const methodBadges = methods.split(',')
         .filter((m) => m.trim())
@@ -283,8 +285,20 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const originBadge = buildOriginBadge(origin);
 
+    // Outcome column: show "—" when create-flowfile=false, custom badge when differs from name
+    let outcomeCell;
+    if (!createFlowFileVal) {
+        outcomeCell = '<span class="empty-state">\u2014</span>';
+    } else {
+        const outcome = (props?.['success-outcome']?.trim()) || name;
+        const isCustom = outcome !== name;
+        const customBadge = isCustom ? ' <span class="outcome-badge">custom</span>' : '';
+        outcomeCell = `${sanitizeHtml(outcome)}${customBadge}`;
+    }
+
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
+        <td>${outcomeCell}</td>
         <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
@@ -321,20 +335,33 @@ const updateTableRow = (row, formData) => {
     const originBadge = buildOriginBadge(origin);
 
     const cells = row.querySelectorAll('td');
+    // cells: 0=name, 1=outcome, 2=path, 3=methods, 4=enabled, 5=actions
     cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
+
+    // Outcome column
+    const createFlowFileVal = formData['create-flowfile'] !== false && formData['create-flowfile'] !== 'false';
+    if (!createFlowFileVal) {
+        cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
+    } else {
+        const outcome = formData['success-outcome']?.trim() || formData.routeName;
+        const isCustom = outcome !== formData.routeName;
+        const customBadge = isCustom ? ' <span class="outcome-badge">custom</span>' : '';
+        cells[1].innerHTML = `${sanitizeHtml(outcome)}${customBadge}`;
+    }
+
     const schemaBadge = formData.schema?.trim()
         ? ' <span class="schema-badge">Schema</span>' : '';
-    cells[1].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
+    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())
         .map((m) => `<span class="method-badge">${sanitizeHtml(m.trim())}</span>`)
         .join(' ');
-    cells[2].innerHTML = methodBadges || '<span class="empty-state">—</span>';
+    cells[3].innerHTML = methodBadges || '<span class="empty-state">—</span>';
 
     const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
     const statusText = formData.enabled ? 'Enabled' : 'Disabled';
-    cells[3].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
+    cells[4].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
 
     row.dataset.routeName = formData.routeName;
 };
@@ -414,6 +441,40 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     addField({ container: fields, idx, name: 'required-scopes', label: 'Required Scopes',
         placeholder: 'read,write (comma-separated, optional)',
         value: properties?.['required-scopes'] });
+
+    // ---- create-flowfile checkbox + success-outcome field ----
+    const createFlowFileVal = properties?.['create-flowfile'] !== 'false';
+    const flowFileToggle = document.createElement('div');
+    flowFileToggle.className = 'form-field field-container-create-flowfile';
+    flowFileToggle.innerHTML = `
+        <label class="create-flowfile-label" for="create-flowfile-${idx}">
+            <input type="checkbox" id="create-flowfile-${idx}" class="create-flowfile-checkbox"
+                   ${createFlowFileVal ? 'checked' : ''}
+                   aria-label="Create FlowFile">
+            Create FlowFile
+        </label>`;
+    form.appendChild(flowFileToggle);
+
+    const outcomeContainer = document.createElement('div');
+    outcomeContainer.className = `form-field field-container-success-outcome${createFlowFileVal ? '' : ' hidden'}`;
+    outcomeContainer.innerHTML = `
+        <label for="field-success-outcome-${idx}">Success Outcome:</label>
+        <input type="text" id="field-success-outcome-${idx}" name="success-outcome"
+               class="field-success-outcome form-input route-config-field"
+               placeholder="NiFi relationship name (default: route name)"
+               value="${sanitizeHtml(properties?.['success-outcome'] || '')}"
+               aria-label="Success Outcome">`;
+    form.appendChild(outcomeContainer);
+
+    // Wire create-flowfile checkbox toggle
+    const createFlowFileCheckbox = flowFileToggle.querySelector('.create-flowfile-checkbox');
+    createFlowFileCheckbox.addEventListener('change', () => {
+        if (createFlowFileCheckbox.checked) {
+            outcomeContainer.classList.remove('hidden');
+        } else {
+            outcomeContainer.classList.add('hidden');
+        }
+    });
 
     // ---- schema validation toggle ----
     const schemaToggle = document.createElement('div');
@@ -553,6 +614,7 @@ const extractFormFields = (form) => {
     const q = (sel) => form.querySelector(sel)?.value?.trim() || '';
     const schemaCheckbox = form.querySelector('.schema-validation-checkbox');
     const schemaEnabled = schemaCheckbox ? schemaCheckbox.checked : false;
+    const createFlowFile = form.querySelector('.create-flowfile-checkbox')?.checked !== false;
     return {
         routeName: q('.route-name'),
         path: q('.field-path'),
@@ -560,7 +622,9 @@ const extractFormFields = (form) => {
         enabled: form.querySelector('.route-enabled')?.checked !== false,
         'required-roles': q('.field-required-roles'),
         'required-scopes': q('.field-required-scopes'),
-        schema: schemaEnabled ? getActiveSchemaValue(form) : ''
+        schema: schemaEnabled ? getActiveSchemaValue(form) : '',
+        'success-outcome': createFlowFile ? q('.field-success-outcome') : '',
+        'create-flowfile': createFlowFile
     };
 };
 
@@ -588,6 +652,8 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'] || null;
     u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
+    u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['success-outcome'] || null;
+    u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
     return u;
 };
 
@@ -608,16 +674,24 @@ const buildExportText = (routesContainer) => {
         const origin = row.dataset.origin || 'persisted';
         const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
         const cells = row.querySelectorAll('td');
-        // cells: 0=name, 1=path(+badge), 2=methods, 3=enabled, 4=actions
-        const pathText = cells[1]?.textContent?.trim() || '';
-        const methodBadges = cells[2]?.querySelectorAll('.method-badge') || [];
+        // cells: 0=name, 1=outcome, 2=path(+badge), 3=methods, 4=enabled, 5=actions
+        const pathText = cells[2]?.textContent?.trim() || '';
+        const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
-        const enabled = cells[3]?.textContent?.trim() === 'Enabled';
-        const hasSchemaBadge = !!cells[1]?.querySelector('.schema-badge');
+        const enabled = cells[4]?.textContent?.trim() === 'Enabled';
+        const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
+        const outcomeDash = !!cells[1]?.querySelector('.empty-state');
+        const outcomeBadge = cells[1]?.querySelector('.outcome-badge');
 
         lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
         if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
         if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
+        if (outcomeDash) {
+            lines.push(`${prefix}${ROUTE_PREFIX}${name}.create-flowfile = false`);
+        } else if (outcomeBadge) {
+            const outcomeText = cells[1]?.textContent?.replace('custom', '').trim() || '';
+            if (outcomeText) lines.push(`${prefix}${ROUTE_PREFIX}${name}.success-outcome = ${outcomeText}`);
+        }
         if (hasSchemaBadge) {
             // Schema value is not stored in the table; it was saved to properties
             lines.push(`${prefix}${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
@@ -757,7 +831,9 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         enabled: String(formData.enabled),
         'required-roles': formData['required-roles'],
         'required-scopes': formData['required-scopes'],
-        schema: formData.schema
+        schema: formData.schema,
+        'success-outcome': formData['success-outcome'] || '',
+        'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true'
     };
     const row = createTableRow(formData.routeName, props, componentId, routesContainer, 'new');
     tbody.appendChild(row);

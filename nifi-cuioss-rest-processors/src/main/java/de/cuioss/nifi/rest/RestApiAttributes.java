@@ -30,6 +30,9 @@ public final class RestApiAttributes {
     /** The matched route name. */
     public static final String ROUTE_NAME = "rest.route.name";
 
+    /** The resolved NiFi relationship (outcome) name for the route. */
+    public static final String ROUTE_OUTCOME = "rest.route.outcome";
+
     /** The matched route path pattern. */
     public static final String ROUTE_PATH = "rest.route.path";
 

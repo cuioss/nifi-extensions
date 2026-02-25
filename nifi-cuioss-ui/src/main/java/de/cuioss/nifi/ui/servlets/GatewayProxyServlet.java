@@ -473,6 +473,12 @@ public class GatewayProxyServlet extends HttpServlet {
             if (schema != null && !schema.isBlank()) {
                 routeObj.add("schema", schema);
             }
+            String successOutcome = routeProps.get("success-outcome");
+            if (successOutcome != null && !successOutcome.isBlank()) {
+                routeObj.add("successOutcome", successOutcome);
+            }
+            routeObj.add("createFlowFile", !"false".equalsIgnoreCase(
+                    routeProps.getOrDefault("create-flowfile", "true")));
             routesArray.add(routeObj);
         }
         return routesArray;

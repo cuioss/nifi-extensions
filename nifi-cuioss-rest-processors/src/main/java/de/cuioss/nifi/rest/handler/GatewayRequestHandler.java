@@ -274,17 +274,21 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
 
         // 6. Enqueue for FlowFile creation (uses sanitized query params and headers)
-        var container = new HttpRequestContainer(
-                route.get().name(), method, path,
-                sanitized.get().queryParameters(), sanitized.get().headers(), remoteHost,
-                body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token.get());
+        if (route.get().createFlowFile()) {
+            var container = new HttpRequestContainer(
+                    route.get().name(), method, path,
+                    sanitized.get().queryParameters(), sanitized.get().headers(), remoteHost,
+                    body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token.get());
 
-        if (!queue.offer(container)) {
-            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
-            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
-            sendProblemResponse(response, callback,
-                    ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
-            return;
+            if (!queue.offer(container)) {
+                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
+                LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
+                sendProblemResponse(response, callback,
+                        ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
+                return;
+            }
+        } else {
+            LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.get().name());
         }
 
         // 7. Success response

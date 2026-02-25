@@ -97,7 +97,7 @@ describe('rest-endpoint-config', () => {
 
         const headers = container.querySelectorAll('.route-summary-table thead th');
         const headerTexts = Array.from(headers).map((th) => th.textContent.trim());
-        expect(headerTexts).toEqual(['Name', 'Path', 'Methods', 'Enabled', 'Actions']);
+        expect(headerTexts).toEqual(['Name', 'Outcome', 'Path', 'Methods', 'Enabled', 'Actions']);
     });
 
     it('should display route name and path in table cells', async () => {
@@ -112,7 +112,8 @@ describe('rest-endpoint-config', () => {
         expect(healthRow).not.toBeNull();
         const cells = healthRow.querySelectorAll('td');
         expect(cells[0].textContent).toContain('health');
-        expect(cells[1].textContent).toBe('/api/health');
+        expect(cells[1].textContent).toContain('health'); // Outcome defaults to route name
+        expect(cells[2].textContent).toBe('/api/health');
     });
 
     it('should display method badges in table', async () => {
@@ -576,7 +577,7 @@ describe('rest-endpoint-config', () => {
         // Form should be removed, row should be visible with updated data
         expect(container.querySelector('.route-form')).toBeNull();
         expect(healthRow.classList.contains('hidden')).toBe(false);
-        expect(healthRow.querySelectorAll('td')[1].textContent).toBe('/api/health/v2');
+        expect(healthRow.querySelectorAll('td')[2].textContent).toBe('/api/health/v2');
     });
 
     it('should add new row to table after saving new route', async () => {
@@ -603,7 +604,7 @@ describe('rest-endpoint-config', () => {
         expect(container.querySelector('.route-form')).toBeNull();
         const newRow = container.querySelector('tr[data-route-name="new-route"]');
         expect(newRow).not.toBeNull();
-        expect(newRow.querySelectorAll('td')[1].textContent).toBe('/api/new');
+        expect(newRow.querySelectorAll('td')[2].textContent).toBe('/api/new');
     });
 
     // -----------------------------------------------------------------------
