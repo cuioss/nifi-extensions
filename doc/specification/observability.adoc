@@ -233,6 +233,10 @@ Security metrics are designed to protect sensitive information:
 
 For more information on security considerations, see link:security.adoc[Security].
 
+=== Audit Trail Integration
+
+Security events can be integrated with NiFi's Provenance Repository for compliance and auditing. The `onTrigger` method in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] records validation failures to the provenance repository and increments security event counters.
+
 == See Also
 
 === Core Documentation
