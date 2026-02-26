@@ -196,7 +196,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
 
             // Resolve outcome relationship name
-            String outcome = routeToOutcome.getOrDefault(container.routeName(), container.routeName());
+            String outcome = routeToOutcome.get(container.routeName());
             attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
 
             flowFile = session.putAllAttributes(flowFile, attributes);
@@ -271,7 +271,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 LOGGER.info("Route '%s' has createFlowFile=false — no NiFi relationship created", route.name());
                 continue;
             }
-            String outcome = route.resolveSuccessOutcome();
+            String outcome = route.successOutcome();
             routeToOutcome.put(route.name(), outcome);
             dynamicRelationships.computeIfAbsent(outcome, k ->
                     new Relationship.Builder()

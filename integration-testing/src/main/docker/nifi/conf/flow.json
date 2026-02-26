@@ -974,7 +974,13 @@
               "restapi.validated.schema": "./conf/schemas/user-request-schema.json",
               "restapi.inline-validated.path": "/api/inline-validated",
               "restapi.inline-validated.methods": "POST",
-              "restapi.inline-validated.schema": "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}"
+              "restapi.inline-validated.schema": "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}",
+              "restapi.admin.success-outcome": "admin",
+              "restapi.data.success-outcome": "data",
+              "restapi.disabled-test.success-outcome": "disabled-test",
+              "restapi.health.success-outcome": "health",
+              "restapi.inline-validated.success-outcome": "inline-validated",
+              "restapi.validated.success-outcome": "validated"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -1084,6 +1090,36 @@
               },
               "restapi.inline-validated.schema": {
                 "name": "restapi.inline-validated.schema",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.admin.success-outcome": {
+                "name": "restapi.admin.success-outcome",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.data.success-outcome": {
+                "name": "restapi.data.success-outcome",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.disabled-test.success-outcome": {
+                "name": "restapi.disabled-test.success-outcome",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.health.success-outcome": {
+                "name": "restapi.health.success-outcome",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.inline-validated.success-outcome": {
+                "name": "restapi.inline-validated.success-outcome",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "restapi.validated.success-outcome": {
+                "name": "restapi.validated.success-outcome",
                 "identifiesControllerService": false,
                 "sensitive": false
               }
