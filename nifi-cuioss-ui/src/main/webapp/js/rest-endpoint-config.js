@@ -298,9 +298,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         outcomeCell = '<span class="empty-state">\u2014</span>';
     } else {
         const outcome = (props?.['success-outcome']?.trim()) || name;
-        const isCustom = outcome !== name;
-        const customBadge = isCustom ? ' <span class="outcome-badge">custom</span>' : '';
-        outcomeCell = `${sanitizeHtml(outcome)}${customBadge}`;
+        outcomeCell = sanitizeHtml(outcome);
     }
 
     row.innerHTML = `
@@ -351,9 +349,7 @@ const updateTableRow = (row, formData) => {
         cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
     } else {
         const outcome = formData['success-outcome']?.trim() || formData.routeName;
-        const isCustom = outcome !== formData.routeName;
-        const customBadge = isCustom ? ' <span class="outcome-badge">custom</span>' : '';
-        cells[1].innerHTML = `${sanitizeHtml(outcome)}${customBadge}`;
+        cells[1].innerHTML = sanitizeHtml(outcome);
     }
 
     const schemaBadge = formData.schema?.trim()
@@ -482,7 +478,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         <input type="text" id="field-success-outcome-${idx}" name="success-outcome"
                class="field-success-outcome form-input route-config-field"
                placeholder="${t('route.form.connection.placeholder')}"
-               value="${sanitizeHtml(properties?.['success-outcome'] || '')}"
+               value="${sanitizeHtml(properties?.['success-outcome'] || routeName)}"
                aria-label="${t('route.form.connection.label')}"
                list="connection-names-${idx}">
         <datalist id="connection-names-${idx}">${datalistOptions}</datalist>`;
@@ -676,7 +672,7 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'] || null;
     u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
-    u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['success-outcome'] || null;
+    u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
     return u;
 };
@@ -705,15 +701,14 @@ const buildExportText = (routesContainer) => {
         const enabled = cells[4]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');
-        const outcomeBadge = cells[1]?.querySelector('.outcome-badge');
 
         lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
         if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
         if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
         if (outcomeDash) {
             lines.push(`${prefix}${ROUTE_PREFIX}${name}.create-flowfile = false`);
-        } else if (outcomeBadge) {
-            const outcomeText = cells[1]?.textContent?.replace('custom', '').trim() || '';
+        } else {
+            const outcomeText = cells[1]?.textContent?.trim() || '';
             if (outcomeText) {
                 lines.push(`${prefix}${ROUTE_PREFIX}${name}`
                     + `.success-outcome = ${outcomeText}`);

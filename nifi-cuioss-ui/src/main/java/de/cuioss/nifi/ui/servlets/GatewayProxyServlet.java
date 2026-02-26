@@ -476,6 +476,8 @@ public class GatewayProxyServlet extends HttpServlet {
             String successOutcome = routeProps.get("success-outcome");
             if (successOutcome != null && !successOutcome.isBlank()) {
                 routeObj.add("successOutcome", successOutcome);
+            } else if (!"false".equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
+                routeObj.add("successOutcome", routeEntry.getKey());
             }
             routeObj.add("createFlowFile", !"false".equalsIgnoreCase(
                     routeProps.getOrDefault("create-flowfile", "true")));

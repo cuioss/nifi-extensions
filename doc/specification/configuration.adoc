@@ -165,9 +165,17 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix. 
 |restapi.<name>.required-scopes
 |Comma-separated scopes the JWT must carry
 |read,write
+
+|restapi.<name>.success-outcome
+|NiFi relationship name for this route; auto-populated with route name when absent
+|api-data
+
+|restapi.<name>.create-flowfile
+|Whether to create a FlowFile for this route (default: true). Routes with `false` have no NiFi relationship.
+|false
 |===
 
-Each configured route creates a corresponding NiFi relationship with the route name.
+Each configured route with `create-flowfile=true` creates a NiFi relationship named by its `success-outcome` property.
 
 ==== Multi-Route Configuration Example
 
@@ -177,18 +185,22 @@ Each configured route creates a corresponding NiFi relationship with the route n
 restapi.users.path = /api/users
 restapi.users.methods = GET
 restapi.users.required-roles = read
+restapi.users.success-outcome = users
 
 # Route 2: Admin API (full access)
 restapi.admin.path = /api/admin
 restapi.admin.methods = GET,POST,PUT,DELETE
 restapi.admin.required-roles = admin
+restapi.admin.success-outcome = admin
 
 # Route 3: Public health check (no authorization)
 restapi.health.path = /api/health
 restapi.health.methods = GET
+restapi.health.success-outcome = health
 ----
 
 This creates three relationships (`users`, `admin`, `health`) plus the static `failure` relationship.
+The `success-outcome` property is auto-populated with the route name when absent.
 
 == Controller Service Properties
 

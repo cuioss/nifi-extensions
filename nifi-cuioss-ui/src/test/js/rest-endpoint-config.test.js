@@ -1191,7 +1191,7 @@ describe('rest-endpoint-config', () => {
         expect(outcomeCell.textContent).toContain('—');
     });
 
-    it('should show custom badge in Connection column for custom success-outcome', async () => {
+    it('should show custom success-outcome in Connection column', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: PROPERTIES_WITH_OUTCOME,
             revision: { version: 1 }
@@ -1202,7 +1202,6 @@ describe('rest-endpoint-config', () => {
         const dataRow = container.querySelector('tr[data-route-name="data"]');
         const outcomeCell = dataRow.querySelectorAll('td')[1];
         expect(outcomeCell.textContent).toContain('api-data');
-        expect(outcomeCell.querySelector('.outcome-badge')).toBeTruthy();
     });
 
     it('should toggle connection name field visibility via create-flowfile checkbox', async () => {
@@ -1252,7 +1251,25 @@ describe('rest-endpoint-config', () => {
         expect(textarea.value).toContain('create-flowfile = false');
     });
 
-    it('should include success-outcome in export text for custom outcome', async () => {
+    it('should always include success-outcome in export text for FlowFile routes', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Save a route to trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('success-outcome = health');
+    });
+
+    it('should include custom success-outcome in export text', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: PROPERTIES_WITH_OUTCOME,
             revision: { version: 1 }

@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  *   <li>{@code required-roles} — comma-separated roles</li>
  *   <li>{@code required-scopes} — comma-separated scopes</li>
  *   <li>{@code schema} — optional file path to a JSON Schema file for request body validation</li>
- *   <li>{@code success-outcome} — optional NiFi relationship name override (default: route name)</li>
+ *   <li>{@code success-outcome} — NiFi relationship name; required for routes with create-flowfile=true, auto-populated with route name when absent</li>
  *   <li>{@code create-flowfile} — whether to create a FlowFile for this route (default: true)</li>
  * </ul>
  */
@@ -96,6 +96,9 @@ public class RouteConfigurationParser {
             String schema = routeProps.get(SCHEMA_KEY);
             String successOutcome = routeProps.get(SUCCESS_OUTCOME_KEY);
             boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
+            if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
+                successOutcome = routeName;
+            }
 
             routes.add(RouteConfiguration.builder()
                     .name(routeName).path(path).enabled(enabled)

@@ -162,27 +162,19 @@ class RouteConfigurationTest {
     class SuccessOutcome {
 
         @Test
-        @DisplayName("Should resolve to route name when successOutcome is null")
-        void shouldResolveToNameWhenNull() {
-            var route = RouteConfiguration.builder()
-                    .name("health").path("/api/health").build();
-            assertEquals("health", route.resolveSuccessOutcome());
-        }
-
-        @Test
-        @DisplayName("Should resolve to route name when successOutcome is blank")
-        void shouldResolveToNameWhenBlank() {
-            var route = RouteConfiguration.builder()
-                    .name("health").path("/api/health").successOutcome("  ").build();
-            assertEquals("health", route.resolveSuccessOutcome());
-        }
-
-        @Test
-        @DisplayName("Should resolve to custom outcome when set")
-        void shouldResolveToCustomOutcome() {
+        @DisplayName("Should return successOutcome directly when set")
+        void shouldReturnSuccessOutcomeDirectly() {
             var route = RouteConfiguration.builder()
                     .name("health-get").path("/api/health").successOutcome("health").build();
-            assertEquals("health", route.resolveSuccessOutcome());
+            assertEquals("health", route.successOutcome());
+        }
+
+        @Test
+        @DisplayName("Should have null successOutcome when createFlowFile is false")
+        void shouldHaveNullOutcomeWhenNoFlowFile() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health").createFlowFile(false).build();
+            assertNull(route.successOutcome());
         }
     }
 

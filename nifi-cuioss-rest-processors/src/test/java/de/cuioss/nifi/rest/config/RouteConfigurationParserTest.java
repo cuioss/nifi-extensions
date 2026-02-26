@@ -195,19 +195,29 @@ class RouteConfigurationParserTest {
 
             assertEquals(1, routes.size());
             assertEquals("health", routes.getFirst().successOutcome());
-            assertEquals("health", routes.getFirst().resolveSuccessOutcome());
         }
 
         @Test
-        @DisplayName("Should default success-outcome to null when absent")
-        void shouldDefaultSuccessOutcomeToNull() {
+        @DisplayName("Should default success-outcome to route name when absent")
+        void shouldDefaultSuccessOutcomeToRouteName() {
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
+            assertEquals("health", routes.getFirst().successOutcome());
+        }
+
+        @Test
+        @DisplayName("Should have null success-outcome when create-flowfile is false")
+        void shouldHaveNullOutcomeWhenCreateFlowFileFalse() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.create-flowfile", "false");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
             assertNull(routes.getFirst().successOutcome());
-            assertEquals("health", routes.getFirst().resolveSuccessOutcome());
         }
 
         @Test

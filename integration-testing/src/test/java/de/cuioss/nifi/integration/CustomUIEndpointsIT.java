@@ -420,7 +420,7 @@ class CustomUIEndpointsIT {
                     .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("routes.find { it.name == 'health' }.createFlowFile", equalTo(true))
-                    .body("routes.find { it.name == 'health' }.successOutcome", nullValue())
+                    .body("routes.find { it.name == 'health' }.successOutcome", equalTo("health"))
                     .body("routes.find { it.name == 'data' }.createFlowFile", equalTo(true));
         }
 

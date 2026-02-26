@@ -50,9 +50,11 @@ Each route row in the summary table shows a visual badge indicating its origin:
 == Property Export
 
 The **Export Properties** panel (collapsible `<details>` at the bottom of the
-editor) generates a text representation of all routes. Session-only routes
-(new or modified) are prefixed with `# [session-only]` so users can identify
-which lines need to be copied into the processor configuration to persist them.
+editor) generates a text representation of all routes. The `success-outcome`
+property is always included for routes with `create-flowfile=true`.
+Session-only routes (new or modified) are prefixed with `# [session-only]`
+so users can identify which lines need to be copied into the processor
+configuration to persist them.
 
 == Schema Modes
 

@@ -40,7 +40,7 @@ import java.util.Set;
  * @param requiredRoles   roles the JWT token must carry for this route
  * @param requiredScopes  scopes the JWT token must carry for this route
  * @param schemaPath      optional file path to a JSON Schema file for request body validation
- * @param successOutcome  optional NiFi relationship name override; defaults to {@code name} when null or blank
+ * @param successOutcome  NiFi relationship name; required when createFlowFile is true, null when false
  * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
  */
 @Builder
@@ -69,14 +69,6 @@ public record RouteConfiguration(
         methods = methods != null && !methods.isEmpty() ? Set.copyOf(methods) : DEFAULT_METHODS;
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
-    }
-
-    /**
-     * Returns the NiFi relationship name for this route.
-     * Uses {@code successOutcome} if non-blank, otherwise falls back to {@code name}.
-     */
-    public String resolveSuccessOutcome() {
-        return successOutcome != null && !successOutcome.isBlank() ? successOutcome : name;
     }
 
     /**
