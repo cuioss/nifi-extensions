@@ -490,10 +490,11 @@
                     <configuration>
                         <publishingServerId>central</publishingServerId>
                         <autoPublish>true</autoPublish>
-                        <waitUntil>published</waitUntil>
+                        <waitUntil>uploaded</waitUntil>
                         <excludeArtifacts>
                             <excludeArtifact>nifi-cuioss-ui</excludeArtifact>
                             <excludeArtifact>integration-testing</excludeArtifact>
+                            <excludeArtifact>e-2-e-playwright</excludeArtifact>
                         </excludeArtifacts>
                     </configuration>
                 </plugin>
