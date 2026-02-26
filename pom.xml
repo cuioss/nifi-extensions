@@ -111,7 +111,7 @@
 
         <!-- OpenRewrite -->
         <open.rewrite.maven.plugin.version>6.29.0</open.rewrite.maven.plugin.version>
-        <rewrite-testing-frameworks.version>3.20.0</rewrite-testing-frameworks.version>
+        <rewrite-testing-frameworks.version>3.27.0</rewrite-testing-frameworks.version>
         <rewrite-migrate-java.version>3.20.0</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2025-04-30T06:58:46Z</project.build.outputTimestamp>
 
@@ -129,7 +129,7 @@
         <version.slf4j>2.0.17</version.slf4j>
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
-        <version.junit.jupiter>6.0.2</version.junit.jupiter>
+        <version.junit.jupiter>6.0.3</version.junit.jupiter>
         <version.lombok>1.18.42</version.lombok>
         <version.parsson>1.1.7</version.parsson>
         <version.snakeyaml>2.5</version.snakeyaml>
@@ -138,7 +138,7 @@
         <version.hamcrest>3.0</version.hamcrest>
         <version.jakarta.json-api>2.1.3</version.jakarta.json-api>
         <version.jakarta.servlet-api>6.1.0</version.jakarta.servlet-api>
-        <version.webjars.font-awesome>7.1.0</version.webjars.font-awesome>
+        <version.webjars.font-awesome>7.2.0</version.webjars.font-awesome>
         <!-- CUI-OSS -->
         <version.cui.test.juli.logger>2.1.2</version.cui.test.juli.logger>
         <version.cui.test.generator>2.5.2</version.cui.test.generator>
@@ -150,7 +150,7 @@
         <version.cui.test.keycloak.integration>1.3.0</version.cui.test.keycloak.integration>
         <version.jjwt>0.13.0</version.jjwt>
         <version.jspecify>1.0.0</version.jspecify>
-        <version.awaitility>4.2.2</version.awaitility>
+        <version.awaitility>4.3.0</version.awaitility>
         <version.json-schema>1.9.0</version.json-schema>
     </properties>
 
