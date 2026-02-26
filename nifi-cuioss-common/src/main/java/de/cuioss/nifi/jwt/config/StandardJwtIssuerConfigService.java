@@ -22,6 +22,7 @@ import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
+import de.cuioss.sheriff.oauth.core.domain.context.AccessTokenRequest;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
@@ -229,7 +230,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             throw new IllegalStateException("JwtIssuerConfigService is not enabled or has no configuration");
         }
 
-        return tokenValidator.createAccessToken(rawToken);
+        return tokenValidator.createAccessToken(AccessTokenRequest.of(rawToken));
     }
 
     @Override
