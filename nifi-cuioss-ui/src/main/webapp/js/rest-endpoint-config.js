@@ -672,7 +672,7 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'] || null;
     u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
-    u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['success-outcome'] || name;
+    u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
     return u;
 };
