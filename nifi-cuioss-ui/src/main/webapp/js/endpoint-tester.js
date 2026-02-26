@@ -9,7 +9,7 @@
  */
 
 import { fetchGatewayApi, sendGatewayTestRequest } from './api.js';
-import { log } from './utils.js';
+import { log, t } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -28,18 +28,18 @@ export const init = async (element) => {
 
     container.innerHTML = `
         <div class="tester-header">
-            <h2>Endpoint Tester</h2>
+            <h2>${t('tester.heading')}</h2>
         </div>
         <div class="tester-form">
             <div class="tester-form-row">
                 <div class="form-group">
-                    <label for="route-selector">Route</label>
+                    <label for="route-selector">${t('tester.form.route')}</label>
                     <select class="route-selector" id="route-selector">
-                        <option value="">Loading routes...</option>
+                        <option value="">${t('tester.routes.loading')}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="method-selector">Method</label>
+                    <label for="method-selector">${t('tester.form.method')}</label>
                     <select class="method-selector" id="method-selector">
                         <option value="GET">GET</option>
                         <option value="POST">POST</option>
@@ -49,21 +49,21 @@ export const init = async (element) => {
                 </div>
             </div>
             <div class="form-group">
-                <label for="token-input">Authorization Token</label>
+                <label for="token-input">${t('tester.form.token')}</label>
                 <textarea class="token-input" id="token-input"
-                    placeholder="Bearer eyJ..."></textarea>
+                    placeholder="${t('tester.form.token.placeholder')}"></textarea>
             </div>
             <div class="form-group body-group hidden">
-                <label for="body-input">Request Body</label>
+                <label for="body-input">${t('tester.form.body')}</label>
                 <textarea class="body-input" id="body-input"
-                    placeholder='{"key": "value"}'></textarea>
+                    placeholder='${t('tester.form.body.placeholder')}'></textarea>
             </div>
             <button class="send-request-button">
-                <i class="fa fa-paper-plane"></i> Send Request
+                <i class="fa fa-paper-plane"></i> ${t('tester.btn.send')}
             </button>
         </div>
         <div class="response-display hidden">
-            <h3>Response</h3>
+            <h3>${t('tester.response.heading')}</h3>
             <div class="response-status"></div>
             <div class="response-headers"></div>
             <div class="response-body"></div>
@@ -98,7 +98,7 @@ const loadRoutes = async (container) => {
         const routes = config.routes || [];
 
         if (routes.length === 0) {
-            selector.innerHTML = '<option value="">No routes available</option>';
+            selector.innerHTML = `<option value="">${t('tester.routes.none')}</option>`;
             return;
         }
 
@@ -113,7 +113,7 @@ const loadRoutes = async (container) => {
         updateMethodsForRoute(container);
     } catch (err) {
         log.error('Failed to load routes for tester:', err.message);
-        selector.innerHTML = '<option value="">Failed to load routes</option>';
+        selector.innerHTML = `<option value="">${t('tester.routes.failed')}</option>`;
     }
 };
 
@@ -145,7 +145,7 @@ const handleSendRequest = async (container) => {
         : null;
 
     if (!path) {
-        showError(container, 'Please select a route');
+        showError(container, t('tester.error.no.route'));
         return;
     }
 
@@ -158,17 +158,17 @@ const handleSendRequest = async (container) => {
 
     const btn = container.querySelector('.send-request-button');
     btn.disabled = true;
-    btn.textContent = 'Sending...';
+    btn.textContent = t('tester.btn.sending');
 
     try {
         const result = await sendGatewayTestRequest({ path, method, headers, body });
         displayResponse(container, result);
     } catch (err) {
         log.error('Test request failed:', err.message);
-        showError(container, `Request failed: ${err.message}`);
+        showError(container, t('tester.error.request.failed', err.message));
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa fa-paper-plane"></i> Send Request';
+        btn.innerHTML = `<i class="fa fa-paper-plane"></i> ${t('tester.btn.send')}`;
     }
 };
 
@@ -183,15 +183,15 @@ const displayResponse = (container, result) => {
         : statusCode >= 400 ? 'status-4xx'
             : 'status-2xx';
     statusEl.className = `response-status ${statusClass}`;
-    statusEl.textContent = `Status: ${statusCode}`;
+    statusEl.textContent = t('tester.response.status', statusCode);
 
     // Headers
     const headersEl = display.querySelector('.response-headers');
-    const headers = result.headers || {};
-    const headerLines = Object.entries(headers)
+    const responseHeaders = result.headers || {};
+    const headerLines = Object.entries(responseHeaders)
         .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`)
         .join('\n');
-    headersEl.textContent = headerLines || 'No headers';
+    headersEl.textContent = headerLines || t('tester.response.no.headers');
 
     // Body
     const bodyEl = display.querySelector('.response-body');
@@ -209,7 +209,7 @@ const showError = (container, message) => {
     const display = container.querySelector('.response-display');
     display.classList.remove('hidden');
     display.querySelector('.response-status').className = 'response-status status-5xx';
-    display.querySelector('.response-status').textContent = 'Error';
+    display.querySelector('.response-status').textContent = t('tester.response.error');
     display.querySelector('.response-headers').textContent = '';
     display.querySelector('.response-body').textContent = message;
 };

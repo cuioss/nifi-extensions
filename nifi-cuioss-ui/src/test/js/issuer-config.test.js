@@ -17,6 +17,7 @@ describe('issuer-config', () => {
     beforeEach(() => {
         // Re-apply mock implementations (resetMocks clears them between tests)
         utils.sanitizeHtml.mockImplementation((s) => s);
+        utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());
@@ -159,7 +160,7 @@ describe('issuer-config', () => {
 
         expect(utils.displayUiSuccess).toHaveBeenCalledWith(
             expect.any(Element),
-            'Issuer configuration saved successfully (standalone mode).'
+            'issuer.save.success.standalone'
         );
     });
 
@@ -229,8 +230,7 @@ describe('issuer-config', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const result = form.querySelector('.verification-result');
-        expect(result.textContent).toContain('Valid JWKS');
-        expect(result.textContent).toContain('3 keys found');
+        expect(result.textContent).toContain('issuer.jwks.valid');
     });
 
     it('should show error for invalid JWKS URL validation', async () => {
@@ -569,7 +569,7 @@ describe('issuer-config', () => {
             await new Promise((r) => setTimeout(r, 10));
 
             const result = form.querySelector('.verification-result');
-            expect(result.textContent).toContain('Valid JWKS');
+            expect(result.textContent).toContain('issuer.jwks.valid');
         });
 
         it('should validate required fields in gateway context', async () => {

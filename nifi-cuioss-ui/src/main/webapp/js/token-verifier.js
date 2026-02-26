@@ -7,7 +7,7 @@
  */
 
 import { verifyToken } from './api.js';
-import { sanitizeHtml, displayUiError, confirmClearForm } from './utils.js';
+import { sanitizeHtml, displayUiError, confirmClearForm, t } from './utils.js';
 
 /**
  * Initialise the Token Verification tab inside the given container element.
@@ -20,22 +20,22 @@ export const init = (container) => {
         <div class="token-verification-container">
             <div class="token-input-section">
                 <div class="form-field">
-                    <label for="field-token-input">Enter Token:</label>
+                    <label for="field-token-input">${t('token.input.label')}:</label>
                     <textarea id="field-token-input" class="form-input"
-                              rows="5" placeholder="Paste token here..."
-                              aria-label="JWT Token Input"></textarea>
+                              rows="5" placeholder="${t('token.input.placeholder')}"
+                              aria-label="${t('token.input.label')}"></textarea>
                 </div>
                 <div class="button-container">
                     <button class="verify-token-button btn btn-primary">
-                        <i class="fa fa-check"></i> Verify Token
+                        <i class="fa fa-check"></i> ${t('token.btn.verify')}
                     </button>
                     <button class="clear-token-button btn btn-secondary">
-                        <i class="fa fa-trash"></i> Clear
+                        <i class="fa fa-trash"></i> ${t('token.btn.clear')}
                     </button>
                 </div>
             </div>
             <div class="token-results-section">
-                <h3>Verification Results</h3>
+                <h3>${t('token.results.heading')}</h3>
                 <div class="token-results-content" aria-live="polite" role="status"></div>
             </div>
         </div>`;
@@ -49,7 +49,7 @@ export const init = (container) => {
             displayUiError(results, null, {}, 'processor.jwt.noTokenProvided');
             return;
         }
-        results.innerHTML = '<div class="verifying">Verifying token...</div>';
+        results.innerHTML = `<div class="verifying">${t('token.status.verifying')}</div>`;
         try {
             const result = await verifyToken(token);
             renderResults(result, results);
@@ -77,11 +77,11 @@ const renderResults = (result, el) => {
 
     let statusClass, statusText, statusIcon;
     if (expired) {
-        statusClass = 'expired'; statusText = 'Token has expired'; statusIcon = 'fa-clock';
+        statusClass = 'expired'; statusText = t('token.status.expired'); statusIcon = 'fa-clock';
     } else if (result.valid) {
-        statusClass = 'valid'; statusText = 'Token is valid'; statusIcon = 'fa-check-circle';
+        statusClass = 'valid'; statusText = t('token.status.valid'); statusIcon = 'fa-check-circle';
     } else {
-        statusClass = 'invalid'; statusText = 'Token is invalid'; statusIcon = 'fa-times-circle';
+        statusClass = 'invalid'; statusText = t('token.status.invalid'); statusIcon = 'fa-times-circle';
     }
 
     let html = `<div class="verification-status ${statusClass}">
@@ -90,11 +90,11 @@ const renderResults = (result, el) => {
     if (result.decoded) {
         html += '<div class="token-details">';
         if (result.decoded.header) {
-            html += `<div class="token-section"><h4>Header</h4>
+            html += `<div class="token-section"><h4>${t('token.section.header')}</h4>
                 <pre>${sanitizeHtml(JSON.stringify(result.decoded.header, null, 2))}</pre></div>`;
         }
         if (result.decoded.payload) {
-            html += `<div class="token-section"><h4>Payload</h4>
+            html += `<div class="token-section"><h4>${t('token.section.payload')}</h4>
                 <pre>${sanitizeHtml(JSON.stringify(result.decoded.payload, null, 2))}</pre></div>`;
             html += buildClaimsHtml(result.decoded.payload);
         }
@@ -103,7 +103,7 @@ const renderResults = (result, el) => {
 
     if (result.error) {
         html += `<div class="verification-error">
-            <strong>Error:</strong> ${sanitizeHtml(String(result.error))}</div>`;
+            <strong>${t('token.error.prefix')}:</strong> ${sanitizeHtml(String(result.error))}</div>`;
     }
 
     el.innerHTML = html;
@@ -115,14 +115,14 @@ const buildClaimsHtml = (payload) => {
         const expDate = new Date(payload.exp * 1000);
         const isExpired = expDate < new Date();
         html += `<div class="claim ${isExpired ? 'expired' : ''}">
-            <strong>Expiration:</strong> ${expDate.toLocaleString()}
-            ${isExpired ? ' <span class="expired-label">(Expired)</span>' : ''}</div>`;
+            <strong>${t('token.claim.expiration')}:</strong> ${expDate.toLocaleString()}
+            ${isExpired ? ` <span class="expired-label">${t('token.claim.expired')}</span>` : ''}</div>`;
     }
     if (payload.iss) {
-        html += `<div class="claim"><strong>Issuer:</strong> ${sanitizeHtml(String(payload.iss))}</div>`;
+        html += `<div class="claim"><strong>${t('token.claim.issuer')}:</strong> ${sanitizeHtml(String(payload.iss))}</div>`;
     }
     if (payload.sub) {
-        html += `<div class="claim"><strong>Subject:</strong> ${sanitizeHtml(String(payload.sub))}</div>`;
+        html += `<div class="claim"><strong>${t('token.claim.subject')}:</strong> ${sanitizeHtml(String(payload.sub))}</div>`;
     }
     html += '</div>';
     return html;

@@ -35,7 +35,7 @@ export const init = async (element) => {
     element.appendChild(container);
 
     container.innerHTML = `
-        <h2>Gateway Route Configuration</h2>
+        <h2>${t('route.heading')}</h2>
         <div class="global-settings-display"></div>
         <div class="global-error-messages route-form-error-messages hidden"
              role="alert" aria-live="assertive"></div>
@@ -46,7 +46,7 @@ export const init = async (element) => {
     // "Add Route" button
     const addBtn = document.createElement('button');
     addBtn.className = 'add-route-button';
-    addBtn.innerHTML = '<i class="fa fa-plus"></i> Add Route';
+    addBtn.innerHTML = `<i class="fa fa-plus"></i> ${t('route.btn.add')}`;
     addBtn.addEventListener('click', () => {
         openInlineEditor(routesContainer, '', {}, componentId, null);
     });
@@ -61,11 +61,11 @@ export const init = async (element) => {
     const exportSection = document.createElement('details');
     exportSection.className = 'property-export';
     exportSection.innerHTML = `
-        <summary><i class="fa fa-code"></i> Export Properties</summary>
+        <summary><i class="fa fa-code"></i> ${t('route.export.heading')}</summary>
         <div class="property-export-content">
             <textarea class="property-export-textarea" readonly rows="10"></textarea>
             <button class="copy-properties-button" type="button">
-                <i class="fa fa-clipboard"></i> Copy to Clipboard
+                <i class="fa fa-clipboard"></i> ${t('route.export.copy')}
             </button>
         </div>`;
     container.appendChild(exportSection);
@@ -146,32 +146,32 @@ const parseRouteProperties = (properties) => {
     return out;
 };
 
-const GLOBAL_SETTINGS_KEYS = {
-    'rest.gateway.listening.port': 'Listening Port',
-    'rest.gateway.max.request.size': 'Max Request Body Size',
-    'rest.gateway.request.queue.size': 'Queue Size',
-    'rest.gateway.ssl.context.service': 'SSL Enabled',
-    'rest.gateway.cors.allowed.origins': 'CORS Allowed Origins',
-    'rest.gateway.listening.host': 'Listening Host'
-};
+const getGlobalSettingsKeys = () => ({
+    'rest.gateway.listening.port': t('route.global.listening.port'),
+    'rest.gateway.max.request.size': t('route.global.max.request.size'),
+    'rest.gateway.request.queue.size': t('route.global.queue.size'),
+    'rest.gateway.ssl.context.service': t('route.global.ssl.enabled'),
+    'rest.gateway.cors.allowed.origins': t('route.global.cors.origins'),
+    'rest.gateway.listening.host': t('route.global.listening.host')
+});
 
 const renderGlobalSettings = (container, properties) => {
     const settingsEl = container.querySelector('.global-settings-display');
     const rows = [];
-    for (const [key, label] of Object.entries(GLOBAL_SETTINGS_KEYS)) {
+    for (const [key, label] of Object.entries(getGlobalSettingsKeys())) {
         const value = properties[key];
         let display;
         if (key === 'rest.gateway.ssl.context.service') {
-            display = (value && value.trim()) ? 'Yes' : 'No';
+            display = (value && value.trim()) ? t('common.status.yes') : t('common.status.no');
         } else if (key === 'rest.gateway.max.request.size') {
             display = formatBytes(value ? parseInt(value, 10) : null);
         } else {
-            display = value || 'N/A';
+            display = value || t('common.na');
         }
         rows.push(`<tr><td>${sanitizeHtml(label)}</td><td>${sanitizeHtml(display)}</td></tr>`);
     }
     settingsEl.innerHTML = `
-        <h3>Global Settings</h3>
+        <h3>${t('route.global.heading')}</h3>
         <table class="config-table">
             <tbody>${rows.join('')}</tbody>
         </table>`;
@@ -220,12 +220,12 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
     table.innerHTML = `
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Connection</th>
-                <th>Path</th>
-                <th>Methods</th>
-                <th>Enabled</th>
-                <th>Actions</th>
+                <th>${t('route.table.name')}</th>
+                <th>${t('route.table.connection')}</th>
+                <th>${t('route.table.path')}</th>
+                <th>${t('route.table.methods')}</th>
+                <th>${t('route.table.enabled')}</th>
+                <th>${t('route.table.actions')}</th>
             </tr>
         </thead>
         <tbody></tbody>`;
@@ -235,7 +235,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
     const routeNames = Object.keys(routes);
     if (routeNames.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = '<td colspan="6" class="empty-state">No routes configured. Click "Add Route" to create one.</td>';
+        emptyRow.innerHTML = `<td colspan="6" class="empty-state">${t('route.table.empty')}</td>`;
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
@@ -285,7 +285,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         .join(' ');
 
     const statusClass = enabledVal ? 'status-enabled' : 'status-disabled';
-    const statusText = enabledVal ? 'Enabled' : 'Disabled';
+    const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
@@ -310,8 +310,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
         <td>
-            <button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> Edit</button>
-            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> Remove</button>
+            <button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
+            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
         </td>`;
 
     row.querySelector('.edit-route-button').addEventListener('click', () => {
@@ -367,7 +367,7 @@ const updateTableRow = (row, formData) => {
     cells[3].innerHTML = methodBadges || '<span class="empty-state">—</span>';
 
     const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
-    const statusText = formData.enabled ? 'Enabled' : 'Disabled';
+    const statusText = formData.enabled ? t('common.status.enabled') : t('common.status.disabled');
     cells[4].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
 
     row.dataset.routeName = formData.routeName;
@@ -417,17 +417,17 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     const header = document.createElement('div');
     header.className = 'form-header';
     header.innerHTML = `
-        <label for="route-name-${idx}">Route Name:</label>
+        <label for="route-name-${idx}">${t('route.form.name.label')}:</label>
         <input type="text" id="route-name-${idx}" class="route-name"
-               placeholder="e.g., health-check"
-               title="Unique identifier for this route configuration."
-               aria-label="Route Name"
+               placeholder="${t('route.form.name.placeholder')}"
+               title="${t('route.form.name.title')}"
+               aria-label="${t('route.form.name.label')}"
                value="${sanitizeHtml(routeName || '')}">
         <label class="route-enabled-label" for="route-enabled-${idx}">
             <input type="checkbox" id="route-enabled-${idx}" class="route-enabled"
                    ${enabledVal ? 'checked' : ''}
                    aria-label="Route Enabled">
-            Enabled
+            ${t('route.form.enabled')}
         </label>`;
     form.appendChild(header);
 
@@ -436,15 +436,15 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     fields.className = 'form-fields';
     form.appendChild(fields);
 
-    addField({ container: fields, idx, name: 'path', label: 'Path',
-        placeholder: '/api/resource (required)',
+    addField({ container: fields, idx, name: 'path', label: t('route.form.path.label'),
+        placeholder: t('route.form.path.placeholder'),
         value: properties?.path });
     createMethodChipInput({ container: fields, idx, value: properties?.methods });
-    addField({ container: fields, idx, name: 'required-roles', label: 'Required Roles',
-        placeholder: 'admin,user (comma-separated, optional)',
+    addField({ container: fields, idx, name: 'required-roles', label: t('route.form.roles.label'),
+        placeholder: t('route.form.roles.placeholder'),
         value: properties?.['required-roles'] });
-    addField({ container: fields, idx, name: 'required-scopes', label: 'Required Scopes',
-        placeholder: 'read,write (comma-separated, optional)',
+    addField({ container: fields, idx, name: 'required-scopes', label: t('route.form.scopes.label'),
+        placeholder: t('route.form.scopes.placeholder'),
         value: properties?.['required-scopes'] });
 
     // ---- create-flowfile checkbox + success-outcome field ----
@@ -456,7 +456,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
             <input type="checkbox" id="create-flowfile-${idx}" class="create-flowfile-checkbox"
                    ${createFlowFileVal ? 'checked' : ''}
                    aria-label="Create FlowFile">
-            Create FlowFile
+            ${t('route.form.create.flowfile')}
         </label>`;
     form.appendChild(flowFileToggle);
 
@@ -478,12 +478,12 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     const datalistOptions = existingNames.map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
 
     outcomeContainer.innerHTML = `
-        <label for="field-success-outcome-${idx}">NiFi Connection Name:</label>
+        <label for="field-success-outcome-${idx}">${t('route.form.connection.label')}:</label>
         <input type="text" id="field-success-outcome-${idx}" name="success-outcome"
                class="field-success-outcome form-input route-config-field"
-               placeholder="Connection label on NiFi canvas (default: route name)"
+               placeholder="${t('route.form.connection.placeholder')}"
                value="${sanitizeHtml(properties?.['success-outcome'] || '')}"
-               aria-label="NiFi Connection Name"
+               aria-label="${t('route.form.connection.label')}"
                list="connection-names-${idx}">
         <datalist id="connection-names-${idx}">${datalistOptions}</datalist>`;
     form.appendChild(outcomeContainer);
@@ -507,7 +507,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
                    class="schema-validation-checkbox"
                    ${hasSchema ? 'checked' : ''}
                    aria-label="Enable Schema Validation">
-            Schema Validation
+            ${t('route.form.schema.toggle')}
         </label>`;
     form.appendChild(schemaToggle);
 
@@ -525,25 +525,25 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
             <label class="schema-mode-label">
                 <input type="radio" name="schema-mode-${idx}" class="schema-mode-file"
                        ${mode === 'file' ? 'checked' : ''}>
-                File path
+                ${t('route.form.schema.file')}
             </label>
             <label class="schema-mode-label">
                 <input type="radio" name="schema-mode-${idx}" class="schema-mode-inline"
                        ${mode === 'inline' ? 'checked' : ''}>
-                Inline JSON
+                ${t('route.form.schema.inline')}
             </label>
         </div>
         <div class="schema-file-input${mode === 'file' ? '' : ' hidden'}">
             <input type="text" id="field-schema-file-${idx}" name="schema-file"
                    class="field-schema-file form-input route-config-field"
-                   placeholder="./conf/schemas/my-schema.json"
+                   placeholder="${t('route.form.schema.file.placeholder')}"
                    value="${sanitizeHtml(fileVal)}"
                    aria-label="Schema file path">
         </div>
         <div class="schema-inline-input${mode === 'inline' ? '' : ' hidden'}">
             <textarea id="field-schema-inline-${idx}" name="schema-inline"
                       class="field-schema-inline form-input route-config-field"
-                      placeholder='{"type":"object","properties":{}}'
+                      placeholder="${t('route.form.schema.inline.placeholder')}"
                       rows="5" aria-label="Inline JSON Schema"
             >${sanitizeHtml(inlineVal)}</textarea>
         </div>`;
@@ -587,7 +587,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-route-button';
-    saveBtn.innerHTML = '<i class="fa fa-check"></i> Save Route';
+    saveBtn.innerHTML = `<i class="fa fa-check"></i> ${t('route.btn.save')}`;
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
         saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
@@ -596,7 +596,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'cancel-route-button';
-    cancelBtn.innerHTML = '<i class="fa fa-times"></i> Cancel';
+    cancelBtn.innerHTML = `<i class="fa fa-times"></i> ${t('common.btn.cancel')}`;
     cancelBtn.addEventListener('click', () => {
         if (tableRow) {
             tableRow.classList.remove('hidden');
@@ -651,18 +651,20 @@ const extractFormFields = (form) => {
 };
 
 const validateFormData = (f, routesContainer, originalName) => {
-    if (!f.routeName) return { isValid: false, error: new Error('Route name is required.') };
+    if (!f.routeName) return { isValid: false, error: new Error(t('route.validate.name.required')) };
     if (!/^[a-zA-Z0-9_-]+$/.test(f.routeName)) {
-        return { isValid: false, error: new Error('Route name can only contain alphanumeric characters, hyphens, and underscores.') };
+        return { isValid: false, error: new Error(t('route.validate.name.invalid')) };
     }
     // Check for duplicate route names (exclude the route being edited)
     if (routesContainer && f.routeName !== originalName) {
-        const existing = routesContainer.querySelector(`tr[data-route-name="${CSS.escape(f.routeName)}"]`);
+        const sel = `tr[data-route-name="${CSS.escape(f.routeName)}"]`;
+        const existing = routesContainer.querySelector(sel);
         if (existing) {
-            return { isValid: false, error: new Error(`A route named "${f.routeName}" already exists.`) };
+            const msg = t('route.validate.name.duplicate', f.routeName);
+            return { isValid: false, error: new Error(msg) };
         }
     }
-    if (!f.path) return { isValid: false, error: new Error('Path is required.') };
+    if (!f.path) return { isValid: false, error: new Error(t('route.validate.path.required')) };
     return { isValid: true };
 };
 
@@ -700,7 +702,7 @@ const buildExportText = (routesContainer) => {
         const pathText = cells[2]?.textContent?.trim() || '';
         const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
-        const enabled = cells[4]?.textContent?.trim() === 'Enabled';
+        const enabled = cells[4]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');
         const outcomeBadge = cells[1]?.querySelector('.outcome-badge');
@@ -712,7 +714,10 @@ const buildExportText = (routesContainer) => {
             lines.push(`${prefix}${ROUTE_PREFIX}${name}.create-flowfile = false`);
         } else if (outcomeBadge) {
             const outcomeText = cells[1]?.textContent?.replace('custom', '').trim() || '';
-            if (outcomeText) lines.push(`${prefix}${ROUTE_PREFIX}${name}.success-outcome = ${outcomeText}`);
+            if (outcomeText) {
+                lines.push(`${prefix}${ROUTE_PREFIX}${name}`
+                    + `.success-outcome = ${outcomeText}`);
+            }
         }
         if (hasSchemaBadge) {
             // Schema value is not stored in the table; it was saved to properties
@@ -774,15 +779,15 @@ const refreshConnectionMap = (routesContainer) => {
         tableRows += '<tr><td>' + sanitizeHtml(conn)
             + '</td><td>' + routeList + '</td></tr>';
     }
-    tableRows += '<tr><td>failure</td><td><em>(always present)</em></td></tr>';
+    tableRows += `<tr><td>failure</td><td><em>${t('route.connection.map.failure')}</em></td></tr>`;
 
     const summaryText = '<i class="fa fa-sitemap"></i>'
-        + ` NiFi Connections (${totalRelationships} relationships)`;
+        + ` ${t('route.connection.map.heading', totalRelationships)}`;
     mapContainer.innerHTML = `
         <details class="connection-map">
             <summary>${summaryText}</summary>
             <table class="connection-map-table config-table">
-                <thead><tr><th>Connection Name</th><th>Routes</th></tr></thead>
+                <thead><tr><th>${t('route.connection.map.name')}</th><th>${t('route.connection.map.routes')}</th></tr></thead>
                 <tbody>${tableRows}</tbody>
             </table>
         </details>`;
@@ -795,7 +800,7 @@ const refreshConnectionMap = (routesContainer) => {
 const showCopyFeedback = (exportSection) => {
     const btn = exportSection.querySelector('.copy-properties-button');
     const original = btn.innerHTML;
-    btn.innerHTML = '<i class="fa fa-check"></i> Copied!';
+    btn.innerHTML = `<i class="fa fa-check"></i> ${t('route.export.copied')}`;
     setTimeout(() => { btn.innerHTML = original; }, 2000);
 };
 
@@ -813,9 +818,7 @@ const showInfoBanner = (routesContainer) => {
     const banner = document.createElement('div');
     banner.className = 'info-banner';
     banner.setAttribute('role', 'status');
-    banner.innerHTML =
-        'Changes are applied to the current session only. ' +
-        'To make them permanent, export the properties below and add them to your processor configuration.';
+    banner.innerHTML = t('route.info.banner');
     // Insert before the routes container
     routesContainer.parentNode.insertBefore(banner, routesContainer);
 };
@@ -951,7 +954,7 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
         try {
             await clearRouteProperties(componentId, routeName);
             if (globalErr) {
-                displayUiSuccess(globalErr, `Route "${routeName}" removed successfully.`);
+                displayUiSuccess(globalErr, t('route.remove.success', routeName));
                 globalErr.classList.remove('hidden');
             }
         } catch (error) {
@@ -961,7 +964,7 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
             }
         }
     } else if (routeName && globalErr) {
-        displayUiSuccess(globalErr, `Route "${routeName}" removed (standalone mode).`);
+        displayUiSuccess(globalErr, t('route.remove.success.standalone', routeName));
         globalErr.classList.remove('hidden');
     }
 

@@ -25,11 +25,11 @@ const metricsHeaderHtml = (title) => `
         <div class="metrics-actions">
             <button id="refresh-metrics-btn" class="btn btn-small"
                     data-testid="refresh-metrics-button">
-                <i class="fa fa-refresh"></i> Refresh
+                <i class="fa fa-refresh"></i> ${t('metrics.btn.refresh')}
             </button>
             <button id="export-metrics-btn" class="btn btn-small"
                     data-testid="export-metrics-button">
-                <i class="fa fa-download"></i> Export
+                <i class="fa fa-download"></i> ${t('metrics.btn.export')}
             </button>
         </div>
     </div>`;
@@ -37,14 +37,14 @@ const metricsHeaderHtml = (title) => `
 const metricsFooterHtml = () => `
     <div class="metrics-footer">
         <span class="last-updated" data-testid="last-updated"
-              aria-live="polite" role="status">Last updated: Never</span>
+              aria-live="polite" role="status">${t('metrics.last.updated.never')}</span>
         <span class="refresh-indicator hidden" data-testid="refresh-indicator"
               aria-live="polite">
-            <i class="fa fa-spinner fa-spin"></i> Refreshing...
+            <i class="fa fa-spinner fa-spin"></i> ${t('metrics.refreshing')}
         </span>
     </div>
     <div id="export-options" class="export-options" data-testid="export-options">
-        <h5>Export Format:</h5>
+        <h5>${t('metrics.export.heading')}</h5>
         <button class="btn btn-small" data-format="csv"
                 data-testid="export-csv">CSV</button>
         <button class="btn btn-small" data-format="json"
@@ -61,26 +61,26 @@ const buildNonGatewayTemplate = () => `
 
 const buildGatewayTemplate = () => `
     <div id="jwt-metrics-content" class="jwt-tab-content" data-testid="metrics-tab-content">
-        ${metricsHeaderHtml('Gateway Metrics')}
+        ${metricsHeaderHtml(t('metrics.gateway.heading'))}
 
         <div class="gateway-metrics-section" data-testid="token-validation-metrics">
-            <h4>Token Validation</h4>
+            <h4>${t('metrics.section.token.validation')}</h4>
             <div class="metrics-grid" id="token-validation-grid">
-                <div class="no-data">Loading...</div>
+                <div class="no-data">${t('common.loading')}</div>
             </div>
         </div>
 
         <div class="gateway-metrics-section" data-testid="http-security-metrics">
-            <h4>HTTP Security</h4>
+            <h4>${t('metrics.section.http.security')}</h4>
             <div class="metrics-grid" id="http-security-grid">
-                <div class="no-data">Loading...</div>
+                <div class="no-data">${t('common.loading')}</div>
             </div>
         </div>
 
         <div class="gateway-metrics-section" data-testid="gateway-events-metrics">
-            <h4>Gateway Events</h4>
+            <h4>${t('metrics.section.gateway.events')}</h4>
             <div class="metrics-grid" id="gateway-events-grid">
-                <div class="no-data">Loading...</div>
+                <div class="no-data">${t('common.loading')}</div>
             </div>
         </div>
 
@@ -177,7 +177,7 @@ const renderCounterGrid = (containerId, counters) => {
 
     const entries = Object.entries(counters);
     if (entries.length === 0) {
-        container.innerHTML = '<div class="no-data">No data available</div>';
+        container.innerHTML = `<div class="no-data">${t('metrics.no.data')}</div>`;
         return;
     }
 
@@ -197,7 +197,7 @@ const updateGatewayDisplay = (data) => {
     renderCounterGrid('gateway-events-grid', data.gatewayEvents || {});
 
     const lu = document.querySelector('[data-testid="last-updated"]');
-    if (lu) lu.textContent = `Last updated: ${formatDate(new Date())}`;
+    if (lu) lu.textContent = t('metrics.last.updated', formatDate(new Date()));
 };
 
 // ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ const showError = () => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
         showStatusBanner(el, 'server-error',
-            '<div class="error-content"><strong>Error:</strong> Unable to load metrics.</div>');
+            `<div class="error-content"><strong>${t('common.error.prefix')}</strong> ${t('metrics.error.load')}</div>`);
     }
 };
 
@@ -226,9 +226,7 @@ const showNotAvailable = () => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
         showStatusBanner(el, 'validation-error',
-            '<div class="error-content">' +
-            '<strong>Metrics Not Available</strong> — ' +
-            'Metrics are available for REST API Gateway processors only.</div>');
+            `<div class="error-content"><strong>${t('metrics.error.not.available.title')}</strong> — ${t('metrics.error.not.available')}</div>`);
     }
     cleanup();
 };
@@ -280,7 +278,8 @@ const handleGatewayExport = (format) => {
                 output += '# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n';
                 output += '# TYPE nifi_jwt_validations_total counter\n';
                 for (const [key, value] of Object.entries(data.tokenValidation)) {
-                    output += `nifi_jwt_validations_total{result="${sanitizeHtml(key)}"} ${value}\n`;
+                    output += 'nifi_jwt_validations_total'
+                        + `{result="${sanitizeHtml(key)}"} ${value}\n`;
                 }
                 output += '\n';
             }
@@ -288,7 +287,8 @@ const handleGatewayExport = (format) => {
                 output += '# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)\n';
                 output += '# TYPE nifi_gateway_http_security_events_total counter\n';
                 for (const [key, value] of Object.entries(data.httpSecurity)) {
-                    output += `nifi_gateway_http_security_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
+                    output += 'nifi_gateway_http_security_events_total'
+                        + `{type="${sanitizeHtml(key)}"} ${value}\n`;
                 }
                 output += '\n';
             }

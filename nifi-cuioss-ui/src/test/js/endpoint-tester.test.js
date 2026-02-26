@@ -42,6 +42,7 @@ describe('endpoint-tester', () => {
     let container;
 
     beforeEach(() => {
+        utils.t.mockImplementation((key) => key);
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
 
@@ -171,7 +172,7 @@ describe('endpoint-tester', () => {
         expect(display.classList.contains('hidden')).toBe(false);
 
         const status = container.querySelector('.response-status');
-        expect(status.textContent).toContain('200');
+        expect(status.textContent).toContain('tester.response.status');
         expect(status.classList.contains('status-2xx')).toBe(true);
     });
 
@@ -188,7 +189,7 @@ describe('endpoint-tester', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const status = container.querySelector('.response-status');
-        expect(status.textContent).toContain('403');
+        expect(status.textContent).toContain('tester.response.status');
         expect(status.classList.contains('status-4xx')).toBe(true);
     });
 
@@ -212,7 +213,7 @@ describe('endpoint-tester', () => {
         await init(container);
 
         const selector = container.querySelector('.route-selector');
-        expect(selector.options[0].textContent).toContain('No routes');
+        expect(selector.options[0].textContent).toContain('tester.routes.none');
     });
 
     it('should handle gateway unavailable for routes', async () => {
@@ -221,7 +222,7 @@ describe('endpoint-tester', () => {
         await init(container);
 
         const selector = container.querySelector('.route-selector');
-        expect(selector.options[0].textContent).toContain('Failed to load');
+        expect(selector.options[0].textContent).toContain('tester.routes.failed');
     });
 
     it('should show error when send request fails', async () => {
@@ -233,7 +234,7 @@ describe('endpoint-tester', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const body = container.querySelector('.response-body');
-        expect(body.textContent).toContain('Network error');
+        expect(body.textContent).toContain('tester.error.request.failed');
     });
 
     it('should not re-initialize if already initialized', async () => {
@@ -261,7 +262,7 @@ describe('endpoint-tester', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const status = container.querySelector('.response-status');
-        expect(status.textContent).toContain('500');
+        expect(status.textContent).toContain('tester.response.status');
         expect(status.classList.contains('status-5xx')).toBe(true);
     });
 
@@ -330,7 +331,7 @@ describe('endpoint-tester', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const body = container.querySelector('.response-body');
-        expect(body.textContent).toContain('select a route');
+        expect(body.textContent).toContain('tester.error.no.route');
     });
 
     it('should include request body for POST requests', async () => {

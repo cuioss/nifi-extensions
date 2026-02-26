@@ -59,8 +59,8 @@ describe('metrics — non-gateway mode', () => {
 
         const banner = document.querySelector('.metrics-status-banner.validation-error');
         expect(banner).not.toBeNull();
-        expect(banner.textContent).toContain('Metrics Not Available');
-        expect(banner.textContent).toContain('REST API Gateway processors only');
+        expect(banner.textContent).toContain('metrics.error.not.available.title');
+        expect(banner.textContent).toContain('metrics.error.not.available');
     });
 
     it('should not call any API for non-gateway mode', async () => {
@@ -190,7 +190,7 @@ describe('metrics — gateway mode', () => {
         await new Promise((r) => setTimeout(r, 50));
 
         const grid = document.getElementById('token-validation-grid');
-        expect(grid.textContent).toContain('No data available');
+        expect(grid.textContent).toContain('metrics.no.data');
     });
 
     it('should show error banner when gateway is unavailable', async () => {
@@ -207,7 +207,7 @@ describe('metrics — gateway mode', () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));
 
-        expect(container.querySelector('.metrics-header h2').textContent).toBe('Gateway Metrics');
+        expect(container.querySelector('.metrics-header h2').textContent).toBe('metrics.gateway.heading');
     });
 
     it('should have refresh and export buttons', async () => {
@@ -300,7 +300,7 @@ describe('metrics — gateway mode', () => {
         await new Promise((r) => setTimeout(r, 50));
 
         const lu = container.querySelector('[data-testid="last-updated"]');
-        expect(lu.textContent).toContain('Last updated:');
+        expect(lu.textContent).toContain('metrics.last.updated');
         expect(lu.textContent).not.toContain('Never');
     });
 
@@ -312,7 +312,7 @@ describe('metrics — gateway mode', () => {
 
         // All grids should show "No data available"
         const tokenGrid = document.getElementById('token-validation-grid');
-        expect(tokenGrid.textContent).toContain('No data available');
+        expect(tokenGrid.textContent).toContain('metrics.no.data');
     });
 
     it('should not render JWT-specific elements in gateway mode', async () => {
