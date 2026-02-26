@@ -232,6 +232,7 @@ export const TRANSLATIONS = {
         'chip.methods.label': 'Methods',
         'chip.methods.placeholder': 'Type to add method\u2026',
         'chip.methods.aria': 'Add HTTP method',
+        'chip.methods.remove.aria': 'Remove {0}',
 
         // -- tabs --
         'tab.configuration': 'Configuration',
@@ -529,6 +530,7 @@ export const TRANSLATIONS = {
         'chip.methods.label': 'Methoden',
         'chip.methods.placeholder': 'Tippen, um Methode hinzuzuf\u00fcgen\u2026',
         'chip.methods.aria': 'HTTP-Methode hinzuf\u00fcgen',
+        'chip.methods.remove.aria': '{0} entfernen',
 
         // -- tabs --
         'tab.configuration': 'Konfiguration',
@@ -637,7 +639,7 @@ export const t = (key, ...params) => {
         ?? TRANSLATIONS.en[key]
         ?? key;
     for (let i = 0; i < params.length; i++) {
-        text = text.replace(`{${i}}`, params[i]);
+        text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), params[i]);
     }
     return text;
 };

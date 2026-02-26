@@ -103,8 +103,9 @@ export const createMethodChipInput = ({ container, idx, value }) => {
             chip.className = 'method-chip';
             chip.setAttribute('data-method', m);
             const safe = sanitizeHtml(m);
+            const removeAria = t('chip.methods.remove.aria', safe);
             chip.innerHTML = `${safe}<button type="button" `
-                + `class="method-chip-remove" aria-label="Remove ${safe}">`
+                + `class="method-chip-remove" aria-label="${removeAria}">`
                 + '\u00d7</button>';
             chip.querySelector('.method-chip-remove').addEventListener('click', (e) => {
                 e.stopPropagation();
