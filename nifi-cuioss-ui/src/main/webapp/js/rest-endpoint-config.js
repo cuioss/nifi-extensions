@@ -13,6 +13,7 @@ import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
+import { createMethodChipInput } from './method-chip-input.js';
 
 // Counter for unique form field IDs
 let formCounter = 0;
@@ -438,9 +439,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     addField({ container: fields, idx, name: 'path', label: 'Path',
         placeholder: '/api/resource (required)',
         value: properties?.path });
-    addField({ container: fields, idx, name: 'methods', label: 'Methods',
-        placeholder: 'GET,POST,PUT,DELETE (comma-separated)',
-        value: properties?.methods });
+    createMethodChipInput({ container: fields, idx, value: properties?.methods });
     addField({ container: fields, idx, name: 'required-roles', label: 'Required Roles',
         placeholder: 'admin,user (comma-separated, optional)',
         value: properties?.['required-roles'] });
