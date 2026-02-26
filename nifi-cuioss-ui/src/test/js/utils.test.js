@@ -1,7 +1,7 @@
 'use strict';
 
 import {
-    sanitizeHtml, formatNumber, formatDate, t, log,
+    sanitizeHtml, formatNumber, formatDate, t, lang, TRANSLATIONS, log,
     validateRequired, validateUrl, validateJwtToken,
     validateIssuerName, validateProcessorIdFromUrl,
     validateIssuerConfig,
@@ -113,6 +113,56 @@ describe('t (i18n)', () => {
             // Must return a real translation, not the key itself
             expect(result).not.toBe(key);
             expect(result.length).toBeGreaterThan(0);
+        }
+    });
+
+    test('supports parameter substitution with {0}, {1}', () => {
+        const result = t('common.error.server', 404);
+        expect(result).toContain('404');
+        // Original template has {0} which should be replaced
+        expect(result).not.toContain('{0}');
+    });
+
+    test('handles multiple parameters', () => {
+        // Find a key with {0} param and test it
+        const result = t('route.validate.name.duplicate', 'my-route');
+        expect(result).toContain('my-route');
+        expect(result).not.toContain('{0}');
+    });
+
+    test('leaves unreplaced placeholders when no params given', () => {
+        // Calling parameterized key without args leaves {0} in place
+        const result = t('common.error.server');
+        expect(result).toContain('{0}');
+    });
+});
+
+describe('TRANSLATIONS completeness', () => {
+    test('lang is either "en" or "de"', () => {
+        expect(['en', 'de']).toContain(lang);
+    });
+
+    test('every EN key has a DE counterpart', () => {
+        const enKeys = Object.keys(TRANSLATIONS.en);
+        const deKeys = Object.keys(TRANSLATIONS.de);
+        const missingInDe = enKeys.filter((k) => !deKeys.includes(k));
+        expect(missingInDe).toEqual([]);
+    });
+
+    test('every DE key has an EN counterpart', () => {
+        const enKeys = Object.keys(TRANSLATIONS.en);
+        const deKeys = Object.keys(TRANSLATIONS.de);
+        const missingInEn = deKeys.filter((k) => !enKeys.includes(k));
+        expect(missingInEn).toEqual([]);
+    });
+
+    test('no empty translation values', () => {
+        for (const locale of ['en', 'de']) {
+            for (const [key, value] of Object.entries(TRANSLATIONS[locale])) {
+                expect(value.length).toBeGreaterThan(0);
+                // eslint-disable-next-line jest/no-conditional-expect -- intentional per-key check
+                if (value.trim().length === 0) expect(`${locale}.${key}`).toBe('non-empty');
+            }
         }
     });
 });

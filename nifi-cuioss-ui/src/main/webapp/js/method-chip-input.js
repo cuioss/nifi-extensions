@@ -9,7 +9,7 @@
  * @module js/method-chip-input
  */
 
-import { sanitizeHtml } from './utils.js';
+import { sanitizeHtml, t } from './utils.js';
 
 /** Standard HTTP methods available for selection. */
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -26,7 +26,7 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'
 export const createMethodChipInput = ({ container, idx, value }) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'form-field field-container-methods';
-    wrapper.innerHTML = `<label for="method-input-${idx}">Methods:</label>`;
+    wrapper.innerHTML = `<label for="method-input-${idx}">${t('chip.methods.label')}:</label>`;
 
     const chipArea = document.createElement('div');
     chipArea.className = 'method-chip-area';
@@ -41,8 +41,8 @@ export const createMethodChipInput = ({ container, idx, value }) => {
     input.type = 'text';
     input.id = `method-input-${idx}`;
     input.className = 'method-chip-text-input';
-    input.placeholder = 'Type to add method…';
-    input.setAttribute('aria-label', 'Add HTTP method');
+    input.placeholder = t('chip.methods.placeholder');
+    input.setAttribute('aria-label', t('chip.methods.aria'));
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('role', 'combobox');
     input.setAttribute('aria-expanded', 'false');
@@ -102,7 +102,11 @@ export const createMethodChipInput = ({ container, idx, value }) => {
             const chip = document.createElement('span');
             chip.className = 'method-chip';
             chip.setAttribute('data-method', m);
-            chip.innerHTML = `${sanitizeHtml(m)}<button type="button" class="method-chip-remove" aria-label="Remove ${sanitizeHtml(m)}">\u00d7</button>`;
+            const safe = sanitizeHtml(m);
+            const removeAria = t('chip.methods.remove.aria', safe);
+            chip.innerHTML = `${safe}<button type="button" `
+                + `class="method-chip-remove" aria-label="${removeAria}">`
+                + '\u00d7</button>';
             chip.querySelector('.method-chip-remove').addEventListener('click', (e) => {
                 e.stopPropagation();
                 removeMethod(m);

@@ -18,6 +18,7 @@ describe('token-verifier', () => {
     beforeEach(() => {
         // Re-apply mock implementations (resetMocks clears them between tests)
         utils.sanitizeHtml.mockImplementation((s) => s);
+        utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.confirmClearForm.mockImplementation((cb) => cb());
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
@@ -80,7 +81,7 @@ describe('token-verifier', () => {
 
         const results = container.querySelector('.token-results-content');
         expect(results.querySelector('.verification-status.valid')).not.toBeNull();
-        expect(results.textContent).toContain('Token is valid');
+        expect(results.textContent).toContain('token.status.valid');
     });
 
     it('should render invalid status for invalid token', async () => {
@@ -173,7 +174,7 @@ describe('token-verifier', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const results = container.querySelector('.token-results-content');
-        expect(results.textContent).toContain('Header');
+        expect(results.textContent).toContain('token.section.header');
         expect(results.querySelector('.claims-table')).toBeNull();
     });
 
@@ -197,8 +198,8 @@ describe('token-verifier', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         const results = container.querySelector('.token-results-content');
-        expect(results.textContent).toContain('Issuer:');
-        expect(results.textContent).toContain('Subject:');
-        expect(results.textContent).toContain('Expiration:');
+        expect(results.textContent).toContain('token.claim.issuer');
+        expect(results.textContent).toContain('token.claim.subject');
+        expect(results.textContent).toContain('token.claim.expiration');
     });
 });

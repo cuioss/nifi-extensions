@@ -107,7 +107,7 @@ describe('rest-endpoint-config', () => {
 
         const headers = container.querySelectorAll('.route-summary-table thead th');
         const headerTexts = Array.from(headers).map((th) => th.textContent.trim());
-        expect(headerTexts).toEqual(['Name', 'Connection', 'Path', 'Methods', 'Enabled', 'Actions']);
+        expect(headerTexts).toEqual(['route.table.name', 'route.table.connection', 'route.table.path', 'route.table.methods', 'route.table.enabled', 'route.table.actions']);
     });
 
     it('should display route name and path in table cells', async () => {
@@ -158,7 +158,7 @@ describe('rest-endpoint-config', () => {
         expect(disabledRow).not.toBeNull();
         const statusCell = disabledRow.querySelector('.status-disabled');
         expect(statusCell).not.toBeNull();
-        expect(statusCell.textContent).toBe('Disabled');
+        expect(statusCell.textContent).toBe('common.status.disabled');
     });
 
     it('should show Edit and Remove buttons per row', async () => {
@@ -197,7 +197,7 @@ describe('rest-endpoint-config', () => {
 
         const settingsDisplay = container.querySelector('.global-settings-display');
         expect(settingsDisplay).not.toBeNull();
-        expect(settingsDisplay.textContent).toContain('Listening Port');
+        expect(settingsDisplay.textContent).toContain('route.global.listening.port');
         expect(settingsDisplay.textContent).toContain('9443');
     });
 
@@ -211,7 +211,7 @@ describe('rest-endpoint-config', () => {
 
         const emptyState = container.querySelector('.route-summary-table .empty-state');
         expect(emptyState).not.toBeNull();
-        expect(emptyState.textContent).toContain('No routes configured');
+        expect(emptyState.textContent).toContain('route.table.empty');
     });
 
     // -----------------------------------------------------------------------
@@ -958,8 +958,8 @@ describe('rest-endpoint-config', () => {
 
         const modeLabels = form.querySelectorAll('.schema-mode-label');
         expect(modeLabels.length).toBe(2);
-        expect(modeLabels[0].textContent).toContain('File path');
-        expect(modeLabels[1].textContent).toContain('Inline JSON');
+        expect(modeLabels[0].textContent).toContain('route.form.schema.file');
+        expect(modeLabels[1].textContent).toContain('route.form.schema.inline');
     });
 
     // -----------------------------------------------------------------------
@@ -1334,8 +1334,7 @@ describe('rest-endpoint-config', () => {
         expect(connectionMap.tagName.toLowerCase()).toBe('details');
 
         const summary = connectionMap.querySelector('summary');
-        expect(summary.textContent).toContain('NiFi Connections');
-        expect(summary.textContent).toContain('relationships');
+        expect(summary.textContent).toContain('route.connection.map.heading');
     });
 
     it('should group routes by connection name in connection map', async () => {
@@ -1371,7 +1370,7 @@ describe('rest-endpoint-config', () => {
         const rows = mapTable.querySelectorAll('tbody tr');
         const lastRow = rows[rows.length - 1];
         expect(lastRow.querySelectorAll('td')[0].textContent).toBe('failure');
-        expect(lastRow.querySelector('em').textContent).toBe('(always present)');
+        expect(lastRow.querySelector('em').textContent).toBe('route.connection.map.failure');
     });
 
     it('should update connection map after save', async () => {
@@ -1457,8 +1456,7 @@ describe('rest-endpoint-config', () => {
 
         const banner = container.querySelector('.info-banner');
         expect(banner).not.toBeNull();
-        expect(banner.textContent).toContain('current session only');
-        expect(banner.textContent).toContain('export the properties');
+        expect(banner.textContent).toContain('route.info.banner');
     });
 
     // -----------------------------------------------------------------------

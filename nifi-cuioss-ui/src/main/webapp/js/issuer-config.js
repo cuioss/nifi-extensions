@@ -54,9 +54,8 @@ export const init = async (element, options = {}) => {
     element.appendChild(container);
 
     container.innerHTML = `
-        <h2>Issuer Configurations</h2>
-        <p>Configure JWT issuers for token validation. Each issuer requires
-           a name and properties like jwks-url and issuer URI.</p>
+        <h2>${t('issuer.heading')}</h2>
+        <p>${t('issuer.description')}</p>
         <div class="global-error-messages issuer-form-error-messages hidden"
              role="alert" aria-live="assertive"></div>
         <div class="issuers-container"></div>`;
@@ -69,7 +68,7 @@ export const init = async (element, options = {}) => {
     // "Add Issuer" button
     const addBtn = document.createElement('button');
     addBtn.className = 'add-issuer-button';
-    addBtn.innerHTML = '<i class="fa fa-plus"></i> Add Issuer';
+    addBtn.innerHTML = `<i class="fa fa-plus"></i> ${t('issuer.btn.add')}`;
     addBtn.addEventListener('click', () => {
         if (isGateway) {
             openInlineIssuerEditor(issuersContainer, '', SAMPLE.props, ctx, null);
@@ -140,30 +139,30 @@ const buildIssuerFields = (form, fields, idx, properties) => {
     const idPrefix = `field-jwks-type-${idx}`;
     fields.innerHTML = `
         <div class="form-field field-container-jwks-type">
-            <label for="${idPrefix}">JWKS Source Type:</label>
+            <label for="${idPrefix}">${t('issuer.form.jwks.type.label')}:</label>
             <select id="${idPrefix}" name="jwks-type"
                     class="field-jwks-type form-input issuer-config-field"
-                    aria-label="JWKS Source Type"
-                    title="Select how JWKS keys should be retrieved">
-                <option value="url"${jwksType === 'url' ? ' selected' : ''}>URL (Remote JWKS endpoint)</option>
-                <option value="file"${jwksType === 'file' ? ' selected' : ''}>File (Local JWKS file)</option>
-                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>Memory (Inline JWKS content)</option>
+                    aria-label="${t('issuer.form.jwks.type.label')}"
+                    title="${t('issuer.form.jwks.type.title')}">
+                <option value="url"${jwksType === 'url' ? ' selected' : ''}>${t('issuer.form.jwks.type.url')}</option>
+                <option value="file"${jwksType === 'file' ? ' selected' : ''}>${t('issuer.form.jwks.type.file')}</option>
+                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>${t('issuer.form.jwks.type.memory')}</option>
             </select>
         </div>`;
 
-    addField({ container: fields, idx, name: 'issuer', label: 'Issuer URI',
-        placeholder: 'The URI of the token issuer (must match the iss claim)',
+    addField({ container: fields, idx, name: 'issuer', label: t('issuer.form.issuer.uri.label'),
+        placeholder: t('issuer.form.issuer.uri.placeholder'),
         value: properties?.issuer });
-    addField({ container: fields, idx, name: 'jwks-url', label: 'JWKS URL',
-        placeholder: 'The URL of the JWKS endpoint',
+    addField({ container: fields, idx, name: 'jwks-url', label: t('issuer.form.jwks.url.label'),
+        placeholder: t('issuer.form.jwks.url.placeholder'),
         value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
-    addField({ container: fields, idx, name: 'jwks-file', label: 'JWKS File Path',
-        placeholder: 'Path to local JWKS JSON file',
+    addField({ container: fields, idx, name: 'jwks-file', label: t('issuer.form.jwks.file.label'),
+        placeholder: t('issuer.form.jwks.file.placeholder'),
         value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
         hidden: jwksType !== 'file' });
     addTextArea({ container: fields, idx, name: 'jwks-content',
-        label: 'JWKS Content',
-        placeholder: 'Inline JWKS JSON content',
+        label: t('issuer.form.jwks.content.label'),
+        placeholder: t('issuer.form.jwks.content.placeholder'),
         value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
         hidden: jwksType !== 'memory' });
 
@@ -183,17 +182,17 @@ const buildIssuerFields = (form, fields, idx, properties) => {
     tw.className = 'jwks-button-wrapper';
     tw.innerHTML = `
         <button type="button" class="verify-jwks-button"
-                title="Test connectivity to the JWKS endpoint">
-            <i class="fa fa-plug"></i> Test Connection</button>
+                title="${t('issuer.jwks.test.title')}">
+            <i class="fa fa-plug"></i> ${t('issuer.jwks.test.btn')}</button>
         <div class="verification-result" aria-live="polite"
              role="status">
-            <em>Click the button to validate JWKS</em></div>`;
+            <em>${t('issuer.jwks.test.hint')}</em></div>`;
     const urlField = fields.querySelector('.jwks-type-url');
     if (urlField) urlField.after(tw);
     else fields.appendChild(tw);
     tw.querySelector('.verify-jwks-button').addEventListener('click', () => {
         const rc = tw.querySelector('.verification-result');
-        rc.innerHTML = 'Testing...';
+        rc.innerHTML = t('issuer.jwks.test.testing');
         const typeSel = fields.querySelector('.field-jwks-type');
         const type = typeSel ? typeSel.value : 'url';
         let value = '';
@@ -207,11 +206,11 @@ const buildIssuerFields = (form, fields, idx, properties) => {
         performJwksValidation(type, value, rc);
     });
 
-    addField({ container: fields, idx, name: 'audience', label: 'Audience',
-        placeholder: 'The expected audience claim value',
+    addField({ container: fields, idx, name: 'audience', label: t('issuer.form.audience.label'),
+        placeholder: t('issuer.form.audience.placeholder'),
         value: properties?.audience });
-    addField({ container: fields, idx, name: 'client-id', label: 'Client ID',
-        placeholder: 'The client ID for token validation',
+    addField({ container: fields, idx, name: 'client-id', label: t('issuer.form.client.id.label'),
+        placeholder: t('issuer.form.client.id.placeholder'),
         value: properties?.['client-id'] });
 };
 
@@ -228,14 +227,14 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     const header = document.createElement('div');
     header.className = 'form-header';
     header.innerHTML = `
-        <label for="issuer-name-${idx}">Issuer Name:</label>
+        <label for="issuer-name-${idx}">${t('issuer.form.name.label')}:</label>
         <input type="text" id="issuer-name-${idx}" class="issuer-name"
-               placeholder="e.g., keycloak"
-               title="Unique identifier for this issuer configuration."
-               aria-label="Issuer Name"
+               placeholder="${t('issuer.form.name.placeholder')}"
+               title="${t('issuer.form.name.title')}"
+               aria-label="${t('issuer.form.name.label')}"
                value="${sanitizeHtml(issuerName || '')}">
         <button class="remove-issuer-button"
-                title="Delete this issuer configuration"><i class="fa fa-trash"></i> Remove</button>`;
+                title="Delete this issuer configuration"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
     form.appendChild(header);
 
     header.querySelector('.remove-issuer-button').addEventListener('click', async () => {
@@ -259,7 +258,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-issuer-button';
-    saveBtn.innerHTML = '<i class="fa fa-check"></i> Save Issuer';
+    saveBtn.innerHTML = `<i class="fa fa-check"></i> ${t('issuer.btn.save')}`;
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
         saveIssuer(form, errorContainer, componentId);
@@ -329,7 +328,7 @@ const performJwksValidation = async (type, value, resultEl) => {
         if (data.valid) {
             const count = data.keyCount || 0;
             resultEl.innerHTML =
-                `<span class="success-message">OK</span> Valid JWKS (${count} keys found)`;
+                `<span class="success-message">OK</span> ${t('issuer.jwks.valid', count)}`;
         } else {
             displayUiError(resultEl, { responseJSON: data }, {}, 'processor.jwt.invalidJwks');
         }
@@ -357,12 +356,12 @@ const extractFormFields = (form) => {
 };
 
 const validateFormData = (f) => {
-    if (!f.issuerName) return { isValid: false, error: new Error('Issuer name is required.') };
-    if (!f.issuer) return { isValid: false, error: new Error('Issuer URI is required.') };
+    if (!f.issuerName) return { isValid: false, error: new Error(t('issuer.validate.name.required')) };
+    if (!f.issuer) return { isValid: false, error: new Error(t('issuer.validate.uri.required')) };
     const jt = f['jwks-type'] || 'url';
-    if (jt === 'url' && !f['jwks-url']) return { isValid: false, error: new Error('JWKS URL is required when using URL source type.') };
-    if (jt === 'file' && !f['jwks-file']) return { isValid: false, error: new Error('JWKS file path is required when using file source type.') };
-    if (jt === 'memory' && !f['jwks-content']) return { isValid: false, error: new Error('JWKS content is required when using memory source type.') };
+    if (jt === 'url' && !f['jwks-url']) return { isValid: false, error: new Error(t('issuer.validate.jwks.url.required')) };
+    if (jt === 'file' && !f['jwks-file']) return { isValid: false, error: new Error(t('issuer.validate.jwks.file.required')) };
+    if (jt === 'memory' && !f['jwks-content']) return { isValid: false, error: new Error(t('issuer.validate.jwks.content.required')) };
     // Enhanced validation (non-blocking)
     const enhanced = validateIssuerConfig(f);
     if (!enhanced.isValid) log.debug('Enhanced validation warnings:', enhanced.error);
@@ -389,12 +388,12 @@ const saveIssuer = async (form, errEl, componentId) => {
     if (componentId) {
         try {
             await api.updateComponentProperties(componentId, updates);
-            displayUiSuccess(errEl, 'Issuer configuration saved successfully.');
+            displayUiSuccess(errEl, t('issuer.save.success'));
         } catch (error) {
             displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
         }
     } else {
-        displayUiSuccess(errEl, 'Issuer configuration saved successfully (standalone mode).');
+        displayUiSuccess(errEl, t('issuer.save.success.standalone'));
     }
 };
 
@@ -419,7 +418,7 @@ const removeIssuer = async (form, issuerName) => {
         try {
             await clearIssuerProperties(componentId, issuerName);
             if (globalErr) {
-                displayUiSuccess(globalErr, `Issuer "${issuerName}" removed successfully.`);
+                displayUiSuccess(globalErr, t('issuer.remove.success', issuerName));
                 globalErr.classList.remove('hidden');
             }
         } catch (error) {
@@ -429,7 +428,7 @@ const removeIssuer = async (form, issuerName) => {
             }
         }
     } else if (issuerName && globalErr) {
-        displayUiSuccess(globalErr, `Issuer "${issuerName}" removed (standalone mode).`);
+        displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
         globalErr.classList.remove('hidden');
     }
 };
@@ -498,11 +497,11 @@ const renderIssuerSummaryTable = (container, issuers, ctx) => {
     table.innerHTML = `
         <thead>
             <tr>
-                <th>Name</th>
-                <th>JWKS Source</th>
-                <th>Type</th>
-                <th>Issuer URI</th>
-                <th>Actions</th>
+                <th>${t('issuer.table.name')}</th>
+                <th>${t('issuer.table.jwks.source')}</th>
+                <th>${t('issuer.table.type')}</th>
+                <th>${t('issuer.table.issuer.uri')}</th>
+                <th>${t('issuer.table.actions')}</th>
             </tr>
         </thead>
         <tbody></tbody>`;
@@ -512,7 +511,7 @@ const renderIssuerSummaryTable = (container, issuers, ctx) => {
     const names = Object.keys(issuers);
     if (names.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = '<td colspan="5" class="empty-state">No issuers configured. Click "Add Issuer" to create one.</td>';
+        emptyRow.innerHTML = `<td colspan="5" class="empty-state">${t('issuer.table.empty')}</td>`;
         tbody.appendChild(emptyRow);
     } else {
         for (const name of names) {
@@ -543,10 +542,10 @@ const createIssuerTableRow = (name, props, ctx, issuersContainer, origin = 'pers
         <td>${sanitizeHtml(issuerUri)}</td>
         <td>
             <button class="edit-issuer-button" title="Edit issuer">
-                <i class="fa fa-pencil"></i> Edit</button>
+                <i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
             <button class="remove-issuer-gw-button"
                     title="Delete issuer">
-                <i class="fa fa-trash"></i> Remove</button>
+                <i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
         </td>`;
 
     row.querySelector('.edit-issuer-button').addEventListener('click', () => {
@@ -590,11 +589,11 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
     const header = document.createElement('div');
     header.className = 'form-header';
     header.innerHTML = `
-        <label for="issuer-name-gw-${idx}">Issuer Name:</label>
+        <label for="issuer-name-gw-${idx}">${t('issuer.form.name.label')}:</label>
         <input type="text" id="issuer-name-gw-${idx}" class="issuer-name"
-               placeholder="e.g., keycloak"
-               title="Unique identifier for this issuer configuration."
-               aria-label="Issuer Name"
+               placeholder="${t('issuer.form.name.placeholder')}"
+               title="${t('issuer.form.name.title')}"
+               aria-label="${t('issuer.form.name.label')}"
                value="${sanitizeHtml(issuerName || '')}">`;
     form.appendChild(header);
 
@@ -618,7 +617,7 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-issuer-button';
-    saveBtn.innerHTML = '<i class="fa fa-check"></i> Save Issuer';
+    saveBtn.innerHTML = `<i class="fa fa-check"></i> ${t('issuer.btn.save')}`;
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
         saveIssuerGateway(form, errorContainer, ctx, tableRow, issuersContainer);
@@ -627,7 +626,7 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'cancel-issuer-button cancel-route-button';
-    cancelBtn.innerHTML = '<i class="fa fa-times"></i> Cancel';
+    cancelBtn.innerHTML = `<i class="fa fa-times"></i> ${t('common.btn.cancel')}`;
     cancelBtn.addEventListener('click', () => {
         if (tableRow) tableRow.classList.remove('hidden');
         form.remove();
@@ -754,7 +753,7 @@ const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
                 await updateProps(ctx, updates);
             }
             if (globalErr) {
-                displayUiSuccess(globalErr, `Issuer "${issuerName}" removed successfully.`);
+                displayUiSuccess(globalErr, t('issuer.remove.success', issuerName));
                 globalErr.classList.remove('hidden');
             }
         } catch (error) {
@@ -764,7 +763,7 @@ const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
             }
         }
     } else if (issuerName && globalErr) {
-        displayUiSuccess(globalErr, `Issuer "${issuerName}" removed (standalone mode).`);
+        displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
         globalErr.classList.remove('hidden');
     }
 };

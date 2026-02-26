@@ -15,7 +15,7 @@ import { init as initMetrics, cleanup as cleanupMetrics } from './metrics.js';
 import { init as initEndpointConfig } from './rest-endpoint-config.js';
 import { init as initEndpointTester } from './endpoint-tester.js';
 import { getComponentId, detectComponentType, resolveJwtConfigServiceId } from './api.js';
-import { log } from './utils.js';
+import { log, t, lang } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Tab switching
@@ -183,19 +183,32 @@ const initGatewayIssuerTabs = async (processorId) => {
             issuerConfigEl.innerHTML = `
                 <div class="config-info-message">
                     <p><i class="fa fa-info-circle"></i>
-                    No JWT Issuer Config Service is linked to this gateway processor.
-                    Configure the <strong>JWT Issuer Config Service</strong> property
-                    in the processor settings to enable issuer management here.</p>
+                    ${t('app.gateway.no.issuer.service')}</p>
                 </div>`;
         }
         if (tokenVerifEl) {
             tokenVerifEl.innerHTML = `
                 <div class="config-info-message">
                     <p><i class="fa fa-info-circle"></i>
-                    Token verification requires a linked JWT Issuer Config Service.
-                    Configure the service reference in the processor settings first.</p>
+                    ${t('app.gateway.no.token.service')}</p>
                 </div>`;
         }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// DOM i18n
+// ---------------------------------------------------------------------------
+
+/**
+ * Translate all elements with a `data-i18n` attribute.
+ * Sets `textContent` to the translated value of the attribute's key.
+ */
+const applyI18nToDom = () => {
+    document.documentElement.lang = lang;
+    for (const el of document.querySelectorAll('[data-i18n]')) {
+        const key = el.getAttribute('data-i18n');
+        if (key) el.textContent = t(key);
     }
 };
 
@@ -222,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideLoading();
     initTabs();
     initCollapsibles();
+    applyI18nToDom();
     initComponents();
     log.info('Component UI ready');
 });

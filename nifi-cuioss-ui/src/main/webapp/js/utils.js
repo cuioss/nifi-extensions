@@ -22,43 +22,627 @@ export const log = {
 /* eslint-enable no-console */
 
 // ---------------------------------------------------------------------------
-// i18n  (3 keys x 2 languages  is all that is actually used)
+// i18n
 // ---------------------------------------------------------------------------
 
-const TRANSLATIONS = {
+export const TRANSLATIONS = {
     en: {
-        'jwt.validator.help.title': 'JWT Authenticator Help',
-        'jwt.validator.metrics.title': 'JWT Validation Metrics',
-        'jwt.validator.help.tab.name': 'Help',
+        // -- common --
+        'common.btn.delete': 'Delete',
+        'common.btn.cancel': 'Cancel',
+        'common.btn.remove': 'Remove',
+        'common.btn.clear': 'Clear',
+        'common.btn.edit': 'Edit',
+        'common.error.prefix': 'Error',
+        'common.error.unknown': 'Unknown error',
+        'common.error.server': 'Server error (HTTP {0})',
+        'common.status.enabled': 'Enabled',
+        'common.status.disabled': 'Disabled',
+        'common.status.yes': 'Yes',
+        'common.status.no': 'No',
+        'common.na': 'N/A',
+        'common.loading': 'Loading...',
+
+        // -- origin badges --
         'origin.badge.persisted.title': 'Loaded from processor properties (persisted)',
         'origin.badge.modified.title': 'Modified in this session (not yet persisted)',
         'origin.badge.new.title': 'Created in this session (not yet persisted)',
         'origin.badge.modified': 'Modified',
-        'origin.badge.new': 'New'
+        'origin.badge.new': 'New',
+
+        // -- validation --
+        'validation.required': 'This field is required.',
+        'validation.url.required': 'URL is required.',
+        'validation.url.too.long': 'URL is too long (maximum {0} characters).',
+        'validation.url.invalid': 'Invalid URL format. Must be a valid {0} URL.',
+        'validation.token.required': 'Token is required.',
+        'validation.token.too.short': 'Token is too short (minimum 10 characters).',
+        'validation.token.too.long': 'Token is too long (maximum 10000 characters).',
+        'validation.token.invalid.format': 'Invalid token format. Expected at least 2 parts separated by dots.',
+        'validation.issuer.name.required': 'Issuer name is required.',
+        'validation.issuer.name.too.short': 'Issuer name must be at least 2 characters long.',
+        'validation.issuer.name.too.long': 'Issuer name is too long (maximum 100 characters).',
+        'validation.issuer.name.invalid.chars': 'Issuer name can only contain letters, numbers, hyphens, underscores, and dots.',
+        'validation.processor.url.required': 'URL is required for processor ID extraction.',
+        'validation.processor.id.not.found': 'URL does not contain a valid processor ID.',
+        'validation.field.issuer.name': 'Issuer Name',
+        'validation.field.issuer.uri': 'Issuer URI',
+        'validation.field.jwks.url': 'JWKS URL',
+
+        // -- confirmation dialogs --
+        'confirm.remove.issuer.title': 'Remove Issuer Configuration',
+        'confirm.remove.issuer.message': 'Are you sure you want to remove the issuer "{0}"? This action cannot be undone.',
+        'confirm.remove.route.title': 'Remove Route Configuration',
+        'confirm.remove.route.message': 'Are you sure you want to remove the route "{0}"? This action cannot be undone.',
+        'confirm.clear.title': 'Clear Form Data',
+        'confirm.clear.message': 'Are you sure you want to clear all form data? Any unsaved changes will be lost.',
+
+        // -- issuer config --
+        'issuer.heading': 'Issuer Configurations',
+        'issuer.description': 'Configure JWT issuers for token validation. Each issuer requires a name and properties like jwks-url and issuer URI.',
+        'issuer.btn.add': 'Add Issuer',
+        'issuer.btn.save': 'Save Issuer',
+        'issuer.form.name.label': 'Issuer Name',
+        'issuer.form.name.placeholder': 'e.g., keycloak',
+        'issuer.form.name.title': 'Unique identifier for this issuer configuration.',
+        'issuer.form.jwks.type.label': 'JWKS Source Type',
+        'issuer.form.jwks.type.title': 'Select how JWKS keys should be retrieved',
+        'issuer.form.jwks.type.url': 'URL (Remote JWKS endpoint)',
+        'issuer.form.jwks.type.file': 'File (Local JWKS file)',
+        'issuer.form.jwks.type.memory': 'Memory (Inline JWKS content)',
+        'issuer.form.issuer.uri.label': 'Issuer URI',
+        'issuer.form.issuer.uri.placeholder': 'The URI of the token issuer (must match the iss claim)',
+        'issuer.form.jwks.url.label': 'JWKS URL',
+        'issuer.form.jwks.url.placeholder': 'The URL of the JWKS endpoint',
+        'issuer.form.jwks.file.label': 'JWKS File Path',
+        'issuer.form.jwks.file.placeholder': 'Path to local JWKS JSON file',
+        'issuer.form.jwks.content.label': 'JWKS Content',
+        'issuer.form.jwks.content.placeholder': 'Inline JWKS JSON content',
+        'issuer.form.audience.label': 'Audience',
+        'issuer.form.audience.placeholder': 'The expected audience claim value',
+        'issuer.form.client.id.label': 'Client ID',
+        'issuer.form.client.id.placeholder': 'The client ID for token validation',
+        'issuer.jwks.test.btn': 'Test Connection',
+        'issuer.jwks.test.title': 'Test connectivity to the JWKS endpoint',
+        'issuer.jwks.test.hint': 'Click the button to validate JWKS',
+        'issuer.jwks.test.testing': 'Testing...',
+        'issuer.jwks.valid': 'Valid JWKS ({0} keys found)',
+        'issuer.save.success': 'Issuer configuration saved successfully.',
+        'issuer.save.success.standalone': 'Issuer configuration saved successfully (standalone mode).',
+        'issuer.remove.success': 'Issuer "{0}" removed successfully.',
+        'issuer.remove.success.standalone': 'Issuer "{0}" removed (standalone mode).',
+        'issuer.validate.name.required': 'Issuer name is required.',
+        'issuer.validate.uri.required': 'Issuer URI is required.',
+        'issuer.validate.jwks.url.required': 'JWKS URL is required when using URL source type.',
+        'issuer.validate.jwks.file.required': 'JWKS file path is required when using file source type.',
+        'issuer.validate.jwks.content.required': 'JWKS content is required when using memory source type.',
+        'issuer.table.name': 'Name',
+        'issuer.table.jwks.source': 'JWKS Source',
+        'issuer.table.type': 'Type',
+        'issuer.table.issuer.uri': 'Issuer URI',
+        'issuer.table.actions': 'Actions',
+        'issuer.table.empty': 'No issuers configured. Click "Add Issuer" to create one.',
+
+        // -- token verifier --
+        'token.input.label': 'Enter Token',
+        'token.input.placeholder': 'Paste token here...',
+        'token.btn.verify': 'Verify Token',
+        'token.btn.clear': 'Clear',
+        'token.results.heading': 'Verification Results',
+        'token.status.verifying': 'Verifying token...',
+        'token.status.valid': 'Token is valid',
+        'token.status.invalid': 'Token is invalid',
+        'token.status.expired': 'Token has expired',
+        'token.section.header': 'Header',
+        'token.section.payload': 'Payload',
+        'token.error.prefix': 'Error',
+        'token.claim.expiration': 'Expiration',
+        'token.claim.expired': '(Expired)',
+        'token.claim.issuer': 'Issuer',
+        'token.claim.subject': 'Subject',
+
+        // -- route config --
+        'route.heading': 'Gateway Route Configuration',
+        'route.btn.add': 'Add Route',
+        'route.btn.save': 'Save Route',
+        'route.export.heading': 'Export Properties',
+        'route.export.copy': 'Copy to Clipboard',
+        'route.export.copied': 'Copied!',
+        'route.table.name': 'Name',
+        'route.table.connection': 'Connection',
+        'route.table.path': 'Path',
+        'route.table.methods': 'Methods',
+        'route.table.enabled': 'Enabled',
+        'route.table.actions': 'Actions',
+        'route.table.empty': 'No routes configured. Click "Add Route" to create one.',
+        'route.form.name.label': 'Route Name',
+        'route.form.name.placeholder': 'e.g., health-check',
+        'route.form.name.title': 'Unique identifier for this route configuration.',
+        'route.form.enabled': 'Enabled',
+        'route.form.path.label': 'Path',
+        'route.form.path.placeholder': '/api/resource (required)',
+        'route.form.roles.label': 'Required Roles',
+        'route.form.roles.placeholder': 'admin,user (comma-separated, optional)',
+        'route.form.scopes.label': 'Required Scopes',
+        'route.form.scopes.placeholder': 'read,write (comma-separated, optional)',
+        'route.form.create.flowfile': 'Create FlowFile',
+        'route.form.connection.label': 'NiFi Connection Name',
+        'route.form.connection.placeholder': 'Connection label on NiFi canvas (default: route name)',
+        'route.form.schema.toggle': 'Schema Validation',
+        'route.form.schema.file': 'File path',
+        'route.form.schema.inline': 'Inline JSON',
+        'route.form.schema.file.placeholder': './conf/schemas/my-schema.json',
+        'route.form.schema.inline.placeholder': '{"type":"object","properties":{}}',
+        'route.validate.name.required': 'Route name is required.',
+        'route.validate.name.invalid': 'Route name can only contain alphanumeric characters, hyphens, and underscores.',
+        'route.validate.name.duplicate': 'A route named "{0}" already exists.',
+        'route.validate.path.required': 'Path is required.',
+        'route.remove.success': 'Route "{0}" removed successfully.',
+        'route.remove.success.standalone': 'Route "{0}" removed (standalone mode).',
+        'route.info.banner': 'Changes are applied to the current session only. To make them permanent, export the properties below and add them to your processor configuration.',
+        'route.connection.map.heading': 'NiFi Connections ({0} relationships)',
+        'route.connection.map.name': 'Connection Name',
+        'route.connection.map.routes': 'Routes',
+        'route.connection.map.failure': '(always present)',
+        'route.global.heading': 'Global Settings',
+        'route.global.listening.port': 'Listening Port',
+        'route.global.max.request.size': 'Max Request Body Size',
+        'route.global.queue.size': 'Queue Size',
+        'route.global.ssl.enabled': 'SSL Enabled',
+        'route.global.cors.origins': 'CORS Allowed Origins',
+        'route.global.listening.host': 'Listening Host',
+
+        // -- endpoint tester --
+        'tester.heading': 'Endpoint Tester',
+        'tester.form.route': 'Route',
+        'tester.form.method': 'Method',
+        'tester.form.token': 'Authorization Token',
+        'tester.form.token.placeholder': 'Bearer eyJ...',
+        'tester.form.body': 'Request Body',
+        'tester.form.body.placeholder': '{"key": "value"}',
+        'tester.btn.send': 'Send Request',
+        'tester.btn.sending': 'Sending...',
+        'tester.routes.loading': 'Loading routes...',
+        'tester.routes.none': 'No routes available',
+        'tester.routes.failed': 'Failed to load routes',
+        'tester.response.heading': 'Response',
+        'tester.response.status': 'Status: {0}',
+        'tester.response.error': 'Error',
+        'tester.response.no.headers': 'No headers',
+        'tester.error.no.route': 'Please select a route',
+        'tester.error.request.failed': 'Request failed: {0}',
+
+        // -- metrics --
+        'metrics.btn.refresh': 'Refresh',
+        'metrics.btn.export': 'Export',
+        'metrics.last.updated': 'Last updated: {0}',
+        'metrics.last.updated.never': 'Last updated: Never',
+        'metrics.refreshing': 'Refreshing...',
+        'metrics.export.heading': 'Export Format:',
+        'metrics.gateway.heading': 'Gateway Metrics',
+        'metrics.section.token.validation': 'Token Validation',
+        'metrics.section.http.security': 'HTTP Security',
+        'metrics.section.gateway.events': 'Gateway Events',
+        'metrics.no.data': 'No data available',
+        'metrics.error.load': 'Unable to load metrics.',
+        'metrics.error.not.available.title': 'Metrics Not Available',
+        'metrics.error.not.available': 'Metrics are available for REST API Gateway processors only.',
+
+        // -- chip input --
+        'chip.methods.label': 'Methods',
+        'chip.methods.placeholder': 'Type to add method\u2026',
+        'chip.methods.aria': 'Add HTTP method',
+        'chip.methods.remove.aria': 'Remove {0}',
+
+        // -- tabs --
+        'tab.configuration': 'Configuration',
+        'tab.token.verification': 'Token Verification',
+        'tab.endpoint.config': 'Endpoint Configuration',
+        'tab.endpoint.tester': 'Endpoint Tester',
+        'tab.issuer.config': 'Issuer Configuration',
+        'tab.metrics': 'Metrics',
+        'tab.help': 'Help',
+
+        // -- app --
+        'app.loading': 'Loading Component UI...',
+        'app.gateway.no.issuer.service': 'No JWT Issuer Config Service is linked to this gateway processor. Configure the <strong>JWT Issuer Config Service</strong> property in the processor settings to enable issuer management here.',
+        'app.gateway.no.token.service': 'Token verification requires a linked JWT Issuer Config Service. Configure the service reference in the processor settings first.',
+
+        // -- help --
+        'help.heading': 'Component Help',
+        'help.jwt.getting.started.title': 'Getting Started',
+        'help.jwt.getting.started.intro': 'The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from multiple issuers. Follow these steps to configure:',
+        'help.jwt.getting.started.step1': 'Add at least one issuer configuration',
+        'help.jwt.getting.started.step2': 'Configure the JWKS URL or file path for each issuer',
+        'help.jwt.getting.started.step3': 'Set up authorization rules (optional)',
+        'help.jwt.getting.started.step4': 'Test your configuration using the Token Verification tab',
+        'help.jwt.issuer.config.title': 'Issuer Configuration',
+        'help.jwt.issuer.config.dynamic.title': 'Dynamic Properties',
+        'help.jwt.issuer.config.dynamic.desc': 'Each issuer is configured using dynamic properties with the pattern:',
+        'help.jwt.issuer.config.examples.title': 'Example Configurations',
+        'help.jwt.auth.rules.title': 'Authorization Rules',
+        'help.jwt.auth.rules.intro': 'Control access based on JWT claims using these properties:',
+        'help.jwt.auth.scopes.title': 'Required Scopes',
+        'help.jwt.auth.scopes.desc': 'Specify scopes that must be present in the token:',
+        'help.jwt.auth.roles.title': 'Required Roles',
+        'help.jwt.auth.roles.desc': 'Specify roles that must be present in the token:',
+        'help.jwt.auth.flowfile.title': 'Flow File Attributes',
+        'help.jwt.auth.flowfile.desc': 'The processor adds these attributes to flow files:',
+        'help.jwt.auth.flowfile.subject': 'Token subject (user)',
+        'help.jwt.auth.flowfile.issuer': 'Token issuer',
+        'help.jwt.auth.flowfile.scopes': 'Space-separated scopes',
+        'help.jwt.auth.flowfile.roles': 'Space-separated roles',
+        'help.jwt.auth.flowfile.authorized': 'true/false based on rules',
+        'help.jwt.token.verification.title': 'Token Verification',
+        'help.jwt.token.verification.intro': 'Use the Token Verification tab to test JWT tokens:',
+        'help.jwt.token.verification.step1': 'Paste a JWT token in the input field',
+        'help.jwt.token.verification.step2': 'Click "Verify Token"',
+        'help.jwt.token.verification.step3': 'Review the validation results',
+        'help.jwt.token.verification.issues.title': 'Common Issues',
+        'help.jwt.token.verification.issue.signature': 'Check that the JWKS URL is correct',
+        'help.jwt.token.verification.issue.expired': 'Generate a new token',
+        'help.jwt.token.verification.issue.unknown': 'Add the issuer configuration',
+        'help.jwt.token.verification.issue.scopes': 'Ensure token contains required scopes',
+        'help.gateway.title': 'REST API Gateway',
+        'help.gateway.intro': 'The RestApiGatewayProcessor provides a secure REST API gateway with JWT authentication and route-based access control.',
+        'help.gateway.features.title': 'Key Features',
+        'help.gateway.features.https': 'Embedded HTTPS/HTTP server with configurable port',
+        'help.gateway.features.routing': 'Route-based request matching with path patterns',
+        'help.gateway.features.auth': 'Per-route role and scope requirements',
+        'help.gateway.features.cors': 'CORS support with configurable allowed origins',
+        'help.gateway.features.limits': 'Request body size limits and queue management',
+        'help.gateway.tabs.title': 'Tabs',
+        'help.gateway.tabs.endpoint': 'View active routes, global settings, and security configuration',
+        'help.gateway.tabs.tester': 'Send test requests to verify route access and authentication',
+        'help.gateway.tabs.issuer': 'Manage JWT issuer settings from the linked Controller Service',
+        'help.gateway.tabs.token': 'Paste and verify JWT tokens against configured issuers',
+        'help.gateway.tabs.metrics': 'Monitor token validation, HTTP security events, and gateway activity',
+        'help.troubleshooting.title': 'Troubleshooting',
+        'help.troubleshooting.jwks.title': 'JWKS Loading Issues',
+        'help.troubleshooting.jwks.network': 'Verify network connectivity to JWKS endpoints',
+        'help.troubleshooting.jwks.ssl': 'Check SSL/TLS certificates for HTTPS endpoints',
+        'help.troubleshooting.jwks.paths': 'Ensure file paths are absolute for local JWKS files',
+        'help.troubleshooting.jwks.test': 'Use the JWKS Validation button to test endpoints',
+        'help.troubleshooting.performance.title': 'Performance Tips',
+        'help.troubleshooting.performance.cache': 'JWKS are cached for 5 minutes by default',
+        'help.troubleshooting.performance.local': 'Use local JWKS files for better performance',
+        'help.troubleshooting.performance.monitor': 'Monitor the Metrics tab for performance data',
+        'help.troubleshooting.security.title': 'Security Best Practices',
+        'help.troubleshooting.security.https': 'Always use HTTPS for JWKS endpoints',
+        'help.troubleshooting.security.rotate': 'Rotate signing keys regularly',
+        'help.troubleshooting.security.rules': 'Implement proper authorization rules',
+        'help.troubleshooting.security.monitor': 'Monitor failed validations in the Metrics tab',
+        'help.resources.title': 'Additional Resources',
+        'help.resources.jwt': 'JWT Introduction',
+        'help.resources.jwk': 'JWK Specification',
+        'help.resources.nifi': 'Apache NiFi Docs',
+        'help.footer.version': 'Version:',
+        'help.footer.support': 'Support:',
+
+        // -- legacy keys (kept for compatibility) --
+        'jwt.validator.help.title': 'JWT Authenticator Help',
+        'jwt.validator.metrics.title': 'JWT Validation Metrics',
+        'jwt.validator.help.tab.name': 'Help'
     },
     de: {
+        // -- common --
+        'common.btn.delete': 'L\u00f6schen',
+        'common.btn.cancel': 'Abbrechen',
+        'common.btn.remove': 'Entfernen',
+        'common.btn.clear': 'Leeren',
+        'common.btn.edit': 'Bearbeiten',
+        'common.error.prefix': 'Fehler',
+        'common.error.unknown': 'Unbekannter Fehler',
+        'common.error.server': 'Serverfehler (HTTP {0})',
+        'common.status.enabled': 'Aktiviert',
+        'common.status.disabled': 'Deaktiviert',
+        'common.status.yes': 'Ja',
+        'common.status.no': 'Nein',
+        'common.na': 'N/V',
+        'common.loading': 'Laden\u2026',
+
+        // -- origin badges --
+        'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen (persistent)',
+        'origin.badge.modified.title': 'In dieser Sitzung ge\u00e4ndert (noch nicht persistent)',
+        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
+        'origin.badge.modified': 'Ge\u00e4ndert',
+        'origin.badge.new': 'Neu',
+
+        // -- validation --
+        'validation.required': 'Dieses Feld ist erforderlich.',
+        'validation.url.required': 'URL ist erforderlich.',
+        'validation.url.too.long': 'URL ist zu lang (maximal {0} Zeichen).',
+        'validation.url.invalid': 'Ung\u00fcltiges URL-Format. Muss eine g\u00fcltige {0}-URL sein.',
+        'validation.token.required': 'Token ist erforderlich.',
+        'validation.token.too.short': 'Token ist zu kurz (mindestens 10 Zeichen).',
+        'validation.token.too.long': 'Token ist zu lang (maximal 10000 Zeichen).',
+        'validation.token.invalid.format': 'Ung\u00fcltiges Token-Format. Mindestens 2 durch Punkte getrennte Teile erwartet.',
+        'validation.issuer.name.required': 'Aussteller-Name ist erforderlich.',
+        'validation.issuer.name.too.short': 'Aussteller-Name muss mindestens 2 Zeichen lang sein.',
+        'validation.issuer.name.too.long': 'Aussteller-Name ist zu lang (maximal 100 Zeichen).',
+        'validation.issuer.name.invalid.chars': 'Aussteller-Name darf nur Buchstaben, Zahlen, Bindestriche, Unterstriche und Punkte enthalten.',
+        'validation.processor.url.required': 'URL ist f\u00fcr die Prozessor-ID-Extraktion erforderlich.',
+        'validation.processor.id.not.found': 'URL enth\u00e4lt keine g\u00fcltige Prozessor-ID.',
+        'validation.field.issuer.name': 'Aussteller-Name',
+        'validation.field.issuer.uri': 'Aussteller-URI',
+        'validation.field.jwks.url': 'JWKS-URL',
+
+        // -- confirmation dialogs --
+        'confirm.remove.issuer.title': 'Aussteller-Konfiguration entfernen',
+        'confirm.remove.issuer.message': 'Sind Sie sicher, dass Sie den Aussteller \u201e{0}\u201c entfernen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.',
+        'confirm.remove.route.title': 'Routen-Konfiguration entfernen',
+        'confirm.remove.route.message': 'Sind Sie sicher, dass Sie die Route \u201e{0}\u201c entfernen m\u00f6chten? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.',
+        'confirm.clear.title': 'Formulardaten leeren',
+        'confirm.clear.message': 'Sind Sie sicher, dass Sie alle Formulardaten leeren m\u00f6chten? Alle nicht gespeicherten \u00c4nderungen gehen verloren.',
+
+        // -- issuer config --
+        'issuer.heading': 'Aussteller-Konfigurationen',
+        'issuer.description': 'JWT-Aussteller f\u00fcr die Token-Validierung konfigurieren. Jeder Aussteller ben\u00f6tigt einen Namen und Eigenschaften wie JWKS-URL und Aussteller-URI.',
+        'issuer.btn.add': 'Aussteller hinzuf\u00fcgen',
+        'issuer.btn.save': 'Aussteller speichern',
+        'issuer.form.name.label': 'Aussteller-Name',
+        'issuer.form.name.placeholder': 'z.B. keycloak',
+        'issuer.form.name.title': 'Eindeutiger Bezeichner f\u00fcr diese Aussteller-Konfiguration.',
+        'issuer.form.jwks.type.label': 'JWKS-Quellentyp',
+        'issuer.form.jwks.type.title': 'W\u00e4hlen Sie, wie JWKS-Schl\u00fcssel abgerufen werden sollen',
+        'issuer.form.jwks.type.url': 'URL (Remote JWKS-Endpunkt)',
+        'issuer.form.jwks.type.file': 'Datei (Lokale JWKS-Datei)',
+        'issuer.form.jwks.type.memory': 'Speicher (Inline JWKS-Inhalt)',
+        'issuer.form.issuer.uri.label': 'Aussteller-URI',
+        'issuer.form.issuer.uri.placeholder': 'Die URI des Token-Ausstellers (muss mit dem iss-Claim \u00fcbereinstimmen)',
+        'issuer.form.jwks.url.label': 'JWKS-URL',
+        'issuer.form.jwks.url.placeholder': 'Die URL des JWKS-Endpunkts',
+        'issuer.form.jwks.file.label': 'JWKS-Dateipfad',
+        'issuer.form.jwks.file.placeholder': 'Pfad zur lokalen JWKS-JSON-Datei',
+        'issuer.form.jwks.content.label': 'JWKS-Inhalt',
+        'issuer.form.jwks.content.placeholder': 'Inline JWKS-JSON-Inhalt',
+        'issuer.form.audience.label': 'Audience',
+        'issuer.form.audience.placeholder': 'Der erwartete Audience-Claim-Wert',
+        'issuer.form.client.id.label': 'Client-ID',
+        'issuer.form.client.id.placeholder': 'Die Client-ID f\u00fcr die Token-Validierung',
+        'issuer.jwks.test.btn': 'Verbindung testen',
+        'issuer.jwks.test.title': 'Verbindung zum JWKS-Endpunkt testen',
+        'issuer.jwks.test.hint': 'Klicken Sie auf die Schaltfl\u00e4che, um JWKS zu validieren',
+        'issuer.jwks.test.testing': 'Teste\u2026',
+        'issuer.jwks.valid': 'G\u00fcltiges JWKS ({0} Schl\u00fcssel gefunden)',
+        'issuer.save.success': 'Aussteller-Konfiguration erfolgreich gespeichert.',
+        'issuer.save.success.standalone': 'Aussteller-Konfiguration erfolgreich gespeichert (Standalone-Modus).',
+        'issuer.remove.success': 'Aussteller \u201e{0}\u201c erfolgreich entfernt.',
+        'issuer.remove.success.standalone': 'Aussteller \u201e{0}\u201c entfernt (Standalone-Modus).',
+        'issuer.validate.name.required': 'Aussteller-Name ist erforderlich.',
+        'issuer.validate.uri.required': 'Aussteller-URI ist erforderlich.',
+        'issuer.validate.jwks.url.required': 'JWKS-URL ist erforderlich bei Verwendung des URL-Quellentyps.',
+        'issuer.validate.jwks.file.required': 'JWKS-Dateipfad ist erforderlich bei Verwendung des Datei-Quellentyps.',
+        'issuer.validate.jwks.content.required': 'JWKS-Inhalt ist erforderlich bei Verwendung des Speicher-Quellentyps.',
+        'issuer.table.name': 'Name',
+        'issuer.table.jwks.source': 'JWKS-Quelle',
+        'issuer.table.type': 'Typ',
+        'issuer.table.issuer.uri': 'Aussteller-URI',
+        'issuer.table.actions': 'Aktionen',
+        'issuer.table.empty': 'Keine Aussteller konfiguriert. Klicken Sie auf \u201eAussteller hinzuf\u00fcgen\u201c, um einen zu erstellen.',
+
+        // -- token verifier --
+        'token.input.label': 'Token eingeben',
+        'token.input.placeholder': 'Token hier einf\u00fcgen\u2026',
+        'token.btn.verify': 'Token \u00fcberpr\u00fcfen',
+        'token.btn.clear': 'Leeren',
+        'token.results.heading': '\u00dcberpr\u00fcfungsergebnisse',
+        'token.status.verifying': 'Token wird \u00fcberpr\u00fcft\u2026',
+        'token.status.valid': 'Token ist g\u00fcltig',
+        'token.status.invalid': 'Token ist ung\u00fcltig',
+        'token.status.expired': 'Token ist abgelaufen',
+        'token.section.header': 'Header',
+        'token.section.payload': 'Payload',
+        'token.error.prefix': 'Fehler',
+        'token.claim.expiration': 'Ablaufzeit',
+        'token.claim.expired': '(Abgelaufen)',
+        'token.claim.issuer': 'Aussteller',
+        'token.claim.subject': 'Betreff',
+
+        // -- route config --
+        'route.heading': 'Gateway-Routen-Konfiguration',
+        'route.btn.add': 'Route hinzuf\u00fcgen',
+        'route.btn.save': 'Route speichern',
+        'route.export.heading': 'Eigenschaften exportieren',
+        'route.export.copy': 'In Zwischenablage kopieren',
+        'route.export.copied': 'Kopiert!',
+        'route.table.name': 'Name',
+        'route.table.connection': 'Verbindung',
+        'route.table.path': 'Pfad',
+        'route.table.methods': 'Methoden',
+        'route.table.enabled': 'Aktiviert',
+        'route.table.actions': 'Aktionen',
+        'route.table.empty': 'Keine Routen konfiguriert. Klicken Sie auf \u201eRoute hinzuf\u00fcgen\u201c, um eine zu erstellen.',
+        'route.form.name.label': 'Routen-Name',
+        'route.form.name.placeholder': 'z.B. health-check',
+        'route.form.name.title': 'Eindeutiger Bezeichner f\u00fcr diese Routen-Konfiguration.',
+        'route.form.enabled': 'Aktiviert',
+        'route.form.path.label': 'Pfad',
+        'route.form.path.placeholder': '/api/resource (erforderlich)',
+        'route.form.roles.label': 'Erforderliche Rollen',
+        'route.form.roles.placeholder': 'admin,user (kommagetrennt, optional)',
+        'route.form.scopes.label': 'Erforderliche Scopes',
+        'route.form.scopes.placeholder': 'read,write (kommagetrennt, optional)',
+        'route.form.create.flowfile': 'FlowFile erstellen',
+        'route.form.connection.label': 'NiFi-Verbindungsname',
+        'route.form.connection.placeholder': 'Verbindungsbezeichnung auf der NiFi-Leinwand (Standard: Routenname)',
+        'route.form.schema.toggle': 'Schema-Validierung',
+        'route.form.schema.file': 'Dateipfad',
+        'route.form.schema.inline': 'Inline-JSON',
+        'route.form.schema.file.placeholder': './conf/schemas/my-schema.json',
+        'route.form.schema.inline.placeholder': '{"type":"object","properties":{}}',
+        'route.validate.name.required': 'Routenname ist erforderlich.',
+        'route.validate.name.invalid': 'Routenname darf nur alphanumerische Zeichen, Bindestriche und Unterstriche enthalten.',
+        'route.validate.name.duplicate': 'Eine Route mit dem Namen \u201e{0}\u201c existiert bereits.',
+        'route.validate.path.required': 'Pfad ist erforderlich.',
+        'route.remove.success': 'Route \u201e{0}\u201c erfolgreich entfernt.',
+        'route.remove.success.standalone': 'Route \u201e{0}\u201c entfernt (Standalone-Modus).',
+        'route.info.banner': '\u00c4nderungen gelten nur f\u00fcr die aktuelle Sitzung. Um sie dauerhaft zu speichern, exportieren Sie die Eigenschaften unten und f\u00fcgen Sie sie Ihrer Prozessor-Konfiguration hinzu.',
+        'route.connection.map.heading': 'NiFi-Verbindungen ({0} Beziehungen)',
+        'route.connection.map.name': 'Verbindungsname',
+        'route.connection.map.routes': 'Routen',
+        'route.connection.map.failure': '(immer vorhanden)',
+        'route.global.heading': 'Globale Einstellungen',
+        'route.global.listening.port': 'Empfangs-Port',
+        'route.global.max.request.size': 'Maximale Anfragek\u00f6rpergr\u00f6\u00dfe',
+        'route.global.queue.size': 'Warteschlangengr\u00f6\u00dfe',
+        'route.global.ssl.enabled': 'SSL aktiviert',
+        'route.global.cors.origins': 'CORS erlaubte Urspr\u00fcnge',
+        'route.global.listening.host': 'Empfangs-Host',
+
+        // -- endpoint tester --
+        'tester.heading': 'Endpunkt-Tester',
+        'tester.form.route': 'Route',
+        'tester.form.method': 'Methode',
+        'tester.form.token': 'Autorisierungs-Token',
+        'tester.form.token.placeholder': 'Bearer eyJ\u2026',
+        'tester.form.body': 'Anfragek\u00f6rper',
+        'tester.form.body.placeholder': '{"key": "value"}',
+        'tester.btn.send': 'Anfrage senden',
+        'tester.btn.sending': 'Sende\u2026',
+        'tester.routes.loading': 'Lade Routen\u2026',
+        'tester.routes.none': 'Keine Routen verf\u00fcgbar',
+        'tester.routes.failed': 'Routen konnten nicht geladen werden',
+        'tester.response.heading': 'Antwort',
+        'tester.response.status': 'Status: {0}',
+        'tester.response.error': 'Fehler',
+        'tester.response.no.headers': 'Keine Header',
+        'tester.error.no.route': 'Bitte w\u00e4hlen Sie eine Route',
+        'tester.error.request.failed': 'Anfrage fehlgeschlagen: {0}',
+
+        // -- metrics --
+        'metrics.btn.refresh': 'Aktualisieren',
+        'metrics.btn.export': 'Exportieren',
+        'metrics.last.updated': 'Zuletzt aktualisiert: {0}',
+        'metrics.last.updated.never': 'Zuletzt aktualisiert: Nie',
+        'metrics.refreshing': 'Aktualisiere\u2026',
+        'metrics.export.heading': 'Exportformat:',
+        'metrics.gateway.heading': 'Gateway-Metriken',
+        'metrics.section.token.validation': 'Token-Validierung',
+        'metrics.section.http.security': 'HTTP-Sicherheit',
+        'metrics.section.gateway.events': 'Gateway-Ereignisse',
+        'metrics.no.data': 'Keine Daten verf\u00fcgbar',
+        'metrics.error.load': 'Metriken konnten nicht geladen werden.',
+        'metrics.error.not.available.title': 'Metriken nicht verf\u00fcgbar',
+        'metrics.error.not.available': 'Metriken sind nur f\u00fcr REST-API-Gateway-Prozessoren verf\u00fcgbar.',
+
+        // -- chip input --
+        'chip.methods.label': 'Methoden',
+        'chip.methods.placeholder': 'Tippen, um Methode hinzuzuf\u00fcgen\u2026',
+        'chip.methods.aria': 'HTTP-Methode hinzuf\u00fcgen',
+        'chip.methods.remove.aria': '{0} entfernen',
+
+        // -- tabs --
+        'tab.configuration': 'Konfiguration',
+        'tab.token.verification': 'Token-\u00dcberpr\u00fcfung',
+        'tab.endpoint.config': 'Endpunkt-Konfiguration',
+        'tab.endpoint.tester': 'Endpunkt-Tester',
+        'tab.issuer.config': 'Aussteller-Konfiguration',
+        'tab.metrics': 'Metriken',
+        'tab.help': 'Hilfe',
+
+        // -- app --
+        'app.loading': 'Lade Komponenten-UI\u2026',
+        'app.gateway.no.issuer.service': 'Kein JWT-Aussteller-Konfigurationsdienst ist mit diesem Gateway-Prozessor verkn\u00fcpft. Konfigurieren Sie die <strong>JWT-Aussteller-Konfigurationsdienst</strong>-Eigenschaft in den Prozessor-Einstellungen, um die Ausstellerverwaltung hier zu aktivieren.',
+        'app.gateway.no.token.service': 'Die Token-\u00dcberpr\u00fcfung erfordert einen verkn\u00fcpften JWT-Aussteller-Konfigurationsdienst. Konfigurieren Sie zuerst die Service-Referenz in den Prozessor-Einstellungen.',
+
+        // -- help --
+        'help.heading': 'Komponenten-Hilfe',
+        'help.jwt.getting.started.title': 'Erste Schritte',
+        'help.jwt.getting.started.intro': 'Der MultiIssuerJWTTokenAuthenticator-Prozessor validiert JWT-Token von mehreren Ausstellern. Befolgen Sie diese Schritte zur Konfiguration:',
+        'help.jwt.getting.started.step1': 'Mindestens eine Aussteller-Konfiguration hinzuf\u00fcgen',
+        'help.jwt.getting.started.step2': 'JWKS-URL oder Dateipfad f\u00fcr jeden Aussteller konfigurieren',
+        'help.jwt.getting.started.step3': 'Autorisierungsregeln einrichten (optional)',
+        'help.jwt.getting.started.step4': 'Konfiguration \u00fcber den Token-\u00dcberpr\u00fcfung-Tab testen',
+        'help.jwt.issuer.config.title': 'Aussteller-Konfiguration',
+        'help.jwt.issuer.config.dynamic.title': 'Dynamische Eigenschaften',
+        'help.jwt.issuer.config.dynamic.desc': 'Jeder Aussteller wird \u00fcber dynamische Eigenschaften mit folgendem Muster konfiguriert:',
+        'help.jwt.issuer.config.examples.title': 'Beispielkonfigurationen',
+        'help.jwt.auth.rules.title': 'Autorisierungsregeln',
+        'help.jwt.auth.rules.intro': 'Zugriff basierend auf JWT-Claims mit diesen Eigenschaften steuern:',
+        'help.jwt.auth.scopes.title': 'Erforderliche Scopes',
+        'help.jwt.auth.scopes.desc': 'Scopes angeben, die im Token vorhanden sein m\u00fcssen:',
+        'help.jwt.auth.roles.title': 'Erforderliche Rollen',
+        'help.jwt.auth.roles.desc': 'Rollen angeben, die im Token vorhanden sein m\u00fcssen:',
+        'help.jwt.auth.flowfile.title': 'FlowFile-Attribute',
+        'help.jwt.auth.flowfile.desc': 'Der Prozessor f\u00fcgt FlowFiles diese Attribute hinzu:',
+        'help.jwt.auth.flowfile.subject': 'Token-Betreff (Benutzer)',
+        'help.jwt.auth.flowfile.issuer': 'Token-Aussteller',
+        'help.jwt.auth.flowfile.scopes': 'Leerzeichen-getrennte Scopes',
+        'help.jwt.auth.flowfile.roles': 'Leerzeichen-getrennte Rollen',
+        'help.jwt.auth.flowfile.authorized': 'true/false basierend auf Regeln',
+        'help.jwt.token.verification.title': 'Token-\u00dcberpr\u00fcfung',
+        'help.jwt.token.verification.intro': 'Verwenden Sie den Token-\u00dcberpr\u00fcfung-Tab, um JWT-Token zu testen:',
+        'help.jwt.token.verification.step1': 'JWT-Token in das Eingabefeld einf\u00fcgen',
+        'help.jwt.token.verification.step2': 'Auf \u201eToken \u00fcberpr\u00fcfen\u201c klicken',
+        'help.jwt.token.verification.step3': 'Validierungsergebnisse \u00fcberpr\u00fcfen',
+        'help.jwt.token.verification.issues.title': 'H\u00e4ufige Probleme',
+        'help.jwt.token.verification.issue.signature': '\u00dcberpr\u00fcfen Sie, ob die JWKS-URL korrekt ist',
+        'help.jwt.token.verification.issue.expired': 'Neues Token generieren',
+        'help.jwt.token.verification.issue.unknown': 'Aussteller-Konfiguration hinzuf\u00fcgen',
+        'help.jwt.token.verification.issue.scopes': 'Stellen Sie sicher, dass das Token erforderliche Scopes enth\u00e4lt',
+        'help.gateway.title': 'REST-API-Gateway',
+        'help.gateway.intro': 'Der RestApiGatewayProcessor bietet ein sicheres REST-API-Gateway mit JWT-Authentifizierung und routenbasierter Zugriffskontrolle.',
+        'help.gateway.features.title': 'Hauptfunktionen',
+        'help.gateway.features.https': 'Eingebetteter HTTPS/HTTP-Server mit konfigurierbarem Port',
+        'help.gateway.features.routing': 'Routenbasiertes Request-Matching mit Pfadmustern',
+        'help.gateway.features.auth': 'Rollen- und Scope-Anforderungen pro Route',
+        'help.gateway.features.cors': 'CORS-Unterst\u00fctzung mit konfigurierbaren erlaubten Urspr\u00fcngen',
+        'help.gateway.features.limits': 'Anfragek\u00f6rper-Gr\u00f6\u00dfenbeschr\u00e4nkungen und Warteschlangenverwaltung',
+        'help.gateway.tabs.title': 'Tabs',
+        'help.gateway.tabs.endpoint': 'Aktive Routen, globale Einstellungen und Sicherheitskonfiguration anzeigen',
+        'help.gateway.tabs.tester': 'Testanfragen senden, um Routenzugriff und Authentifizierung zu \u00fcberpr\u00fcfen',
+        'help.gateway.tabs.issuer': 'JWT-Aussteller-Einstellungen des verkn\u00fcpften Controller Service verwalten',
+        'help.gateway.tabs.token': 'JWT-Token einf\u00fcgen und gegen konfigurierte Aussteller \u00fcberpr\u00fcfen',
+        'help.gateway.tabs.metrics': 'Token-Validierung, HTTP-Sicherheitsereignisse und Gateway-Aktivit\u00e4t \u00fcberwachen',
+        'help.troubleshooting.title': 'Fehlerbehebung',
+        'help.troubleshooting.jwks.title': 'JWKS-Ladeprobleme',
+        'help.troubleshooting.jwks.network': 'Netzwerkverbindung zu JWKS-Endpunkten \u00fcberpr\u00fcfen',
+        'help.troubleshooting.jwks.ssl': 'SSL/TLS-Zertifikate f\u00fcr HTTPS-Endpunkte pr\u00fcfen',
+        'help.troubleshooting.jwks.paths': 'Absolute Dateipfade f\u00fcr lokale JWKS-Dateien sicherstellen',
+        'help.troubleshooting.jwks.test': 'Die JWKS-Validierungsschaltfl\u00e4che zum Testen von Endpunkten verwenden',
+        'help.troubleshooting.performance.title': 'Leistungstipps',
+        'help.troubleshooting.performance.cache': 'JWKS werden standardm\u00e4\u00dfig 5 Minuten zwischengespeichert',
+        'help.troubleshooting.performance.local': 'Lokale JWKS-Dateien f\u00fcr bessere Leistung verwenden',
+        'help.troubleshooting.performance.monitor': 'Den Metriken-Tab f\u00fcr Leistungsdaten \u00fcberwachen',
+        'help.troubleshooting.security.title': 'Sicherheits-Best-Practices',
+        'help.troubleshooting.security.https': 'Immer HTTPS f\u00fcr JWKS-Endpunkte verwenden',
+        'help.troubleshooting.security.rotate': 'Signaturschl\u00fcssel regelm\u00e4\u00dfig wechseln',
+        'help.troubleshooting.security.rules': 'Ordnungsgem\u00e4\u00dfe Autorisierungsregeln implementieren',
+        'help.troubleshooting.security.monitor': 'Fehlgeschlagene Validierungen im Metriken-Tab \u00fcberwachen',
+        'help.resources.title': 'Zus\u00e4tzliche Ressourcen',
+        'help.resources.jwt': 'JWT-Einf\u00fchrung',
+        'help.resources.jwk': 'JWK-Spezifikation',
+        'help.resources.nifi': 'Apache NiFi-Dokumentation',
+        'help.footer.version': 'Version:',
+        'help.footer.support': 'Support:',
+
+        // -- legacy keys --
         'jwt.validator.help.title': 'JWT-Authentifikator-Hilfe',
         'jwt.validator.metrics.title': 'JWT-Validierungsmetriken',
-        'jwt.validator.help.tab.name': 'Hilfe',
-        'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen (persistent)',
-        'origin.badge.modified.title': 'In dieser Sitzung geändert (noch nicht persistent)',
-        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
-        'origin.badge.modified': 'Geändert',
-        'origin.badge.new': 'Neu'
+        'jwt.validator.help.tab.name': 'Hilfe'
     }
 };
 
 const browserLang = typeof navigator === 'undefined' ? 'en' : (navigator.language || 'en');
-const lang = browserLang.startsWith('de') ? 'de' : 'en';
+export const lang = browserLang.startsWith('de') ? 'de' : 'en';
 
 /**
  * Translate a key to the current browser language.
+ * Supports `{0}`, `{1}` parameter substitution.
  * @param {string} key  i18n key
+ * @param {...*} params  substitution values
  * @returns {string}
  */
-export const t = (key) => TRANSLATIONS[lang]?.[key]
-    ?? TRANSLATIONS.en[key]
-    ?? key;
+export const t = (key, ...params) => {
+    let text = TRANSLATIONS[lang]?.[key]
+        ?? TRANSLATIONS.en[key]
+        ?? key;
+    for (let i = 0; i < params.length; i++) {
+        text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), params[i]);
+    }
+    return text;
+};
 
 // ---------------------------------------------------------------------------
 // HTML sanitisation
@@ -110,7 +694,7 @@ export const formatDate = (d) => {
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line no-useless-escape
+// eslint-disable-next-line no-useless-escape, max-len
 const RE_URL = /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
 const RE_SAFE_NAME = /^[a-zA-Z0-9._-]+$/;
 const RE_PROCESSOR_ID = /\/processors\/([a-f0-9-]+)/i;
@@ -133,7 +717,7 @@ export const validateRequired = (value, required = true) => {
     const empty = s === '' || s.toLowerCase() === 'null'
         || s.toLowerCase() === 'undefined';
     if (required && empty) {
-        return { isValid: false, error: 'This field is required.', sanitizedValue: '' };
+        return { isValid: false, error: t('validation.required'), sanitizedValue: '' };
     }
     return { isValid: true, sanitizedValue: s };
 };
@@ -149,17 +733,17 @@ export const validateRequired = (value, required = true) => {
 export const validateUrl = (url, opts = {}) => {
     const { httpsOnly = false, maxLength = 2048 } = opts;
     const req = validateRequired(url);
-    if (!req.isValid) return { isValid: false, error: 'URL is required.', sanitizedValue: '' };
+    if (!req.isValid) return { isValid: false, error: t('validation.url.required'), sanitizedValue: '' };
     const s = req.sanitizedValue;
     if (s.length > maxLength) {
-        return { isValid: false, error: `URL is too long (maximum ${maxLength} characters).`, sanitizedValue: s };
+        return { isValid: false, error: t('validation.url.too.long', maxLength), sanitizedValue: s };
     }
-    // eslint-disable-next-line no-useless-escape
+    // eslint-disable-next-line no-useless-escape, max-len
     const httpsPattern = /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
     const pattern = httpsOnly ? httpsPattern : RE_URL;
     if (!pattern.test(s)) {
         const proto = httpsOnly ? 'HTTPS' : 'HTTP/HTTPS';
-        return { isValid: false, error: `Invalid URL format. Must be a valid ${proto} URL.`, sanitizedValue: s };
+        return { isValid: false, error: t('validation.url.invalid', proto), sanitizedValue: s };
     }
     return { isValid: true, sanitizedValue: s };
 };
@@ -171,12 +755,12 @@ export const validateUrl = (url, opts = {}) => {
  */
 export const validateJwtToken = (token) => {
     const req = validateRequired(token);
-    if (!req.isValid) return { isValid: false, error: 'Token is required.', sanitizedValue: '' };
+    if (!req.isValid) return { isValid: false, error: t('validation.token.required'), sanitizedValue: '' };
     const s = req.sanitizedValue;
-    if (s.length < 10) return { isValid: false, error: 'Token is too short (minimum 10 characters).', sanitizedValue: s };
-    if (s.length > 10000) return { isValid: false, error: 'Token is too long (maximum 10000 characters).', sanitizedValue: s };
+    if (s.length < 10) return { isValid: false, error: t('validation.token.too.short'), sanitizedValue: s };
+    if (s.length > 10000) return { isValid: false, error: t('validation.token.too.long'), sanitizedValue: s };
     if (s.split('.').length < 2) {
-        return { isValid: false, error: 'Invalid token format. Expected at least 2 parts separated by dots.', sanitizedValue: s };
+        return { isValid: false, error: t('validation.token.invalid.format'), sanitizedValue: s };
     }
     return { isValid: true, sanitizedValue: s };
 };
@@ -188,12 +772,12 @@ export const validateJwtToken = (token) => {
  */
 export const validateIssuerName = (name) => {
     const req = validateRequired(name);
-    if (!req.isValid) return { isValid: false, error: 'Issuer name is required.', sanitizedValue: '' };
+    if (!req.isValid) return { isValid: false, error: t('validation.issuer.name.required'), sanitizedValue: '' };
     const s = req.sanitizedValue;
-    if (s.length < 2) return { isValid: false, error: 'Issuer name must be at least 2 characters long.', sanitizedValue: s };
-    if (s.length > 100) return { isValid: false, error: 'Issuer name is too long (maximum 100 characters).', sanitizedValue: s };
+    if (s.length < 2) return { isValid: false, error: t('validation.issuer.name.too.short'), sanitizedValue: s };
+    if (s.length > 100) return { isValid: false, error: t('validation.issuer.name.too.long'), sanitizedValue: s };
     if (!RE_SAFE_NAME.test(s)) {
-        return { isValid: false, error: 'Issuer name can only contain letters, numbers, hyphens, underscores, and dots.', sanitizedValue: s };
+        return { isValid: false, error: t('validation.issuer.name.invalid.chars'), sanitizedValue: s };
     }
     return { isValid: true, sanitizedValue: s };
 };
@@ -205,9 +789,9 @@ export const validateIssuerName = (name) => {
  */
 export const validateProcessorIdFromUrl = (url) => {
     const req = validateRequired(url);
-    if (!req.isValid) return { isValid: false, error: 'URL is required for processor ID extraction.', sanitizedValue: '' };
+    if (!req.isValid) return { isValid: false, error: t('validation.processor.url.required'), sanitizedValue: '' };
     const match = RE_PROCESSOR_ID.exec(req.sanitizedValue);
-    if (!match) return { isValid: false, error: 'URL does not contain a valid processor ID.', sanitizedValue: '' };
+    if (!match) return { isValid: false, error: t('validation.processor.id.not.found'), sanitizedValue: '' };
     return { isValid: true, sanitizedValue: match[1].toLowerCase() };
 };
 
@@ -219,11 +803,11 @@ export const validateProcessorIdFromUrl = (url) => {
 export const validateIssuerConfig = (fd) => {
     const errors = [];
     const r1 = validateIssuerName(fd.issuerName);
-    if (!r1.isValid) errors.push(`Issuer Name: ${r1.error}`);
+    if (!r1.isValid) errors.push(`${t('validation.field.issuer.name')}: ${r1.error}`);
     const r2 = validateUrl(fd.issuer, { httpsOnly: false });
-    if (!r2.isValid) errors.push(`Issuer URI: ${r2.error}`);
+    if (!r2.isValid) errors.push(`${t('validation.field.issuer.uri')}: ${r2.error}`);
     const r3 = validateUrl(fd['jwks-url'], { httpsOnly: false });
-    if (!r3.isValid) errors.push(`JWKS URL: ${r3.error}`);
+    if (!r3.isValid) errors.push(`${t('validation.field.jwks.url')}: ${r3.error}`);
     if (errors.length > 0) return { isValid: false, error: errors.join(' ') };
     return { isValid: true };
 };
@@ -238,7 +822,7 @@ export const validateIssuerConfig = (fd) => {
  * @returns {string}
  */
 const extractErrorMessage = (error) => {
-    if (!error) return 'Unknown error';
+    if (!error) return t('common.error.unknown');
     if (error.responseJSON?.message) return error.responseJSON.message;
     if (error.responseJSON?.error) return error.responseJSON.error;
     if (error.responseText) {
@@ -249,11 +833,11 @@ const extractErrorMessage = (error) => {
         } catch { /* not JSON */ }
         // HTML responses (e.g., Jetty error pages) — show status instead of raw markup
         if (error.responseText.trimStart().startsWith('<')) {
-            return `Server error (HTTP ${error.status || 'unknown'})`;
+            return t('common.error.server', error.status || 'unknown');
         }
         return error.responseText;
     }
-    return error.statusText || error.message || 'Unknown error';
+    return error.statusText || error.message || t('common.error.unknown');
 };
 
 /**
@@ -265,7 +849,7 @@ const extractErrorMessage = (error) => {
  */
 export const displayUiError = (el, error, i18n = {}, prefixKey = 'processor.jwt.validationError') => {
     const msg = extractErrorMessage(error);
-    const prefix = i18n[prefixKey] || 'Error';
+    const prefix = i18n[prefixKey] || t('common.error.prefix');
     const target = el?.[0] || el;
     if (!target) return;
     target.innerHTML = `
@@ -300,10 +884,10 @@ export const displayUiSuccess = (el, message) => {
  * @returns {{status: number, statusText: string, responseText: string}}
  */
 export const createXhrErrorObject = (xhr) => {
-    if (!xhr) return { status: 0, statusText: 'Unknown error', responseText: '' };
+    if (!xhr) return { status: 0, statusText: t('common.error.unknown'), responseText: '' };
     return {
         status: xhr.status,
-        statusText: xhr.statusText || 'Unknown error',
+        statusText: xhr.statusText || t('common.error.unknown'),
         responseText: xhr.responseText || ''
     };
 };
@@ -317,16 +901,16 @@ export const createXhrErrorObject = (xhr) => {
  * @param {Object} opts
  * @param {string} opts.title
  * @param {string} opts.message
- * @param {string} [opts.confirmText='Delete']
- * @param {string} [opts.cancelText='Cancel']
+ * @param {string} [opts.confirmText]
+ * @param {string} [opts.cancelText]
  * @param {Function} [opts.onConfirm]
  * @returns {Promise<boolean>}
  */
 export const showConfirmationDialog = ({
     title,
     message,
-    confirmText = 'Delete',
-    cancelText = 'Cancel',
+    confirmText = t('common.btn.delete'),
+    cancelText = t('common.btn.cancel'),
     onConfirm
 }) => new Promise((resolve) => {
     // Remove existing dialogs
@@ -368,10 +952,10 @@ export const showConfirmationDialog = ({
  * @returns {Promise<boolean>}
  */
 export const confirmRemoveIssuer = (issuerName, onConfirm) => showConfirmationDialog({
-    title: 'Remove Issuer Configuration',
-    message: `Are you sure you want to remove the issuer "${issuerName}"? This action cannot be undone.`,
-    confirmText: 'Remove',
-    cancelText: 'Cancel',
+    title: t('confirm.remove.issuer.title'),
+    message: t('confirm.remove.issuer.message', issuerName),
+    confirmText: t('common.btn.remove'),
+    cancelText: t('common.btn.cancel'),
     onConfirm
 });
 
@@ -382,10 +966,10 @@ export const confirmRemoveIssuer = (issuerName, onConfirm) => showConfirmationDi
  * @returns {Promise<boolean>}
  */
 export const confirmRemoveRoute = (routeName, onConfirm) => showConfirmationDialog({
-    title: 'Remove Route Configuration',
-    message: `Are you sure you want to remove the route "${routeName}"? This action cannot be undone.`,
-    confirmText: 'Remove',
-    cancelText: 'Cancel',
+    title: t('confirm.remove.route.title'),
+    message: t('confirm.remove.route.message', routeName),
+    confirmText: t('common.btn.remove'),
+    cancelText: t('common.btn.cancel'),
     onConfirm
 });
 
@@ -395,9 +979,9 @@ export const confirmRemoveRoute = (routeName, onConfirm) => showConfirmationDial
  * @returns {Promise<boolean>}
  */
 export const confirmClearForm = (onConfirm) => showConfirmationDialog({
-    title: 'Clear Form Data',
-    message: 'Are you sure you want to clear all form data? Any unsaved changes will be lost.',
-    confirmText: 'Clear',
-    cancelText: 'Cancel',
+    title: t('confirm.clear.title'),
+    message: t('confirm.clear.message'),
+    confirmText: t('common.btn.clear'),
+    cancelText: t('common.btn.cancel'),
     onConfirm
 });

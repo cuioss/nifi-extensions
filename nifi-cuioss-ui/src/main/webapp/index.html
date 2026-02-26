@@ -26,23 +26,23 @@
     <div id="jwt-validator-container" data-testid="jwt-customizer-container">
         <!-- This container will be populated by the JavaScript UI components -->
         <h1 class="sr-only">NiFi Component Configuration</h1>
-        <div id="loading-indicator">Loading Component UI...</div>
+        <div id="loading-indicator" data-i18n="app.loading">Loading Component UI...</div>
 
         <!-- Tab structure — all tabs present, JS shows/hides based on component type -->
         <main id="jwt-validator-tabs" class="jwt-tabs-container hidden">
             <div class="jwt-tabs-header" data-testid="jwt-config-tabs">
                 <div class="tabs" role="tablist">
                     <!-- JWT issuer tabs (CS + processor) -->
-                    <a href="#issuer-config" class="tab-item active jwt-tab" role="tab" data-toggle="tab">Configuration</a>
-                    <a href="#token-verification" class="tab-item jwt-tab" role="tab" data-toggle="tab">Token Verification</a>
+                    <a href="#issuer-config" class="tab-item active jwt-tab" role="tab" data-toggle="tab" data-i18n="tab.configuration">Configuration</a>
+                    <a href="#token-verification" class="tab-item jwt-tab" role="tab" data-toggle="tab" data-i18n="tab.token.verification">Token Verification</a>
                     <!-- Gateway tabs -->
-                    <a href="#endpoint-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Configuration</a>
-                    <a href="#endpoint-tester" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Endpoint Tester</a>
-                    <a href="#gateway-issuer-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Issuer Configuration</a>
-                    <a href="#gateway-token-verification" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab">Token Verification</a>
+                    <a href="#endpoint-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab" data-i18n="tab.endpoint.config">Endpoint Configuration</a>
+                    <a href="#endpoint-tester" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab" data-i18n="tab.endpoint.tester">Endpoint Tester</a>
+                    <a href="#gateway-issuer-config" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab" data-i18n="tab.issuer.config">Issuer Configuration</a>
+                    <a href="#gateway-token-verification" class="tab-item gateway-tab hidden" role="tab" data-toggle="tab" data-i18n="tab.token.verification">Token Verification</a>
                     <!-- Shared tabs -->
-                    <a href="#metrics" class="tab-item" role="tab" data-toggle="tab">Metrics</a>
-                    <a href="#help" class="tab-item" role="tab" data-toggle="tab">Help</a>
+                    <a href="#metrics" class="tab-item" role="tab" data-toggle="tab" data-i18n="tab.metrics">Metrics</a>
+                    <a href="#help" class="tab-item" role="tab" data-toggle="tab" data-i18n="tab.help">Help</a>
                 </div>
             </div>
             <div class="jwt-tabs-content">
@@ -74,37 +74,37 @@
                     <!-- Help tab: static content, no JS needed -->
                     <div id="jwt-help-content" class="jwt-tab-content help-tab" data-testid="help-tab-content">
                         <div class="help-header">
-                            <h2>Component Help</h2>
+                            <h2 data-i18n="help.heading">Component Help</h2>
                         </div>
 
                         <div class="help-sections">
                             <!-- JWT-specific help sections -->
                             <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header active" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-down"></i> Getting Started
+                                    <i class="fa fa-chevron-down"></i> <span data-i18n="help.jwt.getting.started.title">Getting Started</span>
                                 </h4>
                                 <div class="collapsible-content show" data-testid="accordion-content">
-                                    <p>The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from
+                                    <p data-i18n="help.jwt.getting.started.intro">The MultiIssuerJWTTokenAuthenticator processor validates JWT tokens from
                                     multiple issuers. Follow these steps to configure:</p>
                                     <ol>
-                                        <li>Add at least one issuer configuration</li>
-                                        <li>Configure the JWKS URL or file path for each issuer</li>
-                                        <li>Set up authorization rules (optional)</li>
-                                        <li>Test your configuration using the Token Verification tab</li>
+                                        <li data-i18n="help.jwt.getting.started.step1">Add at least one issuer configuration</li>
+                                        <li data-i18n="help.jwt.getting.started.step2">Configure the JWKS URL or file path for each issuer</li>
+                                        <li data-i18n="help.jwt.getting.started.step3">Set up authorization rules (optional)</li>
+                                        <li data-i18n="help.jwt.getting.started.step4">Test your configuration using the Token Verification tab</li>
                                     </ol>
                                 </div>
                             </div>
 
                             <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-right"></i> Issuer Configuration
+                                    <i class="fa fa-chevron-right"></i> <span data-i18n="help.jwt.issuer.config.title">Issuer Configuration</span>
                                 </h4>
                                 <div class="collapsible-content" data-testid="accordion-content">
-                                    <h5>Dynamic Properties</h5>
-                                    <p>Each issuer is configured using dynamic properties with the pattern:</p>
+                                    <h5 data-i18n="help.jwt.issuer.config.dynamic.title">Dynamic Properties</h5>
+                                    <p data-i18n="help.jwt.issuer.config.dynamic.desc">Each issuer is configured using dynamic properties with the pattern:</p>
                                     <code>jwt.issuer.&lt;issuer-name&gt;.jwks.url</code>
 
-                                    <h5>Example Configurations</h5>
+                                    <h5 data-i18n="help.jwt.issuer.config.examples.title">Example Configurations</h5>
                                     <div class="example-config">
                                         <strong>Keycloak:</strong><br>
                                         <code>jwt.issuer.keycloak.jwks.url =<br>
@@ -128,51 +128,49 @@
 
                             <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-right"></i> Authorization Rules
+                                    <i class="fa fa-chevron-right"></i> <span data-i18n="help.jwt.auth.rules.title">Authorization Rules</span>
                                 </h4>
                                 <div class="collapsible-content" data-testid="accordion-content">
-                                    <p>Control access based on JWT claims using these properties:</p>
+                                    <p data-i18n="help.jwt.auth.rules.intro">Control access based on JWT claims using these properties:</p>
 
-                                    <h5>Required Scopes</h5>
-                                    <p>Specify scopes that must be present in the token:</p>
+                                    <h5 data-i18n="help.jwt.auth.scopes.title">Required Scopes</h5>
+                                    <p data-i18n="help.jwt.auth.scopes.desc">Specify scopes that must be present in the token:</p>
                                     <code>Required Scopes = read write admin</code>
 
-                                    <h5>Required Roles</h5>
-                                    <p>Specify roles that must be present in the token:</p>
+                                    <h5 data-i18n="help.jwt.auth.roles.title">Required Roles</h5>
+                                    <p data-i18n="help.jwt.auth.roles.desc">Specify roles that must be present in the token:</p>
                                     <code>Required Roles = user manager</code>
 
-                                    <h5>Flow File Attributes</h5>
-                                    <p>The processor adds these attributes to flow files:</p>
+                                    <h5 data-i18n="help.jwt.auth.flowfile.title">Flow File Attributes</h5>
+                                    <p data-i18n="help.jwt.auth.flowfile.desc">The processor adds these attributes to flow files:</p>
                                     <ul>
-                                        <li><code>jwt.subject</code> - Token subject (user)</li>
-                                        <li><code>jwt.issuer</code> - Token issuer</li>
-                                        <li><code>jwt.scopes</code> - Space-separated scopes</li>
-                                        <li><code>jwt.roles</code> - Space-separated roles</li>
-                                        <li><code>jwt.authorized</code> - true/false based on rules</li>
+                                        <li><code>jwt.subject</code> - <span data-i18n="help.jwt.auth.flowfile.subject">Token subject (user)</span></li>
+                                        <li><code>jwt.issuer</code> - <span data-i18n="help.jwt.auth.flowfile.issuer">Token issuer</span></li>
+                                        <li><code>jwt.scopes</code> - <span data-i18n="help.jwt.auth.flowfile.scopes">Space-separated scopes</span></li>
+                                        <li><code>jwt.roles</code> - <span data-i18n="help.jwt.auth.flowfile.roles">Space-separated roles</span></li>
+                                        <li><code>jwt.authorized</code> - <span data-i18n="help.jwt.auth.flowfile.authorized">true/false based on rules</span></li>
                                     </ul>
                                 </div>
                             </div>
 
                             <div class="help-section jwt-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-right"></i> Token Verification
+                                    <i class="fa fa-chevron-right"></i> <span data-i18n="help.jwt.token.verification.title">Token Verification</span>
                                 </h4>
                                 <div class="collapsible-content" data-testid="accordion-content">
-                                    <p>Use the Token Verification tab to test JWT tokens:</p>
+                                    <p data-i18n="help.jwt.token.verification.intro">Use the Token Verification tab to test JWT tokens:</p>
                                     <ol>
-                                        <li>Paste a JWT token in the input field</li>
-                                        <li>Click "Verify Token"</li>
-                                        <li>Review the validation results</li>
+                                        <li data-i18n="help.jwt.token.verification.step1">Paste a JWT token in the input field</li>
+                                        <li data-i18n="help.jwt.token.verification.step2">Click "Verify Token"</li>
+                                        <li data-i18n="help.jwt.token.verification.step3">Review the validation results</li>
                                     </ol>
 
-                                    <h5>Common Issues</h5>
+                                    <h5 data-i18n="help.jwt.token.verification.issues.title">Common Issues</h5>
                                     <ul>
-                                        <li><strong>Invalid Signature:</strong> Check that the JWKS URL is
-                                        correct</li>
-                                        <li><strong>Token Expired:</strong> Generate a new token</li>
-                                        <li><strong>Unknown Issuer:</strong> Add the issuer configuration</li>
-                                        <li><strong>Missing Scopes:</strong> Ensure token contains required
-                                        scopes</li>
+                                        <li><strong>Invalid Signature:</strong> <span data-i18n="help.jwt.token.verification.issue.signature">Check that the JWKS URL is correct</span></li>
+                                        <li><strong>Token Expired:</strong> <span data-i18n="help.jwt.token.verification.issue.expired">Generate a new token</span></li>
+                                        <li><strong>Unknown Issuer:</strong> <span data-i18n="help.jwt.token.verification.issue.unknown">Add the issuer configuration</span></li>
+                                        <li><strong>Missing Scopes:</strong> <span data-i18n="help.jwt.token.verification.issue.scopes">Ensure token contains required scopes</span></li>
                                     </ul>
                                 </div>
                             </div>
@@ -180,31 +178,26 @@
                             <!-- Gateway-specific help sections -->
                             <div class="help-section gateway-help" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header active" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-down"></i> REST API Gateway
+                                    <i class="fa fa-chevron-down"></i> <span data-i18n="help.gateway.title">REST API Gateway</span>
                                 </h4>
                                 <div class="collapsible-content show" data-testid="accordion-content">
-                                    <p>The RestApiGatewayProcessor provides a secure REST API gateway with
+                                    <p data-i18n="help.gateway.intro">The RestApiGatewayProcessor provides a secure REST API gateway with
                                     JWT authentication and route-based access control.</p>
-                                    <h5>Key Features</h5>
+                                    <h5 data-i18n="help.gateway.features.title">Key Features</h5>
                                     <ul>
-                                        <li>Embedded HTTPS/HTTP server with configurable port</li>
-                                        <li>Route-based request matching with path patterns</li>
-                                        <li>Per-route role and scope requirements</li>
-                                        <li>CORS support with configurable allowed origins</li>
-                                        <li>Request body size limits and queue management</li>
+                                        <li data-i18n="help.gateway.features.https">Embedded HTTPS/HTTP server with configurable port</li>
+                                        <li data-i18n="help.gateway.features.routing">Route-based request matching with path patterns</li>
+                                        <li data-i18n="help.gateway.features.auth">Per-route role and scope requirements</li>
+                                        <li data-i18n="help.gateway.features.cors">CORS support with configurable allowed origins</li>
+                                        <li data-i18n="help.gateway.features.limits">Request body size limits and queue management</li>
                                     </ul>
-                                    <h5>Tabs</h5>
+                                    <h5 data-i18n="help.gateway.tabs.title">Tabs</h5>
                                     <ul>
-                                        <li><strong>Endpoint Configuration:</strong> View active routes, global
-                                        settings, and security configuration</li>
-                                        <li><strong>Endpoint Tester:</strong> Send test requests to verify
-                                        route access and authentication</li>
-                                        <li><strong>Issuer Configuration:</strong> Manage JWT issuer settings
-                                        from the linked Controller Service</li>
-                                        <li><strong>Token Verification:</strong> Paste and verify JWT tokens
-                                        against configured issuers</li>
-                                        <li><strong>Metrics:</strong> Monitor token validation, HTTP security
-                                        events, and gateway activity</li>
+                                        <li><strong>Endpoint Configuration:</strong> <span data-i18n="help.gateway.tabs.endpoint">View active routes, global settings, and security configuration</span></li>
+                                        <li><strong>Endpoint Tester:</strong> <span data-i18n="help.gateway.tabs.tester">Send test requests to verify route access and authentication</span></li>
+                                        <li><strong>Issuer Configuration:</strong> <span data-i18n="help.gateway.tabs.issuer">Manage JWT issuer settings from the linked Controller Service</span></li>
+                                        <li><strong>Token Verification:</strong> <span data-i18n="help.gateway.tabs.token">Paste and verify JWT tokens against configured issuers</span></li>
+                                        <li><strong>Metrics:</strong> <span data-i18n="help.gateway.tabs.metrics">Monitor token validation, HTTP security events, and gateway activity</span></li>
                                     </ul>
                                 </div>
                             </div>
@@ -212,57 +205,57 @@
                             <!-- Shared help sections -->
                             <div class="help-section" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-right"></i> Troubleshooting
+                                    <i class="fa fa-chevron-right"></i> <span data-i18n="help.troubleshooting.title">Troubleshooting</span>
                                 </h4>
                                 <div class="collapsible-content" data-testid="accordion-content">
-                                    <h5>JWKS Loading Issues</h5>
+                                    <h5 data-i18n="help.troubleshooting.jwks.title">JWKS Loading Issues</h5>
                                     <ul>
-                                        <li>Verify network connectivity to JWKS endpoints</li>
-                                        <li>Check SSL/TLS certificates for HTTPS endpoints</li>
-                                        <li>Ensure file paths are absolute for local JWKS files</li>
-                                        <li>Use the JWKS Validation button to test endpoints</li>
+                                        <li data-i18n="help.troubleshooting.jwks.network">Verify network connectivity to JWKS endpoints</li>
+                                        <li data-i18n="help.troubleshooting.jwks.ssl">Check SSL/TLS certificates for HTTPS endpoints</li>
+                                        <li data-i18n="help.troubleshooting.jwks.paths">Ensure file paths are absolute for local JWKS files</li>
+                                        <li data-i18n="help.troubleshooting.jwks.test">Use the JWKS Validation button to test endpoints</li>
                                     </ul>
 
-                                    <h5>Performance Tips</h5>
+                                    <h5 data-i18n="help.troubleshooting.performance.title">Performance Tips</h5>
                                     <ul>
-                                        <li>JWKS are cached for 5 minutes by default</li>
-                                        <li>Use local JWKS files for better performance</li>
-                                        <li>Monitor the Metrics tab for performance data</li>
+                                        <li data-i18n="help.troubleshooting.performance.cache">JWKS are cached for 5 minutes by default</li>
+                                        <li data-i18n="help.troubleshooting.performance.local">Use local JWKS files for better performance</li>
+                                        <li data-i18n="help.troubleshooting.performance.monitor">Monitor the Metrics tab for performance data</li>
                                     </ul>
 
-                                    <h5>Security Best Practices</h5>
+                                    <h5 data-i18n="help.troubleshooting.security.title">Security Best Practices</h5>
                                     <ul>
-                                        <li>Always use HTTPS for JWKS endpoints</li>
-                                        <li>Rotate signing keys regularly</li>
-                                        <li>Implement proper authorization rules</li>
-                                        <li>Monitor failed validations in the Metrics tab</li>
+                                        <li data-i18n="help.troubleshooting.security.https">Always use HTTPS for JWKS endpoints</li>
+                                        <li data-i18n="help.troubleshooting.security.rotate">Rotate signing keys regularly</li>
+                                        <li data-i18n="help.troubleshooting.security.rules">Implement proper authorization rules</li>
+                                        <li data-i18n="help.troubleshooting.security.monitor">Monitor failed validations in the Metrics tab</li>
                                     </ul>
                                 </div>
                             </div>
 
                             <div class="help-section" data-testid="help-accordion-item">
                                 <h4 class="collapsible-header" data-testid="accordion-toggle">
-                                    <i class="fa fa-chevron-right"></i> Additional Resources
+                                    <i class="fa fa-chevron-right"></i> <span data-i18n="help.resources.title">Additional Resources</span>
                                 </h4>
                                 <div class="collapsible-content" data-testid="accordion-content">
                                     <ul class="resource-links">
                                         <li><a href="https://jwt.io/introduction"
                                                target="_blank" rel="noopener noreferrer">
-                                            <i class="fa fa-external-link"></i> JWT Introduction
+                                            <i class="fa fa-external-link"></i> <span data-i18n="help.resources.jwt">JWT Introduction</span>
                                         </a></li>
                                         <li><a href="https://tools.ietf.org/html/rfc7517"
                                                target="_blank" rel="noopener noreferrer">
-                                            <i class="fa fa-external-link"></i> JWK Specification
+                                            <i class="fa fa-external-link"></i> <span data-i18n="help.resources.jwk">JWK Specification</span>
                                         </a></li>
                                         <li><a href="https://nifi.apache.org/docs.html"
                                                target="_blank" rel="noopener noreferrer">
-                                            <i class="fa fa-external-link"></i> Apache NiFi Docs
+                                            <i class="fa fa-external-link"></i> <span data-i18n="help.resources.nifi">Apache NiFi Docs</span>
                                         </a></li>
                                     </ul>
 
                                     <div class="help-footer">
-                                        <p><strong>Version:</strong> 1.0.0</p>
-                                        <p><strong>Support:</strong> support@cuioss.de</p>
+                                        <p><strong data-i18n="help.footer.version">Version:</strong> 1.0.0</p>
+                                        <p><strong data-i18n="help.footer.support">Support:</strong> support@cuioss.de</p>
                                     </div>
                                 </div>
                             </div>
