@@ -23,6 +23,7 @@ import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.TokenValidator;
+import de.cuioss.sheriff.oauth.core.domain.context.AccessTokenRequest;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
@@ -128,7 +129,7 @@ public class JwtValidationService {
 
         // 4. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
         try {
-            AccessTokenContent tokenContent = validator.createAccessToken(token);
+            AccessTokenContent tokenContent = validator.createAccessToken(AccessTokenRequest.of(token));
             LOGGER.debug("Token validation successful for processor %s", processorId);
             return TokenValidationResult.success(tokenContent);
         } catch (TokenValidationException e) {
