@@ -99,8 +99,8 @@ describe('metrics — non-gateway mode', () => {
 
 const GATEWAY_METRICS = {
     tokenValidation: { valid: 42, expired: 3, invalid_signature: 1 },
-    httpSecurity: { ssrf_blocked: 2, tls_errors: 0 },
-    gatewayEvents: { AUTH_FAILED: 5, ROUTE_NOT_FOUND: 3, REQUEST_TOO_LARGE: 1 }
+    httpSecurity: { invalid_encoding: 2, path_traversal_detected: 1 },
+    gatewayEvents: { AUTH_FAILED: 5, ROUTE_NOT_FOUND: 3, BODY_TOO_LARGE: 1 }
 };
 
 describe('metrics — gateway mode', () => {
@@ -152,21 +152,27 @@ describe('metrics — gateway mode', () => {
         expect(grid.textContent).toContain('3');
     });
 
-    it('should display http security counters', async () => {
+    it('should display all 8 http security types including zero-value ones', async () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));
 
         const grid = document.getElementById('http-security-grid');
-        expect(grid.querySelectorAll('.metric-card').length).toBe(2);
+        // All 8 known HTTP security types shown, not just the 2 with non-zero values
+        expect(grid.querySelectorAll('.metric-card').length).toBe(8);
+        expect(grid.querySelectorAll('.metric-card--active').length).toBe(2);
+        expect(grid.querySelectorAll('.metric-card--zero').length).toBe(6);
         expect(grid.textContent).toContain('2');
     });
 
-    it('should display gateway events counters', async () => {
+    it('should display all 9 gateway event types including zero-value ones', async () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));
 
         const grid = document.getElementById('gateway-events-grid');
-        expect(grid.querySelectorAll('.metric-card').length).toBe(3);
+        // All 9 known event types are shown, not just the 3 with non-zero values
+        expect(grid.querySelectorAll('.metric-card').length).toBe(9);
+        expect(grid.querySelectorAll('.metric-card--active').length).toBe(3);
+        expect(grid.querySelectorAll('.metric-card--zero').length).toBe(6);
         expect(grid.textContent).toContain('5');
     });
 
@@ -179,7 +185,7 @@ describe('metrics — gateway mode', () => {
         expect(grid.textContent).toContain('Invalid Signature');
     });
 
-    it('should show "No data available" for empty counter categories', async () => {
+    it('should show "No data available" for empty token validation and zero tiles for known types', async () => {
         api.fetchGatewayApi.mockResolvedValue({
             tokenValidation: {},
             httpSecurity: {},
@@ -189,8 +195,19 @@ describe('metrics — gateway mode', () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));
 
-        const grid = document.getElementById('token-validation-grid');
-        expect(grid.textContent).toContain('metrics.no.data');
+        // Token validation is fully dynamic — shows "no data" when empty
+        const tokenGrid = document.getElementById('token-validation-grid');
+        expect(tokenGrid.textContent).toContain('metrics.no.data');
+
+        // HTTP security shows all 8 known types with zero values
+        const httpGrid = document.getElementById('http-security-grid');
+        expect(httpGrid.querySelectorAll('.metric-card').length).toBe(8);
+        expect(httpGrid.querySelectorAll('.metric-card--zero').length).toBe(8);
+
+        // Gateway events show all 9 known types with zero values
+        const gwGrid = document.getElementById('gateway-events-grid');
+        expect(gwGrid.querySelectorAll('.metric-card').length).toBe(9);
+        expect(gwGrid.querySelectorAll('.metric-card--zero').length).toBe(9);
     });
 
     it('should show error banner when gateway is unavailable', async () => {
@@ -201,6 +218,22 @@ describe('metrics — gateway mode', () => {
 
         const banner = document.querySelector('.metrics-status-banner.server-error');
         expect(banner).not.toBeNull();
+    });
+
+    it('should show error banner when gateway returns RFC 9457 problem detail', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            type: 'https://example.com/unauthorized',
+            title: 'Unauthorized',
+            status: 401,
+            detail: 'Valid API key required'
+        });
+
+        init(container, true);
+        await new Promise((r) => setTimeout(r, 50));
+
+        const banner = document.querySelector('.metrics-status-banner.server-error');
+        expect(banner).not.toBeNull();
+        expect(utils.log.error).toHaveBeenCalled();
     });
 
     it('should display "Gateway Metrics" as title', async () => {
@@ -310,9 +343,12 @@ describe('metrics — gateway mode', () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));
 
-        // All grids should show "No data available"
+        // Token validation (fully dynamic) shows "no data"
         const tokenGrid = document.getElementById('token-validation-grid');
         expect(tokenGrid.textContent).toContain('metrics.no.data');
+        // HTTP security still shows 8 known types with zero values
+        const httpGrid = document.getElementById('http-security-grid');
+        expect(httpGrid.querySelectorAll('.metric-card').length).toBe(8);
     });
 
     it('should not render JWT-specific elements in gateway mode', async () => {
@@ -322,5 +358,39 @@ describe('metrics — gateway mode', () => {
         expect(document.getElementById('total-validations')).toBeNull();
         expect(document.getElementById('issuer-metrics-list')).toBeNull();
         expect(document.getElementById('error-metrics-list')).toBeNull();
+    });
+
+    it('should discard stale error when a newer refresh already succeeded', async () => {
+        // Simulate: slow initial call hangs, then interval call succeeds first,
+        // then the stale initial call fails — banner should NOT reappear.
+        let slowReject;
+        const slowPromise = new Promise((_, reject) => { slowReject = reject; });
+
+        // First call hangs (simulates startup delay)
+        api.fetchGatewayApi.mockReturnValueOnce(slowPromise);
+        // Second call succeeds immediately
+        api.fetchGatewayApi.mockResolvedValueOnce(GATEWAY_METRICS);
+
+        init(container, true);
+        // Wait a tick for the first (slow) call to start
+        await new Promise((r) => setTimeout(r, 10));
+
+        // Trigger a second refresh (simulates the interval firing)
+        document.getElementById('refresh-metrics-btn').click();
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Data should be loaded, no error banner
+        const grid = document.getElementById('token-validation-grid');
+        expect(grid.querySelectorAll('.metric-card').length).toBe(3);
+        expect(document.querySelector('.metrics-status-banner')).toBeNull();
+
+        // Now the stale initial call finally fails
+        slowReject(new Error('Stale network error'));
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Banner should NOT appear because the stale call was superseded
+        expect(document.querySelector('.metrics-status-banner')).toBeNull();
+        // Data should still be visible
+        expect(grid.querySelectorAll('.metric-card').length).toBe(3);
     });
 });

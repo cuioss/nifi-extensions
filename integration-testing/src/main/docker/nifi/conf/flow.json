@@ -958,7 +958,6 @@
               "rest.gateway.max.request.size": "1048576",
               "rest.gateway.request.queue.size": "50",
               "rest.gateway.cors.allowed.origins": "http://localhost:3000",
-              "rest.gateway.management.api-key": "integration-test-api-key",
               "restapi.health.path": "/api/health",
               "restapi.health.methods": "GET",
               "restapi.data.path": "/api/data",
@@ -1005,11 +1004,6 @@
               },
               "rest.gateway.cors.allowed.origins": {
                 "name": "rest.gateway.cors.allowed.origins",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "rest.gateway.management.api-key": {
-                "name": "rest.gateway.management.api-key",
                 "identifiesControllerService": false,
                 "sensitive": false
               },

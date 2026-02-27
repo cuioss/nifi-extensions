@@ -48,7 +48,8 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
  *   <li>{@code /api/validated} — POST only (JSON Schema validated via file path)</li>
  *   <li>{@code /api/inline-validated} — POST only (JSON Schema validated via inline JSON)</li>
- *   <li>{@code /metrics} — GET only (management, API key required)</li>
+ *   <li>{@code /metrics} — GET only (management, loopback or JWT auth)</li>
+ *   <li>{@code /health} — GET only (management, loopback or JWT auth)</li>
  * </ul>
  *
  * <p>Requires Docker containers to be running (NiFi on port 9443, Keycloak on 9080).
@@ -60,7 +61,6 @@ class RestApiGatewayIT {
 
     private static RequestSpecification authSpec;
     private static RequestSpecification noAuthSpec;
-    private static RequestSpecification apiKeySpec;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -81,11 +81,6 @@ class RestApiGatewayIT {
 
         noAuthSpec = new RequestSpecBuilder()
                 .setBaseUri(GATEWAY_BASE)
-                .build();
-
-        apiKeySpec = new RequestSpecBuilder()
-                .setBaseUri(GATEWAY_BASE)
-                .addHeader("X-Api-Key", MANAGEMENT_API_KEY)
                 .build();
     }
 
@@ -201,10 +196,14 @@ class RestApiGatewayIT {
     @DisplayName("Management Endpoints")
     class ManagementEndpointTests {
 
+        // Note: integration tests connect from the host through Docker port forwarding,
+        // so the gateway sees the Docker bridge IP — loopback bypass does NOT apply.
+        // All management tests must use JWT Bearer auth.
+
         @Test
-        @DisplayName("should return 200 with Prometheus metrics for GET /metrics with API key")
+        @DisplayName("should return 200 with Prometheus metrics via JWT Bearer auth")
         void shouldReturnPrometheusMetrics() {
-            given().spec(apiKeySpec)
+            given().spec(authSpec)
                     .when()
                     .get("/metrics")
                     .then()
@@ -217,7 +216,7 @@ class RestApiGatewayIT {
         @Test
         @DisplayName("should return 200 with JSON metrics when Accept: application/json")
         void shouldReturnJsonMetrics() {
-            given().spec(apiKeySpec)
+            given().spec(authSpec)
                     .accept(ContentType.JSON)
                     .when()
                     .get("/metrics")
@@ -231,7 +230,7 @@ class RestApiGatewayIT {
         @Test
         @DisplayName("should return 405 for POST on /metrics")
         void shouldReturn405ForPostOnMetrics() {
-            given().spec(apiKeySpec)
+            given().spec(authSpec)
                     .when()
                     .post("/metrics")
                     .then()
@@ -239,8 +238,8 @@ class RestApiGatewayIT {
         }
 
         @Test
-        @DisplayName("should return 401 for GET /metrics without API key")
-        void shouldReturn401ForMetricsWithoutApiKey() {
+        @DisplayName("should return 401 for GET /metrics without auth")
+        void shouldReturn401ForMetricsWithoutAuth() {
             given().spec(noAuthSpec)
                     .when()
                     .get("/metrics")
@@ -249,12 +248,45 @@ class RestApiGatewayIT {
         }
 
         @Test
-        @DisplayName("should return 401 for GET /metrics with wrong API key")
-        void shouldReturn401ForMetricsWithWrongApiKey() {
+        @DisplayName("should return 401 for GET /metrics with invalid JWT")
+        void shouldReturn401ForMetricsWithInvalidJwt() {
             given().spec(noAuthSpec)
-                    .header("X-Api-Key", "wrong-api-key")
+                    .header("Authorization", "Bearer not-a-valid-jwt")
                     .when()
                     .get("/metrics")
+                    .then()
+                    .statusCode(401);
+        }
+
+        @Test
+        @DisplayName("should return 200 for GET /health via JWT Bearer auth")
+        void shouldReturnHealthWithBearerToken() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/health")
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("application/json"))
+                    .body("status", equalTo("UP"))
+                    .body("timestamp", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 405 for POST on /health")
+        void shouldReturn405ForPostOnHealth() {
+            given().spec(authSpec)
+                    .when()
+                    .post("/health")
+                    .then()
+                    .statusCode(405);
+        }
+
+        @Test
+        @DisplayName("should return 401 for GET /health without auth")
+        void shouldReturn401ForHealthWithoutAuth() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/health")
                     .then()
                     .statusCode(401);
         }

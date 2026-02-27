@@ -14,6 +14,21 @@ let lastMetricsData = null;
 let metricsInterval = null;
 let metricsEndpointAvailable = true;
 let _isGateway = false;
+let _refreshGeneration = 0;
+
+/** All known gateway event types — shown even when zero to give a complete dashboard view. */
+const GATEWAY_EVENT_TYPES = [
+    'MISSING_BEARER_TOKEN', 'AUTH_FAILED', 'AUTHZ_ROLE_DENIED', 'AUTHZ_SCOPE_DENIED',
+    'BODY_TOO_LARGE', 'ROUTE_NOT_FOUND', 'METHOD_NOT_ALLOWED', 'SCHEMA_VALIDATION_FAILED',
+    'QUEUE_FULL'
+];
+
+/** Key HTTP security event types from cui-http UrlSecurityFailureType — curated subset. */
+const HTTP_SECURITY_TYPES = [
+    'invalid_encoding', 'path_traversal_detected', 'null_byte_injection',
+    'control_characters', 'suspicious_pattern_detected', 'known_attack_signature',
+    'protocol_violation', 'malformed_url'
+];
 
 // ---------------------------------------------------------------------------
 // Templates
@@ -131,6 +146,7 @@ export const cleanup = () => {
     if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
     metricsEndpointAvailable = true;
     _isGateway = false;
+    _refreshGeneration = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -150,10 +166,22 @@ const refreshMetrics = async () => {
         showNotAvailable();
         return;
     }
+    // Generation counter prevents stale in-flight requests from overwriting
+    // a successful display — e.g. when the initial fetch hangs during startup
+    // and the interval fires a second call that succeeds first.
+    const gen = ++_refreshGeneration;
     try {
         const raw = await fetchGatewayApi('/metrics');
+        if (gen !== _refreshGeneration) return; // superseded by a newer call
+        // Validate response structure — gateway errors may arrive as RFC 9457 problem detail
+        if (!raw || (raw.type && raw.status && !raw.tokenValidation)) {
+            log.error('Metrics endpoint returned error:', raw?.title, raw?.detail);
+            showError();
+            return;
+        }
         updateGatewayDisplay(raw);
     } catch (error) {
+        if (gen !== _refreshGeneration) return; // superseded by a newer call
         log.error('Failed to refresh metrics:', error);
         if (error.status === 404) {
             metricsEndpointAvailable = false;
@@ -171,30 +199,54 @@ const refreshMetrics = async () => {
 const formatCounterName = (key) =>
     key.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-const renderCounterGrid = (containerId, counters) => {
+/**
+ * Render a counter grid with optional known-key expansion.
+ * @param {string} containerId  target grid element ID
+ * @param {Object} counters     key→value counter map from the API
+ * @param {string[]} [allKeys]  when provided, all keys are shown (zero-value ones included)
+ */
+const renderCounterGrid = (containerId, counters, allKeys) => {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const entries = Object.entries(counters);
-    if (entries.length === 0) {
+    // Build merged entries: if allKeys supplied, fill in zeros for missing keys,
+    // then append any unknown keys from the response (future-proofing)
+    const merged = allKeys
+        ? [
+            ...allKeys.map((key) => [key, counters[key] ?? 0]),
+            ...Object.entries(counters).filter(([key]) => !allKeys.includes(key))
+        ]
+        : Object.entries(counters);
+
+    if (merged.length === 0) {
         container.innerHTML = `<div class="no-data">${t('metrics.no.data')}</div>`;
         return;
     }
 
-    container.innerHTML = entries.map(([key, value]) =>
-        `<div class="metric-card">
+    const total = merged.reduce((sum, [, v]) => sum + v, 0);
+
+    container.innerHTML =
+        `<div class="section-summary">${t('metrics.section.total', formatNumber(total))}</div>` +
+        merged.map(([key, value]) => {
+            const cls = value > 0 ? 'metric-card metric-card--active' : 'metric-card metric-card--zero';
+            return `<div class="${cls}">
             <h5>${sanitizeHtml(formatCounterName(key))}</h5>
             <div class="metric-value">${formatNumber(value)}</div>
-        </div>`
-    ).join('');
+        </div>`;
+        }).join('');
 };
 
 const updateGatewayDisplay = (data) => {
     lastMetricsData = data;
 
+    // Clear any previous error banner on successful data load
+    const el = document.getElementById('jwt-metrics-content');
+    const existingBanner = el?.querySelector('.metrics-status-banner');
+    if (existingBanner) existingBanner.remove();
+
     renderCounterGrid('token-validation-grid', data.tokenValidation || {});
-    renderCounterGrid('http-security-grid', data.httpSecurity || {});
-    renderCounterGrid('gateway-events-grid', data.gatewayEvents || {});
+    renderCounterGrid('http-security-grid', data.httpSecurity || {}, HTTP_SECURITY_TYPES);
+    renderCounterGrid('gateway-events-grid', data.gatewayEvents || {}, GATEWAY_EVENT_TYPES);
 
     const lu = document.querySelector('[data-testid="last-updated"]');
     if (lu) lu.textContent = t('metrics.last.updated', formatDate(new Date()));

@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
@@ -25,18 +26,22 @@ import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
-import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 
 /**
- * Handles the reserved {@code /metrics} management endpoint on the gateway's
- * embedded Jetty server.
+ * Handles the reserved management endpoints ({@code /metrics}, {@code /health})
+ * on the gateway's embedded Jetty server.
  * <p>
- * This endpoint bypasses the authentication and authorization pipeline —
- * it is intended for external monitoring tools (Prometheus) and the NiFi UI WAR's
- * {@code GatewayProxyServlet}.
+ * <strong>Authentication hierarchy</strong> (checked in order):
+ * <ol>
+ *   <li>Loopback IP (127.0.0.1, ::1) — always allowed, no credentials needed</li>
+ *   <li>Valid {@code Authorization: Bearer <jwt>} — validated via
+ *       {@link JwtIssuerConfigService#validateToken(String)}</li>
+ *   <li>Otherwise — 401 Unauthorized</li>
+ * </ol>
  * <p>
  * Metrics are aggregated from three sources:
  * <ol>
@@ -50,33 +55,32 @@ public class ManagementEndpointHandler {
     private static final CuiLogger LOGGER = new CuiLogger(ManagementEndpointHandler.class);
 
     static final String METRICS_PATH = "/metrics";
+    static final String HEALTH_PATH = "/health";
 
     private static final String PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
     private static final String JSON_CONTENT_TYPE = "application/json";
-    private static final String API_KEY_HEADER = "X-Api-Key";
+    private static final String IPV4_LOOPBACK = "127.0.0.1";
+    private static final String IPV6_LOOPBACK = "::1";
+    private static final int BEARER_PREFIX_LENGTH = 7;
 
     private final JwtIssuerConfigService configService;
     private final SecurityEventCounter httpSecurityEvents;
     private final GatewaySecurityEvents gatewaySecurityEvents;
-    @Nullable private final String managementApiKey;
 
     /**
      * Creates a new management endpoint handler.
      *
-     * @param configService         JWT issuer config service (for token validation metrics)
+     * @param configService         JWT issuer config service (for token validation and metrics)
      * @param httpSecurityEvents    cui-http transport security event counter
      * @param gatewaySecurityEvents application-level gateway security events
-     * @param managementApiKey      API key for management endpoint auth, or {@code null} to allow unauthenticated access
      */
     public ManagementEndpointHandler(
             JwtIssuerConfigService configService,
             SecurityEventCounter httpSecurityEvents,
-            GatewaySecurityEvents gatewaySecurityEvents,
-            @Nullable String managementApiKey) {
+            GatewaySecurityEvents gatewaySecurityEvents) {
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
-        this.managementApiKey = managementApiKey;
     }
 
     /**
@@ -85,7 +89,7 @@ public class ManagementEndpointHandler {
      * @param path     the request path
      * @param method   the HTTP method
      * @param accept   the Accept header value (may be null)
-     * @param request  the Jetty request (used to read API key header)
+     * @param request  the Jetty request
      * @param response the Jetty response
      * @param callback the Jetty callback
      * @return {@code true} if the path was a management endpoint (response was sent),
@@ -93,24 +97,83 @@ public class ManagementEndpointHandler {
      */
     public boolean handleIfManagement(String path, String method, String accept,
                                       Request request, Response response, Callback callback) {
-        if (!METRICS_PATH.equals(path)) {
+        if (!METRICS_PATH.equals(path) && !HEALTH_PATH.equals(path)) {
             return false;
         }
-        if (managementApiKey != null && !managementApiKey.isEmpty()) {
-            String providedKey = request.getHeaders().get(API_KEY_HEADER);
-            if (!managementApiKey.equals(providedKey)) {
-                LOGGER.debug("Management endpoint access denied — invalid or missing API key");
-                sendUnauthorized(response, callback);
-                return true;
-            }
+        if (!isAuthorized(request)) {
+            LOGGER.debug("Management endpoint access denied — not loopback and no valid Bearer token");
+            sendUnauthorized(response, callback);
+            return true;
         }
         if (!"GET".equalsIgnoreCase(method)) {
             sendMethodNotAllowed(response, callback);
             return true;
         }
-        LOGGER.debug("Serving management endpoint: /metrics");
-        writeMetricsResponse(response, callback, accept);
+        if (HEALTH_PATH.equals(path)) {
+            LOGGER.debug("Serving management endpoint: /health");
+            writeHealthResponse(response, callback);
+        } else {
+            LOGGER.debug("Serving management endpoint: /metrics");
+            writeMetricsResponse(response, callback, accept);
+        }
         return true;
+    }
+
+    // -----------------------------------------------------------------------
+    // Authorization
+    // -----------------------------------------------------------------------
+
+    /**
+     * Checks if the request is authorized to access management endpoints.
+     * Loopback requests are always allowed; otherwise a valid Bearer token is required.
+     */
+    private boolean isAuthorized(Request request) {
+        if (isLoopbackRequest(request)) {
+            return true;
+        }
+        return hasValidBearerToken(request);
+    }
+
+    /**
+     * Returns {@code true} if the request originates from a loopback address.
+     */
+    static boolean isLoopbackRequest(Request request) {
+        String remoteAddr = Request.getRemoteAddr(request);
+        return IPV4_LOOPBACK.equals(remoteAddr) || IPV6_LOOPBACK.equals(remoteAddr);
+    }
+
+    /**
+     * Returns {@code true} if the request has a valid JWT Bearer token.
+     */
+    private boolean hasValidBearerToken(Request request) {
+        String authHeader = request.getHeaders().get(HttpHeader.AUTHORIZATION);
+        if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, BEARER_PREFIX_LENGTH)) {
+            return false;
+        }
+        String rawToken = authHeader.substring(BEARER_PREFIX_LENGTH).trim();
+        if (rawToken.isEmpty()) {
+            return false;
+        }
+        try {
+            configService.validateToken(rawToken);
+            return true;
+        } catch (TokenValidationException e) {
+            LOGGER.debug("Management endpoint Bearer token validation failed: %s", e.getMessage());
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // /health endpoint
+    // -----------------------------------------------------------------------
+
+    private static void writeHealthResponse(Response response, Callback callback) {
+        String body = Json.createObjectBuilder()
+                .add("status", "UP")
+                .add("timestamp", Instant.now().toString())
+                .build()
+                .toString();
+        sendResponse(response, callback, JSON_CONTENT_TYPE, body);
     }
 
     // -----------------------------------------------------------------------
@@ -232,7 +295,7 @@ public class ManagementEndpointHandler {
 
     private static void sendUnauthorized(Response response, Callback callback) {
         ProblemDetail problem = ProblemDetail.unauthorized(
-                "Valid API key required in X-Api-Key header");
+                "Valid Bearer token or loopback access required");
         byte[] body = problem.toJson().getBytes(StandardCharsets.UTF_8);
         response.setStatus(401);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, ProblemDetail.CONTENT_TYPE);

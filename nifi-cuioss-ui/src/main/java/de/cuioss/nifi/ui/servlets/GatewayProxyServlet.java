@@ -62,24 +62,20 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final JsonReaderFactory JSON_READER = Json.createReaderFactory(Map.of());
 
     private static final String CONTENT_TYPE_JSON = "application/json";
-    static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics");
+    static final Set<String> ALLOWED_MANAGEMENT_PATHS = Set.of("/metrics", "/health");
     private static final String CONFIG_PATH = "/config";
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
     static final String GATEWAY_PORT_PROPERTY = "rest.gateway.listening.port";
-    static final String MANAGEMENT_API_KEY_PROPERTY = "rest.gateway.management.api-key";
     private static final String MAX_REQUEST_SIZE_PROPERTY = "rest.gateway.max.request.size";
     private static final String QUEUE_SIZE_PROPERTY = "rest.gateway.request.queue.size";
     private static final String SSL_CONTEXT_SERVICE_PROPERTY = "rest.gateway.ssl.context.service";
     private static final String CORS_ALLOWED_ORIGINS_PROPERTY = "rest.gateway.cors.allowed.origins";
     private static final String LISTENING_HOST_PROPERTY = "rest.gateway.listening.host";
     private static final String ROUTE_PREFIX = "restapi.";
-    private static final String API_KEY_HEADER = "X-Api-Key";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
 
     /** Cached gateway ports by processor ID. */
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
-    /** Cached management API keys by processor ID. */
-    private final Map<String, String> apiKeyCache = new ConcurrentHashMap<>();
     /** Cached gateway protocol (http or https) by processor ID. */
     private final Map<String, String> protocolCache = new ConcurrentHashMap<>();
 
@@ -123,13 +119,12 @@ public class GatewayProxyServlet extends HttpServlet {
             int port = resolveGatewayPort(processorId, req);
             String protocol = protocolCache.getOrDefault(processorId, "http");
             String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
-            String apiKey = apiKeyCache.get(processorId);
-            String gatewayResponse = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON, apiKey);
+            GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
 
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding("UTF-8");
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getOutputStream().write(gatewayResponse.getBytes(StandardCharsets.UTF_8));
+            resp.setStatus(gwResp.statusCode());
+            resp.getOutputStream().write(gwResp.body().getBytes(StandardCharsets.UTF_8));
 
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
@@ -264,19 +259,6 @@ public class GatewayProxyServlet extends HttpServlet {
         protocolCache.put(processorId,
                 (sslCs != null && !sslCs.isBlank()) ? "https" : "http");
 
-        // The management API key is marked as sensitive in the processor descriptor,
-        // so NiFi's internal API redacts its value. Fall back to the REST API to
-        // retrieve the actual value when the internal API returns null/blank.
-        String apiKey = properties.get(MANAGEMENT_API_KEY_PROPERTY);
-        if (apiKey == null || apiKey.isBlank()) {
-            Map<String, String> restProps =
-                    reader.getProcessorPropertiesViaRest(processorId, request);
-            apiKey = restProps.get(MANAGEMENT_API_KEY_PROPERTY);
-        }
-        if (apiKey != null && !apiKey.isBlank()) {
-            apiKeyCache.put(processorId, apiKey);
-        }
-
         return port;
     }
 
@@ -310,14 +292,15 @@ public class GatewayProxyServlet extends HttpServlet {
 
     /**
      * Executes a GET request to the gateway management API.
+     * Authentication is handled transparently via loopback bypass (requests
+     * originate from localhost).
      *
      * @param url    full gateway URL
      * @param accept Accept header value
-     * @param apiKey management API key, or {@code null} if not configured
-     * @return gateway response body
+     * @return gateway response with status code and body
      * @throws IOException on communication error
      */
-    protected String executeGatewayGet(String url, String accept, String apiKey)
+    protected GatewayGetResponse executeGatewayGet(String url, String accept)
             throws IOException {
         try {
             HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
@@ -329,13 +312,10 @@ public class GatewayProxyServlet extends HttpServlet {
             if (accept != null && !accept.isBlank()) {
                 builder.header("Accept", accept);
             }
-            if (apiKey != null && !apiKey.isBlank()) {
-                builder.header(API_KEY_HEADER, apiKey);
-            }
 
             HttpResponse<String> response = client.send(builder.build(),
                     HttpResponse.BodyHandlers.ofString());
-            return response.body();
+            return new GatewayGetResponse(response.statusCode(), response.body());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -391,6 +371,10 @@ public class GatewayProxyServlet extends HttpServlet {
     // -----------------------------------------------------------------------
     // Internal
     // -----------------------------------------------------------------------
+
+    /** Gateway GET response wrapper (status code + body). */
+    record GatewayGetResponse(int statusCode, String body) {
+    }
 
     /** Gateway response wrapper for the /test endpoint. */
     record GatewayResponse(int statusCode, String body, Map<String, String> headers) {

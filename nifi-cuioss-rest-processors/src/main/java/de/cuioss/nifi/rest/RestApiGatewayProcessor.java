@@ -70,8 +70,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
-            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS,
-            RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY);
+            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
@@ -149,12 +148,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 .asControllerService(SSLContextProvider.class);
         SSLContext sslContext = (sslProvider != null) ? sslProvider.createContext() : null;
 
-        // Resolve optional management API key
-        var mgmtApiKeyProp = context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_API_KEY);
-        String managementApiKey = mgmtApiKeyProp.isSet() ? mgmtApiKeyProp.getValue() : null;
-
-        // Enable management endpoint (/metrics)
-        handler.configureManagementEndpoints(managementApiKey);
+        // Enable management endpoints (/metrics, /health)
+        handler.configureManagementEndpoints();
 
         // Resolve optional listening host
         String host = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_HOST).getValue();

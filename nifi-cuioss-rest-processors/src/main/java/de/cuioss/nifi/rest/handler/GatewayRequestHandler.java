@@ -169,15 +169,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     /**
-     * Configures the management endpoint ({@code /metrics}) on this handler.
+     * Configures the management endpoints ({@code /metrics}, {@code /health}) on this handler.
      * Must be called after construction to enable management API access.
-     *
-     * @param managementApiKey  API key for management endpoint auth, or {@code null} for unauthenticated access
+     * <p>
+     * Authentication uses loopback bypass (127.0.0.1/::1) and JWT Bearer token validation.
      */
-    public void configureManagementEndpoints(@Nullable String managementApiKey) {
+    public void configureManagementEndpoints() {
         this.managementHandler = new ManagementEndpointHandler(
-                configService, httpSecurityEvents, gatewaySecurityEvents,
-                managementApiKey);
+                configService, httpSecurityEvents, gatewaySecurityEvents);
     }
 
 
