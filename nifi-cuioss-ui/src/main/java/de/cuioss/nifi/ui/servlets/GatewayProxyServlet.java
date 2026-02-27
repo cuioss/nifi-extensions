@@ -124,12 +124,12 @@ public class GatewayProxyServlet extends HttpServlet {
             String protocol = protocolCache.getOrDefault(processorId, "http");
             String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
             String apiKey = apiKeyCache.get(processorId);
-            String gatewayResponse = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON, apiKey);
+            GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON, apiKey);
 
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding("UTF-8");
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getOutputStream().write(gatewayResponse.getBytes(StandardCharsets.UTF_8));
+            resp.setStatus(gwResp.statusCode());
+            resp.getOutputStream().write(gwResp.body().getBytes(StandardCharsets.UTF_8));
 
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
@@ -264,15 +264,8 @@ public class GatewayProxyServlet extends HttpServlet {
         protocolCache.put(processorId,
                 (sslCs != null && !sslCs.isBlank()) ? "https" : "http");
 
-        // The management API key is marked as sensitive in the processor descriptor,
-        // so NiFi's internal API redacts its value. Fall back to the REST API to
-        // retrieve the actual value when the internal API returns null/blank.
+        // Cache management API key (may be null/blank if not configured)
         String apiKey = properties.get(MANAGEMENT_API_KEY_PROPERTY);
-        if (apiKey == null || apiKey.isBlank()) {
-            Map<String, String> restProps =
-                    reader.getProcessorPropertiesViaRest(processorId, request);
-            apiKey = restProps.get(MANAGEMENT_API_KEY_PROPERTY);
-        }
         if (apiKey != null && !apiKey.isBlank()) {
             apiKeyCache.put(processorId, apiKey);
         }
@@ -314,10 +307,10 @@ public class GatewayProxyServlet extends HttpServlet {
      * @param url    full gateway URL
      * @param accept Accept header value
      * @param apiKey management API key, or {@code null} if not configured
-     * @return gateway response body
+     * @return gateway response with status code and body
      * @throws IOException on communication error
      */
-    protected String executeGatewayGet(String url, String accept, String apiKey)
+    protected GatewayGetResponse executeGatewayGet(String url, String accept, String apiKey)
             throws IOException {
         try {
             HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
@@ -335,7 +328,7 @@ public class GatewayProxyServlet extends HttpServlet {
 
             HttpResponse<String> response = client.send(builder.build(),
                     HttpResponse.BodyHandlers.ofString());
-            return response.body();
+            return new GatewayGetResponse(response.statusCode(), response.body());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -391,6 +384,10 @@ public class GatewayProxyServlet extends HttpServlet {
     // -----------------------------------------------------------------------
     // Internal
     // -----------------------------------------------------------------------
+
+    /** Gateway GET response wrapper (status code + body). */
+    record GatewayGetResponse(int statusCode, String body) {
+    }
 
     /** Gateway response wrapper for the /test endpoint. */
     record GatewayResponse(int statusCode, String body, Map<String, String> headers) {

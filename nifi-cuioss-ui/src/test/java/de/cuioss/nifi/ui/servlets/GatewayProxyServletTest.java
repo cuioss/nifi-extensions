@@ -54,6 +54,10 @@ class GatewayProxyServletTest {
     private static final AtomicReference<String> gatewayGetResponse =
             new AtomicReference<>(SAMPLE_CONFIG_JSON);
 
+    /** Configurable GET response status code — reset before each test. */
+    private static final AtomicReference<Integer> gatewayGetStatusCode =
+            new AtomicReference<>(200);
+
     /** When true, all gateway operations throw IOException. */
     private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
 
@@ -106,9 +110,9 @@ class GatewayProxyServletTest {
                     }
 
                     @Override
-                    protected String executeGatewayGet(String url, String accept, String apiKey) throws IOException {
+                    protected GatewayGetResponse executeGatewayGet(String url, String accept, String apiKey) throws IOException {
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
-                        return gatewayGetResponse.get();
+                        return new GatewayGetResponse(gatewayGetStatusCode.get(), gatewayGetResponse.get());
                     }
 
                     @Override
@@ -130,6 +134,7 @@ class GatewayProxyServletTest {
     @BeforeEach
     void resetBehavior() {
         gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
+        gatewayGetStatusCode.set(200);
         gatewayFailing.set(false);
         processorProperties.set(createDefaultProperties());
     }
@@ -242,6 +247,22 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .body(containsString("nifi_jwt_validations_total"));
+        }
+
+        @Test
+        @DisplayName("Should forward gateway error status code for metrics")
+        void shouldForwardGatewayErrorStatusForMetrics() {
+            gatewayGetStatusCode.set(401);
+            gatewayGetResponse.set("""
+                    {"type":"about:blank","title":"Unauthorized","status":401,"detail":"API key required"}""");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(401)
+                    .body("title", equalTo("Unauthorized"));
         }
 
         @Test
