@@ -199,21 +199,15 @@ gatewayTest.describe("Context Help — Gateway", () => {
                 "true",
             );
 
-            // Run axe-core on the page
+            // Run axe-core scoped to the global settings area only
+            // (avoids pre-existing NiFi platform violations)
             const results = await new AxeBuilder({ page })
+                .include(".global-settings-display")
                 .withTags(["wcag2a", "wcag2aa"])
+                .disableRules(["region"])
                 .analyze();
 
-            // Filter out known NiFi-platform violations (not from our code)
-            const knownPlatformRules = [
-                "color-contrast",
-                "frame-title",
-                "button-name", // NiFi Angular Material menu button
-            ];
-            const ownViolations = results.violations.filter(
-                (v) => !knownPlatformRules.includes(v.id),
-            );
-            expect(ownViolations).toEqual([]);
+            expect(results.violations).toEqual([]);
         },
     );
 });
