@@ -14,6 +14,7 @@ import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
+import { createContextHelp } from './context-help.js';
 
 // Counter for unique form field IDs
 let formCounter = 0;
@@ -155,9 +156,24 @@ const getGlobalSettingsKeys = () => ({
     'rest.gateway.listening.host': t('route.global.listening.host')
 });
 
+const GLOBAL_HELP_KEYS = {
+    'rest.gateway.listening.port': 'contexthelp.global.listening.port',
+    'rest.gateway.max.request.size': 'contexthelp.global.max.request.size',
+    'rest.gateway.request.queue.size': 'contexthelp.global.queue.size',
+    'rest.gateway.ssl.context.service': 'contexthelp.global.ssl.enabled',
+    'rest.gateway.cors.allowed.origins': 'contexthelp.global.cors.origins',
+    'rest.gateway.listening.host': 'contexthelp.global.listening.host'
+};
+
 const renderGlobalSettings = (container, properties) => {
     const settingsEl = container.querySelector('.global-settings-display');
-    const rows = [];
+    settingsEl.innerHTML = `<h3>${t('route.global.heading')}</h3>`;
+
+    const table = document.createElement('table');
+    table.className = 'config-table';
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+
     for (const [key, label] of Object.entries(getGlobalSettingsKeys())) {
         const value = properties[key];
         let display;
@@ -168,13 +184,43 @@ const renderGlobalSettings = (container, properties) => {
         } else {
             display = value || t('common.na');
         }
-        rows.push(`<tr><td>${sanitizeHtml(label)}</td><td>${sanitizeHtml(display)}</td></tr>`);
+
+        // Data row with label, value, and help button
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('td');
+        labelCell.textContent = label;
+        row.appendChild(labelCell);
+
+        const valueCell = document.createElement('td');
+        valueCell.textContent = display;
+        row.appendChild(valueCell);
+
+        const helpCell = document.createElement('td');
+        const helpKey = GLOBAL_HELP_KEYS[key];
+        if (helpKey) {
+            const { button, panel } = createContextHelp({
+                helpKey, propertyKey: key, currentValue: display
+            });
+            helpCell.appendChild(button);
+
+            // Hidden row for the disclosure panel
+            const panelRow = document.createElement('tr');
+            panelRow.className = 'context-help-row';
+            const panelCell = document.createElement('td');
+            panelCell.setAttribute('colspan', '3');
+            panelCell.appendChild(panel);
+            panelRow.appendChild(panelCell);
+
+            row.appendChild(helpCell);
+            tbody.appendChild(row);
+            tbody.appendChild(panelRow);
+        } else {
+            row.appendChild(helpCell);
+            tbody.appendChild(row);
+        }
     }
-    settingsEl.innerHTML = `
-        <h3>${t('route.global.heading')}</h3>
-        <table class="config-table">
-            <tbody>${rows.join('')}</tbody>
-        </table>`;
+
+    settingsEl.appendChild(table);
 };
 
 const formatBytes = (bytes) => {
@@ -409,22 +455,54 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     const enabledVal = properties?.enabled !== 'false';
     const hasSchema = !!(properties?.schema && properties.schema.trim());
 
+    const rn = routeName || '*';
+
     // ---- header (name + enabled) ----
     const header = document.createElement('div');
     header.className = 'form-header';
-    header.innerHTML = `
-        <label for="route-name-${idx}">${t('route.form.name.label')}:</label>
-        <input type="text" id="route-name-${idx}" class="route-name"
-               placeholder="${t('route.form.name.placeholder')}"
-               title="${t('route.form.name.title')}"
-               aria-label="${t('route.form.name.label')}"
-               value="${sanitizeHtml(routeName || '')}">
-        <label class="route-enabled-label" for="route-enabled-${idx}">
-            <input type="checkbox" id="route-enabled-${idx}" class="route-enabled"
-                   ${enabledVal ? 'checked' : ''}
-                   aria-label="Route Enabled">
-            ${t('route.form.enabled')}
-        </label>`;
+
+    const nameLabel = document.createElement('label');
+    nameLabel.setAttribute('for', `route-name-${idx}`);
+    nameLabel.textContent = `${t('route.form.name.label')}:`;
+    const nameHelp = createContextHelp({
+        helpKey: 'contexthelp.route.name',
+        propertyKey: `restapi.${rn}.*`,
+        currentValue: routeName
+    });
+    nameLabel.appendChild(nameHelp.button);
+    header.appendChild(nameLabel);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = `route-name-${idx}`;
+    nameInput.className = 'route-name';
+    nameInput.placeholder = t('route.form.name.placeholder');
+    nameInput.title = t('route.form.name.title');
+    nameInput.setAttribute('aria-label', t('route.form.name.label'));
+    nameInput.value = routeName || '';
+    header.appendChild(nameInput);
+
+    const enabledLabel = document.createElement('label');
+    enabledLabel.className = 'route-enabled-label';
+    enabledLabel.setAttribute('for', `route-enabled-${idx}`);
+    const enabledCheckbox = document.createElement('input');
+    enabledCheckbox.type = 'checkbox';
+    enabledCheckbox.id = `route-enabled-${idx}`;
+    enabledCheckbox.className = 'route-enabled';
+    if (enabledVal) enabledCheckbox.checked = true;
+    enabledCheckbox.setAttribute('aria-label', 'Route Enabled');
+    enabledLabel.appendChild(enabledCheckbox);
+    enabledLabel.append(` ${t('route.form.enabled')}`);
+    const enabledHelp = createContextHelp({
+        helpKey: 'contexthelp.route.enabled',
+        propertyKey: `restapi.${rn}.enabled`,
+        currentValue: String(enabledVal)
+    });
+    enabledLabel.appendChild(enabledHelp.button);
+    header.appendChild(enabledLabel);
+
+    header.appendChild(nameHelp.panel);
+    header.appendChild(enabledHelp.panel);
     form.appendChild(header);
 
     // ---- form fields ----
@@ -434,26 +512,47 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     addField({ container: fields, idx, name: 'path', label: t('route.form.path.label'),
         placeholder: t('route.form.path.placeholder'),
-        value: properties?.path });
+        value: properties?.path,
+        helpKey: 'contexthelp.route.path', propertyKey: `restapi.${rn}.path`,
+        currentValue: properties?.path });
     createMethodChipInput({ container: fields, idx, value: properties?.methods });
     addField({ container: fields, idx, name: 'required-roles', label: t('route.form.roles.label'),
         placeholder: t('route.form.roles.placeholder'),
-        value: properties?.['required-roles'] });
+        value: properties?.['required-roles'],
+        helpKey: 'contexthelp.route.roles', propertyKey: `restapi.${rn}.required-roles`,
+        currentValue: properties?.['required-roles'] });
     addField({ container: fields, idx, name: 'required-scopes', label: t('route.form.scopes.label'),
         placeholder: t('route.form.scopes.placeholder'),
-        value: properties?.['required-scopes'] });
+        value: properties?.['required-scopes'],
+        helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
+        currentValue: properties?.['required-scopes'] });
 
     // ---- create-flowfile checkbox + success-outcome field ----
     const createFlowFileVal = properties?.['create-flowfile'] !== 'false';
     const flowFileToggle = document.createElement('div');
     flowFileToggle.className = 'form-field field-container-create-flowfile';
-    flowFileToggle.innerHTML = `
-        <label class="create-flowfile-label" for="create-flowfile-${idx}">
-            <input type="checkbox" id="create-flowfile-${idx}" class="create-flowfile-checkbox"
-                   ${createFlowFileVal ? 'checked' : ''}
-                   aria-label="Create FlowFile">
-            ${t('route.form.create.flowfile')}
-        </label>`;
+    const flowfileLabel = document.createElement('label');
+    flowfileLabel.className = 'create-flowfile-label';
+    flowfileLabel.setAttribute('for', `create-flowfile-${idx}`);
+
+    const flowfileCheckbox = document.createElement('input');
+    flowfileCheckbox.type = 'checkbox';
+    flowfileCheckbox.id = `create-flowfile-${idx}`;
+    flowfileCheckbox.className = 'create-flowfile-checkbox';
+    if (createFlowFileVal) flowfileCheckbox.checked = true;
+    flowfileCheckbox.setAttribute('aria-label', 'Create FlowFile');
+    flowfileLabel.appendChild(flowfileCheckbox);
+    flowfileLabel.append(` ${t('route.form.create.flowfile')}`);
+
+    const flowfileHelp = createContextHelp({
+        helpKey: 'contexthelp.route.create.flowfile',
+        propertyKey: `restapi.${rn}.create-flowfile`,
+        currentValue: String(createFlowFileVal)
+    });
+    flowfileLabel.appendChild(flowfileHelp.button);
+
+    flowFileToggle.appendChild(flowfileLabel);
+    flowFileToggle.appendChild(flowfileHelp.panel);
     form.appendChild(flowFileToggle);
 
     const outcomeContainer = document.createElement('div');
@@ -473,15 +572,34 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     }
     const datalistOptions = existingNames.map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
 
-    outcomeContainer.innerHTML = `
-        <label for="field-success-outcome-${idx}">${t('route.form.connection.label')}:</label>
-        <input type="text" id="field-success-outcome-${idx}" name="success-outcome"
-               class="field-success-outcome form-input route-config-field"
-               placeholder="${t('route.form.connection.placeholder')}"
-               value="${sanitizeHtml(properties?.['success-outcome'] || routeName)}"
-               aria-label="${t('route.form.connection.label')}"
-               list="connection-names-${idx}">
-        <datalist id="connection-names-${idx}">${datalistOptions}</datalist>`;
+    const outcomeLabel = document.createElement('label');
+    outcomeLabel.setAttribute('for', `field-success-outcome-${idx}`);
+    outcomeLabel.textContent = `${t('route.form.connection.label')}:`;
+
+    const connectionHelp = createContextHelp({
+        helpKey: 'contexthelp.route.connection',
+        propertyKey: `restapi.${rn}.success-outcome`,
+        currentValue: properties?.['success-outcome'] || routeName
+    });
+    outcomeLabel.appendChild(connectionHelp.button);
+    outcomeContainer.appendChild(outcomeLabel);
+    outcomeContainer.appendChild(connectionHelp.panel);
+
+    const outcomeInput = document.createElement('input');
+    outcomeInput.type = 'text';
+    outcomeInput.id = `field-success-outcome-${idx}`;
+    outcomeInput.name = 'success-outcome';
+    outcomeInput.className = 'field-success-outcome form-input route-config-field';
+    outcomeInput.placeholder = t('route.form.connection.placeholder');
+    outcomeInput.value = properties?.['success-outcome'] || routeName;
+    outcomeInput.setAttribute('aria-label', t('route.form.connection.label'));
+    outcomeInput.setAttribute('list', `connection-names-${idx}`);
+    outcomeContainer.appendChild(outcomeInput);
+
+    const datalist = document.createElement('datalist');
+    datalist.id = `connection-names-${idx}`;
+    datalist.innerHTML = datalistOptions;
+    outcomeContainer.appendChild(datalist);
     form.appendChild(outcomeContainer);
 
     // Wire create-flowfile checkbox toggle
@@ -497,14 +615,28 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     // ---- schema validation toggle ----
     const schemaToggle = document.createElement('div');
     schemaToggle.className = 'form-field field-container-schema-toggle';
-    schemaToggle.innerHTML = `
-        <label class="schema-toggle-label" for="schema-check-${idx}">
-            <input type="checkbox" id="schema-check-${idx}"
-                   class="schema-validation-checkbox"
-                   ${hasSchema ? 'checked' : ''}
-                   aria-label="Enable Schema Validation">
-            ${t('route.form.schema.toggle')}
-        </label>`;
+    const schemaLabel = document.createElement('label');
+    schemaLabel.className = 'schema-toggle-label';
+    schemaLabel.setAttribute('for', `schema-check-${idx}`);
+
+    const schemaCheckboxEl = document.createElement('input');
+    schemaCheckboxEl.type = 'checkbox';
+    schemaCheckboxEl.id = `schema-check-${idx}`;
+    schemaCheckboxEl.className = 'schema-validation-checkbox';
+    if (hasSchema) schemaCheckboxEl.checked = true;
+    schemaCheckboxEl.setAttribute('aria-label', 'Enable Schema Validation');
+    schemaLabel.appendChild(schemaCheckboxEl);
+    schemaLabel.append(` ${t('route.form.schema.toggle')}`);
+
+    const schemaHelp = createContextHelp({
+        helpKey: 'contexthelp.route.schema',
+        propertyKey: `restapi.${rn}.schema`,
+        currentValue: properties?.schema
+    });
+    schemaLabel.appendChild(schemaHelp.button);
+
+    schemaToggle.appendChild(schemaLabel);
+    schemaToggle.appendChild(schemaHelp.panel);
     form.appendChild(schemaToggle);
 
     // ---- schema mode toggle + inputs (hidden by default unless route has schema) ----
@@ -611,16 +743,31 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 // Field helpers
 // ---------------------------------------------------------------------------
 
-const addField = ({ container, idx, name, label, placeholder, value }) => {
+const addField = ({ container, idx, name, label, placeholder, value,
+    helpKey, propertyKey, currentValue }) => {
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
-    div.innerHTML = `
-        <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <input type="text" id="field-${name}-${idx}" name="${name}"
-               class="field-${name} form-input route-config-field"
-               placeholder="${sanitizeHtml(placeholder)}"
-               value="${sanitizeHtml(value || '')}"
-               aria-label="${sanitizeHtml(label)}">`;
+    const labelEl = document.createElement('label');
+    labelEl.setAttribute('for', `field-${name}-${idx}`);
+    labelEl.textContent = `${label}:`;
+    div.appendChild(labelEl);
+
+    if (helpKey) {
+        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
+        labelEl.appendChild(button);
+        div.appendChild(panel);
+    }
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `field-${name}-${idx}`;
+    input.name = name;
+    input.className = `field-${name} form-input route-config-field`;
+    input.placeholder = placeholder || '';
+    input.value = value || '';
+    input.setAttribute('aria-label', label);
+    div.appendChild(input);
+
     container.appendChild(div);
 };
 

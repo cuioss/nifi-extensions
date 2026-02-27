@@ -6,10 +6,32 @@
 
 jest.mock('../../main/webapp/js/api.js');
 jest.mock('../../main/webapp/js/utils.js');
+jest.mock('../../main/webapp/js/context-help.js');
 
 import { init, cleanup } from '../../main/webapp/js/issuer-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
+import { createContextHelp } from '../../main/webapp/js/context-help.js';
+
+const mockCreateContextHelp = ({ helpKey, propertyKey, currentValue }) => {
+    const button = document.createElement('button');
+    button.className = 'context-help-toggle';
+    button.setAttribute('aria-expanded', 'false');
+    button.dataset.helpKey = helpKey;
+
+    const panel = document.createElement('div');
+    panel.className = 'context-help-panel';
+    panel.hidden = true;
+    panel.innerHTML = `<code>${propertyKey}</code><span>${currentValue || ''}</span>`;
+
+    button.addEventListener('click', () => {
+        const expanded = button.getAttribute('aria-expanded') === 'true';
+        button.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+    });
+
+    return { button, panel };
+};
 
 describe('issuer-config', () => {
     let container;
@@ -18,6 +40,7 @@ describe('issuer-config', () => {
         // Re-apply mock implementations (resetMocks clears them between tests)
         utils.sanitizeHtml.mockImplementation((s) => s);
         utils.t.mockImplementation((key) => key);
+        createContextHelp.mockImplementation(mockCreateContextHelp);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());
@@ -869,5 +892,32 @@ describe('issuer-config', () => {
             const row = container.querySelector('tr[data-issuer-name="kc"]');
             expect(row.classList.contains('hidden')).toBe(false);
         });
+    });
+
+    // -------------------------------------------------------------------
+    // Context help on issuer forms
+    // -------------------------------------------------------------------
+
+    it('should render context help buttons in standalone issuer form', async () => {
+        await init(container);
+
+        const issuerForm = container.querySelector('.issuer-form');
+        expect(issuerForm).not.toBeNull();
+
+        const helpButtons = issuerForm.querySelectorAll('.context-help-toggle');
+        // name + jwks-type + issuer-uri + jwks-url + audience + client-id = 6 visible
+        // (jwks-file and jwks-content are hidden but present)
+        expect(helpButtons.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('should display property key in issuer context help panel', async () => {
+        await init(container);
+
+        const panel = container.querySelector('.issuer-form .context-help-panel');
+        expect(panel).not.toBeNull();
+        const code = panel.querySelector('code');
+        expect(code).not.toBeNull();
+        // Should contain an issuer property key pattern
+        expect(code.textContent).toMatch(/^issuer\./);
     });
 });
