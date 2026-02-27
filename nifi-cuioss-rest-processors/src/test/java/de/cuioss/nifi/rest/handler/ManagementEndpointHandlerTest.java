@@ -317,14 +317,111 @@ class ManagementEndpointHandlerTest {
 
             // Even though the request comes via loopback (localhost), it should
             // succeed because loopback bypass is checked first.
-            // To truly test JWT rejection, we verify the Bearer token path independently:
-            // When config service rejects the token AND loopback is available, loopback wins.
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
             // Loopback bypass still grants access
             assertEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("JWT-only authentication (loopback bypass disabled)")
+    class JwtOnlyAuth {
+
+        @BeforeEach
+        void disableLoopback() {
+            handler.getManagementHandler().loopbackBypassEnabled = false;
+        }
+
+        @Test
+        @DisplayName("Should return 401 when no auth header is provided")
+        void shouldReturn401WithoutAuthHeader() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should return 401 for invalid Bearer token")
+        void shouldReturn401ForInvalidBearerToken() throws Exception {
+            configService.configureValidationFailure(
+                    new TokenValidationException(
+                            SecurityEventCounter.EventType.TOKEN_EXPIRED, "Invalid token"));
+
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics"))
+                            .header("Authorization", "Bearer invalid-token-value")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should return 401 for empty Bearer token")
+        void shouldReturn401ForEmptyBearerToken() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics"))
+                            .header("Authorization", "Bearer ")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should return 401 for non-Bearer auth scheme")
+        void shouldReturn401ForNonBearerScheme() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics"))
+                            .header("Authorization", "Basic dXNlcjpwYXNz")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should allow access with valid Bearer token")
+        void shouldAllowAccessWithValidBearerToken() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertTrue(response.body().contains("nifi_"));
+        }
+
+        @Test
+        @DisplayName("Should return 401 when token validation fails")
+        void shouldReturn401WhenTokenValidationFails() throws Exception {
+            configService.configureValidationFailure(
+                    new TokenValidationException(
+                            SecurityEventCounter.EventType.TOKEN_EXPIRED, "Token expired"));
+
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should return 401 on /health without auth")
+        void shouldReturn401OnHealthWithoutAuth() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/health")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
         }
     }
 }

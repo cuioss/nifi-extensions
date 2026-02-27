@@ -67,6 +67,9 @@ public class ManagementEndpointHandler {
     private final SecurityEventCounter httpSecurityEvents;
     private final GatewaySecurityEvents gatewaySecurityEvents;
 
+    /** Package-private flag to disable loopback bypass in tests. */
+    boolean loopbackBypassEnabled = true;
+
     /**
      * Creates a new management endpoint handler.
      *
@@ -128,7 +131,7 @@ public class ManagementEndpointHandler {
      * Loopback requests are always allowed; otherwise a valid Bearer token is required.
      */
     private boolean isAuthorized(Request request) {
-        if (isLoopbackRequest(request)) {
+        if (loopbackBypassEnabled && isLoopbackRequest(request)) {
             return true;
         }
         return hasValidBearerToken(request);
