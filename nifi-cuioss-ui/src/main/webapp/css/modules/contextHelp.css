@@ -1,0 +1,90 @@
+/* Context-help disclosure widget styles */
+
+.context-help-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 4px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+    vertical-align: middle;
+    font-size: 14px;
+    line-height: 1;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.context-help-toggle:hover {
+    color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+}
+
+.context-help-toggle:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.context-help-toggle[aria-expanded="true"] {
+    color: var(--primary-color-dark);
+    background-color: var(--primary-color-light);
+}
+
+/* Disclosure panel */
+.context-help-panel {
+    border-left: 3px solid var(--primary-color);
+    background: var(--background-secondary);
+    padding: 8px 12px;
+    margin: 4px 0 8px;
+    border-radius: 0 4px 4px 0;
+    animation: contextHelpFadeIn 0.15s ease-in;
+}
+
+.context-help-panel hr {
+    border: none;
+    border-top: 1px solid var(--border-color-light);
+    margin: 6px 0;
+}
+
+.context-help-description {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.context-help-property {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.context-help-property code {
+    background: var(--code-background);
+    color: var(--code-color);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.context-help-value {
+    color: var(--text-secondary);
+}
+
+/* Table-embedded panels (colspan row) */
+.context-help-row td {
+    padding: 0 !important;
+    border-top: none !important;
+}
+
+@keyframes contextHelpFadeIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

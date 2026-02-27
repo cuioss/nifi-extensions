@@ -20,6 +20,7 @@
 @import url('modules/help.css');
 @import url('modules/endpointConfig.css');
 @import url('modules/endpointTester.css');
+@import url('modules/contextHelp.css');
 
 /* Utility classes */
 .sr-only {

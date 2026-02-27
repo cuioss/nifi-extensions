@@ -11,6 +11,7 @@ import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
     validateIssuerConfig, validateProcessorIdFromUrl, log, t
 } from './utils.js';
+import { createContextHelp, createFormField } from './context-help.js';
 
 // Note: validateProcessorIdFromUrl is kept for backward compatibility —
 // NiFi passes the component ID via ?id= regardless of component type.
@@ -134,37 +135,67 @@ const loadExistingIssuers = async (container, componentId) => {
 // ---------------------------------------------------------------------------
 
 /** Build JWKS type selector, standard fields, type toggle, test button. */
-const buildIssuerFields = (form, fields, idx, properties) => {
+const buildIssuerFields = (form, fields, idx, properties, issuerName) => {
     const jwksType = properties?.['jwks-type'] || 'url';
     const idPrefix = `field-jwks-type-${idx}`;
-    fields.innerHTML = `
-        <div class="form-field field-container-jwks-type">
-            <label for="${idPrefix}">${t('issuer.form.jwks.type.label')}:</label>
-            <select id="${idPrefix}" name="jwks-type"
-                    class="field-jwks-type form-input issuer-config-field"
-                    aria-label="${t('issuer.form.jwks.type.label')}"
-                    title="${t('issuer.form.jwks.type.title')}">
-                <option value="url"${jwksType === 'url' ? ' selected' : ''}>${t('issuer.form.jwks.type.url')}</option>
-                <option value="file"${jwksType === 'file' ? ' selected' : ''}>${t('issuer.form.jwks.type.file')}</option>
-                <option value="memory"${jwksType === 'memory' ? ' selected' : ''}>${t('issuer.form.jwks.type.memory')}</option>
-            </select>
-        </div>`;
+    const iName = issuerName || '*';
+
+    // JWKS type selector (with context help)
+    const jwksTypeDiv = document.createElement('div');
+    jwksTypeDiv.className = 'form-field field-container-jwks-type';
+
+    const jwksTypeLabel = document.createElement('label');
+    jwksTypeLabel.setAttribute('for', idPrefix);
+    jwksTypeLabel.textContent = `${t('issuer.form.jwks.type.label')}:`;
+
+    const jwksTypeHelp = createContextHelp({
+        helpKey: 'contexthelp.issuer.jwks.type',
+        propertyKey: `issuer.${iName}.jwks-type`,
+        currentValue: jwksType
+    });
+    jwksTypeLabel.appendChild(jwksTypeHelp.button);
+    jwksTypeDiv.appendChild(jwksTypeLabel);
+    jwksTypeDiv.appendChild(jwksTypeHelp.panel);
+
+    const select = document.createElement('select');
+    select.id = idPrefix;
+    select.name = 'jwks-type';
+    select.className = 'field-jwks-type form-input issuer-config-field';
+    select.setAttribute('aria-label', t('issuer.form.jwks.type.label'));
+    select.title = t('issuer.form.jwks.type.title');
+    for (const [val, text] of [['url', t('issuer.form.jwks.type.url')], ['file', t('issuer.form.jwks.type.file')], ['memory', t('issuer.form.jwks.type.memory')]]) {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = text;
+        if (val === jwksType) opt.selected = true;
+        select.appendChild(opt);
+    }
+    jwksTypeDiv.appendChild(select);
+    fields.appendChild(jwksTypeDiv);
 
     addField({ container: fields, idx, name: 'issuer', label: t('issuer.form.issuer.uri.label'),
         placeholder: t('issuer.form.issuer.uri.placeholder'),
-        value: properties?.issuer });
+        value: properties?.issuer,
+        helpKey: 'contexthelp.issuer.uri', propertyKey: `issuer.${iName}.issuer`,
+        currentValue: properties?.issuer });
     addField({ container: fields, idx, name: 'jwks-url', label: t('issuer.form.jwks.url.label'),
         placeholder: t('issuer.form.jwks.url.placeholder'),
-        value: properties?.['jwks-url'], extraClass: 'jwks-type-url' });
+        value: properties?.['jwks-url'], extraClass: 'jwks-type-url',
+        helpKey: 'contexthelp.issuer.jwks.url', propertyKey: `issuer.${iName}.jwks-url`,
+        currentValue: properties?.['jwks-url'] });
     addField({ container: fields, idx, name: 'jwks-file', label: t('issuer.form.jwks.file.label'),
         placeholder: t('issuer.form.jwks.file.placeholder'),
         value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
-        hidden: jwksType !== 'file' });
+        hidden: jwksType !== 'file',
+        helpKey: 'contexthelp.issuer.jwks.file', propertyKey: `issuer.${iName}.jwks-file`,
+        currentValue: properties?.['jwks-file'] });
     addTextArea({ container: fields, idx, name: 'jwks-content',
         label: t('issuer.form.jwks.content.label'),
         placeholder: t('issuer.form.jwks.content.placeholder'),
         value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
-        hidden: jwksType !== 'memory' });
+        hidden: jwksType !== 'memory',
+        helpKey: 'contexthelp.issuer.jwks.content', propertyKey: `issuer.${iName}.jwks-content`,
+        currentValue: properties?.['jwks-content'] });
 
     // Toggle field visibility on type change
     fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
@@ -208,10 +239,47 @@ const buildIssuerFields = (form, fields, idx, properties) => {
 
     addField({ container: fields, idx, name: 'audience', label: t('issuer.form.audience.label'),
         placeholder: t('issuer.form.audience.placeholder'),
-        value: properties?.audience });
+        value: properties?.audience,
+        helpKey: 'contexthelp.issuer.audience', propertyKey: `issuer.${iName}.audience`,
+        currentValue: properties?.audience });
     addField({ container: fields, idx, name: 'client-id', label: t('issuer.form.client.id.label'),
         placeholder: t('issuer.form.client.id.placeholder'),
-        value: properties?.['client-id'] });
+        value: properties?.['client-id'],
+        helpKey: 'contexthelp.issuer.client.id', propertyKey: `issuer.${iName}.client-id`,
+        currentValue: properties?.['client-id'] });
+};
+
+// ---------------------------------------------------------------------------
+// Shared header builder
+// ---------------------------------------------------------------------------
+
+const createIssuerNameHeader = (idx, idSuffix, issuerName) => {
+    const header = document.createElement('div');
+    header.className = 'form-header';
+
+    const label = document.createElement('label');
+    label.setAttribute('for', `issuer-name-${idSuffix}-${idx}`);
+    label.textContent = `${t('issuer.form.name.label')}:`;
+    const help = createContextHelp({
+        helpKey: 'contexthelp.issuer.name',
+        propertyKey: `issuer.${issuerName || '*'}.*`,
+        currentValue: issuerName
+    });
+    label.appendChild(help.button);
+    header.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `issuer-name-${idSuffix}-${idx}`;
+    input.className = 'issuer-name';
+    input.placeholder = t('issuer.form.name.placeholder');
+    input.title = t('issuer.form.name.title');
+    input.setAttribute('aria-label', t('issuer.form.name.label'));
+    input.value = issuerName || '';
+    header.appendChild(input);
+
+    header.appendChild(help.panel);
+    return header;
 };
 
 // ---------------------------------------------------------------------------
@@ -224,20 +292,17 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     form.className = 'issuer-form';
 
     // ---- header (name + remove) ----
-    const header = document.createElement('div');
-    header.className = 'form-header';
-    header.innerHTML = `
-        <label for="issuer-name-${idx}">${t('issuer.form.name.label')}:</label>
-        <input type="text" id="issuer-name-${idx}" class="issuer-name"
-               placeholder="${t('issuer.form.name.placeholder')}"
-               title="${t('issuer.form.name.title')}"
-               aria-label="${t('issuer.form.name.label')}"
-               value="${sanitizeHtml(issuerName || '')}">
-        <button class="remove-issuer-button"
-                title="Delete this issuer configuration"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
+    const header = createIssuerNameHeader(idx, 'std', issuerName);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-issuer-button';
+    removeBtn.title = 'Delete this issuer configuration';
+    removeBtn.innerHTML = `<i class="fa fa-trash"></i> ${t('common.btn.remove')}`;
+    header.appendChild(removeBtn);
+
     form.appendChild(header);
 
-    header.querySelector('.remove-issuer-button').addEventListener('click', async () => {
+    removeBtn.addEventListener('click', async () => {
         const name = header.querySelector('.issuer-name').value || 'Unnamed Issuer';
         await confirmRemoveIssuer(name, () => removeIssuer(form, name));
     });
@@ -247,7 +312,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     fields.className = 'form-fields';
     form.appendChild(fields);
 
-    buildIssuerFields(form, fields, idx, properties);
+    buildIssuerFields(form, fields, idx, properties, issuerName);
 
     // ---- save button ----
     const errorContainer = document.createElement('div');
@@ -272,37 +337,9 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
 // Field helpers
 // ---------------------------------------------------------------------------
 
-const addField = ({ container, idx, name, label, placeholder, value, extraClass, hidden }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.classList.add('hidden');
-    div.innerHTML = `
-        <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <input type="text" id="field-${name}-${idx}" name="${name}"
-               class="field-${name} form-input issuer-config-field"
-               placeholder="${sanitizeHtml(placeholder)}"
-               value="${sanitizeHtml(value || '')}"
-               aria-label="${sanitizeHtml(label)}">`;
-    container.appendChild(div);
-    return div;
-};
+const addField = (opts) => createFormField({ ...opts, inputClass: 'issuer-config-field' });
 
-const addTextArea = ({ container, idx, name, label, placeholder, value, extraClass, hidden }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.classList.add('hidden');
-    div.innerHTML = `
-        <label for="field-${name}-${idx}">${sanitizeHtml(label)}:</label>
-        <textarea id="field-${name}-${idx}" name="${name}"
-                  class="field-${name} form-input issuer-config-field"
-                  placeholder="${sanitizeHtml(placeholder)}"
-                  rows="5" aria-label="${sanitizeHtml(label)}"
-        >${sanitizeHtml(value || '')}</textarea>`;
-    container.appendChild(div);
-    return div;
-};
+const addTextArea = (opts) => createFormField({ ...opts, inputClass: 'issuer-config-field', isTextArea: true });
 
 // ---------------------------------------------------------------------------
 // JWKS validation
@@ -586,15 +623,7 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
     form.dataset.originalName = issuerName || '';
 
     // Header
-    const header = document.createElement('div');
-    header.className = 'form-header';
-    header.innerHTML = `
-        <label for="issuer-name-gw-${idx}">${t('issuer.form.name.label')}:</label>
-        <input type="text" id="issuer-name-gw-${idx}" class="issuer-name"
-               placeholder="${t('issuer.form.name.placeholder')}"
-               title="${t('issuer.form.name.title')}"
-               aria-label="${t('issuer.form.name.label')}"
-               value="${sanitizeHtml(issuerName || '')}">`;
+    const header = createIssuerNameHeader(idx, 'gw', issuerName);
     form.appendChild(header);
 
     // Fields (reuse shared builder)
@@ -602,7 +631,7 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
     fields.className = 'form-fields';
     form.appendChild(fields);
 
-    buildIssuerFields(form, fields, idx, properties);
+    buildIssuerFields(form, fields, idx, properties, issuerName);
 
     // Error container
     const errorContainer = document.createElement('div');

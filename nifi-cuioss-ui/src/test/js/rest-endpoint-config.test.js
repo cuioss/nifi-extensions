@@ -7,10 +7,13 @@
 
 jest.mock('../../main/webapp/js/api.js');
 jest.mock('../../main/webapp/js/utils.js');
+jest.mock('../../main/webapp/js/context-help.js');
 
 import { init, cleanup } from '../../main/webapp/js/rest-endpoint-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
+import { createContextHelp, createFormField } from '../../main/webapp/js/context-help.js';
+import { mockCreateContextHelp, mockCreateFormField } from './test-helpers.js';
 
 const SAMPLE_PROPERTIES = {
     'rest.gateway.listening.port': '9443',
@@ -57,6 +60,8 @@ describe('rest-endpoint-config', () => {
         utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
+        createContextHelp.mockImplementation(mockCreateContextHelp);
+        createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID
         api.getComponentId.mockReturnValue('test-processor-id');
         utils.confirmRemoveRoute.mockImplementation((name, onConfirm) => {
@@ -1564,5 +1569,77 @@ describe('rest-endpoint-config', () => {
         // Health row should be visible again, data row hidden
         expect(healthRow.classList.contains('hidden')).toBe(false);
         expect(dataRow.classList.contains('hidden')).toBe(true);
+    });
+
+    // -------------------------------------------------------------------
+    // Context help on global settings
+    // -------------------------------------------------------------------
+
+    it('should render context help buttons in global settings rows', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const helpButtons = container.querySelectorAll('.global-settings-display .context-help-toggle');
+        expect(helpButtons.length).toBe(6); // one per global setting
+    });
+
+    it('should toggle context help panel when button is clicked', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const helpButton = container.querySelector('.global-settings-display .context-help-toggle');
+        expect(helpButton).not.toBeNull();
+
+        const panel = container.querySelector('.global-settings-display .context-help-panel');
+        expect(panel).not.toBeNull();
+        expect(panel.hidden).toBe(true);
+
+        helpButton.click();
+        expect(panel.hidden).toBe(false);
+        expect(helpButton.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('should display property key in context help panel', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const panel = container.querySelector('.global-settings-display .context-help-panel');
+        const code = panel.querySelector('code');
+        expect(code).not.toBeNull();
+        // First global setting key
+        expect(code.textContent).toBe('rest.gateway.listening.port');
+    });
+
+    it('should render context help buttons in route inline editor', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Click edit on the first route
+        const editBtn = container.querySelector('.edit-route-button');
+        editBtn.click();
+
+        const routeForm = container.querySelector('.route-form');
+        expect(routeForm).not.toBeNull();
+
+        // Route form fields should have context help buttons
+        const helpButtons = routeForm.querySelectorAll('.context-help-toggle');
+        // name, enabled, path, roles, scopes, create-flowfile, connection, schema = 8
+        expect(helpButtons.length).toBeGreaterThanOrEqual(6);
     });
 });
