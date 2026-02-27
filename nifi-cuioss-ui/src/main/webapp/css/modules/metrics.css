@@ -29,6 +29,40 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     text-align: center;
+    border-left: 4px solid #ddd;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.metric-card--active {
+    border-left-color: var(--error-color, #ff4136);
+    background-color: #fff5f5;
+}
+
+.metric-card--active .metric-value {
+    color: var(--error-color-dark, #dc3545);
+}
+
+.metric-card--zero {
+    border-left-color: var(--success-color, #2ecc40);
+    opacity: 0.6;
+}
+
+.metric-card--zero .metric-value {
+    color: var(--text-secondary, #666);
+}
+
+.metric-card h5 {
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .metric-value {
@@ -42,6 +76,16 @@
     font-size: 14px;
 }
 
+.section-summary {
+    grid-column: 1 / -1;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary, #666);
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color-light, #eee);
+    margin-bottom: 2px;
+}
+
 .metrics-chart {
     height: 300px;
     padding: 10px;
@@ -49,6 +93,17 @@
     margin-top: 20px;
     background-color: #fff;
     border-radius: 5px;
+}
+
+/* Gateway metrics sections */
+.gateway-metrics-section {
+    margin-bottom: 24px;
+}
+
+.gateway-metrics-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: var(--text-primary, #333);
 }
 
 /* Enhanced Metrics Tab Styles */
@@ -67,12 +122,27 @@
     color: var(--text-primary, #333);
 }
 
-#refresh-metrics-btn {
-    padding: 6px 12px;
-    font-size: 14px;
+/* Metrics action buttons — outlined style matching endpoint config buttons */
+#refresh-metrics-btn,
+#export-metrics-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--primary-color, #0074d9);
+    color: var(--primary-color, #0074d9);
+    background-color: transparent;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin: 0 0 0 8px;
 }
 
-#refresh-metrics-btn i {
+#refresh-metrics-btn:hover,
+#export-metrics-btn:hover {
+    background-color: var(--primary-color, #0074d9);
+    color: var(--container-background, #fff);
+}
+
+#refresh-metrics-btn i,
+#export-metrics-btn i {
     margin-right: 4px;
 }
 
@@ -234,6 +304,19 @@
 
 .export-options .btn {
     margin-right: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color, #ddd);
+    color: var(--text-primary, #333);
+    background-color: transparent;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.export-options .btn:hover {
+    background-color: var(--primary-color, #0074d9);
+    color: var(--container-background, #fff);
+    border-color: var(--primary-color, #0074d9);
 }
 
 .metrics-not-available {

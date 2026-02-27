@@ -78,9 +78,6 @@ class IntegrationTestSupport {
     // Expected issuer value (as seen by NiFi inside Docker network)
     static final String EXPECTED_ISSUER = "http://keycloak:8080/realms/oauth_integration_tests";
 
-    // Gateway management
-    static final String MANAGEMENT_API_KEY = "integration-test-api-key";
-
     private static final String NIFI_USERNAME = "testUser";
     private static final String NIFI_PASSWORD = "drowssap";
 
