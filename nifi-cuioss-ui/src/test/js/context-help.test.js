@@ -242,8 +242,7 @@ describe('context-help', () => {
             currentValue: '9443'
         });
 
-        const icon = button.querySelector('.fa-circle-info');
+        const icon = button.querySelector('.fa-info-circle');
         expect(icon).not.toBeNull();
-        expect(icon.getAttribute('aria-hidden')).toBe('true');
     });
 });

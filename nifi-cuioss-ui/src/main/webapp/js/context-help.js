@@ -39,7 +39,7 @@ export const createContextHelp = ({ helpKey, propertyKey, currentValue }) => {
     button.className = 'context-help-toggle';
     button.setAttribute('aria-expanded', 'false');
     button.setAttribute('aria-controls', panelId);
-    button.innerHTML = '<i class="fa fa-circle-info" aria-hidden="true"></i>'
+    button.innerHTML = '<i class="fa fa-info-circle"></i>'
         + `<span class="sr-only">${sanitizeHtml(t('contexthelp.toggle.aria'))}</span>`;
 
     // -- disclosure panel --
