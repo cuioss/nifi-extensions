@@ -12,26 +12,7 @@ import { init, cleanup } from '../../main/webapp/js/issuer-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
 import { createContextHelp } from '../../main/webapp/js/context-help.js';
-
-const mockCreateContextHelp = ({ helpKey, propertyKey, currentValue }) => {
-    const button = document.createElement('button');
-    button.className = 'context-help-toggle';
-    button.setAttribute('aria-expanded', 'false');
-    button.dataset.helpKey = helpKey;
-
-    const panel = document.createElement('div');
-    panel.className = 'context-help-panel';
-    panel.hidden = true;
-    panel.innerHTML = `<code>${propertyKey}</code><span>${currentValue || ''}</span>`;
-
-    button.addEventListener('click', () => {
-        const expanded = button.getAttribute('aria-expanded') === 'true';
-        button.setAttribute('aria-expanded', String(!expanded));
-        panel.hidden = expanded;
-    });
-
-    return { button, panel };
-};
+import { mockCreateContextHelp } from './test-helpers.js';
 
 describe('issuer-config', () => {
     let container;
