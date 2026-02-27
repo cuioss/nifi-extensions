@@ -205,10 +205,13 @@ gatewayTest.describe("Context Help — Gateway", () => {
                 .analyze();
 
             // Filter out known NiFi-platform violations (not from our code)
+            const knownPlatformRules = [
+                "color-contrast",
+                "frame-title",
+                "button-name", // NiFi Angular Material menu button
+            ];
             const ownViolations = results.violations.filter(
-                (v) =>
-                    !v.id.includes("color-contrast") &&
-                    !v.id.includes("frame-title"),
+                (v) => !knownPlatformRules.includes(v.id),
             );
             expect(ownViolations).toEqual([]);
         },
