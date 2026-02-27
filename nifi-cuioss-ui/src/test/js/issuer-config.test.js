@@ -11,8 +11,8 @@ jest.mock('../../main/webapp/js/context-help.js');
 import { init, cleanup } from '../../main/webapp/js/issuer-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
-import { createContextHelp } from '../../main/webapp/js/context-help.js';
-import { mockCreateContextHelp } from './test-helpers.js';
+import { createContextHelp, createFormField } from '../../main/webapp/js/context-help.js';
+import { mockCreateContextHelp, mockCreateFormField } from './test-helpers.js';
 
 describe('issuer-config', () => {
     let container;
@@ -22,6 +22,7 @@ describe('issuer-config', () => {
         utils.sanitizeHtml.mockImplementation((s) => s);
         utils.t.mockImplementation((key) => key);
         createContextHelp.mockImplementation(mockCreateContextHelp);
+        createFormField.mockImplementation(mockCreateFormField);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());

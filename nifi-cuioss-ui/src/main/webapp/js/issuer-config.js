@@ -11,7 +11,7 @@ import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
     validateIssuerConfig, validateProcessorIdFromUrl, log, t
 } from './utils.js';
-import { createContextHelp } from './context-help.js';
+import { createContextHelp, createFormField } from './context-help.js';
 
 // Note: validateProcessorIdFromUrl is kept for backward compatibility —
 // NiFi passes the component ID via ?id= regardless of component type.
@@ -250,6 +250,39 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName) => {
 };
 
 // ---------------------------------------------------------------------------
+// Shared header builder
+// ---------------------------------------------------------------------------
+
+const createIssuerNameHeader = (idx, idSuffix, issuerName) => {
+    const header = document.createElement('div');
+    header.className = 'form-header';
+
+    const label = document.createElement('label');
+    label.setAttribute('for', `issuer-name-${idSuffix}-${idx}`);
+    label.textContent = `${t('issuer.form.name.label')}:`;
+    const help = createContextHelp({
+        helpKey: 'contexthelp.issuer.name',
+        propertyKey: `issuer.${issuerName || '*'}.*`,
+        currentValue: issuerName
+    });
+    label.appendChild(help.button);
+    header.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `issuer-name-${idSuffix}-${idx}`;
+    input.className = 'issuer-name';
+    input.placeholder = t('issuer.form.name.placeholder');
+    input.title = t('issuer.form.name.title');
+    input.setAttribute('aria-label', t('issuer.form.name.label'));
+    input.value = issuerName || '';
+    header.appendChild(input);
+
+    header.appendChild(help.panel);
+    return header;
+};
+
+// ---------------------------------------------------------------------------
 // Form creation
 // ---------------------------------------------------------------------------
 
@@ -259,29 +292,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     form.className = 'issuer-form';
 
     // ---- header (name + remove) ----
-    const header = document.createElement('div');
-    header.className = 'form-header';
-
-    const headerLabel = document.createElement('label');
-    headerLabel.setAttribute('for', `issuer-name-${idx}`);
-    headerLabel.textContent = `${t('issuer.form.name.label')}:`;
-    const issuerNameHelp = createContextHelp({
-        helpKey: 'contexthelp.issuer.name',
-        propertyKey: `issuer.${issuerName || '*'}.*`,
-        currentValue: issuerName
-    });
-    headerLabel.appendChild(issuerNameHelp.button);
-    header.appendChild(headerLabel);
-
-    const headerInput = document.createElement('input');
-    headerInput.type = 'text';
-    headerInput.id = `issuer-name-${idx}`;
-    headerInput.className = 'issuer-name';
-    headerInput.placeholder = t('issuer.form.name.placeholder');
-    headerInput.title = t('issuer.form.name.title');
-    headerInput.setAttribute('aria-label', t('issuer.form.name.label'));
-    headerInput.value = issuerName || '';
-    header.appendChild(headerInput);
+    const header = createIssuerNameHeader(idx, 'std', issuerName);
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-issuer-button';
@@ -289,7 +300,6 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
     removeBtn.innerHTML = `<i class="fa fa-trash"></i> ${t('common.btn.remove')}`;
     header.appendChild(removeBtn);
 
-    header.appendChild(issuerNameHelp.panel);
     form.appendChild(header);
 
     removeBtn.addEventListener('click', async () => {
@@ -327,69 +337,9 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
 // Field helpers
 // ---------------------------------------------------------------------------
 
-const addField = ({ container, idx, name, label, placeholder, value, extraClass, hidden,
-    helpKey, propertyKey, currentValue }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.classList.add('hidden');
+const addField = (opts) => createFormField({ ...opts, inputClass: 'issuer-config-field' });
 
-    const labelEl = document.createElement('label');
-    labelEl.setAttribute('for', `field-${name}-${idx}`);
-    labelEl.textContent = `${label}:`;
-    div.appendChild(labelEl);
-
-    if (helpKey) {
-        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
-        labelEl.appendChild(button);
-        div.appendChild(panel);
-    }
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.id = `field-${name}-${idx}`;
-    input.name = name;
-    input.className = `field-${name} form-input issuer-config-field`;
-    input.placeholder = placeholder || '';
-    input.value = value || '';
-    input.setAttribute('aria-label', label);
-    div.appendChild(input);
-
-    container.appendChild(div);
-    return div;
-};
-
-const addTextArea = ({ container, idx, name, label, placeholder, value, extraClass, hidden,
-    helpKey, propertyKey, currentValue }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    if (extraClass) div.classList.add(extraClass);
-    if (hidden) div.classList.add('hidden');
-
-    const labelEl = document.createElement('label');
-    labelEl.setAttribute('for', `field-${name}-${idx}`);
-    labelEl.textContent = `${label}:`;
-    div.appendChild(labelEl);
-
-    if (helpKey) {
-        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
-        labelEl.appendChild(button);
-        div.appendChild(panel);
-    }
-
-    const textarea = document.createElement('textarea');
-    textarea.id = `field-${name}-${idx}`;
-    textarea.name = name;
-    textarea.className = `field-${name} form-input issuer-config-field`;
-    textarea.placeholder = placeholder || '';
-    textarea.rows = 5;
-    textarea.setAttribute('aria-label', label);
-    textarea.textContent = value || '';
-    div.appendChild(textarea);
-
-    container.appendChild(div);
-    return div;
-};
+const addTextArea = (opts) => createFormField({ ...opts, inputClass: 'issuer-config-field', isTextArea: true });
 
 // ---------------------------------------------------------------------------
 // JWKS validation
@@ -673,31 +623,7 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
     form.dataset.originalName = issuerName || '';
 
     // Header
-    const header = document.createElement('div');
-    header.className = 'form-header';
-
-    const gwNameLabel = document.createElement('label');
-    gwNameLabel.setAttribute('for', `issuer-name-gw-${idx}`);
-    gwNameLabel.textContent = `${t('issuer.form.name.label')}:`;
-    const gwNameHelp = createContextHelp({
-        helpKey: 'contexthelp.issuer.name',
-        propertyKey: `issuer.${issuerName || '*'}.*`,
-        currentValue: issuerName
-    });
-    gwNameLabel.appendChild(gwNameHelp.button);
-    header.appendChild(gwNameLabel);
-
-    const gwNameInput = document.createElement('input');
-    gwNameInput.type = 'text';
-    gwNameInput.id = `issuer-name-gw-${idx}`;
-    gwNameInput.className = 'issuer-name';
-    gwNameInput.placeholder = t('issuer.form.name.placeholder');
-    gwNameInput.title = t('issuer.form.name.title');
-    gwNameInput.setAttribute('aria-label', t('issuer.form.name.label'));
-    gwNameInput.value = issuerName || '';
-    header.appendChild(gwNameInput);
-
-    header.appendChild(gwNameHelp.panel);
+    const header = createIssuerNameHeader(idx, 'gw', issuerName);
     form.appendChild(header);
 
     // Fields (reuse shared builder)

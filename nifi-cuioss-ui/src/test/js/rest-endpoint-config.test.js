@@ -12,8 +12,8 @@ jest.mock('../../main/webapp/js/context-help.js');
 import { init, cleanup } from '../../main/webapp/js/rest-endpoint-config.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
-import { createContextHelp } from '../../main/webapp/js/context-help.js';
-import { mockCreateContextHelp } from './test-helpers.js';
+import { createContextHelp, createFormField } from '../../main/webapp/js/context-help.js';
+import { mockCreateContextHelp, mockCreateFormField } from './test-helpers.js';
 
 const SAMPLE_PROPERTIES = {
     'rest.gateway.listening.port': '9443',
@@ -61,6 +61,7 @@ describe('rest-endpoint-config', () => {
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
         createContextHelp.mockImplementation(mockCreateContextHelp);
+        createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID
         api.getComponentId.mockReturnValue('test-processor-id');
         utils.confirmRemoveRoute.mockImplementation((name, onConfirm) => {

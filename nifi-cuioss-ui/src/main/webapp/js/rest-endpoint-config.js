@@ -14,7 +14,7 @@ import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
-import { createContextHelp } from './context-help.js';
+import { createContextHelp, createFormField } from './context-help.js';
 
 // Counter for unique form field IDs
 let formCounter = 0;
@@ -743,33 +743,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 // Field helpers
 // ---------------------------------------------------------------------------
 
-const addField = ({ container, idx, name, label, placeholder, value,
-    helpKey, propertyKey, currentValue }) => {
-    const div = document.createElement('div');
-    div.className = `form-field field-container-${name}`;
-    const labelEl = document.createElement('label');
-    labelEl.setAttribute('for', `field-${name}-${idx}`);
-    labelEl.textContent = `${label}:`;
-    div.appendChild(labelEl);
-
-    if (helpKey) {
-        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
-        labelEl.appendChild(button);
-        div.appendChild(panel);
-    }
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.id = `field-${name}-${idx}`;
-    input.name = name;
-    input.className = `field-${name} form-input route-config-field`;
-    input.placeholder = placeholder || '';
-    input.value = value || '';
-    input.setAttribute('aria-label', label);
-    div.appendChild(input);
-
-    container.appendChild(div);
-};
+const addField = (opts) => createFormField({ ...opts, inputClass: 'route-config-field' });
 
 // ---------------------------------------------------------------------------
 // Save / Remove

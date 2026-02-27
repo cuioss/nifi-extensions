@@ -83,3 +83,63 @@ export const createContextHelp = ({ helpKey, propertyKey, currentValue }) => {
 
     return { button, panel };
 };
+
+/**
+ * Create a labelled form field (input or textarea) with optional context-help.
+ *
+ * This helper eliminates boilerplate duplication across form builders by
+ * encapsulating the common pattern: div > label > [help toggle] > input.
+ *
+ * @param {Object}  opts
+ * @param {HTMLElement} opts.container   parent element to append the field to
+ * @param {number}      opts.idx         form-instance index (for unique IDs)
+ * @param {string}      opts.name        field name (used in id / class / name attribute)
+ * @param {string}      opts.label       visible label text
+ * @param {string}      [opts.placeholder]
+ * @param {string}      [opts.value]
+ * @param {string}      [opts.extraClass]  additional CSS class on the wrapper div
+ * @param {boolean}     [opts.hidden]      start hidden
+ * @param {string}      [opts.inputClass]  extra CSS class for the input element
+ * @param {boolean}     [opts.isTextArea]  render a &lt;textarea&gt; instead of &lt;input&gt;
+ * @param {string}      [opts.helpKey]     i18n key for context-help description
+ * @param {string}      [opts.propertyKey] NiFi property key (shown in help panel)
+ * @param {string}      [opts.currentValue] current property value
+ * @returns {HTMLDivElement}
+ */
+export const createFormField = ({ container, idx, name, label, placeholder, value,
+    extraClass, hidden, inputClass, isTextArea,
+    helpKey, propertyKey, currentValue }) => {
+    const div = document.createElement('div');
+    div.className = `form-field field-container-${name}`;
+    if (extraClass) div.classList.add(extraClass);
+    if (hidden) div.classList.add('hidden');
+
+    const labelEl = document.createElement('label');
+    labelEl.setAttribute('for', `field-${name}-${idx}`);
+    labelEl.textContent = `${label}:`;
+    div.appendChild(labelEl);
+
+    if (helpKey) {
+        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
+        labelEl.appendChild(button);
+        div.appendChild(panel);
+    }
+
+    const el = document.createElement(isTextArea ? 'textarea' : 'input');
+    if (!isTextArea) el.type = 'text';
+    el.id = `field-${name}-${idx}`;
+    el.name = name;
+    el.className = `field-${name} form-input${inputClass ? ` ${inputClass}` : ''}`;
+    el.placeholder = placeholder || '';
+    el.setAttribute('aria-label', label);
+    if (isTextArea) {
+        el.rows = 5;
+        el.textContent = value || '';
+    } else {
+        el.value = value || '';
+    }
+    div.appendChild(el);
+
+    container.appendChild(div);
+    return div;
+};

@@ -6,7 +6,7 @@
 
 jest.mock('../../main/webapp/js/utils.js');
 
-import { createContextHelp, resetHelpIdCounter } from '../../main/webapp/js/context-help.js';
+import { createContextHelp, createFormField, resetHelpIdCounter } from '../../main/webapp/js/context-help.js';
 import * as utils from '../../main/webapp/js/utils.js';
 
 describe('context-help', () => {
@@ -244,5 +244,98 @@ describe('context-help', () => {
 
         const icon = button.querySelector('.fa-info-circle');
         expect(icon).not.toBeNull();
+    });
+});
+
+describe('createFormField', () => {
+    beforeEach(() => {
+        resetHelpIdCounter();
+        utils.sanitizeHtml.mockImplementation((s) => s || '');
+        utils.t.mockImplementation((key) => key);
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('should create an input field with label', () => {
+        const container = document.createElement('div');
+        const div = createFormField({
+            container, idx: 0, name: 'path',
+            label: 'Path', placeholder: '/api/*', value: '/foo'
+        });
+
+        expect(div.className).toBe('form-field field-container-path');
+        const label = div.querySelector('label');
+        expect(label.textContent).toBe('Path:');
+        expect(label.getAttribute('for')).toBe('field-path-0');
+        const input = div.querySelector('input');
+        expect(input.type).toBe('text');
+        expect(input.value).toBe('/foo');
+        expect(input.placeholder).toBe('/api/*');
+        expect(container.contains(div)).toBe(true);
+    });
+
+    it('should create a textarea when isTextArea is true', () => {
+        const container = document.createElement('div');
+        const div = createFormField({
+            container, idx: 1, name: 'content',
+            label: 'Content', value: 'abc', isTextArea: true
+        });
+
+        const textarea = div.querySelector('textarea');
+        expect(textarea).not.toBeNull();
+        expect(textarea.rows).toBe(5);
+        expect(textarea.textContent).toBe('abc');
+        expect(div.querySelector('input')).toBeNull();
+    });
+
+    it('should attach context help when helpKey is provided', () => {
+        const container = document.createElement('div');
+        const div = createFormField({
+            container, idx: 0, name: 'port',
+            label: 'Port', value: '9443',
+            helpKey: 'contexthelp.global.listening.port',
+            propertyKey: 'rest.gateway.listening.port',
+            currentValue: '9443'
+        });
+
+        const toggle = div.querySelector('.context-help-toggle');
+        expect(toggle).not.toBeNull();
+        const panel = div.querySelector('.context-help-panel');
+        expect(panel).not.toBeNull();
+    });
+
+    it('should not attach context help when helpKey is absent', () => {
+        const container = document.createElement('div');
+        const div = createFormField({
+            container, idx: 0, name: 'port',
+            label: 'Port', value: '9443'
+        });
+
+        expect(div.querySelector('.context-help-toggle')).toBeNull();
+        expect(div.querySelector('.context-help-panel')).toBeNull();
+    });
+
+    it('should apply extraClass and hidden', () => {
+        const container = document.createElement('div');
+        const div = createFormField({
+            container, idx: 0, name: 'url',
+            label: 'URL', extraClass: 'jwks-type-url', hidden: true
+        });
+
+        expect(div.classList.contains('jwks-type-url')).toBe(true);
+        expect(div.classList.contains('hidden')).toBe(true);
+    });
+
+    it('should apply inputClass to the input element', () => {
+        const container = document.createElement('div');
+        createFormField({
+            container, idx: 0, name: 'test',
+            label: 'Test', inputClass: 'route-config-field'
+        });
+
+        const input = container.querySelector('input');
+        expect(input.className).toContain('route-config-field');
     });
 });
