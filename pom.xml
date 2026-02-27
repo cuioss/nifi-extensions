@@ -492,9 +492,9 @@
                         <autoPublish>true</autoPublish>
                         <waitUntil>uploaded</waitUntil>
                         <excludeArtifacts>
-                            <excludeArtifact>nifi-cuioss-ui</excludeArtifact>
-                            <excludeArtifact>integration-testing</excludeArtifact>
                             <excludeArtifact>e-2-e-playwright</excludeArtifact>
+                            <excludeArtifact>integration-testing</excludeArtifact>
+                            <excludeArtifact>nifi-cuioss-ui</excludeArtifact>
                         </excludeArtifacts>
                     </configuration>
                 </plugin>
