@@ -2,7 +2,7 @@
 name: deploy
 description: Build, deploy, and test NiFi E2E environment (Docker containers)
 user-invocable: true
-allowed-tools: Bash, Read, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__browser_snapshot, mcp__claude-in-chrome__browser_click, mcp__claude-in-chrome__browser_type, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__browser_wait_for
+allowed-tools: Bash, Read, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__browser_wait_for
 ---
 
 # NiFi E2E Deployment Skill
@@ -97,9 +97,8 @@ After every **start** or **redeploy**, open Chrome and log in to NiFi.
 4. Find the Username input field (textbox "Username") and type `testUser`
 5. Find the Password input field (textbox "Password") and type `drowssap`
 6. Click the "Log in" button (submit button)
-7. Wait ~3 seconds for the NiFi canvas to load
-8. Verify success: URL should contain `#/process-groups/` and page title should be "NiFi Flow"
-9. Report login success to the user
+7. Wait until the URL contains `#/process-groups/` and the page title is "NiFi Flow" to verify a successful login
+8. Report login success to the user
 
 **Notes:**
 - This is NiFi's built-in login form — **not** Keycloak. The login page URL is `https://localhost:9095/nifi/#/login`.
