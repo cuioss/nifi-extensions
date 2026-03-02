@@ -93,11 +93,6 @@ public final class RestApiLogMessages {
                 .template("Authentication successful for %s %s from %s")
                 .build();
 
-        public static final LogRecord CORS_PREFLIGHT = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(10)
-                .template("CORS preflight request handled for origin '%s'")
-                .build();
     }
 
     @UtilityClass

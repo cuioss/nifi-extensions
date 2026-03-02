@@ -189,7 +189,6 @@ export const TRANSLATIONS = {
         'route.global.max.request.size': 'Max Request Body Size',
         'route.global.queue.size': 'Queue Size',
         'route.global.ssl.enabled': 'SSL Enabled',
-        'route.global.cors.origins': 'CORS Allowed Origins',
         'route.global.listening.host': 'Listening Host',
 
         // -- endpoint tester --
@@ -290,7 +289,6 @@ export const TRANSLATIONS = {
         'help.gateway.features.https': 'Embedded HTTPS/HTTP server with configurable port',
         'help.gateway.features.routing': 'Route-based request matching with path patterns',
         'help.gateway.features.auth': 'Per-route role and scope requirements',
-        'help.gateway.features.cors': 'CORS support with configurable allowed origins',
         'help.gateway.features.limits': 'Request body size limits and queue management',
         'help.gateway.tabs.title': 'Tabs',
         'help.gateway.tabs.endpoint': 'View active routes, global settings, and security configuration',
@@ -326,7 +324,6 @@ export const TRANSLATIONS = {
         'contexthelp.global.max.request.size': 'Maximum allowed request body size in bytes. Requests exceeding this limit are rejected with HTTP 413.',
         'contexthelp.global.queue.size': 'Maximum number of queued requests before the server starts rejecting new connections.',
         'contexthelp.global.ssl.enabled': 'Whether SSL/TLS is enabled via an SSLContextService. When set, the gateway serves HTTPS instead of HTTP.',
-        'contexthelp.global.cors.origins': 'Comma-separated list of allowed CORS origins. Use * to allow all origins (not recommended for production).',
         'contexthelp.global.listening.host': 'Network interface to bind the server to. Use 0.0.0.0 for all interfaces or 127.0.0.1 for loopback only.',
         'contexthelp.route.name': 'Unique identifier for this route. Used as prefix in NiFi dynamic properties (restapi.<name>.*).',
         'contexthelp.route.enabled': 'Whether this route is active. Disabled routes are ignored during request matching.',
@@ -514,7 +511,6 @@ export const TRANSLATIONS = {
         'route.global.max.request.size': 'Max Request Body Size',
         'route.global.queue.size': 'Queue Size',
         'route.global.ssl.enabled': 'SSL Enabled',
-        'route.global.cors.origins': 'CORS Allowed Origins',
         'route.global.listening.host': 'Listening Host',
 
         // -- endpoint tester --
@@ -615,7 +611,6 @@ export const TRANSLATIONS = {
         'help.gateway.features.https': 'Eingebetteter HTTPS/HTTP-Server mit konfigurierbarem Port',
         'help.gateway.features.routing': 'Routenbasiertes Request-Matching mit Pfadmustern',
         'help.gateway.features.auth': 'Rollen- und Scope-Anforderungen pro Route',
-        'help.gateway.features.cors': 'CORS-Unterst\u00fctzung mit konfigurierbaren Allowed Origins',
         'help.gateway.features.limits': 'Request Body Size Limits und Queue Management',
         'help.gateway.tabs.title': 'Tabs',
         'help.gateway.tabs.endpoint': 'Aktive Routen, globale Einstellungen und Sicherheitskonfiguration anzeigen',
@@ -651,7 +646,6 @@ export const TRANSLATIONS = {
         'contexthelp.global.max.request.size': 'Maximale Request Body Size in Bytes. Requests, die dieses Limit \u00fcberschreiten, werden mit HTTP 413 abgelehnt.',
         'contexthelp.global.queue.size': 'Maximale Anzahl wartender Requests, bevor der Server neue Connections ablehnt.',
         'contexthelp.global.ssl.enabled': 'Ob SSL/TLS \u00fcber einen SSLContextService aktiviert ist. Wenn gesetzt, liefert das Gateway HTTPS statt HTTP.',
-        'contexthelp.global.cors.origins': 'Kommagetrennte Liste erlaubter CORS Origins. Verwenden Sie * f\u00fcr alle Origins (nicht empfohlen f\u00fcr Produktion).',
         'contexthelp.global.listening.host': 'Netzwerk-Interface f\u00fcr die Server-Bindung. 0.0.0.0 f\u00fcr alle Interfaces oder 127.0.0.1 nur f\u00fcr Loopback.',
         'contexthelp.route.name': 'Eindeutiger Bezeichner f\u00fcr diese Route. Wird als Pr\u00e4fix in NiFi Dynamic Properties verwendet (restapi.<name>.*).',
         'contexthelp.route.enabled': 'Ob diese Route aktiv ist. Deaktivierte Routen werden beim Request Matching ignoriert.',

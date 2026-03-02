@@ -16,7 +16,7 @@ This module provides the `RestApiGatewayProcessor` -- a self-contained REST API 
 |Main NiFi processor. Manages the Jetty server lifecycle, parses route configurations from dynamic properties, and converts queued requests into FlowFiles with route/HTTP/JWT attributes.
 
 |`RestApiGatewayConstants`
-|All property descriptors (listening port, host, max request size, queue size, CORS origins, management API key, SSL context, CS reference) and relationship definitions.
+|All property descriptors (listening port, host, max request size, queue size, management API key, SSL context, CS reference) and relationship definitions.
 
 |`GatewayRequestHandler`
 |Jetty 12 handler implementing the 6-stage request pipeline: input sanitization, route matching, JWT authentication, authorization, body validation, and request enqueuing.

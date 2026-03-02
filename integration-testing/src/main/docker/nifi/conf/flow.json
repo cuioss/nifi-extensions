@@ -957,7 +957,6 @@
               "rest.gateway.jwt.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
               "rest.gateway.max.request.size": "1048576",
               "rest.gateway.request.queue.size": "50",
-              "rest.gateway.cors.allowed.origins": "http://localhost:3000",
               "restapi.health.path": "/api/health",
               "restapi.health.methods": "GET",
               "restapi.data.path": "/api/data",
@@ -999,11 +998,6 @@
               },
               "rest.gateway.request.queue.size": {
                 "name": "rest.gateway.request.queue.size",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "rest.gateway.cors.allowed.origins": {
-                "name": "rest.gateway.cors.allowed.origins",
                 "identifiesControllerService": false,
                 "sensitive": false
               },

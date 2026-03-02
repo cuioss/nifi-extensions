@@ -63,7 +63,7 @@ Requests flow through up to three authentication layers depending on the target 
                          │           JWT Bearer token   │
                          │           Role + scope check │
                          │           cui-http security  │
-                         │           CORS handling      │
+                         │                              │
                          └──────────────────────────────┘
 ----
 
@@ -164,7 +164,7 @@ Endpoints without per-component authorization are still protected by NiFi contai
 |JWT Bearer token
 |Role + scope validation
 |Per-route config
-|Full `cui-http` security pipeline (input sanitization, CORS, rate limiting via queue backpressure)
+|Full `cui-http` security pipeline (input sanitization, rate limiting via queue backpressure)
 
 |`/metrics`
 |Optional API key (`X-Api-Key`)
@@ -253,11 +253,6 @@ This means users accessing management data through the NiFi UI get full three-la
 |JWKS URL/file validation
 |Localhost-only targets
 
-|CORS handling
-|Yes (configurable)
-|No
-|No (NiFi iframe)
-|No (NiFi iframe)
 |===
 
 == Implementation Classes

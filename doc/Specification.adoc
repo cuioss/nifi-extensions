@@ -103,7 +103,6 @@ The RestApiGatewayProcessor provides:
 * Multi-route configuration via dynamic properties (`restapi.<name>.<property>`)
 * Per-route JWT authorization (required roles and scopes)
 * RFC 9457 Problem Details error responses
-* CORS support with configurable allowed origins
 * `/metrics` management endpoint (Prometheus and JSON formats)
 * Request queue-based back-pressure integration with NiFi flow
 

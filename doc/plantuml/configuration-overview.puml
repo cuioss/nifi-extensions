@@ -29,7 +29,6 @@ package "RestApiGatewayProcessor\nProperties" as gw_config {
   [Listening Port / Host] as listen
   [SSL Context Service] as ssl
   [Max Request Size / Queue] as limits
-  [CORS Allowed Origins] as cors
   [Management API Key] as mgmt_key
   [CS Reference] as gw_cs_ref
   [Route Configuration\n(dynamic properties)] as routes

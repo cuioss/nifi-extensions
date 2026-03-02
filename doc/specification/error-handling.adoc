@@ -222,14 +222,6 @@ Each error response increments a corresponding counter in link:../../nifi-cuioss
 
 These counters are exposed through the `/metrics` management endpoint. See link:observability.adoc[Observability] for metrics access.
 
-=== CORS Error Handling
-
-When CORS origins are configured, the gateway:
-
-* Handles preflight `OPTIONS` requests with 204 and appropriate `Access-Control-*` headers
-* Adds `Access-Control-Allow-Origin` and `Vary: Origin` to all responses (including error responses) when the request origin is allowed
-* Adds `Access-Control-Allow-Credentials: true` for non-wildcard origins
-
 === WWW-Authenticate Header (RFC 6750)
 
 Authentication failures include the `WWW-Authenticate` header per RFC 6750:

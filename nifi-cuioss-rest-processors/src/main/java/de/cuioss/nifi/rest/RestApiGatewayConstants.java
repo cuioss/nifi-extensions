@@ -85,15 +85,6 @@ public final class RestApiGatewayConstants {
                 .identifiesControllerService(SSLContextProvider.class)
                 .build();
 
-        public static final PropertyDescriptor CORS_ALLOWED_ORIGINS = new PropertyDescriptor.Builder()
-                .name("rest.gateway.cors.allowed.origins")
-                .displayName("CORS Allowed Origins")
-                .description("Comma-separated list of allowed CORS origins. "
-                        + "Use '*' to allow all origins. Leave empty to disable CORS.")
-                .required(false)
-                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                .build();
-
         public static final PropertyDescriptor LISTENING_HOST = new PropertyDescriptor.Builder()
                 .name("rest.gateway.listening.host")
                 .displayName("Listening Host")

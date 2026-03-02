@@ -40,7 +40,7 @@ Configuration is split between processors and a shared Controller Service (CS):
 
 * **JwtIssuerConfigService CS** -- issuer configuration, JWKS settings, token validation, and performance tuning (shared by both processors)
 * **MultiIssuerJWTTokenAuthenticator** -- token reading, authorization requirements, and CS reference
-* **RestApiGatewayProcessor** -- HTTP server settings, route configuration, CORS, management endpoints, and CS reference
+* **RestApiGatewayProcessor** -- HTTP server settings, route configuration, management endpoints, and CS reference
 
 The CS supports three configuration methods:
 
@@ -130,11 +130,6 @@ Authorization is configured at the processor level:
 |50
 |Maximum number of requests queued for FlowFile processing. Acts as back-pressure when the NiFi flow cannot keep up.
 |Yes
-
-|rest.gateway.cors.allowed.origins
-|--
-|Comma-separated list of allowed CORS origins. When set, CORS headers are added to responses and preflight OPTIONS requests are handled automatically.
-|No
 
 |rest.gateway.management.api-key
 |--
@@ -322,7 +317,6 @@ jwt.validation.issuer.1.audience = api://my-service
 ----
 # Gateway processor properties
 rest.gateway.listening.port = 9443
-rest.gateway.cors.allowed.origins = https://app.example.com
 rest.gateway.management.api-key = <secret>
 
 # Route configuration (on processor as dynamic properties)

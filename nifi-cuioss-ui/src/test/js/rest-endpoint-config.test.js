@@ -20,7 +20,6 @@ const SAMPLE_PROPERTIES = {
     'rest.gateway.max.request.size': '1048576',
     'rest.gateway.request.queue.size': '100',
     'rest.gateway.ssl.context.service': '',
-    'rest.gateway.cors.allowed.origins': '*',
     'restapi.health.path': '/api/health',
     'restapi.health.methods': 'GET',
     'restapi.health.enabled': 'true',
@@ -1584,7 +1583,7 @@ describe('rest-endpoint-config', () => {
         await init(container);
 
         const helpButtons = container.querySelectorAll('.global-settings-display .context-help-toggle');
-        expect(helpButtons.length).toBe(6); // one per global setting
+        expect(helpButtons.length).toBe(5); // one per global setting
     });
 
     it('should toggle context help panel when button is clicked', async () => {
