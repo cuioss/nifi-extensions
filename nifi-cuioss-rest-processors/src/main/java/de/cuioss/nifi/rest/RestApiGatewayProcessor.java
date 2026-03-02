@@ -16,12 +16,13 @@
  */
 package de.cuioss.nifi.rest;
 
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.TokenClaimMapper;
+import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.RouteConfigurationParser;
-import de.cuioss.nifi.rest.handler.GatewayRequestHandler;
-import de.cuioss.nifi.rest.handler.HttpRequestContainer;
+import de.cuioss.nifi.rest.handler.*;
 import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.tools.logging.CuiLogger;
@@ -68,7 +69,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE,
             RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
-            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE);
+            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
+            RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED,
+            RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE,
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED,
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
@@ -125,7 +130,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         // Update dynamic relationships
         updateDynamicRelationships(routes);
 
-        // Start Jetty
+        // Resolve services
         JwtIssuerConfigService configService = context.getProperty(
                 RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
@@ -135,8 +140,36 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         // Build JSON Schema validator from route configurations
         JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
 
-        var handler = new GatewayRequestHandler(
-                routes, configService, requestQueue, maxRequestSize, schemaValidator);
+        // Pre-create shared event counters so all handlers + dispatcher share them
+        var httpSecurityEvents = new SecurityEventCounter();
+        var gatewaySecurityEvents = new GatewaySecurityEvents();
+
+        // Build endpoint handlers: built-in management first, then user routes
+        List<EndpointHandler> handlers = new ArrayList<>();
+
+        // Health endpoint
+        boolean healthEnabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
+        AuthMode healthAuthMode = AuthMode.fromValue(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
+        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthMode));
+
+        // Metrics endpoint
+        boolean metricsEnabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
+        AuthMode metricsAuthMode = AuthMode.fromValue(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
+        handlers.add(new MetricsEndpointHandler(configService, httpSecurityEvents,
+                gatewaySecurityEvents, metricsEnabled, metricsAuthMode));
+
+        // User route handlers
+        for (RouteConfiguration route : routes) {
+            handlers.add(new ApiRouteHandler(route, requestQueue, maxRequestSize,
+                    schemaValidator, gatewaySecurityEvents));
+        }
+
+        var gatewayHandler = new GatewayRequestHandler(handlers, configService, maxRequestSize,
+                httpSecurityEvents, gatewaySecurityEvents);
 
         // Resolve optional SSL context for HTTPS
         SSLContextProvider sslProvider = context.getProperty(
@@ -144,13 +177,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 .asControllerService(SSLContextProvider.class);
         SSLContext sslContext = (sslProvider != null) ? sslProvider.createContext() : null;
 
-        // Enable management endpoints (/metrics, /health)
-        handler.configureManagementEndpoints();
-
         // Resolve optional listening host
         String host = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_HOST).getValue();
 
-        serverManager.start(port, host, handler, sslContext);
+        serverManager.start(port, host, gatewayHandler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
     }
@@ -183,8 +213,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             container.queryParameters().forEach((key, value) ->
                     attributes.put(RestApiAttributes.QUERY_PARAM_PREFIX + key, value));
 
-            // Map JWT claims
-            attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
+            // Map JWT claims (guard against null token for unauthenticated routes)
+            if (container.token() != null) {
+                attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
+            }
 
             // Resolve outcome relationship name
             String outcome = routeToOutcome.get(container.routeName());

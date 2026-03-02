@@ -16,22 +16,27 @@
  */
 package de.cuioss.nifi.rest.handler;
 
-import java.util.Map;
+import lombok.experimental.UtilityClass;
+import org.eclipse.jetty.server.Request;
 
 /**
- * Holds the security-validated and normalized HTTP request components.
- * <p>
- * All values have been processed through the cui-http security validation
- * pipelines, which normalize encoding, detect attack patterns, and sanitize
- * the input. Downstream processing should use these normalized values
- * instead of raw request data.
- *
- * @param path            the normalized URL path
- * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
- * @param headers         the normalized header values (Authorization excluded, values sanitized)
+ * Shared request utilities for endpoint handlers.
  */
-public record SanitizedRequest(
-String path,
-Map<String, String> queryParameters,
-Map<String, String> headers) {
+@UtilityClass
+public class RequestUtils {
+
+    private static final String IPV4_LOOPBACK = "127.0.0.1";
+    private static final String IPV6_LOOPBACK = "::1";
+
+    /**
+     * Returns {@code true} if the request originates from a loopback address
+     * (127.0.0.1 or ::1).
+     *
+     * @param request the Jetty request
+     * @return {@code true} for loopback requests
+     */
+    public static boolean isLoopbackRequest(Request request) {
+        String remoteAddr = Request.getRemoteAddr(request);
+        return IPV4_LOOPBACK.equals(remoteAddr) || IPV6_LOOPBACK.equals(remoteAddr);
+    }
 }

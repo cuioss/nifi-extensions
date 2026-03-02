@@ -111,7 +111,7 @@ describe('rest-endpoint-config', () => {
 
         const headers = container.querySelectorAll('.route-summary-table thead th');
         const headerTexts = Array.from(headers).map((th) => th.textContent.trim());
-        expect(headerTexts).toEqual(['route.table.name', 'route.table.connection', 'route.table.path', 'route.table.methods', 'route.table.enabled', 'route.table.actions']);
+        expect(headerTexts).toEqual(['route.table.name', 'route.table.connection', 'route.table.path', 'route.table.methods', 'route.table.authmode', 'route.table.enabled', 'route.table.actions']);
     });
 
     it('should display route name and path in table cells', async () => {
@@ -361,10 +361,14 @@ describe('rest-endpoint-config', () => {
         container.querySelector('.add-route-button').click();
 
         const form = container.querySelector('.route-form');
-        const inputs = form.querySelectorAll('.form-input');
+        const inputs = form.querySelectorAll('input.form-input');
         for (const input of inputs) {
             expect(input.value).toBe('');
         }
+        // Auth-mode select defaults to 'bearer'
+        const authModeSelect = form.querySelector('select.form-input');
+        expect(authModeSelect).not.toBeNull();
+        expect(authModeSelect.value).toBe('bearer');
     });
 
     // -----------------------------------------------------------------------

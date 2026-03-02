@@ -45,22 +45,31 @@ Requests flow through up to three authentication layers depending on the target 
                          │  │                 │  (SSRF: localhost) │     │     │  │
                          │  └─────────────────┼────────────────────┼─────┼─────┘  │
                          └────────────────────┼────────────────────┼─────┼────────┘
-                                              │  HTTP + X-Api-Key  │     │
-                                              │  (localhost:port)  │     │
+                                              │  HTTP (localhost)   │     │
+                                              │  (loopback bypass)  │     │
                                               │                    ▼     │
                          ┌──────────────────────────────┐               │
                          │  Gateway Embedded Jetty      │◄── reads ─────┘
-                         │        (Layer 3)             │  port, API key
+                         │        (Layer 3)             │  port, config
                          │                              │
                          │  GatewayRequestHandler       │
+                         │  (command-pattern dispatch)  │
                          │         │                    │
-  External   ── HTTP ───►│         ├──► /metrics ───────┤
-  Clients                │         │  ManagementHandler │
-  (direct)               │         │  (optional API key)│
+  External   ── HTTP ───►│    path lookup → handler map │
+  Clients                │    auth-mode dispatch:       │
+  (direct)               │    BEARER / NONE / LOCAL_ONLY│
+                         │         │                    │
+                         │         ├──► /health ────────┤
+                         │         │  HealthEndpoint    │
+                         │         │  (auth: local-only)│
+                         │         │                    │
+                         │         ├──► /metrics ───────┤
+                         │         │  MetricsEndpoint   │
+                         │         │  (auth: local-only)│
                          │         │                    │
                          │         └──► /api/** ────────┤
-                         │           AuthorizationPipeline
-                         │           JWT Bearer token   │
+                         │           ApiRouteHandler    │
+                         │           (auth: per-route)  │
                          │           Role + scope check │
                          │           cui-http security  │
                          │                              │
@@ -70,7 +79,7 @@ Requests flow through up to three authentication layers depending on the target 
 Two distinct entry points reach the gateway:
 
 * **NiFi UI path** (top): Browser -> NiFi auth -> ProcessorIdValidationFilter -> GatewayProxyServlet (serves `/config` locally; proxies `/metrics` and `/test` to gateway)
-* **Direct path** (left): External client -> Gateway Jetty (single-layer: JWT Bearer or optional API key for `/metrics`)
+* **Direct path** (left): External client -> Gateway Jetty (single-layer: auth-mode dispatch per endpoint -- BEARER, NONE, or LOCAL_ONLY)
 
 === Layer 1: NiFi Container Authentication
 
@@ -96,10 +105,11 @@ Requests that reach the Custom UI pass through two filters and then per-servlet 
 
 === Layer 3: Gateway Embedded Jetty
 
-The REST API Gateway processor runs its own embedded Jetty server on a configurable port. This server has two categories of endpoints with different authentication:
+The REST API Gateway processor runs its own embedded Jetty server on a configurable port. All endpoints use a unified command-pattern dispatcher with configurable `auth-mode`:
 
-* **Data routes** -- Full JWT Bearer authentication with role/scope authorization via `cui-http` security pipelines.
-* **Management endpoint** (`/metrics`) -- Optional API key authentication (see <<management-endpoint-security>>).
+* **`BEARER`** (default for data routes) -- Full JWT Bearer authentication with role/scope authorization via `cui-http` security pipelines.
+* **`LOCAL_ONLY`** (default for management endpoints) -- Loopback requests bypass authentication; remote requests require JWT Bearer auth.
+* **`NONE`** -- No authentication required (anonymous access).
 
 == Endpoint Authorization Matrix
 
@@ -158,32 +168,42 @@ Endpoints without per-component authorization are still protected by NiFi contai
 
 [cols="3,1,1,1,2"]
 |===
-|Endpoint |Authentication |Authorization |HTTP Methods |Notes
+|Endpoint |Auth Mode |Authorization |HTTP Methods |Notes
 
-|Data routes (`/api/**`)
-|JWT Bearer token
-|Role + scope validation
-|Per-route config
-|Full `cui-http` security pipeline (input sanitization, rate limiting via queue backpressure)
-
-|`/metrics`
-|Optional API key (`X-Api-Key`)
+|`/health` (built-in)
+|`local-only` (configurable)
 |None
 |GET
-|Bypasses JWT auth and security pipelines
+|Returns `{"status":"UP","timestamp":"..."}`. Configurable via `rest.gateway.management.health.*` properties.
+
+|`/metrics` (built-in)
+|`local-only` (configurable)
+|None
+|GET
+|Prometheus/JSON metrics from security event counters. Configurable via `rest.gateway.management.metrics.*` properties.
+
+|Data routes (`/api/**`)
+|`bearer` (configurable per-route)
+|Role + scope validation
+|Per-route config
+|Full `cui-http` security pipeline (input sanitization, rate limiting via queue backpressure). Auth mode configurable via `restapi.<name>.auth-mode`.
 |===
 
 [[management-endpoint-security]]
 == Management Endpoint Security
 
-=== API Key Authentication
+=== Auth-Mode Dispatch
 
-The `/metrics` management endpoint supports optional API key authentication via the `rest.gateway.management.api-key` processor property:
+Built-in management endpoints (`/health`, `/metrics`) use configurable `auth-mode` (default: `local-only`):
 
-* **When configured**: Requests must include a matching `X-Api-Key` header. Invalid or missing keys receive a `401 Unauthorized` response.
-* **When not configured**: Management endpoints are accessible without authentication (backward compatible).
+* **`local-only`** (default): Loopback requests (127.0.0.1, ::1) bypass authentication. Remote requests require JWT Bearer authentication. This allows localhost tools (monitoring agents, Docker health checks) to access endpoints without credentials while protecting network-exposed deployments.
+* **`bearer`**: All requests require JWT Bearer authentication, same as data routes.
+* **`none`**: No authentication required. Use with caution -- only appropriate when the endpoint is network-isolated.
 
-The API key is a NiFi sensitive property (masked in UI, encrypted at rest by NiFi).
+Management endpoint auth-mode is configured via static NiFi properties:
+
+* `rest.gateway.management.health.auth-mode` (default: `local-only`)
+* `rest.gateway.management.metrics.auth-mode` (default: `local-only`)
 
 === Network Binding
 
@@ -200,10 +220,10 @@ The `GatewayProxyServlet` provides authenticated access to management data:
 2. `ProcessorIdValidationFilter` validates processor UUID (Layer 2)
 3. `ComponentConfigReader` enforces per-component NiFi authorization
 4. `/config` is served locally from processor properties (no gateway round-trip)
-5. `/metrics` is proxied to the gateway with the management API key forwarded via `X-Api-Key` header
+5. `/metrics` is proxied to the gateway via localhost (loopback bypass when auth-mode is `local-only`)
 6. SSRF protection on test endpoint: only localhost targets allowed
 
-This means users accessing management data through the NiFi UI get full three-layer authentication, even when the gateway's own `/metrics` endpoint uses only API key auth.
+This means users accessing management data through the NiFi UI get full three-layer authentication, even when the gateway's management endpoints use `local-only` auth-mode.
 
 == Security Pipeline Comparison
 
@@ -217,15 +237,21 @@ This means users accessing management data through the NiFi UI get full three-la
 |Yes
 |Yes
 
+|Auth-mode dispatch
+|`bearer` (default)
+|`local-only` (default)
+|N/A
+|N/A
+
 |JWT Bearer auth
-|Yes
-|No
+|Yes (when auth-mode=bearer)
+|Configurable
 |No
 |No
 
-|API key auth
-|No
-|Optional
+|Loopback bypass
+|No (unless auth-mode=local-only)
+|Yes (default)
 |No
 |No
 
@@ -243,7 +269,7 @@ This means users accessing management data through the NiFi UI get full three-la
 
 |`cui-http` input sanitization
 |Yes
-|No
+|Yes (shared dispatcher)
 |Partial (JWKS validation)
 |No
 
@@ -274,10 +300,22 @@ This means users accessing management data through the NiFi UI get full three-la
 |Serves `/config` locally from processor properties; proxies `/metrics` to gateway; test endpoint with SSRF protection
 
 |link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java[GatewayRequestHandler]
-|Main Jetty request handler -- routes to auth pipeline or management handler
+|Thin command-pattern dispatcher -- path lookup, auth-mode dispatch, then delegates to `EndpointHandler`
 
-|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ManagementEndpointHandler.java[ManagementEndpointHandler]
-|`/metrics` endpoint handler with optional API key authentication
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/EndpointHandler.java[EndpointHandler]
+|Common interface for all endpoint types (name, path, methods, authMode, enabled)
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/HealthEndpointHandler.java[HealthEndpointHandler]
+|Built-in `/health` endpoint -- returns `{"status":"UP","timestamp":"..."}`
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/MetricsEndpointHandler.java[MetricsEndpointHandler]
+|Built-in `/metrics` endpoint -- Prometheus/JSON metrics from security event counters
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ApiRouteHandler.java[ApiRouteHandler]
+|User-configured route handler -- body validation, schema check, FlowFile enqueue
+
+|link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/config/AuthMode.java[AuthMode]
+|Enum: `BEARER`, `NONE`, `LOCAL_ONLY` -- configurable per endpoint
 
 |link:../../nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/server/JettyServerManager.java[JettyServerManager]
 |Embedded Jetty lifecycle with configurable host binding

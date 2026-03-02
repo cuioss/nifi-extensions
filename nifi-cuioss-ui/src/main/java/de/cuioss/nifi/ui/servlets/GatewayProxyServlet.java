@@ -70,6 +70,10 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String QUEUE_SIZE_PROPERTY = "rest.gateway.request.queue.size";
     private static final String SSL_CONTEXT_SERVICE_PROPERTY = "rest.gateway.ssl.context.service";
     private static final String LISTENING_HOST_PROPERTY = "rest.gateway.listening.host";
+    private static final String HEALTH_ENABLED_PROPERTY = "rest.gateway.management.health.enabled";
+    private static final String HEALTH_AUTH_MODE_PROPERTY = "rest.gateway.management.health.auth-mode";
+    private static final String METRICS_ENABLED_PROPERTY = "rest.gateway.management.metrics.enabled";
+    private static final String METRICS_AUTH_MODE_PROPERTY = "rest.gateway.management.metrics.auth-mode";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
 
@@ -400,6 +404,7 @@ public class GatewayProxyServlet extends HttpServlet {
             root.add("listeningHost", host);
         }
 
+        root.add("managementEndpoints", buildManagementEndpointsArray(props));
         root.add("routes", buildRoutesArray(props));
 
         resp.setContentType(CONTENT_TYPE_JSON);
@@ -451,9 +456,45 @@ public class GatewayProxyServlet extends HttpServlet {
             }
             routeObj.add("createFlowFile", !"false".equalsIgnoreCase(
                     routeProps.getOrDefault("create-flowfile", "true")));
+            String authMode = routeProps.getOrDefault("auth-mode", "bearer");
+            routeObj.add("authMode", authMode);
+            String maxReqSize = routeProps.get("max-request-size");
+            if (maxReqSize != null && !maxReqSize.isBlank()) {
+                try {
+                    routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize.strip()));
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
+                }
+            }
             routesArray.add(routeObj);
         }
         return routesArray;
+    }
+
+    private static JsonArrayBuilder buildManagementEndpointsArray(Map<String, String> props) {
+        JsonArrayBuilder mgmtArray = Json.createArrayBuilder();
+
+        JsonObjectBuilder health = Json.createObjectBuilder();
+        health.add("name", "health");
+        health.add("path", "/health");
+        health.add("methods", Json.createArrayBuilder().add("GET"));
+        health.add("enabled", !"false".equalsIgnoreCase(
+                props.getOrDefault(HEALTH_ENABLED_PROPERTY, "true")));
+        health.add("authMode", props.getOrDefault(HEALTH_AUTH_MODE_PROPERTY, "local-only"));
+        health.add("builtIn", true);
+        mgmtArray.add(health);
+
+        JsonObjectBuilder metrics = Json.createObjectBuilder();
+        metrics.add("name", "metrics");
+        metrics.add("path", "/metrics");
+        metrics.add("methods", Json.createArrayBuilder().add("GET"));
+        metrics.add("enabled", !"false".equalsIgnoreCase(
+                props.getOrDefault(METRICS_ENABLED_PROPERTY, "true")));
+        metrics.add("authMode", props.getOrDefault(METRICS_AUTH_MODE_PROPERTY, "local-only"));
+        metrics.add("builtIn", true);
+        mgmtArray.add(metrics);
+
+        return mgmtArray;
     }
 
     private static JsonArrayBuilder buildStringArray(String commaSeparated) {

@@ -116,15 +116,16 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Verify table headers: Name, Connection, Path, Methods, Enabled, Actions
+        // Verify table headers: Name, Connection, Path, Methods, Auth Mode, Enabled, Actions
         const headers = summaryTable.locator("thead th");
-        await expect(headers).toHaveCount(6);
+        await expect(headers).toHaveCount(7);
         await expect(headers.nth(0)).toContainText("Name");
         await expect(headers.nth(1)).toContainText("Connection");
         await expect(headers.nth(2)).toContainText("Path");
         await expect(headers.nth(3)).toContainText("Methods");
-        await expect(headers.nth(4)).toContainText("Enabled");
-        await expect(headers.nth(5)).toContainText("Actions");
+        await expect(headers.nth(4)).toContainText("Auth");
+        await expect(headers.nth(5)).toContainText("Enabled");
+        await expect(headers.nth(6)).toContainText("Actions");
 
         // Verify at least one data row exists
         const dataRows = summaryTable.locator("tbody tr[data-route-name]");

@@ -257,6 +257,83 @@ class RouteConfigurationParserTest {
     }
 
     @Nested
+    @DisplayName("AuthMode and MaxRequestSize")
+    class AuthModeAndMaxRequestSize {
+
+        @Test
+        @DisplayName("Should parse auth-mode property")
+        void shouldParseAuthMode() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.auth-mode", "none");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(1, routes.size());
+            assertEquals(AuthMode.NONE, routes.getFirst().authMode());
+        }
+
+        @Test
+        @DisplayName("Should parse auth-mode=local-only")
+        void shouldParseAuthModeLocalOnly() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.auth-mode", "local-only");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(AuthMode.LOCAL_ONLY, routes.getFirst().authMode());
+        }
+
+        @Test
+        @DisplayName("Should default auth-mode to BEARER when absent")
+        void shouldDefaultAuthModeToBEARER() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(AuthMode.BEARER, routes.getFirst().authMode());
+        }
+
+        @Test
+        @DisplayName("Should parse max-request-size property")
+        void shouldParseMaxRequestSize() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.max-request-size", "524288");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(1, routes.size());
+            assertEquals(524288, routes.getFirst().maxRequestSize());
+        }
+
+        @Test
+        @DisplayName("Should default max-request-size to 0 when absent")
+        void shouldDefaultMaxRequestSizeToZero() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(0, routes.getFirst().maxRequestSize());
+        }
+
+        @Test
+        @DisplayName("Should ignore non-numeric max-request-size")
+        void shouldIgnoreNonNumericMaxRequestSize() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.max-request-size", "invalid");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(0, routes.getFirst().maxRequestSize());
+        }
+    }
+
+    @Nested
     @DisplayName("Validation")
     class Validation {
 

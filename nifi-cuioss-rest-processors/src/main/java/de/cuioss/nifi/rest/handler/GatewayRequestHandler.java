@@ -22,11 +22,10 @@ import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.http.security.pipeline.PipelineFactory.PipelineSet;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.rest.RestApiLogMessages;
-import de.cuioss.nifi.rest.config.RouteConfiguration;
-import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
-import de.cuioss.nifi.rest.validation.SchemaViolation;
+import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
@@ -44,123 +43,115 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.stream.Collectors;
 
 /**
- * Jetty 12 Core handler implementing the REST API Gateway request pipeline.
+ * Thin dispatcher implementing the command-pattern for endpoint handling.
  * <p>
- * Processing pipeline for each request:
- * <ol>
- *   <li>Match route by path + HTTP method</li>
- *   <li>Extract and validate Bearer token via {@link JwtIssuerConfigService}</li>
- *   <li>Check authorization (roles/scopes) via {@link AuthorizationValidator}</li>
- *   <li>Read and size-check request body</li>
- *   <li>Validate request body against JSON Schema (if configured)</li>
- *   <li>Enqueue {@link HttpRequestContainer} for FlowFile creation</li>
- *   <li>Send HTTP response (success or error with {@link ProblemDetail})</li>
- * </ol>
+ * All endpoint types (built-in management + user API routes) are registered
+ * as {@link EndpointHandler} instances in a handler map. The dispatcher performs
+ * shared concerns (sanitization, method check, auth-mode dispatch, authorization,
+ * body size check) before delegating to the handler's {@code process()} method.
  */
 public class GatewayRequestHandler extends Handler.Abstract {
 
     private static final CuiLogger LOGGER = new CuiLogger(GatewayRequestHandler.class);
 
-    // HTTP header constants
     private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
     private static final String HEADER_ALLOW = "Allow";
 
-    // Auth challenge constants
     private static final String BEARER_CHALLENGE = "Bearer";
     private static final String BEARER_INVALID_TOKEN = "Bearer error=\"invalid_token\"";
     private static final String BEARER_INSUFFICIENT_SCOPE_TEMPLATE = "Bearer error=\"insufficient_scope\", scope=\"%s\"";
 
-    // Response body
-    private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] EMPTY_BODY = new byte[0];
     private static final int BEARER_PREFIX_LENGTH = 7;
 
-    private final List<RouteConfiguration> routes;
+    /** Path to handler lookup map. Iteration order matches registration order. */
+    private final Map<String, EndpointHandler> handlerMap;
     private final JwtIssuerConfigService configService;
-    private final BlockingQueue<HttpRequestContainer> queue;
-    private final int maxRequestSize;
-    @Nullable private final JsonSchemaValidator schemaValidator;
+    private final int globalMaxRequestSize;
     private final PipelineSet securityPipelines;
+
     /** Transport-level HTTP security event counters from cui-http. */
     @Getter private final SecurityEventCounter httpSecurityEvents;
     /** Application-level gateway security event counters. */
     @Getter private final GatewaySecurityEvents gatewaySecurityEvents;
-    /** Handler for reserved management endpoints (/metrics). */
-    @Getter @Nullable private ManagementEndpointHandler managementHandler;
+
+    /** Package-private flag to disable loopback bypass in tests. */
+    boolean loopbackBypassEnabled = true;
 
     /**
-     * Creates a new handler without schema validation.
-     *
-     * @param routes         the configured routes
-     * @param configService  the JWT issuer config service for token validation
-     * @param queue          the queue for passing requests to the NiFi processor
-     * @param maxRequestSize maximum allowed request body size in bytes
+     * Authentication result: either a successful resolution (with optional token)
+     * or an error (response already sent).
      */
-    public GatewayRequestHandler(
-            List<RouteConfiguration> routes,
-            JwtIssuerConfigService configService,
-            BlockingQueue<HttpRequestContainer> queue,
-            int maxRequestSize) {
-        this(routes, configService, queue, maxRequestSize, null);
+    private sealed interface AuthResult {
+        /** Authentication succeeded; token may be null for NONE/LOCAL_ONLY loopback. */
+        record Success(@Nullable AccessTokenContent token) implements AuthResult {
+        }
+
+        /** Authentication failed; error response was already sent to the client. */
+        record ErrorSent() implements AuthResult {
+        }
     }
 
     /**
-     * Creates a new handler with optional schema validation.
+     * Creates a new dispatcher with the given endpoint handlers.
+     * Event counters are created internally.
      *
-     * @param routes          the configured routes
-     * @param configService   the JWT issuer config service for token validation
-     * @param queue           the queue for passing requests to the NiFi processor
-     * @param maxRequestSize  maximum allowed request body size in bytes
-     * @param schemaValidator optional JSON Schema validator for request body validation
+     * @param handlers             ordered list of endpoint handlers (built-in first, then user routes)
+     * @param configService        JWT issuer config service for token validation
+     * @param globalMaxRequestSize global maximum request body size in bytes
      */
     public GatewayRequestHandler(
-            List<RouteConfiguration> routes,
+            List<EndpointHandler> handlers,
             JwtIssuerConfigService configService,
-            BlockingQueue<HttpRequestContainer> queue,
-            int maxRequestSize,
-            @Nullable JsonSchemaValidator schemaValidator) {
-        this.routes = List.copyOf(routes);
+            int globalMaxRequestSize) {
+        this(handlers, configService, globalMaxRequestSize,
+                new SecurityEventCounter(), new GatewaySecurityEvents());
+    }
+
+    /**
+     * Creates a new dispatcher with pre-created event counters.
+     * Use this when handlers need access to the same event counter instances.
+     *
+     * @param handlers               ordered list of endpoint handlers
+     * @param configService          JWT issuer config service for token validation
+     * @param globalMaxRequestSize   global maximum request body size in bytes
+     * @param httpSecurityEvents     pre-created transport security event counter
+     * @param gatewaySecurityEvents  pre-created gateway event counter
+     */
+    public GatewayRequestHandler(
+            List<EndpointHandler> handlers,
+            JwtIssuerConfigService configService,
+            int globalMaxRequestSize,
+            SecurityEventCounter httpSecurityEvents,
+            GatewaySecurityEvents gatewaySecurityEvents) {
         this.configService = Objects.requireNonNull(configService);
-        this.queue = Objects.requireNonNull(queue);
-        this.maxRequestSize = maxRequestSize;
-        this.schemaValidator = schemaValidator;
-        this.httpSecurityEvents = new SecurityEventCounter();
-        this.gatewaySecurityEvents = new GatewaySecurityEvents();
+        this.globalMaxRequestSize = globalMaxRequestSize;
+        this.httpSecurityEvents = Objects.requireNonNull(httpSecurityEvents);
+        this.gatewaySecurityEvents = Objects.requireNonNull(gatewaySecurityEvents);
         this.securityPipelines = PipelineFactory.createCommonPipelines(
-                SecurityConfiguration.defaults(), httpSecurityEvents);
-    }
+                SecurityConfiguration.defaults(), this.httpSecurityEvents);
 
-    /**
-     * Configures the management endpoints ({@code /metrics}, {@code /health}) on this handler.
-     * Must be called after construction to enable management API access.
-     * <p>
-     * Authentication uses loopback bypass (127.0.0.1/::1) and JWT Bearer token validation.
-     */
-    public void configureManagementEndpoints() {
-        this.managementHandler = new ManagementEndpointHandler(
-                configService, httpSecurityEvents, gatewaySecurityEvents);
+        this.handlerMap = new LinkedHashMap<>();
+        for (EndpointHandler handler : handlers) {
+            if (handlerMap.containsKey(handler.path())) {
+                throw new IllegalArgumentException(
+                        "Duplicate handler path: '%s' (existing: '%s', new: '%s')"
+                                .formatted(handler.path(),
+                                        handlerMap.get(handler.path()).name(),
+                                        handler.name()));
+            }
+            handlerMap.put(handler.path(), handler);
+        }
     }
-
 
     @SuppressWarnings("java:S3516")
     // Always returns true — this handler handles all requests per Jetty contract
     @Override
     public boolean handle(Request request, Response response, Callback callback) {
-        // Management endpoints bypass the entire auth + security pipeline
-        if (managementHandler != null) {
-            String rawPath = request.getHttpURI().getPath();
-            String accept = request.getHeaders().get("Accept");
-            if (managementHandler.handleIfManagement(rawPath, request.getMethod(), accept,
-                    request, response, callback)) {
-                return true;
-            }
-        }
-
         try {
-            processRequest(request, response, callback);
+            dispatch(request, response, callback);
         } catch (IOException e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.HANDLER_ERROR, e.getMessage());
             sendProblemResponse(response, callback, ProblemDetail.internalError());
@@ -168,12 +159,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return true;
     }
 
-    private void processRequest(Request request, Response response, Callback callback) throws IOException {
+    private void dispatch(Request request, Response response, Callback callback) throws IOException {
         String rawPath = request.getHttpURI().getPath();
         String method = request.getMethod();
         String remoteHost = Request.getRemoteAddr(request);
 
-        // 0. Security validation + normalization
+        // 1. Sanitize input
         Optional<SanitizedRequest> sanitized = validateAndSanitizeInput(
                 request, response, callback, method, rawPath, remoteHost);
         if (sanitized.isEmpty()) {
@@ -181,100 +172,105 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         String path = sanitized.get().path();
 
-        // 1. Route matching (uses normalized path)
-        Optional<RouteConfiguration> route = matchRoute(path, method, response, callback);
-        if (route.isEmpty()) {
-            return;
-        }
-        LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, route.get().name());
-
-        // 2. Authentication
-        Optional<AccessTokenContent> token = authenticateRequest(
-                request, response, callback, method, path, remoteHost);
-        if (token.isEmpty()) {
-            return;
-        }
-
-        // 3. Authorization
-        if (!authorizeRequest(token.get(), route.get(), response, callback, method, path, remoteHost)) {
-            return;
-        }
-        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
-
-        // 4. Read and validate body
-        byte[] body = readBody(request);
-        if (body.length > maxRequestSize) {
-            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
-            LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, maxRequestSize, method, path);
-            sendProblemResponse(response, callback,
-                    ProblemDetail.payloadTooLarge(
-                            "Request body size %d exceeds maximum %d bytes".formatted(body.length, maxRequestSize)));
-            return;
-        }
-
-        // 5. Schema validation (only if route has schema configured and body is non-empty)
-        if (!validateRequestBody(route.get(), body, response, callback, method, path)) {
-            return;
-        }
-
-        // 6. Enqueue for FlowFile creation (uses sanitized query params and headers)
-        if (route.get().createFlowFile()) {
-            var container = new HttpRequestContainer(
-                    route.get().name(), method, path,
-                    sanitized.get().queryParameters(), sanitized.get().headers(), remoteHost,
-                    body, request.getHeaders().get(HttpHeader.CONTENT_TYPE), token.get());
-
-            if (!queue.offer(container)) {
-                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
-                LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, remoteHost);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
-                return;
-            }
-        } else {
-            LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.get().name());
-        }
-
-        // 7. Success response
-        LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.get().name(), method, path, remoteHost);
-        sendSuccessResponse(response, callback, method);
-    }
-
-    /**
-     * Matches route by path and HTTP method.
-     *
-     * @return the matched route, or empty if an error response was sent
-     */
-    private Optional<RouteConfiguration> matchRoute(
-            String path, String method, Response response, Callback callback) {
-        Optional<RouteConfiguration> route = findRoute(path);
-        if (route.isEmpty()) {
+        // 2. Lookup handler by path
+        EndpointHandler handler = handlerMap.get(path);
+        if (handler == null || !handler.enabled()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
             sendProblemResponse(response, callback,
                     ProblemDetail.notFound("No route configured for path: " + path));
-            return Optional.empty();
+            return;
         }
-        if (!route.get().methods().contains(method.toUpperCase(Locale.ROOT))) {
+        LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, handler.name());
+
+        // 3. Method check
+        if (!handler.methods().contains(method.toUpperCase(Locale.ROOT))) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.METHOD_NOT_ALLOWED);
-            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, route.get().name(), path);
-            response.getHeaders().put(HEADER_ALLOW, String.join(", ", route.get().methods()));
+            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, handler.name(), path);
+            response.getHeaders().put(HEADER_ALLOW, String.join(", ", handler.methods()));
             sendProblemResponse(response, callback,
                     ProblemDetail.methodNotAllowed(
                             "Method %s not allowed on %s. Allowed: %s".formatted(
-                                    method, path, route.get().methods())));
-            return Optional.empty();
+                                    method, path, handler.methods())));
+            return;
         }
-        return route;
+
+        // 4. Auth-mode dispatch
+        AuthResult authResult = resolveAuth(handler.authMode(), request, response, callback,
+                method, path, remoteHost);
+        if (authResult instanceof AuthResult.ErrorSent) {
+            return;
+        }
+        AccessTokenContent token = ((AuthResult.Success) authResult).token();
+
+        // 5. Authorization (shared — skipped when roles+scopes are empty)
+        if (token != null && hasAuthorizationRequirements(handler)) {
+            if (!authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
+                return;
+            }
+        }
+        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
+
+        // 6. Body read + size check
+        byte[] body = EMPTY_BODY;
+        int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
+        if (effectiveMaxSize > 0) {
+            body = readBody(request, effectiveMaxSize);
+            if (body.length > effectiveMaxSize) {
+                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
+                LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, effectiveMaxSize, method, path);
+                sendProblemResponse(response, callback,
+                        ProblemDetail.payloadTooLarge(
+                                "Request body size %d exceeds maximum %d bytes".formatted(body.length, effectiveMaxSize)));
+                return;
+            }
+        }
+
+        // 7. Delegate to handler
+        handler.process(sanitized.get(), token, body, request, response, callback);
     }
 
     /**
-     * Extracts and validates the Bearer token.
-     *
-     * @return the validated token, or empty if an error response was sent
+     * Resolves authentication based on the auth mode.
      */
-    private Optional<AccessTokenContent> authenticateRequest(
-            Request request, Response response, Callback callback,
+    private AuthResult resolveAuth(AuthMode authMode, Request request,
+            Response response, Callback callback,
+            String method, String path, String remoteHost) {
+        return switch (authMode) {
+            case NONE -> new AuthResult.Success(null);
+            case LOCAL_ONLY -> {
+                if (loopbackBypassEnabled && RequestUtils.isLoopbackRequest(request)) {
+                    yield new AuthResult.Success(extractAndValidateTokenOptionally(request));
+                }
+                yield requireBearerToken(request, response, callback, method, path, remoteHost);
+            }
+            case BEARER -> requireBearerToken(request, response, callback, method, path, remoteHost);
+        };
+    }
+
+    /**
+     * Tries to extract and validate a Bearer token if present.
+     * Used for LOCAL_ONLY loopback requests where auth is optional.
+     */
+    @Nullable
+    private AccessTokenContent extractAndValidateTokenOptionally(Request request) {
+        Optional<String> rawToken = extractBearerToken(request);
+        if (rawToken.isEmpty()) {
+            return null;
+        }
+        try {
+            return configService.validateToken(rawToken.get());
+        } catch (TokenValidationException e) {
+            LOGGER.debug("Optional token validation failed on loopback request: %s", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Requires a valid Bearer token.
+     */
+    private AuthResult requireBearerToken(Request request, Response response,
+            Callback callback,
             String method, String path, String remoteHost) {
         Optional<String> rawToken = extractBearerToken(request);
         if (rawToken.isEmpty()) {
@@ -283,32 +279,28 @@ public class GatewayRequestHandler extends Handler.Abstract {
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_CHALLENGE);
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Missing or malformed Authorization header"));
-            return Optional.empty();
+            return new AuthResult.ErrorSent();
         }
         try {
-            return Optional.of(configService.validateToken(rawToken.get()));
+            AccessTokenContent token = configService.validateToken(rawToken.get());
+            return new AuthResult.Success(token);
         } catch (TokenValidationException e) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTH_FAILED);
             LOGGER.warn(RestApiLogMessages.WARN.AUTH_FAILED, method, path, remoteHost, e.getMessage());
             response.getHeaders().put(WWW_AUTHENTICATE, BEARER_INVALID_TOKEN);
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Token validation failed: " + e.getMessage()));
-            return Optional.empty();
+            return new AuthResult.ErrorSent();
         }
     }
 
-    /**
-     * Checks role/scope authorization for the given route.
-     *
-     * @return {@code true} if authorized, {@code false} if an error response was sent
-     */
     private boolean authorizeRequest(
-            AccessTokenContent token, RouteConfiguration route, Response response, Callback callback,
+            AccessTokenContent token, EndpointHandler handler,
+            Response response, Callback callback,
             String method, String path, String remoteHost) {
-        if (!route.hasAuthorizationRequirements()) {
-            return true;
-        }
-        var authResult = AuthorizationValidator.validate(token, route.toAuthorizationRequirements());
+        var requirements = new AuthorizationRequirements(true,
+                handler.requiredRoles(), handler.requiredScopes());
+        var authResult = AuthorizationValidator.validate(token, requirements);
         if (authResult.isAuthorized()) {
             return true;
         }
@@ -318,7 +310,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_SCOPE_DENIED);
             response.getHeaders().put(WWW_AUTHENTICATE,
                     BEARER_INSUFFICIENT_SCOPE_TEMPLATE
-                            .formatted(String.join(" ", route.requiredScopes())));
+                            .formatted(String.join(" ", handler.requiredScopes())));
             sendProblemResponse(response, callback,
                     ProblemDetail.unauthorized("Insufficient scopes: " + authResult.getReason()));
         } else {
@@ -329,53 +321,13 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return false;
     }
 
-    /**
-     * Validates the request body against the JSON Schema configured for the route.
-     *
-     * @return {@code true} if valid or no schema configured, {@code false} if an error response was sent
-     */
-    private boolean validateRequestBody(
-            RouteConfiguration route, byte[] body, Response response, Callback callback,
-            String method, String path) {
-        if (schemaValidator == null || !route.hasSchemaValidation()) {
-            return true;
-        }
-        List<SchemaViolation> violations = schemaValidator.validate(route.name(), body);
-        if (violations.isEmpty()) {
-            return true;
-        }
-        gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.SCHEMA_VALIDATION_FAILED);
-        int maxLogViolations = 5;
-        String violationSummary = violations.stream()
-                .limit(maxLogViolations)
-                .map(v -> v.pointer() + ": " + v.message())
-                .collect(Collectors.joining("; "));
-        if (violations.size() > maxLogViolations) {
-            violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
-        }
-        LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
-        sendProblemResponse(response, callback,
-                ProblemDetail.validationError(
-                        "Request body failed JSON Schema validation", violations));
-        return false;
-    }
-
-    /**
-     * Validates and normalizes path, query parameters, and headers through cui-http
-     * security pipelines. Each component is checked for attack patterns and returned
-     * in its normalized form.
-     *
-     * @return the sanitized request components, or empty if an error response was sent
-     */
     private Optional<SanitizedRequest> validateAndSanitizeInput(
             Request request, Response response, Callback callback,
             String method, String path, String remoteHost) {
         try {
-            // Normalize path
             String sanitizedPath = securityPipelines.urlPathPipeline().validate(path)
                     .orElse(path);
 
-            // Normalize query parameters
             var queryParams = Request.extractQueryParameters(request);
             Map<String, String> sanitizedParams = new LinkedHashMap<>();
             for (String name : queryParams.getNames()) {
@@ -385,7 +337,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 sanitizedParams.put(name, sanitizedValue);
             }
 
-            // Normalize headers (excluding Authorization)
             Map<String, String> sanitizedHeaders = new LinkedHashMap<>();
             for (HttpField field : request.getHeaders()) {
                 if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
@@ -405,23 +356,10 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
     }
 
-    private void sendSuccessResponse(Response response, Callback callback, String method) {
-        int statusCode = isBodyMethod(method) ? 202 : 200;
-        response.setStatus(statusCode);
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, ACCEPTED_RESPONSE.length);
-        response.write(true, ByteBuffer.wrap(ACCEPTED_RESPONSE), callback);
-    }
-
     // --- Utility methods ---
 
-    private Optional<RouteConfiguration> findRoute(String path) {
-        for (RouteConfiguration route : routes) {
-            if (route.enabled() && route.path().equals(path)) {
-                return Optional.of(route);
-            }
-        }
-        return Optional.empty();
+    private static boolean hasAuthorizationRequirements(EndpointHandler handler) {
+        return !handler.requiredRoles().isEmpty() || !handler.requiredScopes().isEmpty();
     }
 
     private static Optional<String> extractBearerToken(Request request) {
@@ -433,19 +371,10 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return token.isEmpty() ? Optional.empty() : Optional.of(token);
     }
 
-    private byte[] readBody(Request request) throws IOException {
+    private static byte[] readBody(Request request, int maxSize) throws IOException {
         try (var inputStream = Content.Source.asInputStream(request)) {
-            // Read with size limit to prevent OOM from oversized requests.
-            // We read up to maxRequestSize + 1 so exceeding the limit is
-            // detected without allocating an unbounded buffer.
-            return inputStream.readNBytes(maxRequestSize + 1);
+            return inputStream.readNBytes(maxSize + 1);
         }
-    }
-
-    private static boolean isBodyMethod(String method) {
-        return "POST".equalsIgnoreCase(method)
-                || "PUT".equalsIgnoreCase(method)
-                || "PATCH".equalsIgnoreCase(method);
     }
 
     private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {

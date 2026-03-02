@@ -95,5 +95,43 @@ public final class RestApiGatewayConstants {
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
+        public static final PropertyDescriptor MANAGEMENT_HEALTH_ENABLED = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.health.enabled")
+                .displayName("Health Endpoint Enabled")
+                .description("Whether the /health management endpoint is active")
+                .required(false)
+                .defaultValue("true")
+                .allowableValues("true", "false")
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_HEALTH_AUTH_MODE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.health.auth-mode")
+                .displayName("Health Endpoint Auth Mode")
+                .description("Authentication mode for the /health endpoint: "
+                        + "'local-only' (loopback bypass, default), 'bearer' (JWT required), 'none' (anonymous)")
+                .required(false)
+                .defaultValue("local-only")
+                .allowableValues("local-only", "bearer", "none")
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_METRICS_ENABLED = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.metrics.enabled")
+                .displayName("Metrics Endpoint Enabled")
+                .description("Whether the /metrics management endpoint is active")
+                .required(false)
+                .defaultValue("true")
+                .allowableValues("true", "false")
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_METRICS_AUTH_MODE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.metrics.auth-mode")
+                .displayName("Metrics Endpoint Auth Mode")
+                .description("Authentication mode for the /metrics endpoint: "
+                        + "'local-only' (loopback bypass, default), 'bearer' (JWT required), 'none' (anonymous)")
+                .required(false)
+                .defaultValue("local-only")
+                .allowableValues("local-only", "bearer", "none")
+                .build();
+
     }
 }

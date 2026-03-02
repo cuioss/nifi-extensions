@@ -71,6 +71,10 @@ class GatewayProxyServletTest {
         props.put("rest.gateway.max.request.size", "1048576");
         props.put("rest.gateway.request.queue.size", "50");
         props.put("rest.gateway.listening.host", "0.0.0.0");
+        props.put("rest.gateway.management.health.enabled", "true");
+        props.put("rest.gateway.management.health.auth-mode", "local-only");
+        props.put("rest.gateway.management.metrics.enabled", "true");
+        props.put("rest.gateway.management.metrics.auth-mode", "local-only");
         props.put("restapi.health.path", "/api/health");
         props.put("restapi.health.methods", "GET");
         props.put("restapi.users.path", "/api/users");
@@ -230,8 +234,33 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .body("routes.find { it.name == 'health' }.path", equalTo("/api/health"))
+                    .body("routes.find { it.name == 'health' }.authMode", equalTo("bearer"))
                     .body("routes.find { it.name == 'users' }.path", equalTo("/api/users"))
                     .body("routes.find { it.name == 'users' }.requiredRoles", hasItem("ADMIN"));
+        }
+
+        @Test
+        @DisplayName("Should include management endpoints in config")
+        void shouldIncludeManagementEndpoints() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .body("managementEndpoints.size()", equalTo(2))
+                    .body("managementEndpoints.find { it.name == 'health' }.path",
+                            equalTo("/health"))
+                    .body("managementEndpoints.find { it.name == 'health' }.enabled",
+                            equalTo(true))
+                    .body("managementEndpoints.find { it.name == 'health' }.authMode",
+                            equalTo("local-only"))
+                    .body("managementEndpoints.find { it.name == 'metrics' }.path",
+                            equalTo("/metrics"))
+                    .body("managementEndpoints.find { it.name == 'metrics' }.enabled",
+                            equalTo(true))
+                    .body("managementEndpoints.find { it.name == 'metrics' }.authMode",
+                            equalTo("local-only"));
         }
 
         @Test

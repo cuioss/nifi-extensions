@@ -93,6 +93,10 @@ class RestApiGatewayProcessorTest {
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED));
+            assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE));
         }
 
         @Test

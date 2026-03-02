@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.config;
 
+import de.cuioss.nifi.rest.config.AuthMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -104,6 +105,38 @@ class RouteConfigurationTest {
         void shouldRejectBlankPath() {
             assertThrows(IllegalArgumentException.class,
                     () -> RouteConfiguration.builder().name("health").path("  ").build());
+        }
+
+        @Test
+        @DisplayName("Should default authMode to BEARER")
+        void shouldDefaultAuthModeToBEARER() {
+            var route = RouteConfiguration.builder().name("health").path("/api/health").build();
+            assertEquals(AuthMode.BEARER, route.authMode());
+        }
+
+        @Test
+        @DisplayName("Should set authMode explicitly")
+        void shouldSetAuthModeExplicitly() {
+            var route = RouteConfiguration.builder()
+                    .name("health").path("/api/health")
+                    .authMode(AuthMode.LOCAL_ONLY).build();
+            assertEquals(AuthMode.LOCAL_ONLY, route.authMode());
+        }
+
+        @Test
+        @DisplayName("Should default maxRequestSize to 0")
+        void shouldDefaultMaxRequestSizeToZero() {
+            var route = RouteConfiguration.builder().name("health").path("/api/health").build();
+            assertEquals(0, route.maxRequestSize());
+        }
+
+        @Test
+        @DisplayName("Should set maxRequestSize explicitly")
+        void shouldSetMaxRequestSizeExplicitly() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .maxRequestSize(524288).build();
+            assertEquals(524288, route.maxRequestSize());
         }
     }
 
