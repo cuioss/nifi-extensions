@@ -16,10 +16,11 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -34,6 +35,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -41,11 +43,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for the management endpoints ({@code /metrics} and {@code /health})
- * served by {@link ManagementEndpointHandler} via {@link GatewayRequestHandler}.
+ * served via the command-pattern dispatcher in {@link GatewayRequestHandler}.
  */
 @DisplayName("ManagementEndpointHandler")
 @EnableTestLogger
 class ManagementEndpointHandlerTest {
+
+    private static final int GLOBAL_MAX_REQUEST_SIZE = 1_048_576;
 
     private Server server;
     private HttpClient httpClient;
@@ -53,6 +57,9 @@ class ManagementEndpointHandlerTest {
     private TestJwtIssuerConfigService configService;
     private TestTokenHolder tokenHolder;
     private int port;
+
+    private SecurityEventCounter httpSecurityEvents;
+    private GatewaySecurityEvents gatewaySecurityEvents;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -63,12 +70,30 @@ class ManagementEndpointHandlerTest {
         tokenHolder.withoutClaim("scope");
         configService.configureValidToken(tokenHolder.asAccessTokenContent());
 
-        List<RouteConfiguration> routes = List.of(
-                RouteConfiguration.builder().name("health").path("/api/health").method("GET").build(),
-                RouteConfiguration.builder().name("users").path("/api/users").method("GET").method("POST").requiredRole("ADMIN").build());
+        httpSecurityEvents = new SecurityEventCounter();
+        gatewaySecurityEvents = new GatewaySecurityEvents();
 
-        handler = new GatewayRequestHandler(routes, configService, queue, 1_048_576);
-        handler.configureManagementEndpoints();
+        // Build handler list: built-in endpoints first, then user routes
+        List<EndpointHandler> handlers = new ArrayList<>();
+        handlers.add(new HealthEndpointHandler(true, AuthMode.LOCAL_ONLY));
+        handlers.add(new MetricsEndpointHandler(
+                configService, httpSecurityEvents, gatewaySecurityEvents,
+                true, AuthMode.LOCAL_ONLY));
+
+        // Add user routes
+        List<RouteConfiguration> routes = List.of(
+                RouteConfiguration.builder().name("health").path("/api/health")
+                        .method("GET").build(),
+                RouteConfiguration.builder().name("users").path("/api/users")
+                        .method("GET").method("POST").requiredRole("ADMIN").build());
+        for (RouteConfiguration route : routes) {
+            handlers.add(new ApiRouteHandler(
+                    route, queue, GLOBAL_MAX_REQUEST_SIZE, null, gatewaySecurityEvents));
+        }
+
+        handler = new GatewayRequestHandler(
+                handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
+                httpSecurityEvents, gatewaySecurityEvents);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -246,8 +271,7 @@ class ManagementEndpointHandlerTest {
                     HttpRequest.newBuilder(uri("/config")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // /config is no longer a management endpoint — gateway returns 401
-            // (no Bearer token) since it falls through to the auth pipeline
+            // /config is not registered — returns 404
             assertNotEquals(200, response.statusCode());
         }
 
@@ -313,7 +337,8 @@ class ManagementEndpointHandlerTest {
             // Configure the config service to reject tokens
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            SecurityEventCounter.EventType.TOKEN_EXPIRED, "Token expired"));
+                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            "Token expired"));
 
             // Even though the request comes via loopback (localhost), it should
             // succeed because loopback bypass is checked first.
@@ -332,7 +357,7 @@ class ManagementEndpointHandlerTest {
 
         @BeforeEach
         void disableLoopback() {
-            handler.getManagementHandler().loopbackBypassEnabled = false;
+            handler.loopbackBypassEnabled = false;
         }
 
         @Test
@@ -350,7 +375,8 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401ForInvalidBearerToken() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            SecurityEventCounter.EventType.TOKEN_EXPIRED, "Invalid token"));
+                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            "Invalid token"));
 
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics"))
@@ -403,7 +429,8 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401WhenTokenValidationFails() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            SecurityEventCounter.EventType.TOKEN_EXPIRED, "Token expired"));
+                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            "Token expired"));
 
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics"))

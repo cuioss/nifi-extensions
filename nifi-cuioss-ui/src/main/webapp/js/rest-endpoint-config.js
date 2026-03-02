@@ -38,6 +38,7 @@ export const init = async (element) => {
     container.innerHTML = `
         <h2>${t('route.heading')}</h2>
         <div class="global-settings-display"></div>
+        <div class="management-endpoints-display"></div>
         <div class="global-error-messages route-form-error-messages hidden"
              role="alert" aria-live="assertive"></div>
         <div class="routes-container"></div>`;
@@ -228,6 +229,51 @@ const formatBytes = (bytes) => {
     return `${(bytes / 1048576).toFixed(1)} MB`;
 };
 
+const AUTH_MODE_LABELS = {
+    'bearer': () => t('route.authmode.bearer'),
+    'none': () => t('route.authmode.none'),
+    'local-only': () => t('route.authmode.local-only')
+};
+
+const formatAuthMode = (mode) => {
+    const fn = AUTH_MODE_LABELS[mode];
+    return fn ? fn() : mode || t('route.authmode.bearer');
+};
+
+const renderManagementEndpoints = (container, managementEndpoints) => {
+    const mgmtEl = container.querySelector('.management-endpoints-display');
+    if (!mgmtEl || !managementEndpoints || managementEndpoints.length === 0) return;
+
+    mgmtEl.innerHTML = `<h3>${t('route.management.heading')}</h3>`;
+    const table = document.createElement('table');
+    table.className = 'config-table management-endpoints-table';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>${t('route.management.table.name')}</th>
+                <th>${t('route.management.table.path')}</th>
+                <th>${t('route.management.table.enabled')}</th>
+                <th>${t('route.management.table.authmode')}</th>
+            </tr>
+        </thead>
+        <tbody></tbody>`;
+
+    const tbody = table.querySelector('tbody');
+    for (const ep of managementEndpoints) {
+        const row = document.createElement('tr');
+        const enabledClass = ep.enabled ? 'status-enabled' : 'status-disabled';
+        const enabledText = ep.enabled ? t('common.status.enabled') : t('common.status.disabled');
+        row.innerHTML = `
+            <td>${sanitizeHtml(ep.name)}</td>
+            <td>${sanitizeHtml(ep.path)}</td>
+            <td><span class="${enabledClass}">${enabledText}</span></td>
+            <td><span class="authmode-badge authmode-${sanitizeHtml(ep.authMode)}"
+                >${formatAuthMode(ep.authMode)}</span></td>`;
+        tbody.appendChild(row);
+    }
+    mgmtEl.appendChild(table);
+};
+
 const loadExistingConfig = async (container, routesContainer, componentId) => {
     if (!componentId) {
         renderRouteSummaryTable(routesContainer, {}, componentId);
@@ -237,6 +283,15 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         const res = await api.getComponentProperties(componentId);
         const props = res.properties || {};
         renderGlobalSettings(container, props);
+
+        // Fetch gateway config for management endpoints
+        try {
+            const gwConfig = await api.fetchGatewayApi('/config');
+            if (gwConfig && gwConfig.managementEndpoints) {
+                renderManagementEndpoints(container, gwConfig.managementEndpoints);
+            }
+        } catch { /* gateway may not be running yet — ignore */ }
+
         const routes = parseRouteProperties(props);
         renderRouteSummaryTable(routesContainer, routes, componentId);
     } catch {
@@ -268,6 +323,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
                 <th>${t('route.table.connection')}</th>
                 <th>${t('route.table.path')}</th>
                 <th>${t('route.table.methods')}</th>
+                <th>${t('route.table.authmode')}</th>
                 <th>${t('route.table.enabled')}</th>
                 <th>${t('route.table.actions')}</th>
             </tr>
@@ -279,7 +335,7 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
     const routeNames = Object.keys(routes);
     if (routeNames.length === 0) {
         const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `<td colspan="6" class="empty-state">${t('route.table.empty')}</td>`;
+        emptyRow.innerHTML = `<td colspan="7" class="empty-state">${t('route.table.empty')}</td>`;
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
@@ -345,11 +401,17 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         outcomeCell = sanitizeHtml(outcome);
     }
 
+    const authMode = props?.['auth-mode'] || 'bearer';
+    const authModeClass = `authmode-${sanitizeHtml(authMode)}`;
+    const authModeBadge = `<span class="authmode-badge ${authModeClass}">`
+        + `${formatAuthMode(authMode)}</span>`;
+
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
         <td>${outcomeCell}</td>
         <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
+        <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
         <td>
             <button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
@@ -384,7 +446,7 @@ const updateTableRow = (row, formData) => {
     const originBadge = buildOriginBadge(origin);
 
     const cells = row.querySelectorAll('td');
-    // cells: 0=name, 1=connection, 2=path, 3=methods, 4=enabled, 5=actions
+    // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
     cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
 
     // Connection column
@@ -406,9 +468,14 @@ const updateTableRow = (row, formData) => {
         .join(' ');
     cells[3].innerHTML = methodBadges || '<span class="empty-state">—</span>';
 
+    const authModeVal = formData['auth-mode'] || 'bearer';
+    const amClass = `authmode-${sanitizeHtml(authModeVal)}`;
+    cells[4].innerHTML = `<span class="authmode-badge ${amClass}">`
+        + `${formatAuthMode(authModeVal)}</span>`;
+
     const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
     const statusText = formData.enabled ? t('common.status.enabled') : t('common.status.disabled');
-    cells[4].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
+    cells[5].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
 
     row.dataset.routeName = formData.routeName;
 };
@@ -524,6 +591,47 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         value: properties?.['required-scopes'],
         helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
         currentValue: properties?.['required-scopes'] });
+
+    // ---- auth-mode dropdown ----
+    const authModeContainer = document.createElement('div');
+    authModeContainer.className = 'form-field field-container-auth-mode';
+    const authModeLabel = document.createElement('label');
+    authModeLabel.setAttribute('for', `auth-mode-${idx}`);
+    authModeLabel.textContent = `${t('route.form.authmode.label')}:`;
+    authModeContainer.appendChild(authModeLabel);
+
+    const authModeSelect = document.createElement('select');
+    authModeSelect.id = `auth-mode-${idx}`;
+    authModeSelect.className = 'field-auth-mode form-input route-config-field';
+    authModeSelect.setAttribute('aria-label', t('route.form.authmode.label'));
+    const currentAuthMode = properties?.['auth-mode'] || 'bearer';
+    for (const [value, labelFn] of Object.entries(AUTH_MODE_LABELS)) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = labelFn();
+        if (value === currentAuthMode) option.selected = true;
+        authModeSelect.appendChild(option);
+    }
+    authModeContainer.appendChild(authModeSelect);
+
+    // Grey out roles/scopes when auth-mode=none
+    const rolesField = fields.querySelector('.field-required-roles');
+    const scopesField = fields.querySelector('.field-required-scopes');
+    const toggleRolesScopes = () => {
+        const isNone = authModeSelect.value === 'none';
+        if (rolesField) rolesField.disabled = isNone;
+        if (scopesField) scopesField.disabled = isNone;
+    };
+    authModeSelect.addEventListener('change', toggleRolesScopes);
+    toggleRolesScopes();
+
+    fields.appendChild(authModeContainer);
+
+    // ---- max-request-size field ----
+    addField({ container: fields, idx, name: 'max-request-size',
+        label: t('route.form.max.request.size.label'),
+        placeholder: t('route.form.max.request.size.placeholder'),
+        value: properties?.['max-request-size'] || '' });
 
     // ---- create-flowfile checkbox + success-outcome field ----
     const createFlowFileVal = properties?.['create-flowfile'] !== 'false';
@@ -759,6 +867,8 @@ const extractFormFields = (form) => {
         enabled: form.querySelector('.route-enabled')?.checked !== false,
         'required-roles': q('.field-required-roles'),
         'required-scopes': q('.field-required-scopes'),
+        'auth-mode': form.querySelector('.field-auth-mode')?.value || 'bearer',
+        'max-request-size': q('.field-max-request-size'),
         schema: schemaEnabled ? getActiveSchemaValue(form) : '',
         'success-outcome': createFlowFile ? q('.field-success-outcome') : '',
         'create-flowfile': createFlowFile
@@ -790,6 +900,8 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.methods`] = f.methods || null;
     u[`${ROUTE_PREFIX}${name}.required-roles`] = f['required-roles'] || null;
     u[`${ROUTE_PREFIX}${name}.required-scopes`] = f['required-scopes'] || null;
+    u[`${ROUTE_PREFIX}${name}.auth-mode`] = f['auth-mode'] && f['auth-mode'] !== 'bearer' ? f['auth-mode'] : null;
+    u[`${ROUTE_PREFIX}${name}.max-request-size`] = f['max-request-size'] || null;
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
@@ -813,16 +925,24 @@ const buildExportText = (routesContainer) => {
         const origin = row.dataset.origin || 'persisted';
         const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
         const cells = row.querySelectorAll('td');
-        // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=enabled, 5=actions
+        // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=authmode, 5=enabled, 6=actions
         const pathText = cells[2]?.textContent?.trim() || '';
         const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
-        const enabled = cells[4]?.textContent?.trim() === t('common.status.enabled');
+        const authModeBadge = cells[4]?.querySelector('.authmode-badge');
+        const authModeClass = authModeBadge?.className || '';
+        const authModeValue = authModeClass.includes('authmode-none') ? 'none'
+            : authModeClass.includes('authmode-local-only') ? 'local-only' : '';
+        const enabled = cells[5]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');
 
         lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
         if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
+        if (authModeValue) {
+            lines.push(`${prefix}${ROUTE_PREFIX}${name}`
+                + `.auth-mode = ${authModeValue}`);
+        }
         if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
         if (outcomeDash) {
             lines.push(`${prefix}${ROUTE_PREFIX}${name}.create-flowfile = false`);
@@ -1025,6 +1145,8 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         enabled: String(formData.enabled),
         'required-roles': formData['required-roles'],
         'required-scopes': formData['required-scopes'],
+        'auth-mode': formData['auth-mode'] || 'bearer',
+        'max-request-size': formData['max-request-size'] || '',
         schema: formData.schema,
         'success-outcome': formData['success-outcome'] || '',
         'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true'

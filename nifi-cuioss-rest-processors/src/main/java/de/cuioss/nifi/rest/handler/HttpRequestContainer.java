@@ -40,18 +40,18 @@ import java.util.Objects;
  * @param remoteHost      the client's remote host address
  * @param body            the request body bytes (empty array for GET/DELETE)
  * @param contentType     the Content-Type header value
- * @param token           the validated JWT access token
+ * @param token           the validated JWT access token (null for unauthenticated routes)
  */
 public record HttpRequestContainer(
-        @NonNull String routeName,
-        @NonNull String method,
-        @NonNull String requestUri,
-        Map<String, String> queryParameters,
-        Map<String, String> headers,
-        @NonNull String remoteHost,
-        byte[] body,
-        @Nullable String contentType,
-        @NonNull AccessTokenContent token) {
+@NonNull String routeName,
+@NonNull String method,
+@NonNull String requestUri,
+Map<String, String> queryParameters,
+Map<String, String> headers,
+@NonNull String remoteHost,
+byte[] body,
+@Nullable String contentType,
+@Nullable AccessTokenContent token) {
 
     /**
      * Compact constructor — defensive copies for maps, null-safe body.

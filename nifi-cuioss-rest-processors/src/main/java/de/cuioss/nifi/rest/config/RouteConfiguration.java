@@ -42,18 +42,22 @@ import java.util.Set;
  * @param schemaPath      optional file path to a JSON Schema file for request body validation
  * @param successOutcome  NiFi relationship name; required when createFlowFile is true, null when false
  * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
+ * @param authMode        authentication mode for this route (default: BEARER)
+ * @param maxRequestSize  per-route body size limit in bytes; 0 means use global default
  */
 @Builder
 public record RouteConfiguration(
-        @NonNull String name,
-        @NonNull String path,
-        boolean enabled,
-        @Singular("method") Set<String> methods,
-        @Singular("requiredRole") Set<String> requiredRoles,
-        @Singular("requiredScope") Set<String> requiredScopes,
-        @Nullable String schemaPath,
-        @Nullable String successOutcome,
-        boolean createFlowFile) {
+@NonNull String name,
+@NonNull String path,
+boolean enabled,
+@Singular("method") Set<String> methods,
+@Singular("requiredRole") Set<String> requiredRoles,
+@Singular("requiredScope") Set<String> requiredScopes,
+@Nullable String schemaPath,
+@Nullable String successOutcome,
+boolean createFlowFile,
+@NonNull AuthMode authMode,
+int maxRequestSize) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
@@ -69,6 +73,7 @@ public record RouteConfiguration(
         methods = methods != null && !methods.isEmpty() ? Set.copyOf(methods) : DEFAULT_METHODS;
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
+        authMode = authMode != null ? authMode : AuthMode.BEARER;
     }
 
     /**
@@ -102,5 +107,7 @@ public record RouteConfiguration(
     public static class RouteConfigurationBuilder {
         private boolean enabled = true;
         private boolean createFlowFile = true;
+        private AuthMode authMode = AuthMode.BEARER;
+        private int maxRequestSize = 0;
     }
 }

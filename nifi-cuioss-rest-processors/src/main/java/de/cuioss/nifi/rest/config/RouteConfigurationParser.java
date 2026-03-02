@@ -66,6 +66,10 @@ public class RouteConfigurationParser {
     static final String SUCCESS_OUTCOME_KEY = "success-outcome";
     /** Property key for FlowFile creation flag. */
     static final String CREATE_FLOWFILE_KEY = "create-flowfile";
+    /** Property key for authentication mode. */
+    static final String AUTH_MODE_KEY = "auth-mode";
+    /** Property key for per-route maximum request body size. */
+    static final String MAX_REQUEST_SIZE_KEY = "max-request-size";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -99,13 +103,22 @@ public class RouteConfigurationParser {
             if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
                 successOutcome = routeName;
             }
+            AuthMode authMode = AuthMode.fromValue(routeProps.get(AUTH_MODE_KEY));
+            int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
+
+            if (authMode == AuthMode.NONE && (!roles.isEmpty() || !scopes.isEmpty())) {
+                LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
+                        + "roles and scopes will be ignored", routeName);
+            }
 
             routes.add(RouteConfiguration.builder()
                     .name(routeName).path(path).enabled(enabled)
                     .methods(methods).requiredRoles(roles).requiredScopes(scopes)
                     .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
+                    .authMode(authMode).maxRequestSize(maxRequestSize)
                     .build());
-            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s", routeName, path, enabled, methods);
+            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authMode=%s",
+                    routeName, path, enabled, methods, authMode);
         }
 
         return Collections.unmodifiableList(routes);
@@ -126,5 +139,18 @@ public class RouteConfigurationParser {
             return Set.of();
         }
         return Set.copyOf(Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value));
+    }
+
+    private static int parsePositiveInt(String value, int defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value.strip());
+            return parsed > 0 ? parsed : defaultValue;
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
+            return defaultValue;
+        }
     }
 }

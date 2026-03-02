@@ -131,9 +131,24 @@ Authorization is configured at the processor level:
 |Maximum number of requests queued for FlowFile processing. Acts as back-pressure when the NiFi flow cannot keep up.
 |Yes
 
-|rest.gateway.management.api-key
-|--
-|API key required for accessing the `/metrics` management endpoint. When not set, the endpoint is accessible without authentication. **Sensitive property.**
+|rest.gateway.management.health.enabled
+|true
+|Whether the built-in `/health` management endpoint is active
+|No
+
+|rest.gateway.management.health.auth-mode
+|local-only
+|Authentication mode for `/health`: `bearer` (JWT required), `none` (anonymous), `local-only` (loopback bypass; remote needs JWT)
+|No
+
+|rest.gateway.management.metrics.enabled
+|true
+|Whether the built-in `/metrics` management endpoint is active
+|No
+
+|rest.gateway.management.metrics.auth-mode
+|local-only
+|Authentication mode for `/metrics`: `bearer`, `none`, or `local-only`
 |No
 |===
 
@@ -168,6 +183,22 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix. 
 |restapi.<name>.create-flowfile
 |Whether to create a FlowFile for this route (default: true). Routes with `false` have no NiFi relationship.
 |false
+
+|restapi.<name>.auth-mode
+|Authentication mode: `bearer` (JWT required, default), `none` (anonymous), `local-only` (loopback bypass; remote needs JWT)
+|none
+
+|restapi.<name>.max-request-size
+|Per-route maximum request body size in bytes. When absent or `0`, the global `rest.gateway.max.request.size` applies.
+|524288
+
+|restapi.<name>.enabled
+|Whether the route is active (default: true). Disabled routes return 404.
+|false
+
+|restapi.<name>.schema
+|File path to a JSON Schema for request body validation
+|./conf/schemas/user-schema.json
 |===
 
 Each configured route with `create-flowfile=true` creates a NiFi relationship named by its `success-outcome` property.
@@ -188,9 +219,10 @@ restapi.admin.methods = GET,POST,PUT,DELETE
 restapi.admin.required-roles = admin
 restapi.admin.success-outcome = admin
 
-# Route 3: Public health check (no authorization)
+# Route 3: Public health check (no authentication)
 restapi.health.path = /api/health
 restapi.health.methods = GET
+restapi.health.auth-mode = none
 restapi.health.success-outcome = health
 ----
 
@@ -317,7 +349,8 @@ jwt.validation.issuer.1.audience = api://my-service
 ----
 # Gateway processor properties
 rest.gateway.listening.port = 9443
-rest.gateway.management.api-key = <secret>
+rest.gateway.management.health.auth-mode = local-only
+rest.gateway.management.metrics.auth-mode = local-only
 
 # Route configuration (on processor as dynamic properties)
 restapi.users.path = /api/users
@@ -328,6 +361,12 @@ restapi.admin.path = /api/admin
 restapi.admin.methods = GET,POST,PUT,DELETE
 restapi.admin.required-roles = admin
 restapi.admin.required-scopes = admin:write
+
+# Public endpoint (no authentication)
+restapi.public.path = /api/public
+restapi.public.methods = GET
+restapi.public.auth-mode = none
+restapi.public.create-flowfile = false
 ----
 
 === Multiple Issuers (Shared CS)

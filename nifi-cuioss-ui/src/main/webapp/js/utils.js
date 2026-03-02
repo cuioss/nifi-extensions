@@ -191,6 +191,24 @@ export const TRANSLATIONS = {
         'route.global.ssl.enabled': 'SSL Enabled',
         'route.global.listening.host': 'Listening Host',
 
+        // -- management endpoints --
+        'route.management.heading': 'Management Endpoints',
+        'route.management.table.name': 'Endpoint',
+        'route.management.table.path': 'Path',
+        'route.management.table.enabled': 'Enabled',
+        'route.management.table.authmode': 'Auth Mode',
+        'route.management.table.actions': 'Actions',
+        'route.management.edit.title': 'Edit Management Endpoint',
+
+        // -- auth mode --
+        'route.authmode.bearer': 'Bearer',
+        'route.authmode.none': 'None',
+        'route.authmode.local-only': 'Local Only',
+        'route.form.authmode.label': 'Auth Mode',
+        'route.form.max.request.size.label': 'Max Request Size',
+        'route.form.max.request.size.placeholder': 'Leave empty for global default',
+        'route.table.authmode': 'Auth Mode',
+
         // -- endpoint tester --
         'tester.heading': 'Endpoint Tester',
         'tester.form.route': 'Route',
@@ -512,6 +530,24 @@ export const TRANSLATIONS = {
         'route.global.queue.size': 'Queue Size',
         'route.global.ssl.enabled': 'SSL Enabled',
         'route.global.listening.host': 'Listening Host',
+
+        // -- management endpoints --
+        'route.management.heading': 'Management-Endpunkte',
+        'route.management.table.name': 'Endpunkt',
+        'route.management.table.path': 'Pfad',
+        'route.management.table.enabled': 'Aktiviert',
+        'route.management.table.authmode': 'Auth-Modus',
+        'route.management.table.actions': 'Aktionen',
+        'route.management.edit.title': 'Management-Endpunkt bearbeiten',
+
+        // -- auth mode --
+        'route.authmode.bearer': 'Bearer',
+        'route.authmode.none': 'Keine',
+        'route.authmode.local-only': 'Nur lokal',
+        'route.form.authmode.label': 'Auth-Modus',
+        'route.form.max.request.size.label': 'Max. Anfragegr\u00f6\u00dfe',
+        'route.form.max.request.size.placeholder': 'Leer f\u00fcr globalen Standard',
+        'route.table.authmode': 'Auth-Modus',
 
         // -- endpoint tester --
         'tester.heading': 'Endpunkt-Tester',

@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
@@ -38,6 +39,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -56,6 +58,29 @@ class GatewayRequestHandlerTest {
     private int port;
     private TestTokenHolder tokenHolder;
 
+    private static final int GLOBAL_MAX_REQUEST_SIZE = 1_048_576;
+
+    /**
+     * Converts route configurations to endpoint handlers for the test dispatcher.
+     */
+    private List<EndpointHandler> toHandlers(List<RouteConfiguration> routes,
+            LinkedBlockingQueue<HttpRequestContainer> q,
+            int maxSize,
+            JsonSchemaValidator validator,
+            GatewaySecurityEvents events) {
+        List<EndpointHandler> handlers = new ArrayList<>();
+        for (RouteConfiguration route : routes) {
+            handlers.add(new ApiRouteHandler(route, q, maxSize, validator, events));
+        }
+        return handlers;
+    }
+
+    private List<EndpointHandler> toHandlers(List<RouteConfiguration> routes,
+            LinkedBlockingQueue<HttpRequestContainer> q,
+            int maxSize) {
+        return toHandlers(routes, q, maxSize, null, new GatewaySecurityEvents());
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         queue = new LinkedBlockingQueue<>(50);
@@ -71,7 +96,9 @@ class GatewayRequestHandlerTest {
                 RouteConfiguration.builder().name("users").path("/api/users").method("GET").method("POST").requiredRole("ADMIN").build(),
                 RouteConfiguration.builder().name("data").path("/api/data").method("GET").method("POST").requiredScope("READ").build());
 
-        handler = new GatewayRequestHandler(routes, mockConfigService, queue, 1_048_576);
+        handler = new GatewayRequestHandler(
+                toHandlers(routes, queue, GLOBAL_MAX_REQUEST_SIZE),
+                mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -151,10 +178,11 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 404 for disabled route")
         void shouldReturn404ForDisabledRoute() throws Exception {
             // Arrange — create handler with a disabled route
+            var disabledQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
             var disabledHandler = new GatewayRequestHandler(
-                    List.of(RouteConfiguration.builder().name("disabled").path("/api/disabled")
-                            .enabled(false).method("GET").build()),
-                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576);
+                    toHandlers(List.of(RouteConfiguration.builder().name("disabled").path("/api/disabled")
+                            .enabled(false).method("GET").build()), disabledQueue, GLOBAL_MAX_REQUEST_SIZE),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
             Server disabledServer = new Server();
             ServerConnector connector = new ServerConnector(disabledServer);
             connector.setPort(0);
@@ -331,11 +359,14 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 503 when queue is full")
         void shouldReturn503WhenQueueFull() throws Exception {
-            // Create a handler with a tiny queue
+            // Create a handler with a tiny queue and shared events
             var tinyQueue = new LinkedBlockingQueue<HttpRequestContainer>(1);
+            var tinyEvents = new GatewaySecurityEvents();
             var tinyHandler = new GatewayRequestHandler(
-                    List.of(RouteConfiguration.builder().name("health").path("/api/health").method("GET").build()),
-                    mockConfigService, tinyQueue, 1_048_576);
+                    toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
+                            .method("GET").build()), tinyQueue, GLOBAL_MAX_REQUEST_SIZE, null, tinyEvents),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents);
 
             Server tinyServer = new Server();
             ServerConnector connector = new ServerConnector(tinyServer);
@@ -380,9 +411,9 @@ class GatewayRequestHandlerTest {
             // Arrange — create handler with a no-flowfile route
             var noFlowFileQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
             var noFlowFileHandler = new GatewayRequestHandler(
-                    List.of(RouteConfiguration.builder().name("health").path("/api/health")
-                            .method("GET").createFlowFile(false).build()),
-                    mockConfigService, noFlowFileQueue, 1_048_576);
+                    toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
+                            .method("GET").createFlowFile(false).build()), noFlowFileQueue, GLOBAL_MAX_REQUEST_SIZE),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
 
             Server noFlowFileServer = new Server();
             ServerConnector connector = new ServerConnector(noFlowFileServer);
@@ -452,9 +483,9 @@ class GatewayRequestHandlerTest {
         void shouldReturn413ForOversizedBody() throws Exception {
             // Create handler with tiny max body size
             var smallHandler = new GatewayRequestHandler(
-                    List.of(RouteConfiguration.builder().name("data").path("/api/data")
-                            .method("POST").build()),
-                    mockConfigService, queue, 10); // 10 bytes max
+                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
+                            .method("POST").build()), queue, 10),
+                    mockConfigService, 10); // 10 bytes max
 
             Server smallServer = new Server();
             ServerConnector connector = new ServerConnector(smallServer);
@@ -613,6 +644,7 @@ class GatewayRequestHandlerTest {
                     Map.of("validated", schemaFile.toString()));
 
             var schemaQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            var schemaEvents = new GatewaySecurityEvents();
             List<RouteConfiguration> routes = List.of(
                     RouteConfiguration.builder().name("validated").path("/api/validated")
                             .method("POST").schemaPath(schemaFile.toString()).build(),
@@ -620,7 +652,9 @@ class GatewayRequestHandlerTest {
                             .method("POST").build());
 
             schemaHandler = new GatewayRequestHandler(
-                    routes, mockConfigService, schemaQueue, 1_048_576, schemaValidator);
+                    toHandlers(routes, schemaQueue, GLOBAL_MAX_REQUEST_SIZE, schemaValidator, schemaEvents),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents);
 
             schemaServer = new Server();
             ServerConnector connector = new ServerConnector(schemaServer);
@@ -747,7 +781,9 @@ class GatewayRequestHandlerTest {
                             .method("POST").schemaPath(inlineSchema).build());
 
             var inlineHandler = new GatewayRequestHandler(
-                    inlineRoutes, mockConfigService, inlineQueue, 1_048_576, inlineValidator);
+                    toHandlers(inlineRoutes, inlineQueue, GLOBAL_MAX_REQUEST_SIZE,
+                            inlineValidator, new GatewaySecurityEvents()),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
 
             Server inlineServer = new Server();
             ServerConnector connector = new ServerConnector(inlineServer);
@@ -792,10 +828,11 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should accept legitimate path pattern")
         void shouldAcceptLegitimatePattern(LegitimateTestCase testCase) throws Exception {
             // Configure a wildcard-like route for the legitimate path
+            var testQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
             var handler = new GatewayRequestHandler(
-                    List.of(RouteConfiguration.builder().name("test").path(testCase.legitimatePattern())
-                            .method("GET").build()),
-                    mockConfigService, new LinkedBlockingQueue<>(50), 1_048_576);
+                    toHandlers(List.of(RouteConfiguration.builder().name("test").path(testCase.legitimatePattern())
+                            .method("GET").build()), testQueue, GLOBAL_MAX_REQUEST_SIZE),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
 
             Server testServer = new Server();
             ServerConnector connector = new ServerConnector(testServer);
