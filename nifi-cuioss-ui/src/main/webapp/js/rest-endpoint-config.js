@@ -305,6 +305,20 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
 // ---------------------------------------------------------------------------
 
 /**
+ * Close any active management endpoint editor and restore hidden table rows.
+ *
+ * @param {HTMLElement} mgmtEl  the .management-endpoints-display element
+ */
+const closeActiveManagementEditor = (mgmtEl) => {
+    const existingForm = mgmtEl.querySelector('.mgmt-edit-form');
+    if (existingForm) {
+        const prevRow = mgmtEl.querySelector('tr.hidden[data-mgmt-name]');
+        if (prevRow) prevRow.classList.remove('hidden');
+        existingForm.remove();
+    }
+};
+
+/**
  * Open a simplified inline editor for a management endpoint (replaces the table row).
  * Read-only: endpoint name, path, methods (GET). Editable: enabled, auth-mode.
  *
@@ -314,13 +328,7 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
  * @param {HTMLTableRowElement} tableRow  the table row being edited
  */
 const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
-    // Close any existing management editor
-    const existingForm = mgmtEl.querySelector('.mgmt-edit-form');
-    if (existingForm) {
-        const prevRow = mgmtEl.querySelector('tr.hidden[data-mgmt-name]');
-        if (prevRow) prevRow.classList.remove('hidden');
-        existingForm.remove();
-    }
+    closeActiveManagementEditor(mgmtEl);
 
     tableRow.classList.add('hidden');
 
@@ -1105,9 +1113,9 @@ const buildExportText = (routesContainer) => {
         const authModeClass = authModeBadge?.className || '';
         const modeTokens = ['none', 'local-only', 'bearer']
             .filter((m) => authModeClass.includes(`authmode-${m}`));
-        const authModeValue = modeTokens.filter((m) => m !== 'bearer').length > 0
-            || modeTokens.length !== 1
-            ? modeTokens.join(',') : '';
+        // If only 'bearer' is selected, treat as default (omit from export)
+        const authModeValue = (modeTokens.length === 1 && modeTokens[0] === 'bearer')
+            ? '' : modeTokens.join(',');
         const enabled = cells[5]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');

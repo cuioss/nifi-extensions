@@ -64,10 +64,18 @@ class AuthModeTest {
 
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {"  ", "unknown", "jwt", "token"})
-        @DisplayName("Should default to BEARER for null, blank, or unknown values")
-        void shouldDefaultToBearerForUnknown(String value) {
+        @ValueSource(strings = {"  "})
+        @DisplayName("Should default to BEARER for null or blank values")
+        void shouldDefaultToBearerForNullOrBlank(String value) {
             assertEquals(AuthMode.BEARER, AuthMode.fromValue(value));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"unknown", "jwt", "token"})
+        @DisplayName("Should throw for unrecognized values")
+        void shouldThrowForUnrecognized(String value) {
+            var ex = assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValue(value));
+            assertTrue(ex.getMessage().contains("Unrecognized auth mode"));
         }
     }
 
@@ -114,6 +122,13 @@ class AuthModeTest {
         void shouldThrowForNullOrBlank(String value) {
             var ex = assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValues(value));
             assertTrue(ex.getMessage().contains("Must provide at least one auth mode"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"unknown", "bearer,jwt", "locel-only"})
+        @DisplayName("Should throw for unrecognized tokens in comma-separated values")
+        void shouldThrowForUnrecognizedTokens(String value) {
+            assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValues(value));
         }
     }
 
