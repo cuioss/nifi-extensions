@@ -103,13 +103,18 @@ public class RouteConfigurationParser {
             if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
                 successOutcome = routeName;
             }
+            String authModeRaw = routeProps.get(AUTH_MODE_KEY);
             Set<AuthMode> authModes;
-            try {
-                authModes = AuthMode.fromValues(routeProps.get(AUTH_MODE_KEY));
-            } catch (IllegalArgumentException e) {
-                LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
-                        routeName, routeProps.get(AUTH_MODE_KEY), e.getMessage());
+            if (authModeRaw == null || authModeRaw.isBlank()) {
                 authModes = EnumSet.of(AuthMode.BEARER);
+            } else {
+                try {
+                    authModes = AuthMode.fromValues(authModeRaw);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
+                            routeName, authModeRaw, e.getMessage());
+                    authModes = EnumSet.of(AuthMode.BEARER);
+                }
             }
             int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
 

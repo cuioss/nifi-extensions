@@ -601,6 +601,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     }
 
     const authMode = props?.['auth-mode'] || 'bearer';
+    row.dataset.authMode = authMode;
     const authModeBadge = formatAuthModeBadges(authMode);
 
     row.innerHTML = `
@@ -666,6 +667,7 @@ const updateTableRow = (row, formData) => {
     cells[3].innerHTML = methodBadges || '<span class="empty-state">—</span>';
 
     const authModeVal = formData['auth-mode'] || 'bearer';
+    row.dataset.authMode = authModeVal;
     cells[4].innerHTML = formatAuthModeBadges(authModeVal);
 
     const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
@@ -1109,13 +1111,9 @@ const buildExportText = (routesContainer) => {
         const pathText = cells[2]?.textContent?.trim() || '';
         const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
-        const authModeBadge = cells[4]?.querySelector('.authmode-badge');
-        const authModeClass = authModeBadge?.className || '';
-        const modeTokens = ['none', 'local-only', 'bearer']
-            .filter((m) => authModeClass.includes(`authmode-${m}`));
+        const rawAuthMode = row.dataset.authMode || 'bearer';
         // If only 'bearer' is selected, treat as default (omit from export)
-        const authModeValue = (modeTokens.length === 1 && modeTokens[0] === 'bearer')
-            ? '' : modeTokens.join(',');
+        const authModeValue = rawAuthMode === 'bearer' ? '' : rawAuthMode;
         const enabled = cells[5]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');
