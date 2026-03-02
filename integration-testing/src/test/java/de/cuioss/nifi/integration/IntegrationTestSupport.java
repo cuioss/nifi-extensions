@@ -25,8 +25,9 @@ import lombok.experimental.UtilityClass;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
+
+import java.io.IOException;
 import java.io.StringReader;
-import java.net.ConnectException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -105,8 +106,10 @@ class IntegrationTestSupport {
                 client.send(request, HttpResponse.BodyHandlers.ofString());
                 ready = true;
                 break;
-            } catch (ConnectException e) {
-                // Not ready yet, retry
+            } catch (IOException e) {
+                // Retry on any I/O failure: ConnectException (nothing listening),
+                // "header parser received no bytes" (Docker proxy accepted but
+                // container service not yet bound), or other transient errors.
                 Thread.sleep(1000);
             }
         }
@@ -130,8 +133,8 @@ class IntegrationTestSupport {
      * @return the access token string
      */
     static String fetchKeycloakToken(HttpClient client, String endpoint,
-                                     String clientId, String clientSecret,
-                                     String username, String password) throws Exception {
+            String clientId, String clientSecret,
+            String username, String password) throws Exception {
         String body = formEncode(Map.of(
                 "grant_type", "password",
                 "client_id", clientId,
@@ -241,7 +244,7 @@ class IntegrationTestSupport {
      * @return the processor status object, or empty if not found
      */
     static Optional<JsonObject> findProcessorInSnapshot(JsonObject snapshot,
-                                                        String processorNameSubstring) {
+            String processorNameSubstring) {
         JsonArray processorStatuses = snapshot.getJsonArray("processorStatusSnapshots");
         if (processorStatuses != null) {
             for (JsonValue value : processorStatuses) {

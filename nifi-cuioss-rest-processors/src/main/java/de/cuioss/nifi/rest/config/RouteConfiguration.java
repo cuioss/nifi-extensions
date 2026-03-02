@@ -45,15 +45,15 @@ import java.util.Set;
  */
 @Builder
 public record RouteConfiguration(
-        @NonNull String name,
-        @NonNull String path,
-        boolean enabled,
-        @Singular("method") Set<String> methods,
-        @Singular("requiredRole") Set<String> requiredRoles,
-        @Singular("requiredScope") Set<String> requiredScopes,
-        @Nullable String schemaPath,
-        @Nullable String successOutcome,
-        boolean createFlowFile) {
+@NonNull String name,
+@NonNull String path,
+boolean enabled,
+@Singular("method") Set<String> methods,
+@Singular("requiredRole") Set<String> requiredRoles,
+@Singular("requiredScope") Set<String> requiredScopes,
+@Nullable String schemaPath,
+@Nullable String successOutcome,
+boolean createFlowFile) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
