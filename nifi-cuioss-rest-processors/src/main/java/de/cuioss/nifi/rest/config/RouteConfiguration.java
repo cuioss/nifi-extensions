@@ -22,6 +22,7 @@ import lombok.NonNull;
 import lombok.Singular;
 import org.jspecify.annotations.Nullable;
 
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -42,7 +43,7 @@ import java.util.Set;
  * @param schemaPath      optional file path to a JSON Schema file for request body validation
  * @param successOutcome  NiFi relationship name; required when createFlowFile is true, null when false
  * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
- * @param authMode        authentication mode for this route (default: BEARER)
+ * @param authModes       authentication modes for this route (default: BEARER)
  * @param maxRequestSize  per-route body size limit in bytes; 0 means use global default
  */
 @Builder
@@ -56,7 +57,7 @@ boolean enabled,
 @Nullable String schemaPath,
 @Nullable String successOutcome,
 boolean createFlowFile,
-@NonNull AuthMode authMode,
+@NonNull Set<AuthMode> authModes,
 int maxRequestSize) {
 
     /** Default allowed HTTP methods when none are configured. */
@@ -73,7 +74,7 @@ int maxRequestSize) {
         methods = methods != null && !methods.isEmpty() ? Set.copyOf(methods) : DEFAULT_METHODS;
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
-        authMode = authMode != null ? authMode : AuthMode.BEARER;
+        authModes = authModes != null && !authModes.isEmpty() ? Set.copyOf(authModes) : EnumSet.of(AuthMode.BEARER);
     }
 
     /**
@@ -107,7 +108,7 @@ int maxRequestSize) {
     public static class RouteConfigurationBuilder {
         private boolean enabled = true;
         private boolean createFlowFile = true;
-        private AuthMode authMode = AuthMode.BEARER;
+        private Set<AuthMode> authModes = EnumSet.of(AuthMode.BEARER);
         private int maxRequestSize = 0;
     }
 }

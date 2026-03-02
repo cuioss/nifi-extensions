@@ -200,6 +200,14 @@ export const TRANSLATIONS = {
         'route.management.table.actions': 'Actions',
         'route.management.edit.title': 'Edit Management Endpoint',
 
+        // -- management editing --
+        'mgmt.edit': 'Edit',
+        'mgmt.save': 'Save',
+        'mgmt.cancel': 'Cancel',
+        'mgmt.enabled': 'Enabled',
+        'mgmt.authMode': 'Auth Mode',
+        'mgmt.authMode.required': 'At least one auth mode required',
+
         // -- auth mode --
         'route.authmode.bearer': 'Bearer',
         'route.authmode.none': 'None',
@@ -251,6 +259,9 @@ export const TRANSLATIONS = {
         'chip.methods.placeholder': 'Type to add method\u2026',
         'chip.methods.aria': 'Add HTTP method',
         'chip.methods.remove.aria': 'Remove {0}',
+        'chip.authmode.placeholder': 'Type to add auth mode\u2026',
+        'chip.authmode.aria': 'Add auth mode',
+        'chip.authmode.remove.aria': 'Remove {0}',
 
         // -- tabs --
         'tab.configuration': 'Configuration',
@@ -540,6 +551,14 @@ export const TRANSLATIONS = {
         'route.management.table.actions': 'Aktionen',
         'route.management.edit.title': 'Management-Endpunkt bearbeiten',
 
+        // -- management editing --
+        'mgmt.edit': 'Bearbeiten',
+        'mgmt.save': 'Speichern',
+        'mgmt.cancel': 'Abbrechen',
+        'mgmt.enabled': 'Aktiviert',
+        'mgmt.authMode': 'Auth-Modus',
+        'mgmt.authMode.required': 'Mindestens ein Auth-Modus erforderlich',
+
         // -- auth mode --
         'route.authmode.bearer': 'Bearer',
         'route.authmode.none': 'Keine',
@@ -591,6 +610,9 @@ export const TRANSLATIONS = {
         'chip.methods.placeholder': 'Tippen, um Methode hinzuzuf\u00fcgen\u2026',
         'chip.methods.aria': 'HTTP-Methode hinzuf\u00fcgen',
         'chip.methods.remove.aria': '{0} entfernen',
+        'chip.authmode.placeholder': 'Tippen, um Auth-Modus hinzuzuf\u00fcgen\u2026',
+        'chip.authmode.aria': 'Auth-Modus hinzuf\u00fcgen',
+        'chip.authmode.remove.aria': '{0} entfernen',
 
         // -- tabs --
         'tab.configuration': 'Konfiguration',

@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Set;
 
 /**
  * Built-in handler for the {@code /health} management endpoint.
@@ -38,8 +39,8 @@ public class HealthEndpointHandler extends AbstractManagementHandler {
     static final String HEALTH_PATH = "/health";
     private static final String JSON_CONTENT_TYPE = "application/json";
 
-    public HealthEndpointHandler(boolean enabled, AuthMode authMode) {
-        super(enabled, authMode);
+    public HealthEndpointHandler(boolean enabled, Set<AuthMode> authModes) {
+        super(enabled, authModes);
     }
 
     @Override

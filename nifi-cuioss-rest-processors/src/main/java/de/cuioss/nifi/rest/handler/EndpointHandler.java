@@ -44,8 +44,8 @@ public interface EndpointHandler {
     /** Allowed HTTP methods (uppercase, e.g. {@code GET}, {@code POST}). */
     Set<String> methods();
 
-    /** Authentication mode for this endpoint. */
-    AuthMode authMode();
+    /** Authentication modes for this endpoint (at least one required). */
+    Set<AuthMode> authModes();
 
     /** Whether this endpoint is currently active. */
     boolean enabled();

@@ -29,11 +29,11 @@ import java.util.Set;
 abstract class AbstractManagementHandler implements EndpointHandler {
 
     private final boolean enabled;
-    private final AuthMode authMode;
+    private final Set<AuthMode> authModes;
 
-    AbstractManagementHandler(boolean enabled, AuthMode authMode) {
+    AbstractManagementHandler(boolean enabled, Set<AuthMode> authModes) {
         this.enabled = enabled;
-        this.authMode = authMode;
+        this.authModes = authModes;
     }
 
     @Override
@@ -42,8 +42,8 @@ abstract class AbstractManagementHandler implements EndpointHandler {
     }
 
     @Override
-    public AuthMode authMode() {
-        return authMode;
+    public Set<AuthMode> authModes() {
+        return authModes;
     }
 
     @Override

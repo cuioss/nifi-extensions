@@ -37,6 +37,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -75,10 +76,10 @@ class ManagementEndpointHandlerTest {
 
         // Build handler list: built-in endpoints first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>();
-        handlers.add(new HealthEndpointHandler(true, AuthMode.LOCAL_ONLY));
+        handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)));
         handlers.add(new MetricsEndpointHandler(
                 configService, httpSecurityEvents, gatewaySecurityEvents,
-                true, AuthMode.LOCAL_ONLY));
+                true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)));
 
         // Add user routes
         List<RouteConfiguration> routes = List.of(
@@ -348,6 +349,64 @@ class ManagementEndpointHandlerTest {
 
             // Loopback bypass still grants access
             assertEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("LOCAL_ONLY alone (no BEARER)")
+    class LocalOnlyAlone {
+
+        private Server localOnlyServer;
+        private int localOnlyPort;
+        private GatewayRequestHandler localOnlyHandler;
+
+        @BeforeEach
+        void setUpLocalOnlyServer() throws Exception {
+            LinkedBlockingQueue<HttpRequestContainer> q = new LinkedBlockingQueue<>(50);
+            List<EndpointHandler> handlers = new ArrayList<>();
+            handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY)));
+            localOnlyHandler = new GatewayRequestHandler(
+                    handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
+                    new SecurityEventCounter(), new GatewaySecurityEvents());
+
+            localOnlyServer = new Server();
+            ServerConnector connector = new ServerConnector(localOnlyServer);
+            connector.setPort(0);
+            localOnlyServer.addConnector(connector);
+            localOnlyServer.setHandler(localOnlyHandler);
+            localOnlyServer.start();
+            localOnlyPort = connector.getLocalPort();
+        }
+
+        @AfterEach
+        void tearDownLocalOnly() throws Exception {
+            if (localOnlyServer != null && localOnlyServer.isRunning()) {
+                localOnlyServer.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should allow loopback access without auth")
+        void shouldAllowLoopbackWithoutAuth() throws Exception {
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + localOnlyPort + "/health"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should reject remote access when loopback disabled")
+        void shouldRejectRemoteAccessWhenLoopbackDisabled() throws Exception {
+            localOnlyHandler.loopbackBypassEnabled = false;
+
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + localOnlyPort + "/health"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(401, response.statusCode());
         }
     }
 

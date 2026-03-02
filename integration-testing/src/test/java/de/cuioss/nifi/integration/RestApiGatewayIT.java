@@ -43,7 +43,6 @@ import static org.hamcrest.Matchers.*;
  *
  * <p>Routes configured in flow.json:
  * <ul>
- *   <li>{@code /api/health} — GET only (authenticated)</li>
  *   <li>{@code /api/data} — GET and POST (authenticated)</li>
  *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
  *   <li>{@code /api/validated} — POST only (JSON Schema validated via file path)</li>
@@ -68,7 +67,7 @@ class RestApiGatewayIT {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
-        waitForEndpoint(httpClient, GATEWAY_BASE + "/api/health", Duration.ofSeconds(120));
+        waitForEndpoint(httpClient, GATEWAY_BASE + "/api/data", Duration.ofSeconds(120));
 
         String token = fetchKeycloakToken(httpClient,
                 KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
@@ -82,49 +81,6 @@ class RestApiGatewayIT {
         noAuthSpec = new RequestSpecBuilder()
                 .setBaseUri(GATEWAY_BASE)
                 .build();
-    }
-
-    // ── Health Endpoint ─────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("Health Endpoint")
-    class HealthEndpointTests {
-
-        @Test
-        @DisplayName("should return 200 OK for GET /api/health with valid JWT")
-        void shouldAcceptHealthRequestWithValidJwt() {
-            given().spec(authSpec)
-                    .when()
-                    .get("/api/health")
-                    .then()
-                    .statusCode(200)
-                    .body(not(emptyString()));
-        }
-
-        @Test
-        @DisplayName("should return 401 for GET /api/health without JWT")
-        void shouldRejectHealthRequestWithoutJwt() {
-            given().spec(noAuthSpec)
-                    .when()
-                    .get("/api/health")
-                    .then()
-                    .statusCode(401)
-                    .header("WWW-Authenticate", notNullValue());
-        }
-
-        @Test
-        @DisplayName("should return 401 with RFC 9457 problem detail for invalid JWT")
-        void shouldRejectHealthRequestWithInvalidJwt() {
-            given().spec(noAuthSpec)
-                    .header("Authorization", "Bearer not-a-valid-jwt")
-                    .when()
-                    .get("/api/health")
-                    .then()
-                    .statusCode(401)
-                    .contentType(containsString("application/problem+json"))
-                    .body("type", notNullValue())
-                    .body("status", notNullValue());
-        }
     }
 
     // ── Data Endpoint ───────────────────────────────────────────────────
@@ -319,13 +275,13 @@ class RestApiGatewayIT {
         }
 
         @Test
-        @DisplayName("should return 405 for unsupported HTTP method on /api/health")
-        void shouldReturn405ForPostOnHealth() {
+        @DisplayName("should return 404 for removed /api/health route")
+        void shouldReturn404ForRemovedHealthRoute() {
             given().spec(authSpec)
                     .when()
-                    .post("/api/health")
+                    .get("/api/health")
                     .then()
-                    .statusCode(405);
+                    .statusCode(404);
         }
 
         @Test
@@ -351,7 +307,7 @@ class RestApiGatewayIT {
             given().spec(noAuthSpec)
                     .header("Authorization", "Bearer " + otherToken)
                     .when()
-                    .get("/api/health")
+                    .get("/api/data")
                     .then()
                     .statusCode(401);
         }
