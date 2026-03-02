@@ -80,8 +80,8 @@ public class ApiRouteHandler implements EndpointHandler {
     }
 
     @Override
-    public AuthMode authMode() {
-        return route.authMode();
+    public Set<AuthMode> authModes() {
+        return route.authModes();
     }
 
     @Override

@@ -14,6 +14,7 @@ import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
+import { createAuthModeChipInput } from './auth-mode-chip-input.js';
 import { createContextHelp, createFormField } from './context-help.js';
 
 // Counter for unique form field IDs
@@ -240,7 +241,21 @@ const formatAuthMode = (mode) => {
     return fn ? fn() : mode || t('route.authmode.bearer');
 };
 
-const renderManagementEndpoints = (container, managementEndpoints) => {
+/**
+ * Format a comma-separated auth-mode string into combined badge HTML.
+ * E.g. "local-only,bearer" -> "Local Only, Bearer"
+ * @param {string} authModeValue  comma-separated auth modes
+ * @returns {string} HTML string with badge(s)
+ */
+const formatAuthModeBadges = (authModeValue) => {
+    const modes = (authModeValue || 'bearer').split(',').map((m) => m.trim()).filter(Boolean);
+    const labels = modes.map((m) => formatAuthMode(m));
+    const combined = labels.join(', ');
+    const classes = modes.map((m) => `authmode-${sanitizeHtml(m)}`).join(' ');
+    return `<span class="authmode-badge ${classes}">${sanitizeHtml(combined)}</span>`;
+};
+
+const renderManagementEndpoints = (container, managementEndpoints, componentId) => {
     const mgmtEl = container.querySelector('.management-endpoints-display');
     if (!mgmtEl || !managementEndpoints || managementEndpoints.length === 0) return;
 
@@ -254,6 +269,7 @@ const renderManagementEndpoints = (container, managementEndpoints) => {
                 <th>${t('route.management.table.path')}</th>
                 <th>${t('route.management.table.enabled')}</th>
                 <th>${t('route.management.table.authmode')}</th>
+                <th>${t('route.management.table.actions')}</th>
             </tr>
         </thead>
         <tbody></tbody>`;
@@ -261,17 +277,192 @@ const renderManagementEndpoints = (container, managementEndpoints) => {
     const tbody = table.querySelector('tbody');
     for (const ep of managementEndpoints) {
         const row = document.createElement('tr');
+        row.dataset.mgmtName = ep.name;
         const enabledClass = ep.enabled ? 'status-enabled' : 'status-disabled';
         const enabledText = ep.enabled ? t('common.status.enabled') : t('common.status.disabled');
         row.innerHTML = `
             <td>${sanitizeHtml(ep.name)}</td>
             <td>${sanitizeHtml(ep.path)}</td>
             <td><span class="${enabledClass}">${enabledText}</span></td>
-            <td><span class="authmode-badge authmode-${sanitizeHtml(ep.authMode)}"
-                >${formatAuthMode(ep.authMode)}</span></td>`;
+            <td>${formatAuthModeBadges(ep.authMode)}</td>
+            <td>
+                <button class="edit-route-button btn-edit" title="${t('route.management.edit.title')}">
+                    <i class="fa fa-pencil"></i> ${t('mgmt.edit')}
+                </button>
+            </td>`;
+
+        row.querySelector('.btn-edit').addEventListener('click', () => {
+            openManagementEditor(mgmtEl, ep, componentId, row);
+        });
+
         tbody.appendChild(row);
     }
     mgmtEl.appendChild(table);
+};
+
+// ---------------------------------------------------------------------------
+// Management endpoint inline editor
+// ---------------------------------------------------------------------------
+
+/**
+ * Open a simplified inline editor for a management endpoint (replaces the table row).
+ * Read-only: endpoint name, path, methods (GET). Editable: enabled, auth-mode.
+ *
+ * @param {HTMLElement} mgmtEl  the .management-endpoints-display element
+ * @param {Object} ep  management endpoint data { name, path, enabled, authMode, methods }
+ * @param {string} componentId  NiFi processor component ID
+ * @param {HTMLTableRowElement} tableRow  the table row being edited
+ */
+const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
+    // Close any existing management editor
+    const existingForm = mgmtEl.querySelector('.mgmt-edit-form');
+    if (existingForm) {
+        const prevRow = mgmtEl.querySelector('tr.hidden[data-mgmt-name]');
+        if (prevRow) prevRow.classList.remove('hidden');
+        existingForm.remove();
+    }
+
+    tableRow.classList.add('hidden');
+
+    const idx = formCounter++;
+    const form = document.createElement('div');
+    form.className = 'mgmt-edit-form route-form inline-edit';
+    form.dataset.mgmtName = ep.name;
+
+    // Read-only header
+    const header = document.createElement('div');
+    header.className = 'form-header';
+    header.innerHTML = `<strong>${sanitizeHtml(ep.name)}</strong>
+        <span class="empty-state">${sanitizeHtml(ep.path)}</span>
+        <span class="method-badge">GET</span>`;
+    form.appendChild(header);
+
+    // Editable fields
+    const fields = document.createElement('div');
+    fields.className = 'form-fields';
+
+    // Enabled checkbox
+    const enabledContainer = document.createElement('div');
+    enabledContainer.className = 'form-field';
+    const enabledLabel = document.createElement('label');
+    enabledLabel.className = 'route-enabled-label';
+    enabledLabel.setAttribute('for', `mgmt-enabled-${idx}`);
+    const enabledCheckbox = document.createElement('input');
+    enabledCheckbox.type = 'checkbox';
+    enabledCheckbox.id = `mgmt-enabled-${idx}`;
+    enabledCheckbox.className = 'mgmt-enabled route-enabled';
+    if (ep.enabled) enabledCheckbox.checked = true;
+    enabledCheckbox.setAttribute('aria-label', t('mgmt.enabled'));
+    enabledLabel.appendChild(enabledCheckbox);
+    enabledLabel.append(` ${t('mgmt.enabled')}`);
+    enabledContainer.appendChild(enabledLabel);
+    fields.appendChild(enabledContainer);
+
+    // Auth-mode chip input
+    const authModeChip = createAuthModeChipInput({
+        container: fields,
+        idx,
+        value: ep.authMode || 'bearer'
+    });
+
+    form.appendChild(fields);
+
+    // Error messages
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'route-form-error-messages';
+    errorContainer.setAttribute('role', 'alert');
+    errorContainer.setAttribute('aria-live', 'assertive');
+    form.appendChild(errorContainer);
+
+    // Action buttons
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'route-form-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'save-route-button';
+    saveBtn.innerHTML = `<i class="fa fa-check"></i> ${t('mgmt.save')}`;
+    saveBtn.addEventListener('click', () => {
+        errorContainer.innerHTML = '';
+        const authModeValue = authModeChip.getValue();
+        if (!authModeValue) {
+            errorContainer.textContent = t('mgmt.authMode.required');
+            return;
+        }
+        saveManagementEndpoint(
+            ep, componentId, enabledCheckbox.checked, authModeValue,
+            form, tableRow, errorContainer
+        );
+    });
+    actionsDiv.appendChild(saveBtn);
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'cancel-route-button';
+    cancelBtn.innerHTML = `<i class="fa fa-times"></i> ${t('mgmt.cancel')}`;
+    cancelBtn.addEventListener('click', () => {
+        authModeChip.destroy();
+        tableRow.classList.remove('hidden');
+        form.remove();
+    });
+    actionsDiv.appendChild(cancelBtn);
+
+    form.appendChild(actionsDiv);
+
+    // Insert form after the table
+    const table = mgmtEl.querySelector('.management-endpoints-table');
+    if (table && table.nextSibling) {
+        mgmtEl.insertBefore(form, table.nextSibling);
+    } else {
+        mgmtEl.appendChild(form);
+    }
+};
+
+/**
+ * Save management endpoint changes via API.
+ *
+ * @param {Object} ep  original endpoint data
+ * @param {string} componentId  NiFi processor component ID
+ * @param {boolean} enabled  new enabled state
+ * @param {string} authModeValue  comma-separated auth modes
+ * @param {HTMLElement} form  the editor form element
+ * @param {HTMLTableRowElement} tableRow  the table row to update
+ * @param {HTMLElement} errEl  error container element
+ */
+const saveManagementEndpoint = async (ep, componentId, enabled, authModeValue,
+    form, tableRow, errEl) => {
+    const updates = {};
+    updates[`rest.gateway.management.${ep.name}.enabled`] = String(enabled);
+    updates[`rest.gateway.management.${ep.name}.auth-mode`] = authModeValue;
+
+    if (componentId) {
+        try {
+            await api.updateComponentProperties(componentId, updates);
+            // Update the table row in-place
+            updateManagementTableRow(tableRow, enabled, authModeValue);
+            tableRow.classList.remove('hidden');
+            form.remove();
+        } catch (error) {
+            displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
+        }
+    } else {
+        updateManagementTableRow(tableRow, enabled, authModeValue);
+        tableRow.classList.remove('hidden');
+        form.remove();
+    }
+};
+
+/**
+ * Update a management endpoint table row's cells after a successful save.
+ * @param {HTMLTableRowElement} row  the table row to update
+ * @param {boolean} enabled  new enabled state
+ * @param {string} authModeValue  comma-separated auth modes
+ */
+const updateManagementTableRow = (row, enabled, authModeValue) => {
+    const cells = row.querySelectorAll('td');
+    // cells: 0=name, 1=path, 2=enabled, 3=authmode, 4=actions
+    const enabledClass = enabled ? 'status-enabled' : 'status-disabled';
+    const enabledText = enabled ? t('common.status.enabled') : t('common.status.disabled');
+    cells[2].innerHTML = `<span class="${enabledClass}">${enabledText}</span>`;
+    cells[3].innerHTML = formatAuthModeBadges(authModeValue);
 };
 
 const loadExistingConfig = async (container, routesContainer, componentId) => {
@@ -288,7 +479,7 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         try {
             const gwConfig = await api.fetchGatewayApi('/config');
             if (gwConfig && gwConfig.managementEndpoints) {
-                renderManagementEndpoints(container, gwConfig.managementEndpoints);
+                renderManagementEndpoints(container, gwConfig.managementEndpoints, componentId);
             }
         } catch { /* gateway may not be running yet — ignore */ }
 
@@ -402,9 +593,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     }
 
     const authMode = props?.['auth-mode'] || 'bearer';
-    const authModeClass = `authmode-${sanitizeHtml(authMode)}`;
-    const authModeBadge = `<span class="authmode-badge ${authModeClass}">`
-        + `${formatAuthMode(authMode)}</span>`;
+    const authModeBadge = formatAuthModeBadges(authMode);
 
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
@@ -469,9 +658,7 @@ const updateTableRow = (row, formData) => {
     cells[3].innerHTML = methodBadges || '<span class="empty-state">—</span>';
 
     const authModeVal = formData['auth-mode'] || 'bearer';
-    const amClass = `authmode-${sanitizeHtml(authModeVal)}`;
-    cells[4].innerHTML = `<span class="authmode-badge ${amClass}">`
-        + `${formatAuthMode(authModeVal)}</span>`;
+    cells[4].innerHTML = formatAuthModeBadges(authModeVal);
 
     const statusClass = formData.enabled ? 'status-enabled' : 'status-disabled';
     const statusText = formData.enabled ? t('common.status.enabled') : t('common.status.disabled');
@@ -592,40 +779,25 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
         currentValue: properties?.['required-scopes'] });
 
-    // ---- auth-mode dropdown ----
-    const authModeContainer = document.createElement('div');
-    authModeContainer.className = 'form-field field-container-auth-mode';
-    const authModeLabel = document.createElement('label');
-    authModeLabel.setAttribute('for', `auth-mode-${idx}`);
-    authModeLabel.textContent = `${t('route.form.authmode.label')}:`;
-    authModeContainer.appendChild(authModeLabel);
-
-    const authModeSelect = document.createElement('select');
-    authModeSelect.id = `auth-mode-${idx}`;
-    authModeSelect.className = 'field-auth-mode form-input route-config-field';
-    authModeSelect.setAttribute('aria-label', t('route.form.authmode.label'));
+    // ---- auth-mode chip input ----
     const currentAuthMode = properties?.['auth-mode'] || 'bearer';
-    for (const [value, labelFn] of Object.entries(AUTH_MODE_LABELS)) {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = labelFn();
-        if (value === currentAuthMode) option.selected = true;
-        authModeSelect.appendChild(option);
-    }
-    authModeContainer.appendChild(authModeSelect);
+    const authModeChip = createAuthModeChipInput({
+        container: fields, idx, value: currentAuthMode
+    });
 
-    // Grey out roles/scopes when auth-mode=none
+    // Grey out roles/scopes when bearer is not among selected auth modes
     const rolesField = fields.querySelector('.field-required-roles');
     const scopesField = fields.querySelector('.field-required-scopes');
     const toggleRolesScopes = () => {
-        const isNone = authModeSelect.value === 'none';
-        if (rolesField) rolesField.disabled = isNone;
-        if (scopesField) scopesField.disabled = isNone;
+        const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
+        const hasBearer = modes.includes('bearer');
+        if (rolesField) rolesField.disabled = !hasBearer;
+        if (scopesField) scopesField.disabled = !hasBearer;
     };
-    authModeSelect.addEventListener('change', toggleRolesScopes);
+    // Listen for changes on the hidden field dispatched by the chip input
+    const authModeHidden = fields.querySelector('.field-auth-mode');
+    if (authModeHidden) authModeHidden.addEventListener('change', toggleRolesScopes);
     toggleRolesScopes();
-
-    fields.appendChild(authModeContainer);
 
     // ---- max-request-size field ----
     addField({ container: fields, idx, name: 'max-request-size',
@@ -931,8 +1103,11 @@ const buildExportText = (routesContainer) => {
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
         const authModeBadge = cells[4]?.querySelector('.authmode-badge');
         const authModeClass = authModeBadge?.className || '';
-        const authModeValue = authModeClass.includes('authmode-none') ? 'none'
-            : authModeClass.includes('authmode-local-only') ? 'local-only' : '';
+        const modeTokens = ['none', 'local-only', 'bearer']
+            .filter((m) => authModeClass.includes(`authmode-${m}`));
+        const authModeValue = modeTokens.filter((m) => m !== 'bearer').length > 0
+            || modeTokens.length !== 1
+            ? modeTokens.join(',') : '';
         const enabled = cells[5]?.textContent?.trim() === t('common.status.enabled');
         const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
         const outcomeDash = !!cells[1]?.querySelector('.empty-state');

@@ -365,10 +365,10 @@ describe('rest-endpoint-config', () => {
         for (const input of inputs) {
             expect(input.value).toBe('');
         }
-        // Auth-mode select defaults to 'bearer'
-        const authModeSelect = form.querySelector('select.form-input');
-        expect(authModeSelect).not.toBeNull();
-        expect(authModeSelect.value).toBe('bearer');
+        // Auth-mode chip input defaults to 'bearer'
+        const authModeHidden = form.querySelector('.field-auth-mode');
+        expect(authModeHidden).not.toBeNull();
+        expect(authModeHidden.value).toBe('bearer');
     });
 
     // -----------------------------------------------------------------------
@@ -1644,5 +1644,349 @@ describe('rest-endpoint-config', () => {
         const helpButtons = routeForm.querySelectorAll('.context-help-toggle');
         // name, enabled, path, roles, scopes, create-flowfile, connection, schema = 8
         expect(helpButtons.length).toBeGreaterThanOrEqual(6);
+    });
+
+    // -------------------------------------------------------------------
+    // Management endpoints — rendering and editing
+    // -------------------------------------------------------------------
+
+    const MGMT_ENDPOINTS = [
+        { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: 'GET' },
+        { name: 'config', path: '/config', enabled: false, authMode: 'bearer', methods: 'GET' }
+    ];
+
+    const initWithMgmt = async (mgmtEndpoints = MGMT_ENDPOINTS) => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: mgmtEndpoints
+        });
+        await init(container);
+        await tick();
+    };
+
+    it('should render management endpoints table with Actions column', async () => {
+        await initWithMgmt();
+
+        const mgmtTable = container.querySelector('.management-endpoints-table');
+        expect(mgmtTable).not.toBeNull();
+
+        const headers = mgmtTable.querySelectorAll('thead th');
+        const headerTexts = Array.from(headers).map((th) => th.textContent.trim());
+        expect(headerTexts).toContain('route.management.table.actions');
+    });
+
+    it('should render Edit button for each management endpoint', async () => {
+        await initWithMgmt();
+
+        const editBtns = container.querySelectorAll('.management-endpoints-table .btn-edit');
+        expect(editBtns.length).toBe(2);
+    });
+
+    it('should display combined auth-mode badges for comma-separated values', async () => {
+        await initWithMgmt();
+
+        const healthRow = container.querySelector('tr[data-mgmt-name="health"]');
+        const authCell = healthRow.querySelectorAll('td')[3];
+        const badge = authCell.querySelector('.authmode-badge');
+        expect(badge).not.toBeNull();
+        // Should contain combined label
+        expect(badge.textContent).toContain('route.authmode.local-only');
+        expect(badge.textContent).toContain('route.authmode.bearer');
+    });
+
+    it('should open management editor on Edit click', async () => {
+        await initWithMgmt();
+
+        const editBtn = container.querySelector('.management-endpoints-table .btn-edit');
+        editBtn.click();
+
+        const mgmtForm = container.querySelector('.mgmt-edit-form');
+        expect(mgmtForm).not.toBeNull();
+    });
+
+    it('should hide table row when management editor is open', async () => {
+        await initWithMgmt();
+
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        const editBtn = row.querySelector('.btn-edit');
+        editBtn.click();
+
+        expect(row.classList.contains('hidden')).toBe(true);
+    });
+
+    it('should show endpoint name and path as read-only in management editor', async () => {
+        await initWithMgmt();
+
+        container.querySelector('.management-endpoints-table .btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+        const header = form.querySelector('.form-header');
+        expect(header.textContent).toContain('health');
+        expect(header.textContent).toContain('/health');
+    });
+
+    it('should show enabled checkbox in management editor', async () => {
+        await initWithMgmt();
+
+        container.querySelector('.management-endpoints-table .btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+        const checkbox = form.querySelector('.mgmt-enabled');
+        expect(checkbox).not.toBeNull();
+        expect(checkbox.type).toBe('checkbox');
+        expect(checkbox.checked).toBe(true);
+    });
+
+    it('should show auth-mode chip input in management editor', async () => {
+        await initWithMgmt();
+
+        container.querySelector('.management-endpoints-table .btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+        const chipArea = form.querySelector('.auth-mode-chip-area');
+        expect(chipArea).not.toBeNull();
+        const chips = form.querySelectorAll('.auth-mode-chip');
+        expect(chips.length).toBe(2);
+    });
+
+    it('should close management editor on Cancel and restore row', async () => {
+        await initWithMgmt();
+
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        row.querySelector('.btn-edit').click();
+
+        const form = container.querySelector('.mgmt-edit-form');
+        form.querySelector('.cancel-route-button').click();
+
+        expect(container.querySelector('.mgmt-edit-form')).toBeNull();
+        expect(row.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should save management endpoint via API on Save click', async () => {
+        api.updateComponentProperties.mockResolvedValue({});
+        await initWithMgmt();
+
+        container.querySelector('.management-endpoints-table .btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-id',
+            expect.objectContaining({
+                'rest.gateway.management.health.enabled': 'true',
+                'rest.gateway.management.health.auth-mode': 'local-only,bearer'
+            })
+        );
+    });
+
+    it('should update table row after management save', async () => {
+        api.updateComponentProperties.mockResolvedValue({});
+        await initWithMgmt();
+
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        row.querySelector('.btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+
+        // Uncheck enabled
+        const checkbox = form.querySelector('.mgmt-enabled');
+        checkbox.checked = false;
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Row should be visible again with updated status
+        expect(row.classList.contains('hidden')).toBe(false);
+        const enabledCell = row.querySelectorAll('td')[2];
+        expect(enabledCell.querySelector('.status-disabled')).not.toBeNull();
+    });
+
+    it('should close previous management editor when opening another', async () => {
+        await initWithMgmt();
+
+        // Open first editor
+        const firstRow = container.querySelector('tr[data-mgmt-name="health"]');
+        firstRow.querySelector('.btn-edit').click();
+        expect(container.querySelector('.mgmt-edit-form')).not.toBeNull();
+
+        // Open second editor
+        const secondRow = container.querySelector('tr[data-mgmt-name="config"]');
+        secondRow.querySelector('.btn-edit').click();
+
+        // Only one form should be open
+        const forms = container.querySelectorAll('.mgmt-edit-form');
+        expect(forms.length).toBe(1);
+        // First row should be restored
+        expect(firstRow.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should handle management endpoint save when API call is not needed', async () => {
+        await initWithMgmt();
+
+        // Open editor for the disabled config endpoint
+        const configRow = container.querySelector('tr[data-mgmt-name="config"]');
+        configRow.querySelector('.btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+
+        // Verify editor shows the disabled state
+        const checkbox = form.querySelector('.mgmt-enabled');
+        expect(checkbox.checked).toBe(false);
+
+        // Enable it and save
+        checkbox.checked = true;
+        api.updateComponentProperties.mockResolvedValue({});
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Row should be updated with enabled status
+        expect(configRow.classList.contains('hidden')).toBe(false);
+        const enabledCell = configRow.querySelectorAll('td')[2];
+        expect(enabledCell.querySelector('.status-enabled')).not.toBeNull();
+    });
+
+    it('should show combined auth-mode badges in user route summary table', async () => {
+        const propsWithMultiAuth = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.health.auth-mode': 'local-only,bearer'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsWithMultiAuth,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        const authCell = healthRow.querySelectorAll('td')[4];
+        const badge = authCell.querySelector('.authmode-badge');
+        expect(badge).not.toBeNull();
+        expect(badge.textContent).toContain('route.authmode.local-only');
+        expect(badge.textContent).toContain('route.authmode.bearer');
+    });
+
+    it('should display error when management save fails', async () => {
+        api.updateComponentProperties.mockRejectedValue(new Error('Save failed'));
+        await initWithMgmt();
+
+        container.querySelector('.management-endpoints-table .btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Form should still be open (not closed on error)
+        expect(container.querySelector('.mgmt-edit-form')).not.toBeNull();
+        expect(utils.displayUiError).toHaveBeenCalled();
+    });
+
+    // -------------------------------------------------------------------
+    // Management endpoint editing — standalone describe block
+    // -------------------------------------------------------------------
+
+    describe('management endpoint editing', () => {
+        const MGMT_CONFIG = {
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: 'GET' },
+                { name: 'metrics', path: '/metrics', enabled: true, authMode: 'local-only,bearer', methods: 'GET' }
+            ]
+        };
+
+        const setupMgmtMocks = () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: { 'restapi.data.path': '/api/data' },
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockResolvedValue(MGMT_CONFIG);
+        };
+
+        it('should render management endpoints table when gateway config is available', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            const mgmtTable = container.querySelector('.management-endpoints-table');
+            expect(mgmtTable).not.toBeNull();
+
+            const rows = mgmtTable.querySelectorAll('tbody tr[data-mgmt-name]');
+            expect(rows.length).toBe(2);
+            expect(rows[0].getAttribute('data-mgmt-name')).toBe('health');
+            expect(rows[1].getAttribute('data-mgmt-name')).toBe('metrics');
+        });
+
+        it('should display Edit buttons for management endpoints', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            const mgmtTable = container.querySelector('.management-endpoints-table');
+            const editButtons = mgmtTable.querySelectorAll('.btn-edit');
+            expect(editButtons.length).toBe(2);
+        });
+
+        it('should open management editor on Edit click', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            const editBtn = container.querySelector('.management-endpoints-table .btn-edit');
+            editBtn.click();
+
+            const mgmtForm = container.querySelector('.mgmt-edit-form');
+            expect(mgmtForm).not.toBeNull();
+        });
+
+        it('should hide table row when editing', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            const row = container.querySelector('tr[data-mgmt-name="health"]');
+            row.querySelector('.btn-edit').click();
+
+            expect(row.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should restore row on Cancel', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            const row = container.querySelector('tr[data-mgmt-name="health"]');
+            row.querySelector('.btn-edit').click();
+
+            // Verify form is present and row is hidden
+            const form = container.querySelector('.mgmt-edit-form');
+            expect(form).not.toBeNull();
+            expect(row.classList.contains('hidden')).toBe(true);
+
+            // Click Cancel
+            form.querySelector('.cancel-route-button').click();
+
+            // Row should be restored and form removed
+            expect(row.classList.contains('hidden')).toBe(false);
+            expect(container.querySelector('.mgmt-edit-form')).toBeNull();
+        });
+
+        it('should call updateComponentProperties on Save', async () => {
+            setupMgmtMocks();
+            api.updateComponentProperties.mockResolvedValue({});
+            await init(container);
+            await tick();
+
+            container.querySelector('.management-endpoints-table .btn-edit').click();
+            const form = container.querySelector('.mgmt-edit-form');
+
+            form.querySelector('.save-route-button').click();
+            await tick();
+
+            expect(api.updateComponentProperties).toHaveBeenCalledWith(
+                'test-processor-id',
+                expect.objectContaining({
+                    'rest.gateway.management.health.enabled': 'true',
+                    'rest.gateway.management.health.auth-mode': 'local-only,bearer'
+                })
+            );
+        });
     });
 });

@@ -107,11 +107,12 @@ public final class RestApiGatewayConstants {
         public static final PropertyDescriptor MANAGEMENT_HEALTH_AUTH_MODE = new PropertyDescriptor.Builder()
                 .name("rest.gateway.management.health.auth-mode")
                 .displayName("Health Endpoint Auth Mode")
-                .description("Authentication mode for the /health endpoint: "
-                        + "'local-only' (loopback bypass, default), 'bearer' (JWT required), 'none' (anonymous)")
+                .description("Authentication modes for the /health endpoint (comma-separated): "
+                        + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous). "
+                        + "Combine modes, e.g. 'local-only,bearer' for loopback bypass OR JWT.")
                 .required(false)
-                .defaultValue("local-only")
-                .allowableValues("local-only", "bearer", "none")
+                .defaultValue("local-only,bearer")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_METRICS_ENABLED = new PropertyDescriptor.Builder()
@@ -126,11 +127,12 @@ public final class RestApiGatewayConstants {
         public static final PropertyDescriptor MANAGEMENT_METRICS_AUTH_MODE = new PropertyDescriptor.Builder()
                 .name("rest.gateway.management.metrics.auth-mode")
                 .displayName("Metrics Endpoint Auth Mode")
-                .description("Authentication mode for the /metrics endpoint: "
-                        + "'local-only' (loopback bypass, default), 'bearer' (JWT required), 'none' (anonymous)")
+                .description("Authentication modes for the /metrics endpoint (comma-separated): "
+                        + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous). "
+                        + "Combine modes, e.g. 'local-only,bearer' for loopback bypass OR JWT.")
                 .required(false)
-                .defaultValue("local-only")
-                .allowableValues("local-only", "bearer", "none")
+                .defaultValue("local-only,bearer")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
     }

@@ -108,19 +108,19 @@ class RouteConfigurationTest {
         }
 
         @Test
-        @DisplayName("Should default authMode to BEARER")
-        void shouldDefaultAuthModeToBEARER() {
+        @DisplayName("Should default authModes to BEARER")
+        void shouldDefaultAuthModesToBEARER() {
             var route = RouteConfiguration.builder().name("health").path("/api/health").build();
-            assertEquals(AuthMode.BEARER, route.authMode());
+            assertEquals(Set.of(AuthMode.BEARER), route.authModes());
         }
 
         @Test
-        @DisplayName("Should set authMode explicitly")
-        void shouldSetAuthModeExplicitly() {
+        @DisplayName("Should set authModes explicitly")
+        void shouldSetAuthModesExplicitly() {
             var route = RouteConfiguration.builder()
                     .name("health").path("/api/health")
-                    .authMode(AuthMode.LOCAL_ONLY).build();
-            assertEquals(AuthMode.LOCAL_ONLY, route.authMode());
+                    .authModes(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)).build();
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), route.authModes());
         }
 
         @Test

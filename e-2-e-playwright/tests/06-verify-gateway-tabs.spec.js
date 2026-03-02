@@ -133,6 +133,40 @@ test.describe("REST API Gateway Tabs", () => {
         expect(rowCount).toBeGreaterThanOrEqual(1);
     });
 
+    test("should display management endpoints with Edit buttons", async ({
+        page,
+        customUIFrame,
+    }, testInfo) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Look for management endpoints table
+        const mgmtTable = customUIFrame.locator(".management-endpoints-table");
+        await expect(mgmtTable).toBeVisible({ timeout: 10000 });
+
+        // Verify Edit buttons exist
+        const editButtons = mgmtTable.locator(".btn-edit");
+        const count = await editButtons.count();
+        expect(count).toBeGreaterThan(0);
+
+        // Verify rows have data-mgmt-name attributes
+        const rows = mgmtTable.locator("tbody tr[data-mgmt-name]");
+        const rowCount = await rows.count();
+        expect(rowCount).toBeGreaterThan(0);
+
+        await page.screenshot({
+            path: `${testInfo.outputDir}/management-endpoints-edit-buttons.png`,
+            fullPage: true,
+        });
+    });
+
     test("should open inline editor when clicking Edit", async ({
         customUIFrame,
     }) => {
@@ -346,15 +380,15 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Verify the health route shows its name as the default connection
-        const healthRow = summaryTable.locator(
-            'tr[data-route-name="health"]',
+        // Verify the data route shows its name as the default connection
+        const dataRow = summaryTable.locator(
+            'tr[data-route-name="data"]',
         );
-        await expect(healthRow).toBeVisible({ timeout: 5000 });
+        await expect(dataRow).toBeVisible({ timeout: 5000 });
 
         // Connection is in the second column (index 1)
-        const connectionCell = healthRow.locator("td").nth(1);
-        await expect(connectionCell).toContainText("health");
+        const connectionCell = dataRow.locator("td").nth(1);
+        await expect(connectionCell).toContainText("data");
     });
 
     test("should display create-flowfile checkbox in route editor form", async ({
@@ -374,11 +408,11 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Click Edit on the health route
-        const healthRow = summaryTable.locator(
-            'tr[data-route-name="health"]',
+        // Click Edit on the data route
+        const dataRow = summaryTable.locator(
+            'tr[data-route-name="data"]',
         );
-        const editBtn = healthRow.locator(".edit-route-button");
+        const editBtn = dataRow.locator(".edit-route-button");
         await editBtn.click();
 
         const routeForm = endpointConfigPanel.locator(".route-form");
@@ -419,11 +453,11 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Click Edit on the health route
-        const healthRow = summaryTable.locator(
-            'tr[data-route-name="health"]',
+        // Click Edit on the data route
+        const dataRow = summaryTable.locator(
+            'tr[data-route-name="data"]',
         );
-        const editBtn = healthRow.locator(".edit-route-button");
+        const editBtn = dataRow.locator(".edit-route-button");
         await editBtn.click();
 
         const routeForm = endpointConfigPanel.locator(".route-form");

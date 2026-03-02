@@ -288,6 +288,24 @@
     margin-top: 10px;
 }
 
+/* Auth mode badges (table display) */
+
+.authmode-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--badge-bg, #e3f2fd);
+    color: var(--badge-color, #1565c0);
+}
+
+/* Management endpoints table hidden rows */
+
+.management-endpoints-table tbody tr.hidden {
+    display: none;
+}
+
 /* Method badges (table display) */
 
 .method-badge {
@@ -570,5 +588,158 @@
 
 .copy-properties-button:hover {
     background: var(--primary-color, #2196f3);
+    color: var(--container-background, #fff);
+}
+
+/* Auth-mode chip input (mirrors method-chip-* styles) */
+
+.auth-mode-chip-area {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 38px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+    background: var(--container-background, #fff);
+    cursor: text;
+}
+
+.auth-mode-chip-area:focus-within {
+    border-color: var(--primary-color, #2196f3);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+}
+
+.auth-mode-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.auth-mode-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--badge-bg, #e3f2fd);
+    color: var(--badge-color, #1565c0);
+    white-space: nowrap;
+}
+
+.auth-mode-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--badge-color, #1565c0);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+.auth-mode-chip-remove:hover {
+    opacity: 1;
+    background: rgba(21, 101, 192, 0.15);
+}
+
+.auth-mode-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 120px;
+}
+
+.auth-mode-chip-text-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 4px 0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    background: transparent;
+}
+
+/* Override the form-field input styles for the auth-mode chip text input */
+.route-form .form-field .auth-mode-chip-text-input {
+    width: 100%;
+    padding: 4px 0;
+    border: none;
+    border-radius: 0;
+}
+
+.auth-mode-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 4px 0 0;
+    padding: 4px 0;
+    list-style: none;
+    background: var(--container-background, #fff);
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 3px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.auth-mode-dropdown.open {
+    display: block;
+}
+
+.auth-mode-dropdown-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.auth-mode-dropdown-item:hover,
+.auth-mode-dropdown-item.highlighted {
+    background: var(--bg-hover, #f0f0f0);
+}
+
+/* Management endpoint edit form */
+
+.mgmt-edit-form {
+    margin-top: var(--spacing-sm, 8px);
+}
+
+.mgmt-edit-form .form-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.mgmt-edit-form .form-header strong {
+    font-size: 1rem;
+}
+
+/* Management endpoints table edit button */
+
+.management-endpoints-table .btn-edit {
+    padding: 4px 10px;
+    border: 1px solid var(--primary-color, #2196f3);
+    color: var(--primary-color, #2196f3);
+    background-color: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.management-endpoints-table .btn-edit:hover {
+    background-color: var(--primary-color, #2196f3);
     color: var(--container-background, #fff);
 }

@@ -150,17 +150,17 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         // Health endpoint
         boolean healthEnabled = context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
-        AuthMode healthAuthMode = AuthMode.fromValue(context.getProperty(
+        Set<AuthMode> healthAuthModes = AuthMode.fromValues(context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
-        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthMode));
+        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthModes));
 
         // Metrics endpoint
         boolean metricsEnabled = context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
-        AuthMode metricsAuthMode = AuthMode.fromValue(context.getProperty(
+        Set<AuthMode> metricsAuthModes = AuthMode.fromValues(context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
         handlers.add(new MetricsEndpointHandler(configService, httpSecurityEvents,
-                gatewaySecurityEvents, metricsEnabled, metricsAuthMode));
+                gatewaySecurityEvents, metricsEnabled, metricsAuthModes));
 
         // User route handlers
         for (RouteConfiguration route : routes) {
