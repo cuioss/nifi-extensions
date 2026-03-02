@@ -65,13 +65,13 @@ public class IssuerConfigurationParser {
     }
 
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
-            ConfigurationManager configurationManager) {
+                                                        ConfigurationManager configurationManager) {
         return parseIssuerConfigs(properties, configurationManager, null);
     }
 
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
-            ConfigurationManager configurationManager,
-            @Nullable ParserConfig parserConfig) {
+                                                        ConfigurationManager configurationManager,
+                                                        @Nullable ParserConfig parserConfig) {
         Objects.requireNonNull(properties, "properties must not be null");
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
 
@@ -100,7 +100,7 @@ public class IssuerConfigurationParser {
     }
 
     private static void loadExternalConfigurations(ConfigurationManager configurationManager,
-            Map<String, Map<String, String>> issuerPropertiesMap) {
+                                                   Map<String, Map<String, String>> issuerPropertiesMap) {
         LOGGER.info(JwtLogMessages.INFO.LOADING_EXTERNAL_CONFIGS);
         List<String> externalIssuerIds = configurationManager.getIssuerIds();
         for (String issuerId : externalIssuerIds) {
@@ -112,7 +112,7 @@ public class IssuerConfigurationParser {
     }
 
     private static void loadUIConfigurations(Map<String, String> properties,
-            Map<String, Map<String, String>> issuerPropertiesMap) {
+                                             Map<String, Map<String, String>> issuerPropertiesMap) {
         Map<String, Map<String, String>> groups = DynamicPropertyGroupParser.parse(
                 JwtConstants.ISSUER_PREFIX, properties);
         for (Map.Entry<String, Map<String, String>> groupEntry : groups.entrySet()) {
@@ -159,8 +159,8 @@ public class IssuerConfigurationParser {
     }
 
     private static Optional<IssuerConfig> createIssuerConfig(String issuerId,
-            Map<String, String> issuerProps, Map<String, String> globalProperties,
-            @Nullable ParserConfig parserConfig) {
+                                                             Map<String, String> issuerProps, Map<String, String> globalProperties,
+                                                             @Nullable ParserConfig parserConfig) {
         String enabledValue = issuerProps.get("enabled");
         if ("false".equalsIgnoreCase(enabledValue)) {
             LOGGER.info(JwtLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));

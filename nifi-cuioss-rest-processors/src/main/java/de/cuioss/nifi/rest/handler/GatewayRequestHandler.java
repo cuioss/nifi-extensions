@@ -237,7 +237,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // 7. Success response
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.get().name(), method, path, remoteHost);
-        sendSuccessResponse(request, response, callback, method);
+        sendSuccessResponse(response, callback, method);
     }
 
     /**
@@ -405,7 +405,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
     }
 
-    private void sendSuccessResponse(Request request, Response response, Callback callback, String method) {
+    private void sendSuccessResponse(Response response, Callback callback, String method) {
         int statusCode = isBodyMethod(method) ? 202 : 200;
         response.setStatus(statusCode);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
