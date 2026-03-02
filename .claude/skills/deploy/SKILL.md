@@ -2,7 +2,7 @@
 name: deploy
 description: Build, deploy, and test NiFi E2E environment (Docker containers)
 user-invocable: true
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__browser_snapshot, mcp__claude-in-chrome__browser_click, mcp__claude-in-chrome__browser_type, mcp__claude-in-chrome__find, mcp__claude-in-chrome__computer, mcp__claude-in-chrome__read_page, mcp__claude-in-chrome__browser_wait_for
 ---
 
 # NiFi E2E Deployment Skill
@@ -43,6 +43,8 @@ NiFi takes ~60-80s to become healthy. URLs after start:
 - NiFi: https://localhost:9095/nifi (testUser / drowssap)
 - Keycloak: http://localhost:9080 (admin / admin)
 
+**After containers are healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure.**
+
 #### redeploy
 ```bash
 ./integration-testing/src/main/docker/redeploy-nifi.sh
@@ -50,6 +52,8 @@ NiFi takes ~60-80s to become healthy. URLs after start:
 Rebuilds NAR, copies to deploy dir, runs `docker compose restart nifi`.
 Wait ~60-80s for NiFi to become healthy.
 Verify: `./integration-testing/src/main/docker/check-status.sh`
+
+**After NiFi is healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure.**
 
 #### test [file]
 ```bash
@@ -78,6 +82,29 @@ Check for common issues in order:
 3. Port conflicts: `lsof -i :7777 -i :9095 -i :9443 2>/dev/null`
 4. NiFi logs: `docker logs docker-nifi-1 --tail 50`
 5. NAR loaded: `docker logs docker-nifi-1 2>&1 | grep -i cuioss`
+
+## NiFi Browser Login
+
+After every **start** or **redeploy**, open Chrome and log in to NiFi.
+
+**Prerequisites:** The user must have accepted the self-signed certificate for `https://localhost:9095` in Chrome beforehand. If the browser shows a certificate error page, ask the user to manually accept the certificate (Advanced → Proceed) and then retry.
+
+**Login steps:**
+
+1. Call `tabs_context_mcp` to get current browser context
+2. Create a new tab with `tabs_create_mcp`
+3. Navigate to `https://localhost:9095/nifi/` — this redirects to NiFi's own login page (`#/login`)
+4. Find the Username input field (textbox "Username") and type `testUser`
+5. Find the Password input field (textbox "Password") and type `drowssap`
+6. Click the "Log in" button (submit button)
+7. Wait ~3 seconds for the NiFi canvas to load
+8. Verify success: URL should contain `#/process-groups/` and page title should be "NiFi Flow"
+9. Report login success to the user
+
+**Notes:**
+- This is NiFi's built-in login form — **not** Keycloak. The login page URL is `https://localhost:9095/nifi/#/login`.
+- If the URL already contains `#/process-groups/` after navigation, the user is already logged in — skip the login steps.
+- If NiFi is still starting and the page doesn't load, wait a few seconds and retry navigation.
 
 ## Critical Rules
 
