@@ -107,6 +107,8 @@ public class RouteConfigurationParser {
             try {
                 authModes = AuthMode.fromValues(routeProps.get(AUTH_MODE_KEY));
             } catch (IllegalArgumentException e) {
+                LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
+                        routeName, routeProps.get(AUTH_MODE_KEY), e.getMessage());
                 authModes = EnumSet.of(AuthMode.BEARER);
             }
             int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);

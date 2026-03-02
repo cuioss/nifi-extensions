@@ -57,10 +57,11 @@ public enum AuthMode {
 
     /**
      * Parses a single string value to an {@link AuthMode}, case-insensitive.
-     * Returns {@link #BEARER} for {@code null}, blank, or unrecognized values.
+     * Returns {@link #BEARER} for {@code null} or blank values.
      *
      * @param value the string to parse
-     * @return the matching auth mode, or {@link #BEARER} as default
+     * @return the matching auth mode, or {@link #BEARER} for null/blank
+     * @throws IllegalArgumentException if value is non-blank but not a recognized auth mode
      */
     public static AuthMode fromValue(String value) {
         return fromSingleValue(value);
@@ -68,7 +69,9 @@ public enum AuthMode {
 
     /**
      * Parses a single string value to an {@link AuthMode}, case-insensitive.
-     * Returns {@link #BEARER} for {@code null}, blank, or unrecognized values.
+     * Returns {@link #BEARER} for {@code null} or blank values.
+     *
+     * @throws IllegalArgumentException if value is non-blank but not a recognized auth mode
      */
     static AuthMode fromSingleValue(String value) {
         if (value == null || value.isBlank()) {
@@ -80,7 +83,7 @@ public enum AuthMode {
                 return mode;
             }
         }
-        return BEARER;
+        throw new IllegalArgumentException("Unrecognized auth mode: " + value);
     }
 
     /**
