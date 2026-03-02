@@ -31,9 +31,6 @@ image::api-gateway-pattern.png[RestApiGateway Pattern]
 |Error responses require HandleHttpResponse
 |RFC 9457 error responses returned automatically
 
-|No built-in CORS support
-|CORS handled automatically with configurable origins
-
 |No built-in metrics endpoint
 |`/metrics` endpoint with Prometheus/JSON formats
 
@@ -51,7 +48,6 @@ image::api-gateway-pattern.png[RestApiGateway Pattern]
 # Processor properties
 rest.gateway.listening.port = 9443
 rest.gateway.jwt.config.service = <CS-reference>
-rest.gateway.cors.allowed.origins = https://app.example.com
 rest.gateway.management.api-key = my-secret-key
 
 # Route: User API

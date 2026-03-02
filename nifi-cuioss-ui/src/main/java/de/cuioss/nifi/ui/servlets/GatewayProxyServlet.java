@@ -39,9 +39,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Thin CORS proxy servlet for gateway management API calls.
- * Proxies requests to the gateway's embedded Jetty server, avoiding
- * cross-origin issues (gateway runs on a different port than NiFi).
+ * Thin proxy servlet for gateway management API calls.
+ * Proxies requests to the gateway's embedded Jetty server (which runs
+ * on a different port than NiFi).
  *
  * <p>Supports three endpoints:
  * <ul>
@@ -69,7 +69,6 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String MAX_REQUEST_SIZE_PROPERTY = "rest.gateway.max.request.size";
     private static final String QUEUE_SIZE_PROPERTY = "rest.gateway.request.queue.size";
     private static final String SSL_CONTEXT_SERVICE_PROPERTY = "rest.gateway.ssl.context.service";
-    private static final String CORS_ALLOWED_ORIGINS_PROPERTY = "rest.gateway.cors.allowed.origins";
     private static final String LISTENING_HOST_PROPERTY = "rest.gateway.listening.host";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
@@ -271,7 +270,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException if unable to fetch component config
      */
     protected Map<String, String> resolveProcessorProperties(String processorId,
-                                                             HttpServletRequest request) throws IOException {
+            HttpServletRequest request) throws IOException {
         var reader = new ComponentConfigReader(configContext);
         return reader.getProcessorProperties(processorId, request);
     }
@@ -285,7 +284,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException if unable to fetch component config
      */
     protected ComponentConfigReader.ComponentConfig resolveComponentConfig(String processorId,
-                                                                           HttpServletRequest request) throws IOException {
+            HttpServletRequest request) throws IOException {
         var reader = new ComponentConfigReader(configContext);
         return reader.getComponentConfig(processorId, request);
     }
@@ -334,7 +333,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-                                                    Map<String, String> headers, String body) throws IOException {
+            Map<String, String> headers, String body) throws IOException {
         try {
             HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
 
@@ -384,7 +383,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * Builds and writes the /config JSON response from processor properties.
      */
     private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props,
-                                     String componentClass) throws IOException {
+            String componentClass) throws IOException {
         JsonObjectBuilder root = Json.createObjectBuilder();
         root.add("component", componentClass);
         root.add("port", Integer.parseInt(props.getOrDefault(GATEWAY_PORT_PROPERTY, "9443")));
@@ -394,19 +393,6 @@ public class GatewayProxyServlet extends HttpServlet {
                 Integer.parseInt(props.getOrDefault(QUEUE_SIZE_PROPERTY, "50")));
         root.add("ssl", props.get(SSL_CONTEXT_SERVICE_PROPERTY) != null
                 && !props.get(SSL_CONTEXT_SERVICE_PROPERTY).isBlank());
-
-        // CORS origins
-        JsonArrayBuilder originsArray = Json.createArrayBuilder();
-        String corsValue = props.get(CORS_ALLOWED_ORIGINS_PROPERTY);
-        if (corsValue != null && !corsValue.isBlank()) {
-            for (String origin : corsValue.split(",")) {
-                String trimmed = origin.trim();
-                if (!trimmed.isEmpty()) {
-                    originsArray.add(trimmed);
-                }
-            }
-        }
-        root.add("corsAllowedOrigins", originsArray);
 
         // Listening host
         String host = props.get(LISTENING_HOST_PROPERTY);

@@ -25,7 +25,6 @@ import de.cuioss.nifi.rest.handler.HttpRequestContainer;
 import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.tools.logging.CuiLogger;
-import de.cuioss.tools.string.Splitter;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
@@ -69,8 +68,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE,
             RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
-            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
-            RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
+            RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
@@ -134,13 +132,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
-        Set<String> corsOrigins = parseCorsOrigins(context);
-
         // Build JSON Schema validator from route configurations
         JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
 
         var handler = new GatewayRequestHandler(
-                routes, configService, requestQueue, maxRequestSize, corsOrigins, schemaValidator);
+                routes, configService, requestQueue, maxRequestSize, schemaValidator);
 
         // Resolve optional SSL context for HTTPS
         SSLContextProvider sslProvider = context.getProperty(
@@ -244,18 +240,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             return null;
         }
         return new JsonSchemaValidator(routeSchemas);
-    }
-
-    private static Set<String> parseCorsOrigins(ProcessContext context) {
-        var property = context.getProperty(RestApiGatewayConstants.Properties.CORS_ALLOWED_ORIGINS);
-        if (!property.isSet()) {
-            return Set.of();
-        }
-        String value = property.getValue().trim();
-        if (value.isEmpty()) {
-            return Set.of();
-        }
-        return Set.copyOf(Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value));
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {

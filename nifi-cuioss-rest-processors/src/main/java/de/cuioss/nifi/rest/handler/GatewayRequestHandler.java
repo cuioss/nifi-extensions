@@ -68,18 +68,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
     // HTTP header constants
     private static final String WWW_AUTHENTICATE = "WWW-Authenticate";
     private static final String HEADER_ALLOW = "Allow";
-    private static final String HEADER_ORIGIN = "Origin";
-    private static final String HEADER_VARY = "Vary";
-
-    // CORS header constants
-    private static final String CORS_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
-    private static final String CORS_ALLOW_CREDENTIALS = "Access-Control-Allow-Credentials";
-    private static final String CORS_ALLOW_METHODS = "Access-Control-Allow-Methods";
-    private static final String CORS_ALLOW_HEADERS = "Access-Control-Allow-Headers";
-    private static final String CORS_MAX_AGE = "Access-Control-Max-Age";
-    private static final String CORS_ALLOWED_METHODS_VALUE = "GET, POST, PUT, DELETE, PATCH, OPTIONS";
-    private static final String CORS_ALLOWED_HEADERS_VALUE = "Authorization, Content-Type";
-    private static final String CORS_MAX_AGE_VALUE = "3600";
 
     // Auth challenge constants
     private static final String BEARER_CHALLENGE = "Bearer";
@@ -88,14 +76,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     // Response body
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
-    private static final String METHOD_OPTIONS = "OPTIONS";
     private static final int BEARER_PREFIX_LENGTH = 7;
 
     private final List<RouteConfiguration> routes;
     private final JwtIssuerConfigService configService;
     private final BlockingQueue<HttpRequestContainer> queue;
     private final int maxRequestSize;
-    private final Set<String> corsAllowedOrigins;
     @Nullable private final JsonSchemaValidator schemaValidator;
     private final PipelineSet securityPipelines;
     /** Transport-level HTTP security event counters from cui-http. */
@@ -106,7 +92,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
     @Getter @Nullable private ManagementEndpointHandler managementHandler;
 
     /**
-     * Creates a new handler with CORS disabled and no schema validation.
+     * Creates a new handler without schema validation.
      *
      * @param routes         the configured routes
      * @param configService  the JWT issuer config service for token validation
@@ -118,49 +104,28 @@ public class GatewayRequestHandler extends Handler.Abstract {
             JwtIssuerConfigService configService,
             BlockingQueue<HttpRequestContainer> queue,
             int maxRequestSize) {
-        this(routes, configService, queue, maxRequestSize, Set.of(), null);
-    }
-
-    /**
-     * Creates a new handler.
-     *
-     * @param routes              the configured routes
-     * @param configService       the JWT issuer config service for token validation
-     * @param queue               the queue for passing requests to the NiFi processor
-     * @param maxRequestSize      maximum allowed request body size in bytes
-     * @param corsAllowedOrigins  allowed CORS origins; use {@code Set.of("*")} for all; empty to disable
-     */
-    public GatewayRequestHandler(
-            List<RouteConfiguration> routes,
-            JwtIssuerConfigService configService,
-            BlockingQueue<HttpRequestContainer> queue,
-            int maxRequestSize,
-            Set<String> corsAllowedOrigins) {
-        this(routes, configService, queue, maxRequestSize, corsAllowedOrigins, null);
+        this(routes, configService, queue, maxRequestSize, null);
     }
 
     /**
      * Creates a new handler with optional schema validation.
      *
-     * @param routes              the configured routes
-     * @param configService       the JWT issuer config service for token validation
-     * @param queue               the queue for passing requests to the NiFi processor
-     * @param maxRequestSize      maximum allowed request body size in bytes
-     * @param corsAllowedOrigins  allowed CORS origins; use {@code Set.of("*")} for all; empty to disable
-     * @param schemaValidator     optional JSON Schema validator for request body validation
+     * @param routes          the configured routes
+     * @param configService   the JWT issuer config service for token validation
+     * @param queue           the queue for passing requests to the NiFi processor
+     * @param maxRequestSize  maximum allowed request body size in bytes
+     * @param schemaValidator optional JSON Schema validator for request body validation
      */
     public GatewayRequestHandler(
             List<RouteConfiguration> routes,
             JwtIssuerConfigService configService,
             BlockingQueue<HttpRequestContainer> queue,
             int maxRequestSize,
-            Set<String> corsAllowedOrigins,
             @Nullable JsonSchemaValidator schemaValidator) {
         this.routes = List.copyOf(routes);
         this.configService = Objects.requireNonNull(configService);
         this.queue = Objects.requireNonNull(queue);
         this.maxRequestSize = maxRequestSize;
-        this.corsAllowedOrigins = Set.copyOf(corsAllowedOrigins);
         this.schemaValidator = schemaValidator;
         this.httpSecurityEvents = new SecurityEventCounter();
         this.gatewaySecurityEvents = new GatewaySecurityEvents();
@@ -184,10 +149,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
     // Always returns true — this handler handles all requests per Jetty contract
     @Override
     public boolean handle(Request request, Response response, Callback callback) {
-        if (handleCorsPreflight(request, response, callback)) {
-            return true;
-        }
-
         // Management endpoints bypass the entire auth + security pipeline
         if (managementHandler != null) {
             String rawPath = request.getHttpURI().getPath();
@@ -204,22 +165,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
             LOGGER.error(e, RestApiLogMessages.ERROR.HANDLER_ERROR, e.getMessage());
             sendProblemResponse(response, callback, ProblemDetail.internalError());
         }
-        return true;
-    }
-
-    private boolean handleCorsPreflight(Request request, Response response, Callback callback) {
-        String origin = request.getHeaders().get(HEADER_ORIGIN);
-        if (!isCorsEnabled() || !METHOD_OPTIONS.equalsIgnoreCase(request.getMethod())
-                || origin == null || !isOriginAllowed(origin)) {
-            return false;
-        }
-        LOGGER.info(RestApiLogMessages.INFO.CORS_PREFLIGHT, origin);
-        setCorsHeaders(response, origin);
-        response.getHeaders().put(CORS_ALLOW_METHODS, CORS_ALLOWED_METHODS_VALUE);
-        response.getHeaders().put(CORS_ALLOW_HEADERS, CORS_ALLOWED_HEADERS_VALUE);
-        response.getHeaders().put(CORS_MAX_AGE, CORS_MAX_AGE_VALUE);
-        response.setStatus(204);
-        response.write(true, ByteBuffer.allocate(0), callback);
         return true;
     }
 
@@ -292,7 +237,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // 7. Success response
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED, route.get().name(), method, path, remoteHost);
-        sendSuccessResponse(request, response, callback, method);
+        sendSuccessResponse(response, callback, method);
     }
 
     /**
@@ -460,11 +405,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
     }
 
-    private void sendSuccessResponse(Request request, Response response, Callback callback, String method) {
-        String origin = request.getHeaders().get(HEADER_ORIGIN);
-        if (isCorsEnabled() && origin != null && isOriginAllowed(origin)) {
-            setCorsHeaders(response, origin);
-        }
+    private void sendSuccessResponse(Response response, Callback callback, String method) {
         int statusCode = isBodyMethod(method) ? 202 : 200;
         response.setStatus(statusCode);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
@@ -505,24 +446,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
         return "POST".equalsIgnoreCase(method)
                 || "PUT".equalsIgnoreCase(method)
                 || "PATCH".equalsIgnoreCase(method);
-    }
-
-    private boolean isCorsEnabled() {
-        return !corsAllowedOrigins.isEmpty();
-    }
-
-    private boolean isOriginAllowed(String origin) {
-        return corsAllowedOrigins.contains("*") || corsAllowedOrigins.contains(origin);
-    }
-
-    private void setCorsHeaders(Response response, String origin) {
-        response.getHeaders().put(CORS_ALLOW_ORIGIN, origin);
-        // Only set Allow-Credentials for specific trusted origins, never for wildcard.
-        // Per CORS spec, credentials + wildcard origin is a security misconfiguration.
-        if (!corsAllowedOrigins.contains("*")) {
-            response.getHeaders().put(CORS_ALLOW_CREDENTIALS, "true");
-        }
-        response.getHeaders().put(HEADER_VARY, HEADER_ORIGIN);
     }
 
     private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {

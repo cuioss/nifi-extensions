@@ -70,7 +70,6 @@ class GatewayProxyServletTest {
         props.put("rest.gateway.listening.port", "9443");
         props.put("rest.gateway.max.request.size", "1048576");
         props.put("rest.gateway.request.queue.size", "50");
-        props.put("rest.gateway.cors.allowed.origins", "http://localhost:8443");
         props.put("rest.gateway.listening.host", "0.0.0.0");
         props.put("restapi.health.path", "/api/health");
         props.put("restapi.health.methods", "GET");
@@ -324,7 +323,6 @@ class GatewayProxyServletTest {
                     .statusCode(200)
                     .body("port", equalTo(9443))
                     .body("ssl", equalTo(false))
-                    .body("corsAllowedOrigins.size()", equalTo(0))
                     .body("routes.size()", equalTo(0));
         }
 
@@ -344,25 +342,6 @@ class GatewayProxyServletTest {
                     .statusCode(200)
                     // Only the 2 original routes (health, users) — broken is skipped
                     .body("routes.size()", equalTo(2));
-        }
-
-        @Test
-        @DisplayName("Should include CORS origins in config response")
-        void shouldIncludeCorsOrigins() {
-            Map<String, String> propsWithCors = new HashMap<>(createDefaultProperties());
-            propsWithCors.put("rest.gateway.cors.allowed.origins",
-                    "http://localhost:8443, https://nifi.example.com");
-            processorProperties.set(propsWithCors);
-
-            handle.spec()
-                    .header("X-Processor-Id", PROCESSOR_ID)
-                    .when()
-                    .get("/gateway/config")
-                    .then()
-                    .statusCode(200)
-                    .body("corsAllowedOrigins.size()", equalTo(2))
-                    .body("corsAllowedOrigins[0]", equalTo("http://localhost:8443"))
-                    .body("corsAllowedOrigins[1]", equalTo("https://nifi.example.com"));
         }
 
         @Test

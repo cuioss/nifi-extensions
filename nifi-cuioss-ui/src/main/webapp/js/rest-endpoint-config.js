@@ -152,7 +152,6 @@ const getGlobalSettingsKeys = () => ({
     'rest.gateway.max.request.size': t('route.global.max.request.size'),
     'rest.gateway.request.queue.size': t('route.global.queue.size'),
     'rest.gateway.ssl.context.service': t('route.global.ssl.enabled'),
-    'rest.gateway.cors.allowed.origins': t('route.global.cors.origins'),
     'rest.gateway.listening.host': t('route.global.listening.host')
 });
 
@@ -161,7 +160,6 @@ const GLOBAL_HELP_KEYS = {
     'rest.gateway.max.request.size': 'contexthelp.global.max.request.size',
     'rest.gateway.request.queue.size': 'contexthelp.global.queue.size',
     'rest.gateway.ssl.context.service': 'contexthelp.global.ssl.enabled',
-    'rest.gateway.cors.allowed.origins': 'contexthelp.global.cors.origins',
     'rest.gateway.listening.host': 'contexthelp.global.listening.host'
 };
 

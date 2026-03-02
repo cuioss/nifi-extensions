@@ -444,15 +444,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 
 _Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 
-[#NIFI-GATEWAY-5]
-=== NIFI-GATEWAY-5: CORS Support
-
-* Support configurable CORS allowed origins
-* Handle preflight OPTIONS requests automatically
-* Add appropriate Access-Control-* headers to responses
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
-
 [#NIFI-GATEWAY-6]
 === NIFI-GATEWAY-6: Management Endpoint
 

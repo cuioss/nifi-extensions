@@ -533,47 +533,4 @@ class RestApiGatewayIT {
         }
     }
 
-    // ── CORS Tests ───────────────────────────────────────────────────────
-
-    @Nested
-    @DisplayName("CORS")
-    class CorsTests {
-
-        @Test
-        @DisplayName("should return 204 for preflight with allowed origin")
-        void shouldReturn204ForPreflightWithAllowedOrigin() {
-            given().spec(noAuthSpec)
-                    .header("Origin", "http://localhost:3000")
-                    .header("Access-Control-Request-Method", "GET")
-                    .when()
-                    .options("/api/health")
-                    .then()
-                    .statusCode(204)
-                    .header("Access-Control-Allow-Origin", notNullValue());
-        }
-
-        @Test
-        @DisplayName("should include CORS headers for allowed origin")
-        void shouldIncludeCorsHeadersForAllowedOrigin() {
-            given().spec(authSpec)
-                    .header("Origin", "http://localhost:3000")
-                    .when()
-                    .get("/api/health")
-                    .then()
-                    .statusCode(200)
-                    .header("Access-Control-Allow-Origin", notNullValue());
-        }
-
-        @Test
-        @DisplayName("should not include CORS headers for disallowed origin")
-        void shouldNotIncludeCorsHeadersForDisallowedOrigin() {
-            given().spec(authSpec)
-                    .header("Origin", "http://evil.com")
-                    .when()
-                    .get("/api/health")
-                    .then()
-                    .statusCode(200)
-                    .header("Access-Control-Allow-Origin", nullValue());
-        }
-    }
 }

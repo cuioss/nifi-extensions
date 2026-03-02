@@ -229,7 +229,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     // --- Error Handling ---
 
     private void handleTokenValidationException(ProcessSession session, FlowFile flowFile,
-                                                TokenValidationException e) {
+            TokenValidationException e) {
         LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
         String errorMessage = i18nResolver.getTranslatedString(
                 JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
@@ -247,7 +247,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     private void handleError(ProcessSession session, FlowFile flowFile,
-                             String errorCode, String errorReason, String errorCategory) {
+            String errorCode, String errorReason, String errorCategory) {
         ProcessingError error = ProcessingError.builder()
                 .errorCode(errorCode)
                 .errorReason(errorReason)
