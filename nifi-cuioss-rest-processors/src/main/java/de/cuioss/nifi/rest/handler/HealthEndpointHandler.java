@@ -28,23 +28,18 @@ import org.jspecify.annotations.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Set;
 
 /**
  * Built-in handler for the {@code /health} management endpoint.
  * Returns a JSON response with status and timestamp.
  */
-public class HealthEndpointHandler implements EndpointHandler {
+public class HealthEndpointHandler extends AbstractManagementHandler {
 
     static final String HEALTH_PATH = "/health";
     private static final String JSON_CONTENT_TYPE = "application/json";
 
-    private final boolean enabled;
-    private final AuthMode authMode;
-
     public HealthEndpointHandler(boolean enabled, AuthMode authMode) {
-        this.enabled = enabled;
-        this.authMode = authMode;
+        super(enabled, authMode);
     }
 
     @Override
@@ -55,41 +50,6 @@ public class HealthEndpointHandler implements EndpointHandler {
     @Override
     public String path() {
         return HEALTH_PATH;
-    }
-
-    @Override
-    public Set<String> methods() {
-        return Set.of("GET");
-    }
-
-    @Override
-    public AuthMode authMode() {
-        return authMode;
-    }
-
-    @Override
-    public boolean enabled() {
-        return enabled;
-    }
-
-    @Override
-    public boolean builtIn() {
-        return true;
-    }
-
-    @Override
-    public Set<String> requiredRoles() {
-        return Set.of();
-    }
-
-    @Override
-    public Set<String> requiredScopes() {
-        return Set.of();
-    }
-
-    @Override
-    public int maxRequestSize() {
-        return 0;
     }
 
     @Override

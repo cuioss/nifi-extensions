@@ -30,7 +30,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Set;
 
 /**
  * Built-in handler for the {@code /metrics} management endpoint.
@@ -44,7 +43,7 @@ import java.util.Set;
  * <p>
  * Supports Prometheus (default) and JSON ({@code Accept: application/json}) output formats.
  */
-public class MetricsEndpointHandler implements EndpointHandler {
+public class MetricsEndpointHandler extends AbstractManagementHandler {
 
     static final String METRICS_PATH = "/metrics";
     private static final String PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
@@ -54,19 +53,15 @@ public class MetricsEndpointHandler implements EndpointHandler {
     private final SecurityEventCounter httpSecurityEvents;
     private final GatewaySecurityEvents gatewaySecurityEvents;
 
-    private final boolean enabled;
-    private final AuthMode authMode;
-
     public MetricsEndpointHandler(JwtIssuerConfigService configService,
             SecurityEventCounter httpSecurityEvents,
             GatewaySecurityEvents gatewaySecurityEvents,
             boolean enabled,
             AuthMode authMode) {
+        super(enabled, authMode);
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
-        this.enabled = enabled;
-        this.authMode = authMode;
     }
 
     @Override
@@ -77,41 +72,6 @@ public class MetricsEndpointHandler implements EndpointHandler {
     @Override
     public String path() {
         return METRICS_PATH;
-    }
-
-    @Override
-    public Set<String> methods() {
-        return Set.of("GET");
-    }
-
-    @Override
-    public AuthMode authMode() {
-        return authMode;
-    }
-
-    @Override
-    public boolean enabled() {
-        return enabled;
-    }
-
-    @Override
-    public boolean builtIn() {
-        return true;
-    }
-
-    @Override
-    public Set<String> requiredRoles() {
-        return Set.of();
-    }
-
-    @Override
-    public Set<String> requiredScopes() {
-        return Set.of();
-    }
-
-    @Override
-    public int maxRequestSize() {
-        return 0;
     }
 
     @Override

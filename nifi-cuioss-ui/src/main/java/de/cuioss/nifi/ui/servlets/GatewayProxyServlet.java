@@ -460,7 +460,11 @@ public class GatewayProxyServlet extends HttpServlet {
             routeObj.add("authMode", authMode);
             String maxReqSize = routeProps.get("max-request-size");
             if (maxReqSize != null && !maxReqSize.isBlank()) {
-                routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize));
+                try {
+                    routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize.strip()));
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
+                }
             }
             routesArray.add(routeObj);
         }
