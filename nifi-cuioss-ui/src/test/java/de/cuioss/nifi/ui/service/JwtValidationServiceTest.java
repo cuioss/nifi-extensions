@@ -16,7 +16,11 @@
  */
 package de.cuioss.nifi.ui.service;
 
+import de.cuioss.sheriff.oauth.core.TokenType;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
+import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
+import de.cuioss.sheriff.oauth.core.test.generator.ClaimControlParameter;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
@@ -636,6 +640,51 @@ class JwtValidationServiceTest {
             // Assert — both should fail (bad tokens) but service should not throw
             assertFalse(result1.isValid(), "First result should be invalid");
             assertFalse(result2.isValid(), "Second result should be invalid");
+            verify(mockConfigContext);
+        }
+
+        @Test
+        @DisplayName("Should return success for valid JWT signed with matching JWKS key")
+        void shouldReturnSuccessForValidJwt(@TempDir Path tempDir) throws Exception {
+            // Arrange — generate a valid signed JWT using TestTokenHolder
+            TestTokenHolder tokenHolder = new TestTokenHolder(
+                    TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            String validJwt = tokenHolder.getRawToken();
+
+            // Write the matching JWKS (public key) to a temp file
+            String jwksContent = InMemoryKeyMaterialHandler.createDefaultJwks();
+            Path jwksFile = tempDir.resolve("valid-jwks.json");
+            Files.writeString(jwksFile, jwksContent);
+
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.1.name", TestTokenHolder.TEST_ISSUER);
+            properties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+            properties.put("issuer.1.audience", TestTokenHolder.TEST_AUDIENCE);
+            properties.put("issuer.1.client-id", TestTokenHolder.TEST_CLIENT_ID);
+
+            ComponentDetails details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("SomeProcessor")
+                    .properties(properties)
+                    .build();
+
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details);
+            replay(mockConfigContext);
+
+            // Act — validate the properly signed token
+            JwtValidationService.TokenValidationResult result =
+                    service.verifyToken(validJwt, processorId, mockRequest);
+
+            // Assert — success path (lines 119-121) should be covered
+            assertNotNull(result, "Result should not be null");
+            assertTrue(result.isValid(), "Result should be valid for correctly signed token");
+            assertNull(result.getError(), "Error should be null for valid token");
+            assertNotNull(result.getTokenContent(), "Token content should be present");
+            assertEquals(TestTokenHolder.TEST_ISSUER, result.getTokenContent().getIssuer(),
+                    "Issuer should match");
             verify(mockConfigContext);
         }
 
