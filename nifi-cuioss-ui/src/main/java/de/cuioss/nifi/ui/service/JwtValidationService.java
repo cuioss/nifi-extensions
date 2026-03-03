@@ -32,6 +32,7 @@ import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
 
@@ -40,6 +41,11 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * This service retrieves processor configuration via NiFi's internal
  * {@link NiFiWebConfigurationContext} API and creates the same
  * TokenValidator instance that the processor uses.
+ *
+ * <p>The service caches {@link TokenValidator} instances per processor ID to avoid
+ * redundant JWKS key fetching. Each {@code TokenValidator} triggers an async JWKS
+ * download on creation; creating a new instance per request can exceed the library's
+ * 5-second JWKS loading timeout under load.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
@@ -56,6 +62,16 @@ public class JwtValidationService {
             ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS;
 
     private final NiFiWebConfigurationContext configContext;
+
+    /**
+     * Cached TokenValidator instances keyed by processor ID.
+     * Avoids redundant JWKS fetching on repeated verification requests.
+     */
+    private final ConcurrentHashMap<String, CachedValidator> validatorCache = new ConcurrentHashMap<>();
+
+    /** Cache entry pairing a validator with the issuer properties it was built from. */
+    private record CachedValidator(TokenValidator validator, Map<String, String> issuerProperties) {
+    }
 
     public JwtValidationService(NiFiWebConfigurationContext configContext) {
         this.configContext = Objects.requireNonNull(configContext, "configContext must not be null");
@@ -100,7 +116,37 @@ public class JwtValidationService {
         Map<String, String> issuerProperties = resolveIssuerProperties(
                 processorProperties, configReader, request);
 
-        // 2. Parse configurations using shared parser (same logic as processor)
+        // 2. Get or create a cached TokenValidator for this processor
+        TokenValidator validator = getOrCreateValidator(processorId, issuerProperties);
+
+        // 3. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
+        try {
+            AccessTokenContent tokenContent = validator.createAccessToken(AccessTokenRequest.of(token));
+            LOGGER.debug("Token validation successful for processor %s", processorId);
+            return TokenValidationResult.success(tokenContent);
+        } catch (TokenValidationException e) {
+            LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
+            return TokenValidationResult.failure(e.getMessage());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
+            return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Returns a cached {@link TokenValidator} for the given processor, or creates and caches
+     * a new one. The cache is invalidated when the resolved issuer properties change
+     * (e.g., after a configuration update in the NiFi UI).
+     */
+    private TokenValidator getOrCreateValidator(String processorId, Map<String, String> issuerProperties) {
+        CachedValidator cached = validatorCache.get(processorId);
+        if (cached != null && cached.issuerProperties().equals(issuerProperties)) {
+            LOGGER.debug("Reusing cached TokenValidator for processor %s", processorId);
+            return cached.validator();
+        }
+
+        LOGGER.debug("Creating new TokenValidator for processor %s", processorId);
+
         // ParserConfig must be created first (on this servlet thread with the correct
         // classloader) and passed through so HttpJwksLoader reuses it instead of
         // triggering ServiceLoader on ForkJoinPool threads (OAuthSheriff#212).
@@ -115,7 +161,6 @@ public class JwtValidationService {
                     + " (properties: " + issuerProperties.keySet() + ")");
         }
 
-        // 3. Build TokenValidator exactly as the processor does
         TokenValidator validator;
         try {
             validator = TokenValidator.builder()
@@ -127,18 +172,18 @@ public class JwtValidationService {
             throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
         }
 
-        // 4. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
-        try {
-            AccessTokenContent tokenContent = validator.createAccessToken(AccessTokenRequest.of(token));
-            LOGGER.debug("Token validation successful for processor %s", processorId);
-            return TokenValidationResult.success(tokenContent);
-        } catch (TokenValidationException e) {
-            LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
-            return TokenValidationResult.failure(e.getMessage());
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
-            return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
+        // Close previous validator if replaced (releases JWKS loader resources)
+        if (cached != null) {
+            try {
+                cached.validator().close();
+            } catch (Exception e) {
+                LOGGER.debug("Error closing previous TokenValidator for processor %s: %s",
+                        processorId, e.getMessage());
+            }
         }
+
+        validatorCache.put(processorId, new CachedValidator(validator, Map.copyOf(issuerProperties)));
+        return validator;
     }
 
     /**
