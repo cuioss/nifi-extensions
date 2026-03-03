@@ -472,15 +472,7 @@ class JwtValidationServiceTest {
 
             // Controller service properties: actual issuer configurations
             Path jwksFile = tempDir.resolve("test-jwks.json");
-            Files.writeString(jwksFile, """
-                    {
-                      "keys": [{
-                        "kty": "RSA", "use": "sig", "kid": "test-key-1",
-                        "n": "xGOr-H7A-PWzbJypLqAP1T7oTmPmK0HQonC9DdNf5xHxl8Jfx8N0vHlJ3hQB0z4jGp4Gq5QiC_qRjGJpZ3Sp6kYz9kYWvQ8uL8zJvP3xFp9zJGkP3xFZ9zJGkvP3xFp9zJGkP3xFZ9zJGkKP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zQ",
-                        "e": "AQAB"
-                      }]
-                    }
-                    """);
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
             Map<String, String> csProperties = new HashMap<>();
             csProperties.put("issuer.1.name", "test-issuer");
             csProperties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
@@ -605,15 +597,7 @@ class JwtValidationServiceTest {
         void shouldReuseCachedValidatorOnSecondCall(@TempDir Path tempDir) throws Exception {
             // Arrange — valid JWKS file for a working TokenValidator
             Path jwksFile = tempDir.resolve("cached-jwks.json");
-            Files.writeString(jwksFile, """
-                    {
-                      "keys": [{
-                        "kty": "RSA", "use": "sig", "kid": "test-key-1",
-                        "n": "xGOr-H7A-PWzbJypLqAP1T7oTmPmK0HQonC9DdNf5xHxl8Jfx8N0vHlJ3hQB0z4jGp4Gq5QiC_qRjGJpZ3Sp6kYz9kYWvQ8uL8zJvP3xFp9zJGkP3xFZ9zJGkvP3xFp9zJGkP3xFZ9zJGkKP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zQ",
-                        "e": "AQAB"
-                      }]
-                    }
-                    """);
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
 
             String processorId = UUID.randomUUID().toString();
             Map<String, String> properties = new HashMap<>();
@@ -692,21 +676,8 @@ class JwtValidationServiceTest {
         @DisplayName("Should return failure for invalid JWT with local JWKS file")
         void shouldReturnFailureForInvalidJwtWithLocalJwks(@TempDir Path tempDir) throws Exception {
             // Arrange — create a valid JWKS file in a temp directory
-            String jwksContent = """
-                    {
-                      "keys": [
-                        {
-                          "kty": "RSA",
-                          "use": "sig",
-                          "kid": "test-key-1",
-                          "n": "xGOr-H7A-PWzbJypLqAP1T7oTmPmK0HQonC9DdNf5xHxl8Jfx8N0vHlJ3hQB0z4jGp4Gq5QiC_qRjGJpZ3Sp6kYz9kYWvQ8uL8zJvP3xFp9zJGkP3xFZ9zJGkvP3xFp9zJGkP3xFZ9zJGkKP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zQ",
-                          "e": "AQAB"
-                        }
-                      ]
-                    }
-                    """;
             Path jwksFile = tempDir.resolve("test-jwks.json");
-            Files.writeString(jwksFile, jwksContent);
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
 
             String processorId = UUID.randomUUID().toString();
             Map<String, String> properties = new HashMap<>();

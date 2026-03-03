@@ -19,6 +19,7 @@ package de.cuioss.nifi.jwt.config;
 import de.cuioss.nifi.jwt.JWTAttributes;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
+import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -94,7 +95,7 @@ class IssuerConfigurationParserTest {
         void shouldCreateIssuerConfigWithJwksFile(@TempDir Path tempDir) throws IOException {
             // Arrange — create a real JWKS file since the builder validates existence
             Path jwksFile = tempDir.resolve("test-jwks.json");
-            Files.writeString(jwksFile, "{\"keys\":[]}");
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-file", jwksFile.toString());
@@ -310,7 +311,7 @@ class IssuerConfigurationParserTest {
         void shouldInferFileTypeFromJwksFile(@TempDir Path tempDir) throws IOException {
             // Arrange
             Path jwksFile = tempDir.resolve("test-jwks.json");
-            Files.writeString(jwksFile, "{\"keys\":[]}");
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-file", jwksFile.toString());

@@ -17,6 +17,7 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
+import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.ComponentDetails;
@@ -81,8 +82,7 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should validate valid JWKS content")
     void validJwksContentValidation() {
-        String validJwksContent = """
-                {"keys":[{"kty":"RSA","kid":"test-key-1","use":"sig","n":"0vx7agoebGcQ...","e":"AQAB"}]}""";
+        String validJwksContent = InMemoryKeyMaterialHandler.createDefaultJwks();
 
         String requestJson = """
                 {"jwksContent":"%s","processorId":"test-processor-id"}"""
@@ -346,10 +346,8 @@ class JwksValidationServletTest {
     @Test
     @DisplayName("Should validate JWKS file in allowed path")
     void validJwksFileInAllowedPath(@TempDir Path tempDir) throws Exception {
-        String jwksContent = """
-                {"keys":[{"kty":"RSA","kid":"test","use":"sig","n":"0vx7","e":"AQAB"}]}""";
         Path jwksFile = tempDir.resolve("jwks.json");
-        Files.writeString(jwksFile, jwksContent);
+        Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
 
         try (var ignored = new SystemPropertyResource("nifi.jwks.allowed.base.path", tempDir.toString())) {
             handle.spec()
