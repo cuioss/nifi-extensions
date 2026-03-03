@@ -92,7 +92,7 @@ Compare what was seen in Chrome against the existing screenshots and documentati
 Write a temporary Playwright script to `e-2-e-playwright/take-screenshots.mjs` and run it. The script must:
 
 1. Use `@playwright/test` (installed in `e-2-e-playwright/node_modules`)
-2. Launch headless Chromium with `--ignore-certificate-errors` and `ignoreHTTPSErrors: true`
+2. Launch headless Chromium with `--ignore-certificate-errors`, `ignoreHTTPSErrors: true`, and `locale: 'en-US'` to force English UI
 3. Set viewport to `1456 x 816` for consistent screenshot dimensions
 4. Log in via the NiFi login form (`testUser` / `drowssap`)
 5. Use the NiFi REST API (`/nifi-api/flow/process-groups/root`) to discover processor IDs
@@ -192,3 +192,4 @@ Output a summary table showing:
 - The Playwright script MUST run from the `e-2-e-playwright/` directory (for `node_modules` resolution)
 - Do NOT update screenshots that haven't visually changed — compare before overwriting
 - NiFi custom UI loads inside an iframe on the `/advanced` URL — all tab interactions must target the iframe's `contentFrame()`
+- Screenshots MUST always be in English — the UI auto-detects browser language via `navigator.language`, so Playwright must launch with `locale: 'en-US'` to prevent German or other translations from appearing

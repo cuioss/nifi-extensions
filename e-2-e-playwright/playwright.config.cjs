@@ -81,6 +81,7 @@ module.exports = defineConfig({
     navigationTimeout: 30000,
     contextOptions: {
       acceptDownloads: true,
+      locale: 'en-US',
       timezoneId: 'America/New_York',
       permissions: ['clipboard-read', 'clipboard-write'],
     },
