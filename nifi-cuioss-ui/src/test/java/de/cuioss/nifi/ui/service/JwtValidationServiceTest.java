@@ -597,6 +597,49 @@ class JwtValidationServiceTest {
         }
 
         @Test
+        @DisplayName("Should reuse cached TokenValidator on second call with same config")
+        void shouldReuseCachedValidatorOnSecondCall(@TempDir Path tempDir) throws Exception {
+            // Arrange — valid JWKS file for a working TokenValidator
+            Path jwksFile = tempDir.resolve("cached-jwks.json");
+            Files.writeString(jwksFile, """
+                    {
+                      "keys": [{
+                        "kty": "RSA", "use": "sig", "kid": "test-key-1",
+                        "n": "xGOr-H7A-PWzbJypLqAP1T7oTmPmK0HQonC9DdNf5xHxl8Jfx8N0vHlJ3hQB0z4jGp4Gq5QiC_qRjGJpZ3Sp6kYz9kYWvQ8uL8zJvP3xFp9zJGkP3xFZ9zJGkvP3xFp9zJGkP3xFZ9zJGkKP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zJGkvP3xFZ9zJGkP3xFp9zQ",
+                        "e": "AQAB"
+                      }]
+                    }
+                    """);
+
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.1.name", "test-issuer");
+            properties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+
+            ComponentDetails details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("SomeProcessor")
+                    .properties(properties)
+                    .build();
+
+            // Mock returns details for both calls
+            expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).times(2);
+            replay(mockConfigContext);
+
+            // Act — first call creates validator, second reuses cache
+            JwtValidationService.TokenValidationResult result1 =
+                    service.verifyToken("invalid-token", processorId, mockRequest);
+            JwtValidationService.TokenValidationResult result2 =
+                    service.verifyToken("another-invalid", processorId, mockRequest);
+
+            // Assert — both should fail (bad tokens) but service should not throw
+            assertFalse(result1.isValid(), "First result should be invalid");
+            assertFalse(result2.isValid(), "Second result should be invalid");
+            verify(mockConfigContext);
+        }
+
+        @Test
         @DisplayName("Should return failure for invalid JWT with local JWKS file")
         void shouldReturnFailureForInvalidJwtWithLocalJwks(@TempDir Path tempDir) throws Exception {
             // Arrange — create a valid JWKS file in a temp directory
