@@ -270,7 +270,7 @@ class RouteConfigurationParserTest {
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
             assertEquals(1, routes.size());
-            assertEquals(AuthMode.NONE, routes.getFirst().authMode());
+            assertEquals(Set.of(AuthMode.NONE), routes.getFirst().authModes());
         }
 
         @Test
@@ -282,18 +282,30 @@ class RouteConfigurationParserTest {
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            assertEquals(AuthMode.LOCAL_ONLY, routes.getFirst().authMode());
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY), routes.getFirst().authModes());
         }
 
         @Test
         @DisplayName("Should default auth-mode to BEARER when absent")
-        void shouldDefaultAuthModeToBEARER() {
+        void shouldDefaultAuthModesToBEARER() {
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            assertEquals(AuthMode.BEARER, routes.getFirst().authMode());
+            assertEquals(Set.of(AuthMode.BEARER), routes.getFirst().authModes());
+        }
+
+        @Test
+        @DisplayName("Should parse comma-separated auth-mode values")
+        void shouldParseCommaSeparatedAuthModes() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            properties.put("restapi.health.auth-mode", "local-only,bearer");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), routes.getFirst().authModes());
         }
 
         @Test

@@ -23,7 +23,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("AuthMode")
 class AuthModeTest {
@@ -62,10 +64,94 @@ class AuthModeTest {
 
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {"  ", "unknown", "jwt", "token"})
-        @DisplayName("Should default to BEARER for null, blank, or unknown values")
-        void shouldDefaultToBearerForUnknown(String value) {
+        @ValueSource(strings = {"  "})
+        @DisplayName("Should default to BEARER for null or blank values")
+        void shouldDefaultToBearerForNullOrBlank(String value) {
             assertEquals(AuthMode.BEARER, AuthMode.fromValue(value));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"unknown", "jwt", "token"})
+        @DisplayName("Should throw for unrecognized values")
+        void shouldThrowForUnrecognized(String value) {
+            var ex = assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValue(value));
+            assertTrue(ex.getMessage().contains("Unrecognized auth mode"));
+        }
+    }
+
+    @Nested
+    @DisplayName("fromValues")
+    class FromValues {
+
+        @Test
+        @DisplayName("Should parse single 'bearer' to Set of BEARER")
+        void shouldParseSingleBearer() {
+            assertEquals(Set.of(AuthMode.BEARER), AuthMode.fromValues("bearer"));
+        }
+
+        @Test
+        @DisplayName("Should parse 'local-only,bearer' to combined set")
+        void shouldParseLocalOnlyAndBearer() {
+            Set<AuthMode> result = AuthMode.fromValues("local-only,bearer");
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), result);
+        }
+
+        @Test
+        @DisplayName("Should parse single 'none' to Set of NONE")
+        void shouldParseSingleNone() {
+            assertEquals(Set.of(AuthMode.NONE), AuthMode.fromValues("none"));
+        }
+
+        @Test
+        @DisplayName("Should parse single 'local-only' to Set of LOCAL_ONLY")
+        void shouldParseSingleLocalOnly() {
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY), AuthMode.fromValues("local-only"));
+        }
+
+        @Test
+        @DisplayName("Should handle whitespace around values")
+        void shouldHandleWhitespace() {
+            assertEquals(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                    AuthMode.fromValues(" local-only , bearer "));
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"  ", ",,,"})
+        @DisplayName("Should throw for null, blank, or empty-after-split values")
+        void shouldThrowForNullOrBlank(String value) {
+            var ex = assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValues(value));
+            assertTrue(ex.getMessage().contains("Must provide at least one auth mode"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"unknown", "bearer,jwt", "locel-only"})
+        @DisplayName("Should throw for unrecognized tokens in comma-separated values")
+        void shouldThrowForUnrecognizedTokens(String value) {
+            assertThrows(IllegalArgumentException.class, () -> AuthMode.fromValues(value));
+        }
+    }
+
+    @Nested
+    @DisplayName("toValue")
+    class ToValue {
+
+        @Test
+        @DisplayName("Should serialize single mode")
+        void shouldSerializeSingle() {
+            assertEquals("bearer", AuthMode.toValue(Set.of(AuthMode.BEARER)));
+        }
+
+        @Test
+        @DisplayName("Should serialize multiple modes sorted alphabetically")
+        void shouldSerializeMultipleSorted() {
+            assertEquals("bearer,local-only", AuthMode.toValue(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)));
+        }
+
+        @Test
+        @DisplayName("Should serialize NONE")
+        void shouldSerializeNone() {
+            assertEquals("none", AuthMode.toValue(Set.of(AuthMode.NONE)));
         }
     }
 

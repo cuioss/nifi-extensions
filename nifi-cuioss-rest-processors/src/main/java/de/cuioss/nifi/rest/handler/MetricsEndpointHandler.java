@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 /**
  * Built-in handler for the {@code /metrics} management endpoint.
@@ -57,8 +58,8 @@ public class MetricsEndpointHandler extends AbstractManagementHandler {
             SecurityEventCounter httpSecurityEvents,
             GatewaySecurityEvents gatewaySecurityEvents,
             boolean enabled,
-            AuthMode authMode) {
-        super(enabled, authMode);
+            Set<AuthMode> authModes) {
+        super(enabled, authModes);
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
         this.gatewaySecurityEvents = gatewaySecurityEvents;

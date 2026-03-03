@@ -958,11 +958,9 @@
               "rest.gateway.max.request.size": "1048576",
               "rest.gateway.request.queue.size": "50",
               "rest.gateway.management.health.enabled": "true",
-              "rest.gateway.management.health.auth-mode": "local-only",
+              "rest.gateway.management.health.auth-mode": "local-only,bearer",
               "rest.gateway.management.metrics.enabled": "true",
-              "rest.gateway.management.metrics.auth-mode": "local-only",
-              "restapi.health.path": "/api/health",
-              "restapi.health.methods": "GET",
+              "rest.gateway.management.metrics.auth-mode": "local-only,bearer",
               "restapi.data.path": "/api/data",
               "restapi.data.methods": "GET,POST",
               "restapi.admin.path": "/api/admin",
@@ -980,7 +978,6 @@
               "restapi.admin.success-outcome": "admin",
               "restapi.data.success-outcome": "data",
               "restapi.disabled-test.success-outcome": "disabled-test",
-              "restapi.health.success-outcome": "health",
               "restapi.inline-validated.success-outcome": "inline-validated",
               "restapi.validated.success-outcome": "validated"
             },
@@ -1002,16 +999,6 @@
               },
               "rest.gateway.request.queue.size": {
                 "name": "rest.gateway.request.queue.size",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.health.path": {
-                "name": "restapi.health.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.health.methods": {
-                "name": "restapi.health.methods",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -1100,11 +1087,6 @@
                 "identifiesControllerService": false,
                 "sensitive": false
               },
-              "restapi.health.success-outcome": {
-                "name": "restapi.health.success-outcome",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
               "restapi.inline-validated.success-outcome": {
                 "name": "restapi.inline-validated.success-outcome",
                 "identifiesControllerService": false,
@@ -1132,56 +1114,6 @@
             "position": {
               "x": 800,
               "y": 200
-            },
-            "style": {},
-            "retriedRelationships": [],
-            "retryCount": 0,
-            "executionNode": "ALL",
-            "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
-            "identifier": "e5842c02-def4-500d-94b6-72cd1bcd693c",
-            "instanceIdentifier": "c969f24d-aff9-5e4b-9d66-5f34527e4efb",
-            "name": "LogAttribute (gateway-health)",
-            "type": "org.apache.nifi.processors.standard.LogAttribute",
-            "bundle": {
-              "group": "org.apache.nifi",
-              "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
-            },
-            "properties": {
-              "Log Level": "info",
-              "Log prefix": "gateway-health"
-            },
-            "propertyDescriptors": {
-              "Log Level": {
-                "name": "Log Level",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "Log prefix": {
-                "name": "Log prefix",
-                "identifiesControllerService": false,
-                "sensitive": false
-              }
-            },
-            "scheduledState": "RUNNING",
-            "schedulingPeriod": "0 sec",
-            "schedulingStrategy": "TIMER_DRIVEN",
-            "penaltyDuration": "30 sec",
-            "yieldDuration": "1 sec",
-            "bulletinLevel": "WARN",
-            "runDurationMillis": 0,
-            "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "success"
-            ],
-            "componentType": "PROCESSOR",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 800,
-              "y": 400
             },
             "style": {},
             "retriedRelationships": [],
@@ -1345,36 +1277,6 @@
         "outputPorts": [],
         "connections": [
           {
-            "identifier": "c9bcedd1-1006-5354-8085-e3e971e58533",
-            "instanceIdentifier": "6b11e010-3d67-5231-b74d-aa829629b96b",
-            "name": "RestApiGateway health \u2192 LogAttribute",
-            "source": {
-              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "RestApiGateway"
-            },
-            "destination": {
-              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-health)"
-            },
-            "selectedRelationships": [
-              "health"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
             "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
             "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
             "name": "RestApiGateway data \u2192 LogAttribute",
@@ -1475,10 +1377,10 @@
               "name": "RestApiGateway"
             },
             "destination": {
-              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
               "type": "PROCESSOR",
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-health)"
+              "name": "LogAttribute (gateway-data)"
             },
             "selectedRelationships": [
               "admin"

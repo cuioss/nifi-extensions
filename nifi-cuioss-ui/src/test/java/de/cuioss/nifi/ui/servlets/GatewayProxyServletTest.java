@@ -72,11 +72,9 @@ class GatewayProxyServletTest {
         props.put("rest.gateway.request.queue.size", "50");
         props.put("rest.gateway.listening.host", "0.0.0.0");
         props.put("rest.gateway.management.health.enabled", "true");
-        props.put("rest.gateway.management.health.auth-mode", "local-only");
+        props.put("rest.gateway.management.health.auth-mode", "local-only,bearer");
         props.put("rest.gateway.management.metrics.enabled", "true");
-        props.put("rest.gateway.management.metrics.auth-mode", "local-only");
-        props.put("restapi.health.path", "/api/health");
-        props.put("restapi.health.methods", "GET");
+        props.put("rest.gateway.management.metrics.auth-mode", "local-only,bearer");
         props.put("restapi.users.path", "/api/users");
         props.put("restapi.users.methods", "GET,POST");
         props.put("restapi.users.required-roles", "ADMIN");
@@ -221,7 +219,7 @@ class GatewayProxyServletTest {
                     .body("maxRequestBodySize", equalTo(1048576))
                     .body("queueSize", equalTo(50))
                     .body("ssl", equalTo(false))
-                    .body("routes.size()", equalTo(2));
+                    .body("routes.size()", equalTo(1));
         }
 
         @Test
@@ -233,8 +231,6 @@ class GatewayProxyServletTest {
                     .get("/gateway/config")
                     .then()
                     .statusCode(200)
-                    .body("routes.find { it.name == 'health' }.path", equalTo("/api/health"))
-                    .body("routes.find { it.name == 'health' }.authMode", equalTo("bearer"))
                     .body("routes.find { it.name == 'users' }.path", equalTo("/api/users"))
                     .body("routes.find { it.name == 'users' }.requiredRoles", hasItem("ADMIN"));
         }
@@ -254,13 +250,13 @@ class GatewayProxyServletTest {
                     .body("managementEndpoints.find { it.name == 'health' }.enabled",
                             equalTo(true))
                     .body("managementEndpoints.find { it.name == 'health' }.authMode",
-                            equalTo("local-only"))
+                            equalTo("local-only,bearer"))
                     .body("managementEndpoints.find { it.name == 'metrics' }.path",
                             equalTo("/metrics"))
                     .body("managementEndpoints.find { it.name == 'metrics' }.enabled",
                             equalTo(true))
                     .body("managementEndpoints.find { it.name == 'metrics' }.authMode",
-                            equalTo("local-only"));
+                            equalTo("local-only,bearer"));
         }
 
         @Test
@@ -369,8 +365,8 @@ class GatewayProxyServletTest {
                     .get("/gateway/config")
                     .then()
                     .statusCode(200)
-                    // Only the 2 original routes (health, users) — broken is skipped
-                    .body("routes.size()", equalTo(2));
+                    // Only the 1 original route (users) — broken is skipped
+                    .body("routes.size()", equalTo(1));
         }
 
         @Test

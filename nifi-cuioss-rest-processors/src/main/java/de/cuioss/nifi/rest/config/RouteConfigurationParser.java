@@ -103,10 +103,22 @@ public class RouteConfigurationParser {
             if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
                 successOutcome = routeName;
             }
-            AuthMode authMode = AuthMode.fromValue(routeProps.get(AUTH_MODE_KEY));
+            String authModeRaw = routeProps.get(AUTH_MODE_KEY);
+            Set<AuthMode> authModes;
+            if (authModeRaw == null || authModeRaw.isBlank()) {
+                authModes = EnumSet.of(AuthMode.BEARER);
+            } else {
+                try {
+                    authModes = AuthMode.fromValues(authModeRaw);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
+                            routeName, authModeRaw, e.getMessage());
+                    authModes = EnumSet.of(AuthMode.BEARER);
+                }
+            }
             int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
 
-            if (authMode == AuthMode.NONE && (!roles.isEmpty() || !scopes.isEmpty())) {
+            if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
                 LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
                         + "roles and scopes will be ignored", routeName);
             }
@@ -115,10 +127,10 @@ public class RouteConfigurationParser {
                     .name(routeName).path(path).enabled(enabled)
                     .methods(methods).requiredRoles(roles).requiredScopes(scopes)
                     .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
-                    .authMode(authMode).maxRequestSize(maxRequestSize)
+                    .authModes(authModes).maxRequestSize(maxRequestSize)
                     .build());
-            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authMode=%s",
-                    routeName, path, enabled, methods, authMode);
+            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
+                    routeName, path, enabled, methods, authModes);
         }
 
         return Collections.unmodifiableList(routes);

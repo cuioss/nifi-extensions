@@ -419,9 +419,8 @@ class CustomUIEndpointsIT {
                     .then()
                     .statusCode(200)
                     .contentType(ContentType.JSON)
-                    .body("routes.find { it.name == 'health' }.createFlowFile", equalTo(true))
-                    .body("routes.find { it.name == 'health' }.successOutcome", equalTo("health"))
-                    .body("routes.find { it.name == 'data' }.createFlowFile", equalTo(true));
+                    .body("routes.find { it.name == 'data' }.createFlowFile", equalTo(true))
+                    .body("routes.find { it.name == 'data' }.successOutcome", equalTo("data"));
         }
 
         @Test
@@ -455,7 +454,7 @@ class CustomUIEndpointsIT {
         void gatewayTestHappyPath() {
             given().spec(gatewayAuthSpec)
                     .body(Map.of(
-                            "path", "/api/health",
+                            "path", "/api/data",
                             "method", "GET",
                             "headers", Map.of("Authorization", "Bearer " + keycloakToken)))
                     .when()

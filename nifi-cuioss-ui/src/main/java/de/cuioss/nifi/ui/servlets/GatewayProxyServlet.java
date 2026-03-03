@@ -480,7 +480,7 @@ public class GatewayProxyServlet extends HttpServlet {
         health.add("methods", Json.createArrayBuilder().add("GET"));
         health.add("enabled", !"false".equalsIgnoreCase(
                 props.getOrDefault(HEALTH_ENABLED_PROPERTY, "true")));
-        health.add("authMode", props.getOrDefault(HEALTH_AUTH_MODE_PROPERTY, "local-only"));
+        health.add("authMode", props.getOrDefault(HEALTH_AUTH_MODE_PROPERTY, "local-only,bearer"));
         health.add("builtIn", true);
         mgmtArray.add(health);
 
@@ -490,7 +490,7 @@ public class GatewayProxyServlet extends HttpServlet {
         metrics.add("methods", Json.createArrayBuilder().add("GET"));
         metrics.add("enabled", !"false".equalsIgnoreCase(
                 props.getOrDefault(METRICS_ENABLED_PROPERTY, "true")));
-        metrics.add("authMode", props.getOrDefault(METRICS_AUTH_MODE_PROPERTY, "local-only"));
+        metrics.add("authMode", props.getOrDefault(METRICS_AUTH_MODE_PROPERTY, "local-only,bearer"));
         metrics.add("builtIn", true);
         mgmtArray.add(metrics);
 

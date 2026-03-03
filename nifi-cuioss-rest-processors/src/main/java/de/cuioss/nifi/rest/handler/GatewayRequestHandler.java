@@ -196,7 +196,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
 
         // 4. Auth-mode dispatch
-        AuthResult authResult = resolveAuth(handler.authMode(), request, response, callback,
+        AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
                 method, path, remoteHost);
         if (authResult instanceof AuthResult.ErrorSent) {
             return;
@@ -231,21 +231,43 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     /**
-     * Resolves authentication based on the auth mode.
+     * Resolves authentication based on the auth modes.
+     * <p>
+     * Evaluation order:
+     * <ol>
+     *   <li>NONE — accepts everything</li>
+     *   <li>LOCAL_ONLY + loopback — accepts unauthenticated loopback</li>
+     *   <li>BEARER — requires JWT</li>
+     *   <li>LOCAL_ONLY without loopback — rejects remote requests</li>
+     * </ol>
      */
-    private AuthResult resolveAuth(AuthMode authMode, Request request,
+    private AuthResult resolveAuth(Set<AuthMode> authModes, Request request,
             Response response, Callback callback,
             String method, String path, String remoteHost) {
-        return switch (authMode) {
-            case NONE -> new AuthResult.Success(null);
-            case LOCAL_ONLY -> {
-                if (loopbackBypassEnabled && RequestUtils.isLoopbackRequest(request)) {
-                    yield new AuthResult.Success(extractAndValidateTokenOptionally(request));
-                }
-                yield requireBearerToken(request, response, callback, method, path, remoteHost);
-            }
-            case BEARER -> requireBearerToken(request, response, callback, method, path, remoteHost);
-        };
+        // NONE accepts everything
+        if (authModes.contains(AuthMode.NONE)) {
+            return new AuthResult.Success(null);
+        }
+        boolean isLoopback = loopbackBypassEnabled && RequestUtils.isLoopbackRequest(request);
+        // LOCAL_ONLY accepts unauthenticated loopback
+        if (authModes.contains(AuthMode.LOCAL_ONLY) && isLoopback) {
+            return new AuthResult.Success(extractAndValidateTokenOptionally(request));
+        }
+        // BEARER requires JWT
+        if (authModes.contains(AuthMode.BEARER)) {
+            return requireBearerToken(request, response, callback, method, path, remoteHost);
+        }
+        // LOCAL_ONLY without loopback → reject remote requests
+        if (authModes.contains(AuthMode.LOCAL_ONLY)) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN);
+            response.getHeaders().put(WWW_AUTHENTICATE, BEARER_CHALLENGE);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.unauthorized("This endpoint requires local access or Bearer token"));
+            return new AuthResult.ErrorSent();
+        }
+        // Fallback — empty set is prevented by AuthMode.fromValues() validation;
+        // this path is unreachable under normal operation
+        return requireBearerToken(request, response, callback, method, path, remoteHost);
     }
 
     /**
