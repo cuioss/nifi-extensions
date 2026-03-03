@@ -18,7 +18,6 @@ package de.cuioss.nifi.ui.service;
 
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
-import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
@@ -32,7 +31,6 @@ import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
 
@@ -42,10 +40,11 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * {@link NiFiWebConfigurationContext} API and creates the same
  * TokenValidator instance that the processor uses.
  *
- * <p>The service caches {@link TokenValidator} instances per processor ID to avoid
- * redundant JWKS key fetching. Each {@code TokenValidator} triggers an async JWKS
- * download on creation; creating a new instance per request can exceed the library's
- * 5-second JWKS loading timeout under load.
+ * <p>The service caches a single {@link TokenValidator} to avoid redundant JWKS key
+ * fetching. Each {@code TokenValidator} triggers an async JWKS download on creation;
+ * creating a new instance per request can exceed the library's 5-second JWKS loading
+ * timeout under load. The cached validator is invalidated when the resolved issuer
+ * properties change (e.g., after a configuration update in the NiFi UI).
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
@@ -63,15 +62,11 @@ public class JwtValidationService {
 
     private final NiFiWebConfigurationContext configContext;
 
-    /**
-     * Cached TokenValidator instances keyed by processor ID.
-     * Avoids redundant JWKS fetching on repeated verification requests.
-     */
-    private final ConcurrentHashMap<String, CachedValidator> validatorCache = new ConcurrentHashMap<>();
+    /** Cached TokenValidator, reused as long as issuer properties haven't changed. */
+    private TokenValidator cachedValidator;
 
-    /** Cache entry pairing a validator with the issuer properties it was built from. */
-    private record CachedValidator(TokenValidator validator, Map<String, String> issuerProperties) {
-    }
+    /** The issuer properties the cached validator was built from. */
+    private Map<String, String> cachedIssuerProperties;
 
     public JwtValidationService(NiFiWebConfigurationContext configContext) {
         this.configContext = Objects.requireNonNull(configContext, "configContext must not be null");
@@ -116,8 +111,8 @@ public class JwtValidationService {
         Map<String, String> issuerProperties = resolveIssuerProperties(
                 processorProperties, configReader, request);
 
-        // 2. Get or create a cached TokenValidator for this processor
-        TokenValidator validator = getOrCreateValidator(processorId, issuerProperties);
+        // 2. Get or create a cached TokenValidator
+        TokenValidator validator = getOrCreateValidator(issuerProperties);
 
         // 3. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
         try {
@@ -127,25 +122,21 @@ public class JwtValidationService {
         } catch (TokenValidationException e) {
             LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
             return TokenValidationResult.failure(e.getMessage());
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, UILogMessages.ERROR.UNEXPECTED_VALIDATION_ERROR, processorId);
-            return TokenValidationResult.failure("Unexpected validation error: " + e.getMessage());
         }
     }
 
     /**
-     * Returns a cached {@link TokenValidator} for the given processor, or creates and caches
-     * a new one. The cache is invalidated when the resolved issuer properties change
-     * (e.g., after a configuration update in the NiFi UI).
+     * Returns the cached {@link TokenValidator} if the issuer properties haven't changed,
+     * or creates and caches a new one. This avoids redundant JWKS fetching on repeated
+     * verification requests.
      */
-    private TokenValidator getOrCreateValidator(String processorId, Map<String, String> issuerProperties) {
-        CachedValidator cached = validatorCache.get(processorId);
-        if (cached != null && cached.issuerProperties().equals(issuerProperties)) {
-            LOGGER.debug("Reusing cached TokenValidator for processor %s", processorId);
-            return cached.validator();
+    private TokenValidator getOrCreateValidator(Map<String, String> issuerProperties) {
+        if (cachedValidator != null && issuerProperties.equals(cachedIssuerProperties)) {
+            LOGGER.debug("Reusing cached TokenValidator");
+            return cachedValidator;
         }
 
-        LOGGER.debug("Creating new TokenValidator for processor %s", processorId);
+        LOGGER.debug("Creating new TokenValidator (properties changed or first call)");
 
         // ParserConfig must be created first (on this servlet thread with the correct
         // classloader) and passed through so HttpJwksLoader reuses it instead of
@@ -157,33 +148,16 @@ public class JwtValidationService {
                 issuerProperties, configurationManager, parserConfig);
 
         if (issuerConfigs.isEmpty()) {
-            throw new IllegalStateException("No issuer configurations found for processor " + processorId
+            throw new IllegalStateException("No issuer configurations found"
                     + " (properties: " + issuerProperties.keySet() + ")");
         }
 
-        TokenValidator validator;
-        try {
-            validator = TokenValidator.builder()
-                    .parserConfig(parserConfig)
-                    .issuerConfigs(issuerConfigs)
-                    .build();
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_CREATE_TOKEN_VALIDATOR, processorId);
-            throw new IllegalStateException("Failed to create TokenValidator: " + e.getMessage(), e);
-        }
-
-        // Close previous validator if replaced (releases JWKS loader resources)
-        if (cached != null) {
-            try {
-                cached.validator().close();
-            } catch (Exception e) {
-                LOGGER.debug("Error closing previous TokenValidator for processor %s: %s",
-                        processorId, e.getMessage());
-            }
-        }
-
-        validatorCache.put(processorId, new CachedValidator(validator, Map.copyOf(issuerProperties)));
-        return validator;
+        cachedValidator = TokenValidator.builder()
+                .parserConfig(parserConfig)
+                .issuerConfigs(issuerConfigs)
+                .build();
+        cachedIssuerProperties = Map.copyOf(issuerProperties);
+        return cachedValidator;
     }
 
     /**
