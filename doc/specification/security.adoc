@@ -150,6 +150,15 @@ By default, JWKS URLs that resolve to private, loopback, link-local, or any-loca
 
 WARNING: Only enable this setting in trusted network environments where the NiFi instance and IdP are on the same private network. Disabling SSRF protection in untrusted environments exposes the system to internal network scanning attacks.
 
+==== Security Model for Processor ID Header
+
+The `X-Processor-Id` header used in JWKS validation requests is a *configuration lookup key*, not a security credential or trust token. It cannot be used to bypass SSRF protection:
+
+1. **Lookup only**: The header value is passed to `NiFiWebConfigurationContext` to read the referenced processor's existing, admin-configured properties. An attacker who supplies an arbitrary UUID can only reference components that a NiFi administrator has already created.
+2. **No privilege escalation**: The `allowPrivateAddresses` flag is read from a `StandardJwtIssuerConfigService` controller service that the administrator has explicitly configured. The header cannot inject new configuration values.
+3. **Fail-secure defaults**: If the configuration context is unavailable, the header is missing, or any exception occurs during property resolution, the method returns `false` (private addresses blocked).
+4. **NiFi session authentication**: The Custom UI servlet endpoints are only reachable within NiFi's authenticated web container (iframe). Unauthenticated callers cannot reach the validation endpoints at all.
+
 === Design Decisions
 
 * No test or E2E bypass endpoints exist in production deployments

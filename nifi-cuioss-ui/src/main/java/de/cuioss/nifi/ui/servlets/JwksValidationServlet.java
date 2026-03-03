@@ -294,6 +294,23 @@ public class JwksValidationServlet extends HttpServlet {
      * Resolves the "allow private network addresses" setting from the controller service
      * configuration referenced by the processor identified via the X-Processor-Id header.
      *
+     * <h3>Security model</h3>
+     * <p>The {@code X-Processor-Id} header is a <em>lookup key</em>, not a trust credential.
+     * It resolves to an admin-configured NiFi processor component via
+     * {@link NiFiWebConfigurationContext}, which only returns properties that the NiFi
+     * administrator has explicitly set. An attacker who supplies an arbitrary UUID can only
+     * reference an <em>existing</em> NiFi component — they cannot inject arbitrary
+     * configuration or create new components through this header.</p>
+     *
+     * <p>The method is <strong>fail-secure</strong>: it defaults to {@code false}
+     * (private addresses blocked) when the configuration context is {@code null},
+     * the header is missing or blank, or any exception occurs during resolution.</p>
+     *
+     * <p>Additionally, this endpoint is only reachable within NiFi's authenticated
+     * web container (Custom UI iframe). Unauthenticated callers cannot reach the
+     * servlet at all — see {@link ProcessorIdValidationFilter} and the NiFi session
+     * authentication layer.</p>
+     *
      * @param req the HTTP servlet request (contains processor ID header and auth context)
      * @return true if private addresses should be allowed, false otherwise (default)
      */
