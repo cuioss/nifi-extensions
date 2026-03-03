@@ -130,7 +130,7 @@ public class JwtValidationService {
      * or creates and caches a new one. This avoids redundant JWKS fetching on repeated
      * verification requests.
      */
-    private TokenValidator getOrCreateValidator(Map<String, String> issuerProperties) {
+    private synchronized TokenValidator getOrCreateValidator(Map<String, String> issuerProperties) {
         if (cachedValidator != null && issuerProperties.equals(cachedIssuerProperties)) {
             LOGGER.debug("Reusing cached TokenValidator");
             return cachedValidator;
