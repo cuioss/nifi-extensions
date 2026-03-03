@@ -1,0 +1,48 @@
+= Building Guide
+:toc: left
+:toclevels: 2
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+How to build, test, and verify the NiFi Extensions project.
+
+== Prerequisites
+
+* Java 21
+* Maven (or use the included `./mvnw` wrapper)
+* Docker and Docker Compose (for integration and E2E tests)
+
+== Build
+
+[source,bash]
+----
+./mvnw clean install                    # Full build with tests
+./mvnw clean install -DskipTests        # Build without tests
+----
+
+== Code Quality
+
+[source,bash]
+----
+./mvnw -Ppre-commit clean install -DskipTests   # Pre-commit quality checks
+./mvnw clean verify -Psonar                      # SonarQube analysis
+----
+
+This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules] covering https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java], https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript], https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[testing], and https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[documentation].
+
+== Integration & E2E Tests
+
+[source,bash]
+----
+# Start Docker test environment (NiFi + Keycloak)
+./integration-testing/src/main/docker/run-and-deploy.sh
+
+# Run integration tests via Maven
+./mvnw verify -Pintegration-tests
+
+# Run Playwright E2E tests directly
+cd e-2-e-playwright && npm run playwright:test
+----
+
+See link:../../integration-testing/README.adoc[Integration Testing] and link:../../e-2-e-playwright/README.adoc[E2E Testing] for detailed instructions.
