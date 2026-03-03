@@ -38,6 +38,14 @@ import java.util.UUID;
  * This ensures requests originate from the custom UI running within an authenticated
  * NiFi session (iframe).
  *
+ * <h3>Security note</h3>
+ * <p>The UUID format validation serves as a first line of defense against malformed input,
+ * but the processor ID is <em>not</em> an authentication token. The actual trust boundary
+ * is NiFi's session authentication — only authenticated users can reach this filter
+ * because the Custom UI is loaded inside NiFi's authenticated iframe. The processor ID
+ * only allows reading the referenced processor's own configuration; it cannot be used
+ * to escalate privileges or access other components' data.</p>
+ *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
  */
