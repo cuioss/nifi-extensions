@@ -17,26 +17,28 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 
 == What is it?
 
-Custom https://nifi.apache.org/[Apache NiFi] processors for JWT-authenticated REST API handling. The project provides two complementary processors:
+A self-contained REST API gateway for https://nifi.apache.org/[Apache NiFi]. The **RestApiGatewayProcessor** embeds a Jetty HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses -- replacing multi-processor gateway patterns with a single node.
 
-* **MultiIssuerJWTTokenAuthenticator** -- validates JWT tokens from FlowFile attributes against multiple identity providers (Keycloak, Entra ID, Auth0) with automatic JWKS key rotation and caching
-* **RestApiGatewayProcessor** -- a self-contained REST API gateway with an embedded Jetty HTTP server, route-based dispatching, per-route JWT authorization, and RFC 9457 error responses
-
-Both processors share JWT validation through a common **JwtIssuerConfigService** Controller Service.
+The project also includes a **MultiIssuerJWTTokenAuthenticator** for FlowFile-based JWT validation (see link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]).
+Both processors share JWT validation through a common **JwtIssuerConfigService** Controller Service supporting multiple identity providers (Keycloak, Entra ID, Auth0) with automatic JWKS key rotation and caching.
 
 == The Problem
 
-NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests. Out of the box, NiFi has no processor to validate these tokens. Building a REST API gateway manually requires chaining `HandleHttpRequest` + custom validation + `HandleHttpResponse` with complex error routing.
+Building a REST API gateway in NiFi manually requires chaining `HandleHttpRequest` + custom validation + `HandleHttpResponse` with complex error routing.
+Adding JWT authentication on top means even more processors, relationships, and configuration -- all for what should be a single concern.
 
 == The Solution
 
-**For FlowFile-based JWT validation**: The `MultiIssuerJWTTokenAuthenticator` drops into any NiFi flow as a single node. It reads the JWT from a FlowFile attribute, validates it via a shared Controller Service, and writes the token claims as FlowFile attributes.
-
-image::doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
-
-**For REST API endpoints**: The `RestApiGatewayProcessor` is a single processor that embeds an HTTP server, authenticates and authorizes requests per-route, and converts them into FlowFiles -- replacing multi-processor gateway patterns.
+The `RestApiGatewayProcessor` is a single processor that embeds an HTTP server, authenticates and authorizes requests per-route, and converts them into FlowFiles.
 
 image::doc/plantuml/api-gateway-pattern.png[RestApiGateway Pattern]
+
+Key capabilities:
+
+* **Route-based dispatching** -- define routes via dynamic properties, each with its own HTTP methods and path patterns
+* **Per-route JWT authorization** -- require specific roles for individual routes
+* **RFC 9457 error responses** -- standardized problem details for authentication and authorization failures
+* **Management endpoints** -- `/metrics` (Prometheus-compatible), `/health`, and custom UI endpoints
 
 == Installation
 
@@ -59,33 +61,6 @@ cp nifi-cuioss-api-nar-*.nar nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 . Restart NiFi (or wait for NiFi's auto-detection if configured).
 . The processors **MultiIssuerJWTTokenAuthenticator** and **RestApiGatewayProcessor** appear in the "Add Processor" dialog under the tags `jwt`, `oauth`, `authentication`.
 
-=== From Source
-
-[source,bash]
-----
-git clone https://github.com/cuioss/nifi-extensions.git
-cd nifi-extensions
-./mvnw clean install -DskipTests
-cp nifi-cuioss-api-nar/target/nifi-cuioss-api-nar-*.nar \
-   nifi-cuioss-nar/target/nifi-cuioss-nar-*.nar \
-   $NIFI_HOME/extensions/
-----
-
-=== Docker / Kubernetes
-
-Mount or copy both NARs into the container's extensions directory:
-
-[source,yaml]
-----
-# Docker Compose example
-services:
-  nifi:
-    image: apache/nifi:2.7.2
-    volumes:
-      - ./nars/:/opt/nifi/nifi-current/extensions/:ro
-----
-
-The `nars/` directory must contain both `nifi-cuioss-api-nar-<version>.nar` and `nifi-cuioss-nar-<version>.nar`.
 
 == Configuration
 
@@ -97,49 +72,47 @@ The processor can be configured through three methods (in order of precedence):
 
 See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, relationships, output attributes, static files, and environment variables.
 
-=== Working Example: Integration Test Flow
+=== Sandbox
 
-The integration tests include a complete NiFi flow definition that demonstrates the processor in action with a real Keycloak identity provider.
-The flow is defined in link:integration-testing/src/main/docker/nifi/conf/flow.json[flow.json] and implements a JWT authentication gateway:
-
-* **HandleHttpRequest** accepts incoming HTTP on port 7777
-* **MultiIssuerJWTTokenAuthenticator** validates the JWT and checks roles
-* Authorized requests (HTTP 200) and rejected requests (HTTP 401) are routed through separate paths
-* Response bodies contain the `jwt.*` attributes as JSON for inspection
-
-The authenticator is configured with one Keycloak issuer:
-
-[source]
-----
-issuer.keycloak.jwks-url = http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs
-issuer.keycloak.issuer    = http://keycloak:8080/realms/oauth_integration_tests
-issuer.keycloak.required-roles = read
-----
-
-To run the full integration test suite locally:
+A local sandbox spins up NiFi and Keycloak in Docker so you can explore both processors with a real identity provider.
 
 [source,bash]
 ----
-./mvnw verify -Pintegration-tests
+./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
-See link:integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
+The script builds the NAR, copies it into the deployment directory, and starts the containers.
+NiFi takes about 60-80 seconds to become healthy.
 
-=== Working Example: RestApiGateway
+[cols="1,2,1"]
+|===
+|Service |URL |Credentials
 
-The integration tests also include a `RestApiGatewayProcessor` configured on port 9443 with JWT authentication via Keycloak. The gateway demonstrates:
+|NiFi
+|https://localhost:9095/nifi
+|`testUser` / `drowssap`
 
-* Multi-route configuration via dynamic properties
-* Per-route JWT authorization with required roles
-* RFC 9457 error responses for authentication/authorization failures
-* `/metrics` management endpoint with Prometheus-compatible output
+|Keycloak
+|http://localhost:9080
+|`admin` / `admin`
+|===
 
-To test the gateway:
+After code changes, redeploy NiFi without restarting Keycloak:
 
 [source,bash]
 ----
-./mvnw verify -Pintegration-tests
+./integration-testing/src/main/docker/redeploy-nifi.sh
 ----
+
+Stop the sandbox:
+
+[source,bash]
+----
+cd integration-testing/src/main/docker && docker compose down -v
+----
+
+The sandbox includes a pre-configured NiFi flow (link:integration-testing/src/main/docker/nifi/conf/flow.json[flow.json]) with a `RestApiGatewayProcessor` on port 9443 featuring multi-route JWT authorization via Keycloak, RFC 9457 error responses, and a `/metrics` management endpoint.
+The flow also contains a `MultiIssuerJWTTokenAuthenticator` gateway on port 7777 (see link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]).
 
 == Components
 
@@ -192,6 +165,8 @@ To test the gateway:
 
 * link:doc/guides/QuickStart.adoc[Quick Start Guide] -- get running in under 5 minutes
 * link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with test environment and troubleshooting
+* link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation processor with integration test flow
+* link:doc/guides/BuildingGuide.adoc[Building Guide] -- build, code quality, SonarQube, integration and E2E tests
 
 === Testing
 
@@ -209,34 +184,4 @@ To test the gateway:
 
 == Building
 
-[source,bash]
-----
-./mvnw clean install                    # Full build with tests
-./mvnw clean install -DskipTests        # Build without tests
-----
-
-=== Code Quality
-
-[source,bash]
-----
-./mvnw -Ppre-commit clean install -DskipTests   # Pre-commit quality checks
-./mvnw clean verify -Psonar                      # SonarQube analysis
-----
-
-This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules] covering https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java], https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript], https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[testing], and https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[documentation].
-
-=== Integration & E2E Tests
-
-[source,bash]
-----
-# Start Docker test environment (NiFi + Keycloak)
-./integration-testing/src/main/docker/run-and-deploy.sh
-
-# Run integration tests via Maven
-./mvnw verify -Pintegration-tests
-
-# Run Playwright E2E tests directly
-cd e-2-e-playwright && npm run playwright:test
-----
-
-See link:integration-testing/README.adoc[Integration Testing] and link:e-2-e-playwright/README.adoc[E2E Testing] for detailed instructions.
+See the link:doc/guides/BuildingGuide.adoc[Building Guide] for build commands, code quality checks, SonarQube analysis, and integration/E2E test instructions.
