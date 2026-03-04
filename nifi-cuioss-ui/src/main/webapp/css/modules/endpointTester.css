@@ -145,3 +145,137 @@
     color: var(--text-muted, #666);
     font-style: italic;
 }
+
+/* Token Fetch Section */
+
+.token-fetch-section {
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.token-fetch-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: var(--bg-secondary, #f5f5f5);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.token-fetch-toggle:hover {
+    background: var(--bg-hover, #eee);
+}
+
+.token-fetch-toggle .toggle-icon {
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+}
+
+.token-fetch-toggle .toggle-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.token-fetch-body {
+    padding: 12px;
+    border-top: 1px solid var(--border-color, #ccc);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 8px);
+}
+
+.token-fetch-body .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs, 4px);
+    font-size: 0.875rem;
+}
+
+.token-fetch-body select,
+.token-fetch-body input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+.token-fetch-row {
+    display: flex;
+    gap: var(--spacing-md, 16px);
+}
+
+.token-fetch-row .form-group {
+    flex: 1;
+}
+
+.token-fetch-endpoint-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.token-fetch-endpoint-row .form-group {
+    flex: 1;
+}
+
+.discover-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    background: var(--bg-secondary, #f5f5f5);
+    cursor: pointer;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    height: fit-content;
+}
+
+.discover-btn:hover {
+    background: var(--bg-hover, #eee);
+}
+
+.discover-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.fetch-token-btn {
+    align-self: flex-start;
+    padding: 6px 16px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    background: var(--primary-bg, #1565c0);
+    color: var(--container-background, #fff);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.fetch-token-btn:hover {
+    opacity: 0.9;
+}
+
+.fetch-token-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.token-fetch-status {
+    font-size: 0.8rem;
+    padding: 4px 0;
+}
+
+.token-fetch-status.success {
+    color: var(--success-color, #2e7d32);
+}
+
+.token-fetch-status.error {
+    color: var(--error-color, #c62828);
+}

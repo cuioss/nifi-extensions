@@ -8,7 +8,11 @@
  * @module js/endpoint-tester
  */
 
-import { fetchGatewayApi, sendGatewayTestRequest } from './api.js';
+import {
+    fetchGatewayApi, sendGatewayTestRequest, fetchOAuthToken,
+    discoverTokenEndpoint, resolveJwtConfigServiceId,
+    getControllerServiceProperties, getComponentId
+} from './api.js';
 import { log, t } from './utils.js';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +57,61 @@ export const init = async (element) => {
                 <textarea class="token-input" id="token-input"
                     placeholder="${t('tester.form.token.placeholder')}"></textarea>
             </div>
+            <div class="token-fetch-section">
+                <button type="button" class="token-fetch-toggle">
+                    <span class="toggle-icon">&#9654;</span>
+                    ${t('tester.token.fetch.heading')}
+                </button>
+                <div class="token-fetch-body hidden">
+                    <div class="form-group">
+                        <label for="issuer-selector">${t('tester.token.fetch.issuer')}</label>
+                        <select class="issuer-selector" id="issuer-selector">
+                            <option value="">${t('tester.token.fetch.issuer.loading')}</option>
+                        </select>
+                    </div>
+                    <div class="token-fetch-endpoint-row">
+                        <div class="form-group">
+                            <label for="token-endpoint-url">${t('tester.token.fetch.endpoint')}</label>
+                            <input type="text" class="token-endpoint-url" id="token-endpoint-url"
+                                placeholder="${t('tester.token.fetch.endpoint.placeholder')}" autocomplete="off">
+                        </div>
+                        <button type="button" class="discover-btn">${t('tester.token.fetch.discover')}</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="grant-type-selector">${t('tester.token.fetch.grant.type')}</label>
+                        <select class="grant-type-selector" id="grant-type-selector">
+                            <option value="password">${t('tester.token.fetch.grant.password')}</option>
+                            <option value="client_credentials">${t('tester.token.fetch.grant.client')}</option>
+                        </select>
+                    </div>
+                    <div class="token-fetch-row">
+                        <div class="form-group">
+                            <label for="tf-client-id">${t('tester.token.fetch.client.id')}</label>
+                            <input type="text" class="tf-client-id" id="tf-client-id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="tf-client-secret">${t('tester.token.fetch.client.secret')}</label>
+                            <input type="password" class="tf-client-secret" id="tf-client-secret" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="token-fetch-row ropc-fields">
+                        <div class="form-group">
+                            <label for="tf-username">${t('tester.token.fetch.username')}</label>
+                            <input type="text" class="tf-username" id="tf-username" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="tf-password">${t('tester.token.fetch.password')}</label>
+                            <input type="password" class="tf-password" id="tf-password" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-scope">${t('tester.token.fetch.scope')}</label>
+                        <input type="text" class="tf-scope" id="tf-scope" value="openid" autocomplete="off">
+                    </div>
+                    <button type="button" class="fetch-token-btn">${t('tester.token.fetch.btn')}</button>
+                    <div class="token-fetch-status"></div>
+                </div>
+            </div>
             <div class="form-group body-group hidden">
                 <label for="body-input">${t('tester.form.body')}</label>
                 <textarea class="body-input" id="body-input"
@@ -81,6 +140,29 @@ export const init = async (element) => {
     container.querySelector('.send-request-button').addEventListener('click', () => {
         handleSendRequest(container);
     });
+
+    // Token fetch section: toggle visibility
+    container.querySelector('.token-fetch-toggle').addEventListener('click', () => {
+        toggleTokenFetchSection(container);
+    });
+
+    // Grant type toggle: show/hide ROPC fields
+    container.querySelector('.grant-type-selector').addEventListener('change', () => {
+        updateRopcFieldsVisibility(container);
+    });
+
+    // Discover button
+    container.querySelector('.discover-btn').addEventListener('click', () => {
+        handleDiscoverTokenEndpoint(container);
+    });
+
+    // Fetch token button
+    container.querySelector('.fetch-token-btn').addEventListener('click', () => {
+        handleFetchToken(container);
+    });
+
+    // Load issuers for the dropdown
+    loadIssuers(container);
 };
 
 export const cleanup = () => { /* no persistent resources */ };
@@ -219,6 +301,159 @@ const showError = (container, message) => {
     display.querySelector('.response-status').textContent = t('tester.response.error');
     display.querySelector('.response-headers').textContent = '';
     display.querySelector('.response-body').textContent = message;
+};
+
+const toggleTokenFetchSection = (container) => {
+    const body = container.querySelector('.token-fetch-body');
+    const icon = container.querySelector('.toggle-icon');
+    const isHidden = body.classList.contains('hidden');
+    body.classList.toggle('hidden', !isHidden);
+    icon.classList.toggle('expanded', isHidden);
+};
+
+const updateRopcFieldsVisibility = (container) => {
+    const grantType = container.querySelector('.grant-type-selector').value;
+    const ropcFields = container.querySelector('.ropc-fields');
+    ropcFields.classList.toggle('hidden', grantType !== 'password');
+};
+
+const loadIssuers = async (container) => {
+    const selector = container.querySelector('.issuer-selector');
+    try {
+        const processorId = getComponentId();
+        if (!processorId) {
+            selector.innerHTML = `<option value="">${t('tester.token.fetch.issuer.none')}</option>`;
+            return;
+        }
+
+        const csId = await resolveJwtConfigServiceId(processorId);
+        if (!csId) {
+            selector.innerHTML = `<option value="">${t('tester.token.fetch.issuer.none')}</option>`;
+            return;
+        }
+
+        const { properties } = await getControllerServiceProperties(csId);
+
+        // Extract issuer URLs from issuer.*.issuer properties
+        const issuers = [];
+        for (const [key, value] of Object.entries(properties)) {
+            if (key.endsWith('.issuer') && value) {
+                issuers.push(value);
+            }
+        }
+
+        if (issuers.length === 0) {
+            selector.innerHTML = `<option value="">${t('tester.token.fetch.issuer.none')}</option>`;
+            return;
+        }
+
+        let options = issuers.map((issuer) =>
+            `<option value="${escapeAttr(issuer)}">${escapeHtml(issuer)}</option>`
+        ).join('');
+        options += `<option value="__custom__">${t('tester.token.fetch.issuer.custom')}</option>`;
+        selector.innerHTML = options;
+
+        // Auto-discover when first issuer is selected
+        selector.addEventListener('change', () => {
+            const val = selector.value;
+            if (val && val !== '__custom__') {
+                handleDiscoverTokenEndpoint(container);
+            } else if (val === '__custom__') {
+                container.querySelector('.token-endpoint-url').value = '';
+                container.querySelector('.token-endpoint-url').focus();
+            }
+        });
+    } catch (err) {
+        log.warn('Failed to load issuers for token fetch:', err.message);
+        selector.innerHTML = `<option value="">${t('tester.token.fetch.issuer.none')}</option>`;
+    }
+};
+
+const handleDiscoverTokenEndpoint = async (container) => {
+    const issuerSelector = container.querySelector('.issuer-selector');
+    const issuerUrl = issuerSelector.value;
+    const endpointInput = container.querySelector('.token-endpoint-url');
+    const discoverBtn = container.querySelector('.discover-btn');
+    const statusEl = container.querySelector('.token-fetch-status');
+
+    if (!issuerUrl || issuerUrl === '__custom__') {
+        return;
+    }
+
+    discoverBtn.disabled = true;
+    discoverBtn.textContent = t('tester.token.fetch.discovering');
+    statusEl.textContent = '';
+    statusEl.className = 'token-fetch-status';
+
+    try {
+        const result = await discoverTokenEndpoint(issuerUrl);
+        endpointInput.value = result.tokenEndpoint || '';
+    } catch (err) {
+        log.error('Token endpoint discovery failed:', err.message);
+        statusEl.textContent = t('tester.token.fetch.error', err.message);
+        statusEl.className = 'token-fetch-status error';
+    } finally {
+        discoverBtn.disabled = false;
+        discoverBtn.textContent = t('tester.token.fetch.discover');
+    }
+};
+
+const handleFetchToken = async (container) => {
+    const tokenEndpointUrl = container.querySelector('.token-endpoint-url').value.trim();
+    const grantType = container.querySelector('.grant-type-selector').value;
+    const clientId = container.querySelector('.tf-client-id').value.trim();
+    const clientSecret = container.querySelector('.tf-client-secret').value;
+    const scope = container.querySelector('.tf-scope').value.trim();
+    const statusEl = container.querySelector('.token-fetch-status');
+    const fetchBtn = container.querySelector('.fetch-token-btn');
+
+    if (!tokenEndpointUrl) {
+        statusEl.textContent = t('tester.token.fetch.error.missing.endpoint');
+        statusEl.className = 'token-fetch-status error';
+        return;
+    }
+
+    if (!clientId) {
+        statusEl.textContent = t('tester.token.fetch.error.missing.fields');
+        statusEl.className = 'token-fetch-status error';
+        return;
+    }
+
+    const payload = { tokenEndpointUrl, grantType, clientId, clientSecret, scope };
+
+    if (grantType === 'password') {
+        payload.username = container.querySelector('.tf-username').value.trim();
+        payload.password = container.querySelector('.tf-password').value;
+    }
+
+    fetchBtn.disabled = true;
+    fetchBtn.textContent = t('tester.token.fetch.btn.fetching');
+    statusEl.textContent = '';
+    statusEl.className = 'token-fetch-status';
+
+    try {
+        const result = await fetchOAuthToken(payload);
+
+        if (result.access_token) {
+            container.querySelector('.token-input').value = result.access_token;
+            const expiresMsg = result.expires_in
+                ? t('tester.token.fetch.success', result.expires_in)
+                : t('tester.token.fetch.success', '?');
+            statusEl.textContent = expiresMsg;
+            statusEl.className = 'token-fetch-status success';
+        } else {
+            const errorMsg = result.error || 'No access_token in response';
+            statusEl.textContent = t('tester.token.fetch.error', errorMsg);
+            statusEl.className = 'token-fetch-status error';
+        }
+    } catch (err) {
+        log.error('Token fetch failed:', err.message);
+        statusEl.textContent = t('tester.token.fetch.error', err.message);
+        statusEl.className = 'token-fetch-status error';
+    } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.textContent = t('tester.token.fetch.btn');
+    }
 };
 
 const escapeHtml = (str) => {

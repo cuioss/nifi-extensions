@@ -22,7 +22,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import org.eclipse.jetty.ee11.servlet.FilterHolder;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.EnumSet;
@@ -87,7 +90,7 @@ class ProcessorIdValidationFilterAuthTest {
 
     @Test
     @DisplayName("Should handle filter lifecycle methods")
-    void shouldHandleFilterLifecycle() throws ServletException {
+    void shouldHandleFilterLifecycle() throws Exception {
         ProcessorIdValidationFilter filter = new ProcessorIdValidationFilter();
         filter.init(null);
         filter.destroy();

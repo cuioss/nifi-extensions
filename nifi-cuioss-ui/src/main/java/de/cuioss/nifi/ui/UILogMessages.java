@@ -132,6 +132,18 @@ public final class UILogMessages {
                 .identifier(112)
                 .template("Rejected non-whitelisted gateway proxy path: %s")
                 .build();
+
+        public static final LogRecord GATEWAY_TOKEN_FETCH_SSRF_BLOCKED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(113)
+                .template("Token fetch SSRF blocked for endpoint: %s")
+                .build();
+
+        public static final LogRecord GATEWAY_INVALID_GRANT_TYPE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(114)
+                .template("Invalid grant type requested: %s")
+                .build();
     }
 
     public static final class ERROR {
@@ -222,6 +234,18 @@ public final class UILogMessages {
                 .prefix(PREFIX)
                 .identifier(216)
                 .template("Failed to resolve gateway port for processor %s")
+                .build();
+
+        public static final LogRecord GATEWAY_TOKEN_FETCH_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(217)
+                .template("Token fetch request failed: %s")
+                .build();
+
+        public static final LogRecord GATEWAY_OIDC_DISCOVERY_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(218)
+                .template("OIDC discovery failed for issuer: %s")
                 .build();
     }
 }
