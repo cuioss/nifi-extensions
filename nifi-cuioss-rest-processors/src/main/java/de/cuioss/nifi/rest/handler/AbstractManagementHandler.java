@@ -30,10 +30,15 @@ abstract class AbstractManagementHandler implements EndpointHandler {
 
     private final boolean enabled;
     private final Set<AuthMode> authModes;
+    private final Set<String> requiredRoles;
+    private final Set<String> requiredScopes;
 
-    AbstractManagementHandler(boolean enabled, Set<AuthMode> authModes) {
+    AbstractManagementHandler(boolean enabled, Set<AuthMode> authModes,
+            Set<String> requiredRoles, Set<String> requiredScopes) {
         this.enabled = enabled;
         this.authModes = authModes;
+        this.requiredRoles = requiredRoles;
+        this.requiredScopes = requiredScopes;
     }
 
     @Override
@@ -58,12 +63,12 @@ abstract class AbstractManagementHandler implements EndpointHandler {
 
     @Override
     public Set<String> requiredRoles() {
-        return Set.of();
+        return requiredRoles;
     }
 
     @Override
     public Set<String> requiredScopes() {
-        return Set.of();
+        return requiredScopes;
     }
 
     @Override

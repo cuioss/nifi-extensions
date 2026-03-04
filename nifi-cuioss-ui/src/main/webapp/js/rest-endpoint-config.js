@@ -374,6 +374,41 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
         value: ep.authMode || 'bearer'
     });
 
+    // Required Roles field
+    addField({
+        container: fields, idx, name: 'required-roles',
+        label: t('mgmt.roles.label'),
+        placeholder: t('mgmt.roles.placeholder'),
+        value: ep.requiredRoles || '',
+        helpKey: 'contexthelp.route.roles',
+        propertyKey: `rest.gateway.management.${ep.name}.required-roles`,
+        currentValue: ep.requiredRoles || ''
+    });
+
+    // Required Scopes field
+    addField({
+        container: fields, idx, name: 'required-scopes',
+        label: t('mgmt.scopes.label'),
+        placeholder: t('mgmt.scopes.placeholder'),
+        value: ep.requiredScopes || '',
+        helpKey: 'contexthelp.route.scopes',
+        propertyKey: `rest.gateway.management.${ep.name}.required-scopes`,
+        currentValue: ep.requiredScopes || ''
+    });
+
+    // Hide roles/scopes when bearer is not among selected auth modes
+    const mgmtRolesContainer = fields.querySelector('.field-container-required-roles');
+    const mgmtScopesContainer = fields.querySelector('.field-container-required-scopes');
+    const toggleMgmtRolesScopes = () => {
+        const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
+        const hasBearer = modes.includes('bearer');
+        if (mgmtRolesContainer) mgmtRolesContainer.classList.toggle('hidden', !hasBearer);
+        if (mgmtScopesContainer) mgmtScopesContainer.classList.toggle('hidden', !hasBearer);
+    };
+    const mgmtAuthModeHidden = fields.querySelector('.field-auth-mode');
+    if (mgmtAuthModeHidden) mgmtAuthModeHidden.addEventListener('change', toggleMgmtRolesScopes);
+    toggleMgmtRolesScopes();
+
     form.appendChild(fields);
 
     // Error messages
@@ -397,8 +432,13 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
             errorContainer.textContent = t('mgmt.authMode.required');
             return;
         }
+        const rolesInput = fields.querySelector('.field-required-roles');
+        const scopesInput = fields.querySelector('.field-required-scopes');
+        const rolesValue = rolesInput ? rolesInput.value.trim() : '';
+        const scopesValue = scopesInput ? scopesInput.value.trim() : '';
         saveManagementEndpoint(
             ep, componentId, enabledCheckbox.checked, authModeValue,
+            rolesValue, scopesValue,
             form, tableRow, errorContainer
         );
     });
@@ -432,15 +472,20 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
  * @param {string} componentId  NiFi processor component ID
  * @param {boolean} enabled  new enabled state
  * @param {string} authModeValue  comma-separated auth modes
+ * @param {string} rolesValue  comma-separated required roles
+ * @param {string} scopesValue  comma-separated required scopes
  * @param {HTMLElement} form  the editor form element
  * @param {HTMLTableRowElement} tableRow  the table row to update
  * @param {HTMLElement} errEl  error container element
  */
 const saveManagementEndpoint = async (ep, componentId, enabled, authModeValue,
+    rolesValue, scopesValue,
     form, tableRow, errEl) => {
     const updates = {};
     updates[`rest.gateway.management.${ep.name}.enabled`] = String(enabled);
     updates[`rest.gateway.management.${ep.name}.auth-mode`] = authModeValue;
+    updates[`rest.gateway.management.${ep.name}.required-roles`] = rolesValue;
+    updates[`rest.gateway.management.${ep.name}.required-scopes`] = scopesValue;
 
     if (componentId) {
         try {
@@ -484,13 +529,22 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         const props = res.properties || {};
         renderGlobalSettings(container, props);
 
-        // Fetch gateway config for management endpoints
-        try {
-            const gwConfig = await api.fetchGatewayApi('/config');
-            if (gwConfig && gwConfig.managementEndpoints) {
-                renderManagementEndpoints(container, gwConfig.managementEndpoints, componentId);
+        // Fetch gateway config for management endpoints (retry once after delay)
+        const loadManagement = async (retries = 1) => {
+            try {
+                const gwConfig = await api.fetchGatewayApi('/config');
+                if (gwConfig && gwConfig.managementEndpoints) {
+                    renderManagementEndpoints(container, gwConfig.managementEndpoints, componentId);
+                }
+            } catch {
+                if (retries > 0) {
+                    await new Promise((r) => setTimeout(r, 2000));
+                    return loadManagement(retries - 1);
+                }
+                /* gateway may not be running yet — ignore */
             }
-        } catch { /* gateway may not be running yet — ignore */ }
+        };
+        await loadManagement();
 
         const routes = parseRouteProperties(props);
         renderRouteSummaryTable(routesContainer, routes, componentId);

@@ -59,6 +59,15 @@
     display: none;
 }
 
+/* API Routes heading (between management endpoints and user routes) */
+
+.api-routes-heading {
+    margin-top: var(--spacing-lg, 24px);
+    margin-bottom: var(--spacing-sm, 8px);
+    border-bottom: 1px solid var(--border-color, #ccc);
+    padding-bottom: var(--spacing-xs, 4px);
+}
+
 /* Routes container */
 
 .routes-container {
@@ -714,6 +723,11 @@
 
 .mgmt-edit-form {
     margin-top: var(--spacing-sm, 8px);
+}
+
+/* Override form-field label block display for checkbox labels inside mgmt editor */
+.mgmt-edit-form .form-field .route-enabled-label {
+    display: flex;
 }
 
 .mgmt-edit-form .form-header {

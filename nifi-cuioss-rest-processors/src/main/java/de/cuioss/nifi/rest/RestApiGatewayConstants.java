@@ -115,6 +115,24 @@ public final class RestApiGatewayConstants {
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
+        public static final PropertyDescriptor MANAGEMENT_HEALTH_REQUIRED_ROLES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.health.required-roles")
+                .displayName("Health Endpoint Required Roles")
+                .description("Comma-separated roles required in the JWT token for the /health endpoint. "
+                        + "Only relevant when auth-mode includes 'bearer'.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_HEALTH_REQUIRED_SCOPES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.health.required-scopes")
+                .displayName("Health Endpoint Required Scopes")
+                .description("Comma-separated scopes required in the JWT token for the /health endpoint. "
+                        + "Only relevant when auth-mode includes 'bearer'.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
         public static final PropertyDescriptor MANAGEMENT_METRICS_ENABLED = new PropertyDescriptor.Builder()
                 .name("rest.gateway.management.metrics.enabled")
                 .displayName("Metrics Endpoint Enabled")
@@ -132,6 +150,24 @@ public final class RestApiGatewayConstants {
                         + "Combine modes, e.g. 'local-only,bearer' for loopback bypass OR JWT.")
                 .required(false)
                 .defaultValue("local-only,bearer")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_METRICS_REQUIRED_ROLES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.metrics.required-roles")
+                .displayName("Metrics Endpoint Required Roles")
+                .description("Comma-separated roles required in the JWT token for the /metrics endpoint. "
+                        + "Only relevant when auth-mode includes 'bearer'.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_METRICS_REQUIRED_SCOPES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.metrics.required-scopes")
+                .displayName("Metrics Endpoint Required Scopes")
+                .description("Comma-separated scopes required in the JWT token for the /metrics endpoint. "
+                        + "Only relevant when auth-mode includes 'bearer'.")
+                .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 

@@ -207,6 +207,10 @@ export const TRANSLATIONS = {
         'mgmt.enabled': 'Enabled',
         'mgmt.authMode': 'Auth Mode',
         'mgmt.authMode.required': 'At least one auth mode required',
+        'mgmt.roles.label': 'Required Roles',
+        'mgmt.roles.placeholder': 'admin,user (comma-separated, optional)',
+        'mgmt.scopes.label': 'Required Scopes',
+        'mgmt.scopes.placeholder': 'read,write (comma-separated, optional)',
 
         // -- auth mode --
         'route.authmode.bearer': 'Bearer',
@@ -560,6 +564,10 @@ export const TRANSLATIONS = {
         'mgmt.enabled': 'Aktiviert',
         'mgmt.authMode': 'Auth-Modus',
         'mgmt.authMode.required': 'Mindestens ein Auth-Modus erforderlich',
+        'mgmt.roles.label': 'Erforderliche Rollen',
+        'mgmt.roles.placeholder': 'admin,user (kommagetrennt, optional)',
+        'mgmt.scopes.label': 'Erforderliche Scopes',
+        'mgmt.scopes.placeholder': 'read,write (kommagetrennt, optional)',
 
         // -- auth mode --
         'route.authmode.bearer': 'Bearer',

@@ -72,8 +72,12 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String LISTENING_HOST_PROPERTY = "rest.gateway.listening.host";
     private static final String HEALTH_ENABLED_PROPERTY = "rest.gateway.management.health.enabled";
     private static final String HEALTH_AUTH_MODE_PROPERTY = "rest.gateway.management.health.auth-mode";
+    private static final String HEALTH_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.health.required-roles";
+    private static final String HEALTH_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.health.required-scopes";
     private static final String METRICS_ENABLED_PROPERTY = "rest.gateway.management.metrics.enabled";
     private static final String METRICS_AUTH_MODE_PROPERTY = "rest.gateway.management.metrics.auth-mode";
+    private static final String METRICS_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.metrics.required-roles";
+    private static final String METRICS_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.metrics.required-scopes";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
 
@@ -384,17 +388,32 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
+     * Safely parses a property value as an integer, falling back to a default
+     * when the value is null, blank, or not a valid number.
+     */
+    private static int safeParseInt(Map<String, String> props, String key, int defaultValue) {
+        String value = props.get(key);
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(value.strip());
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid non-numeric value for '%s': '%s', using default %s", key, value, defaultValue);
+            return defaultValue;
+        }
+    }
+
+    /**
      * Builds and writes the /config JSON response from processor properties.
      */
     private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props,
             String componentClass) throws IOException {
         JsonObjectBuilder root = Json.createObjectBuilder();
         root.add("component", componentClass);
-        root.add("port", Integer.parseInt(props.getOrDefault(GATEWAY_PORT_PROPERTY, "9443")));
-        root.add("maxRequestBodySize",
-                Integer.parseInt(props.getOrDefault(MAX_REQUEST_SIZE_PROPERTY, "1048576")));
-        root.add("queueSize",
-                Integer.parseInt(props.getOrDefault(QUEUE_SIZE_PROPERTY, "50")));
+        root.add("port", safeParseInt(props, GATEWAY_PORT_PROPERTY, 9443));
+        root.add("maxRequestBodySize", safeParseInt(props, MAX_REQUEST_SIZE_PROPERTY, 1048576));
+        root.add("queueSize", safeParseInt(props, QUEUE_SIZE_PROPERTY, 50));
         root.add("ssl", props.get(SSL_CONTEXT_SERVICE_PROPERTY) != null
                 && !props.get(SSL_CONTEXT_SERVICE_PROPERTY).isBlank());
 
@@ -471,6 +490,16 @@ public class GatewayProxyServlet extends HttpServlet {
         return routesArray;
     }
 
+    /**
+     * Null-safe property lookup. Returns the default when the value is null or absent.
+     * {@code Map.getOrDefault} returns null when the key exists with a null value;
+     * Jakarta JSON's {@code JsonObjectBuilder.add(String, null)} throws NPE.
+     */
+    private static String prop(Map<String, String> props, String key, String defaultValue) {
+        String value = props.get(key);
+        return value != null ? value : defaultValue;
+    }
+
     private static JsonArrayBuilder buildManagementEndpointsArray(Map<String, String> props) {
         JsonArrayBuilder mgmtArray = Json.createArrayBuilder();
 
@@ -479,8 +508,10 @@ public class GatewayProxyServlet extends HttpServlet {
         health.add("path", "/health");
         health.add("methods", Json.createArrayBuilder().add("GET"));
         health.add("enabled", !"false".equalsIgnoreCase(
-                props.getOrDefault(HEALTH_ENABLED_PROPERTY, "true")));
-        health.add("authMode", props.getOrDefault(HEALTH_AUTH_MODE_PROPERTY, "local-only,bearer"));
+                prop(props, HEALTH_ENABLED_PROPERTY, "true")));
+        health.add("authMode", prop(props, HEALTH_AUTH_MODE_PROPERTY, "local-only,bearer"));
+        health.add("requiredRoles", prop(props, HEALTH_REQUIRED_ROLES_PROPERTY, ""));
+        health.add("requiredScopes", prop(props, HEALTH_REQUIRED_SCOPES_PROPERTY, ""));
         health.add("builtIn", true);
         mgmtArray.add(health);
 
@@ -489,8 +520,10 @@ public class GatewayProxyServlet extends HttpServlet {
         metrics.add("path", "/metrics");
         metrics.add("methods", Json.createArrayBuilder().add("GET"));
         metrics.add("enabled", !"false".equalsIgnoreCase(
-                props.getOrDefault(METRICS_ENABLED_PROPERTY, "true")));
-        metrics.add("authMode", props.getOrDefault(METRICS_AUTH_MODE_PROPERTY, "local-only,bearer"));
+                prop(props, METRICS_ENABLED_PROPERTY, "true")));
+        metrics.add("authMode", prop(props, METRICS_AUTH_MODE_PROPERTY, "local-only,bearer"));
+        metrics.add("requiredRoles", prop(props, METRICS_REQUIRED_ROLES_PROPERTY, ""));
+        metrics.add("requiredScopes", prop(props, METRICS_REQUIRED_SCOPES_PROPERTY, ""));
         metrics.add("builtIn", true);
         mgmtArray.add(metrics);
 

@@ -1859,7 +1859,9 @@ describe('rest-endpoint-config', () => {
             'test-processor-id',
             expect.objectContaining({
                 'rest.gateway.management.health.enabled': 'true',
-                'rest.gateway.management.health.auth-mode': 'local-only,bearer'
+                'rest.gateway.management.health.auth-mode': 'local-only,bearer',
+                'rest.gateway.management.health.required-roles': '',
+                'rest.gateway.management.health.required-scopes': ''
             })
         );
     });
@@ -2067,7 +2069,54 @@ describe('rest-endpoint-config', () => {
                 'test-processor-id',
                 expect.objectContaining({
                     'rest.gateway.management.health.enabled': 'true',
-                    'rest.gateway.management.health.auth-mode': 'local-only,bearer'
+                    'rest.gateway.management.health.auth-mode': 'local-only,bearer',
+                    'rest.gateway.management.health.required-roles': '',
+                    'rest.gateway.management.health.required-scopes': ''
+                })
+            );
+        });
+
+        it('should show roles/scopes fields in management editor when bearer is selected', async () => {
+            setupMgmtMocks();
+            await init(container);
+            await tick();
+
+            container.querySelector('.management-endpoints-table .btn-edit').click();
+            const form = container.querySelector('.mgmt-edit-form');
+
+            const rolesContainer = form.querySelector('.field-container-required-roles');
+            const scopesContainer = form.querySelector('.field-container-required-scopes');
+            expect(rolesContainer).not.toBeNull();
+            expect(scopesContainer).not.toBeNull();
+
+            // Auth-mode includes bearer, so roles/scopes should be visible
+            expect(rolesContainer.classList.contains('hidden')).toBe(false);
+            expect(scopesContainer.classList.contains('hidden')).toBe(false);
+        });
+
+        it('should save roles/scopes values with management endpoint', async () => {
+            setupMgmtMocks();
+            api.updateComponentProperties.mockResolvedValue({});
+            await init(container);
+            await tick();
+
+            container.querySelector('.management-endpoints-table .btn-edit').click();
+            const form = container.querySelector('.mgmt-edit-form');
+
+            // Enter roles and scopes
+            const rolesInput = form.querySelector('.field-required-roles');
+            const scopesInput = form.querySelector('.field-required-scopes');
+            rolesInput.value = 'admin,operator';
+            scopesInput.value = 'metrics:read';
+
+            form.querySelector('.save-route-button').click();
+            await tick();
+
+            expect(api.updateComponentProperties).toHaveBeenCalledWith(
+                'test-processor-id',
+                expect.objectContaining({
+                    'rest.gateway.management.health.required-roles': 'admin,operator',
+                    'rest.gateway.management.health.required-scopes': 'metrics:read'
                 })
             );
         });

@@ -76,10 +76,12 @@ class ManagementEndpointHandlerTest {
 
         // Build handler list: built-in endpoints first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>();
-        handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)));
+        handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                Set.of(), Set.of()));
         handlers.add(new MetricsEndpointHandler(
                 configService, httpSecurityEvents, gatewaySecurityEvents,
-                true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER)));
+                true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                Set.of(), Set.of()));
 
         // Add user routes
         List<RouteConfiguration> routes = List.of(
@@ -364,7 +366,8 @@ class ManagementEndpointHandlerTest {
         void setUpLocalOnlyServer() throws Exception {
             LinkedBlockingQueue<HttpRequestContainer> q = new LinkedBlockingQueue<>(50);
             List<EndpointHandler> handlers = new ArrayList<>();
-            handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY)));
+            handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY),
+                    Set.of(), Set.of()));
             localOnlyHandler = new GatewayRequestHandler(
                     handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
                     new SecurityEventCounter(), new GatewaySecurityEvents());

@@ -72,8 +72,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
             RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED,
             RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE,
+            RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES,
+            RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES,
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED,
-            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE);
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE,
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES,
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
@@ -152,15 +156,25 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
         Set<AuthMode> healthAuthModes = AuthMode.fromValues(context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
-        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthModes));
+        Set<String> healthRoles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES).getValue());
+        Set<String> healthScopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES).getValue());
+        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthModes,
+                healthRoles, healthScopes));
 
         // Metrics endpoint
         boolean metricsEnabled = context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
         Set<AuthMode> metricsAuthModes = AuthMode.fromValues(context.getProperty(
                 RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
+        Set<String> metricsRoles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES).getValue());
+        Set<String> metricsScopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES).getValue());
         handlers.add(new MetricsEndpointHandler(configService, httpSecurityEvents,
-                gatewaySecurityEvents, metricsEnabled, metricsAuthModes));
+                gatewaySecurityEvents, metricsEnabled, metricsAuthModes,
+                metricsRoles, metricsScopes));
 
         // User route handlers
         for (RouteConfiguration route : routes) {
@@ -272,6 +286,16 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             return null;
         }
         return new JsonSchemaValidator(routeSchemas);
+    }
+
+    private static Set<String> parseCommaSeparated(String value) {
+        if (value == null || value.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {

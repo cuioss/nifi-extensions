@@ -58,8 +58,9 @@ public class MetricsEndpointHandler extends AbstractManagementHandler {
             SecurityEventCounter httpSecurityEvents,
             GatewaySecurityEvents gatewaySecurityEvents,
             boolean enabled,
-            Set<AuthMode> authModes) {
-        super(enabled, authModes);
+            Set<AuthMode> authModes,
+            Set<String> requiredRoles, Set<String> requiredScopes) {
+        super(enabled, authModes, requiredRoles, requiredScopes);
         this.configService = configService;
         this.httpSecurityEvents = httpSecurityEvents;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
