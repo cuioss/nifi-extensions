@@ -8,9 +8,18 @@ link:../Specification.adoc[Back to Main Specification]
 == Purpose
 
 The Custom UI is a configuration assistant for the `RestApiGatewayProcessor`.
-It provides six tabs: a CRUD editor for route definitions (`restapi.*` properties),
-an endpoint tester to send authenticated requests against the running gateway,
-issuer configuration management, token verification, metrics, and help.
+It provides six tabs: **Endpoint Configuration** (route and management endpoint management),
+**Endpoint Tester** (send authenticated requests against the running gateway),
+**Issuer Configuration** (manage JWT issuers), **Token Verification** (test tokens),
+**Metrics** (gateway metrics dashboard), and **Help** (documentation and troubleshooting).
+
+=== Endpoint Configuration Layout
+
+The Endpoint Configuration tab is organized into three sections:
+
+* **Global Settings** — read-only properties derived from processor configuration (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
+* **Management Endpoints** — built-in endpoints (`/health`, `/metrics`) with configurable auth modes (`Local Only`, `Bearer`) and enabled/disabled status
+* **API Routes** — user-defined routes with columns for Name, Connection, Path, Methods, Auth Mode, Enabled, and Actions (Edit/Remove)
 
 == Persistence Model
 
@@ -56,17 +65,21 @@ Session-only routes (new or modified) are prefixed with `# [session-only]`
 so users can identify which lines need to be copied into the processor
 configuration to persist them.
 
-== Schema Modes
+== Route Editor Fields
 
-Each route optionally supports JSON Schema validation. The schema value can be
-provided in two modes:
+The route editor form includes the following fields:
 
-* **File path** — a path relative to the NiFi installation directory,
-  e.g. `./conf/schemas/my-schema.json`.
-* **Inline JSON** — the full JSON Schema pasted directly into a textarea.
-
-The mode is auto-detected on load (values starting with `{` are treated as
-inline) and can be toggled via radio buttons in the editor form.
+* **Route Name** — unique identifier for the route
+* **Enabled** — checkbox to enable/disable the route
+* **Path** — URL path pattern (e.g. `/api/users`)
+* **Methods** — tag input for HTTP methods (e.g. `GET`, `POST`)
+* **Auth Mode** — tag input for authentication modes (e.g. `Bearer`)
+* **Required Roles** — comma-separated roles required for access
+* **Required Scopes** — comma-separated scopes required for access
+* **Max Request Size** — per-route request body size limit (leave empty for global default)
+* **Create FlowFile** — checkbox to create a NiFi FlowFile for matched requests
+* **NiFi Connection Name** — the NiFi relationship name for routed FlowFiles
+* **Schema Validation** — checkbox to enable JSON Schema validation for request bodies
 
 == Issuer Configuration
 

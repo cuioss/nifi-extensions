@@ -311,15 +311,14 @@ spec:
 
 == Verifying with the Custom UI
 
-The JWT processor includes a custom web UI with additional tabs beyond the standard NiFi properties dialog:
+The JWT processor includes a custom web UI with four tabs beyond the standard NiFi properties dialog:
 
 * **Configuration** -- visually manage issuer configurations (see <<Step 2>>)
 * **Token Verification** -- paste a JWT to test it against the current configuration
+* **Metrics** -- displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
 * **Help** -- built-in documentation and troubleshooting
 
 image::ui-token-verification-tab.png[Token Verification Tab]
-
-NOTE: The **Metrics** tab is available only for the RestApiGatewayProcessor. For the JWT processor, it displays a notice directing you to use the gateway for metrics.
 
 == RestApiGateway Quick Start
 
@@ -346,6 +345,9 @@ In the processor properties tab:
 |Listening Port
 |`9443` (or your preferred port)
 
+|Listening Host
+|`0.0.0.0` (default, binds to all interfaces)
+
 |JWT Issuer Config Service
 |Select your configured CS
 
@@ -354,13 +356,20 @@ In the processor properties tab:
 
 |Request Queue Size
 |`50` (default)
+
+|SSL Enabled
+|`false` (default; enable for HTTPS)
 |===
 
 === Step 4: Configure Routes via the Custom UI
 
 The gateway provides a visual route editor in its custom UI. Right-click the processor and select **Configure** to open it.
 
-The **Endpoint Configuration** tab shows global settings (read-only, derived from processor properties) and a route table with CRUD controls:
+The **Endpoint Configuration** tab shows three sections:
+
+* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
+* **Management Endpoints** -- built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
+* **API Routes** -- user-defined routes with CRUD controls
 
 image::ui-gateway-endpoint-configuration.png[Gateway Endpoint Configuration]
 
@@ -384,7 +393,10 @@ Each route has the following fields:
 |URL path pattern (e.g. `/api/users`)
 
 |Methods
-|Comma-separated HTTP methods (e.g. `GET,POST`)
+|Tag input for HTTP methods (e.g. `GET`, `POST`)
+
+|Auth Mode
+|Tag input for authentication modes (e.g. `Bearer`)
 
 |Required Roles
 |Comma-separated roles required for access (optional)
@@ -392,11 +404,22 @@ Each route has the following fields:
 |Required Scopes
 |Comma-separated scopes required for access (optional)
 
-|JSON Schema
-|Optional JSON Schema for request body validation (inline or file-based)
+|Max Request Size
+|Per-route request body size limit (leave empty for global default)
+
+|Create FlowFile
+|Checkbox to create a NiFi FlowFile when a request matches this route
+
+|NiFi Connection Name
+|The NiFi relationship/connection name for routed FlowFiles
+
+|Schema Validation
+|Checkbox to enable JSON Schema validation for request bodies
 |===
 
 Routes with a JSON Schema configured display a green **Schema** badge in the route table.
+
+The **NiFi Connections** panel (collapsible) shows the processor's NiFi relationships for reference.
 
 TIP: You can also configure routes via dynamic properties on the processor (useful for automated deployments). Click the **Export Properties** panel at the bottom of the Endpoint Configuration tab to see the equivalent `restapi.*` properties.
 
