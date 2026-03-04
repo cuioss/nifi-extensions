@@ -89,21 +89,26 @@ After every **start** or **redeploy**, open Chrome and log in to NiFi.
 
 **Prerequisites:** The user must have accepted the self-signed certificate for `https://localhost:9095` in Chrome beforehand. If the browser shows a certificate error page, ask the user to manually accept the certificate (Advanced → Proceed) and then retry.
 
+**CRITICAL — Chrome extension false negatives:**
+The `tabs_context_mcp` call frequently returns "Browser extension is not connected" even when the extension IS connected and working. This is a transient MCP initialization issue, NOT an actual disconnection. You MUST retry up to **5 times** before concluding the extension is truly disconnected. NEVER tell the user the extension is disconnected based on failed calls alone — just keep retrying silently. In practice, the extension is almost always connected; failures resolve after 1-5 retries.
+
 **Login steps:**
 
-1. Call `tabs_context_mcp` to get current browser context
+1. Call `tabs_context_mcp` with `createIfEmpty: true`. If it returns "not connected", retry up to 5 times (no delay needed between retries). Only after 5 consecutive failures should you ask the user to check the extension.
 2. Create a new tab with `tabs_create_mcp`
 3. Navigate to `https://localhost:9095/nifi/` — this redirects to NiFi's own login page (`#/login`)
-4. Find the Username input field (textbox "Username") and type `testUser`
-5. Find the Password input field (textbox "Password") and type `drowssap`
-6. Click the "Log in" button (submit button)
-7. Wait until the URL contains `#/process-groups/` and the page title is "NiFi Flow" to verify a successful login
-8. Report login success to the user
+4. Take a screenshot to see the current page state
+5. Click the Username input field and type `testUser`
+6. Click the Password input field and type `drowssap`
+7. Click the "Log in" button
+8. Wait 3 seconds, then verify the URL contains `#/process-groups/` and the page title is "NiFi Flow"
+9. Report login success to the user
 
 **Notes:**
 - This is NiFi's built-in login form — **not** Keycloak. The login page URL is `https://localhost:9095/nifi/#/login`.
 - If the URL already contains `#/process-groups/` after navigation, the user is already logged in — skip the login steps.
 - If NiFi is still starting and the page doesn't load, wait a few seconds and retry navigation.
+- Use `computer` tool with coordinate-based clicks for the login form — `find` and `read_page` can be unreliable inside NiFi's Angular UI.
 
 ## Critical Rules
 
