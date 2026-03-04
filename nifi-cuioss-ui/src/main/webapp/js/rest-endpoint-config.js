@@ -42,6 +42,7 @@ export const init = async (element) => {
         <div class="management-endpoints-display"></div>
         <div class="global-error-messages route-form-error-messages hidden"
              role="alert" aria-live="assertive"></div>
+        <h3 class="api-routes-heading">${t('route.api.heading')}</h3>
         <div class="routes-container"></div>`;
 
     const routesContainer = container.querySelector('.routes-container');
@@ -778,6 +779,16 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         helpKey: 'contexthelp.route.path', propertyKey: `restapi.${rn}.path`,
         currentValue: properties?.path });
     createMethodChipInput({ container: fields, idx, value: properties?.methods });
+
+    // ---- auth-mode chip input (before roles/scopes so toggle can hide them) ----
+    const currentAuthMode = properties?.['auth-mode'] || 'bearer';
+    const authModeChip = createAuthModeChipInput({
+        container: fields, idx, value: currentAuthMode,
+        helpKey: 'contexthelp.route.authmode',
+        propertyKey: `restapi.${rn}.auth-mode`,
+        currentValue: currentAuthMode
+    });
+
     addField({ container: fields, idx, name: 'required-roles', label: t('route.form.roles.label'),
         placeholder: t('route.form.roles.placeholder'),
         value: properties?.['required-roles'],
@@ -789,20 +800,14 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
         currentValue: properties?.['required-scopes'] });
 
-    // ---- auth-mode chip input ----
-    const currentAuthMode = properties?.['auth-mode'] || 'bearer';
-    const authModeChip = createAuthModeChipInput({
-        container: fields, idx, value: currentAuthMode
-    });
-
-    // Grey out roles/scopes when bearer is not among selected auth modes
-    const rolesField = fields.querySelector('.field-required-roles');
-    const scopesField = fields.querySelector('.field-required-scopes');
+    // Hide roles/scopes containers when bearer is not among selected auth modes
+    const rolesContainer = fields.querySelector('.field-container-required-roles');
+    const scopesContainer = fields.querySelector('.field-container-required-scopes');
     const toggleRolesScopes = () => {
         const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
         const hasBearer = modes.includes('bearer');
-        if (rolesField) rolesField.disabled = !hasBearer;
-        if (scopesField) scopesField.disabled = !hasBearer;
+        if (rolesContainer) rolesContainer.classList.toggle('hidden', !hasBearer);
+        if (scopesContainer) scopesContainer.classList.toggle('hidden', !hasBearer);
     };
     // Listen for changes on the hidden field dispatched by the chip input
     const authModeHidden = fields.querySelector('.field-auth-mode');

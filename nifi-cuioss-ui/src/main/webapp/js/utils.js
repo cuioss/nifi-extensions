@@ -216,6 +216,7 @@ export const TRANSLATIONS = {
         'route.form.max.request.size.label': 'Max Request Size',
         'route.form.max.request.size.placeholder': 'Leave empty for global default',
         'route.table.authmode': 'Auth Mode',
+        'route.api.heading': 'API Routes',
 
         // -- endpoint tester --
         'tester.heading': 'Endpoint Tester',
@@ -371,6 +372,7 @@ export const TRANSLATIONS = {
         'contexthelp.issuer.jwks.content': 'Inline JWKS JSON content pasted directly. Useful for testing or single-key setups.',
         'contexthelp.issuer.audience': 'Expected "aud" claim value. When set, tokens without a matching audience are rejected.',
         'contexthelp.issuer.client.id': 'OAuth2 client ID used for token validation. Compared against the "azp" or "client_id" claim.',
+        'contexthelp.route.authmode': 'Authentication mode for this route. Bearer requires a valid JWT token; Local Only allows unauthenticated access from localhost; None disables authentication entirely.',
 
         // -- legacy keys (kept for compatibility) --
         'jwt.validator.help.title': 'JWT Authenticator Help',
@@ -567,6 +569,7 @@ export const TRANSLATIONS = {
         'route.form.max.request.size.label': 'Max. Anfragegr\u00f6\u00dfe',
         'route.form.max.request.size.placeholder': 'Leer f\u00fcr globalen Standard',
         'route.table.authmode': 'Auth-Modus',
+        'route.api.heading': 'API-Routen',
 
         // -- endpoint tester --
         'tester.heading': 'Endpunkt-Tester',
@@ -722,6 +725,7 @@ export const TRANSLATIONS = {
         'contexthelp.issuer.jwks.content': 'Inline JWKS JSON Content direkt eingef\u00fcgt. N\u00fctzlich f\u00fcr Tests oder Single-Key Setups.',
         'contexthelp.issuer.audience': 'Erwarteter "aud" Claim-Wert. Wenn gesetzt, werden Tokens ohne passende Audience abgelehnt.',
         'contexthelp.issuer.client.id': 'OAuth2 Client ID f\u00fcr die Token Validation. Wird mit dem "azp"- oder "client_id"-Claim verglichen.',
+        'contexthelp.route.authmode': 'Authentifizierungsmodus f\u00fcr diese Route. Bearer erfordert ein g\u00fcltiges JWT Token; Nur lokal erlaubt unauthentifizierten Zugriff von localhost; Keine deaktiviert die Authentifizierung vollst\u00e4ndig.',
 
         // -- legacy keys --
         'jwt.validator.help.title': 'JWT Authenticator-Hilfe',

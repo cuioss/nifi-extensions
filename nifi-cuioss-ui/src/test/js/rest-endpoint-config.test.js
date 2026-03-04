@@ -1642,8 +1642,91 @@ describe('rest-endpoint-config', () => {
 
         // Route form fields should have context help buttons
         const helpButtons = routeForm.querySelectorAll('.context-help-toggle');
-        // name, enabled, path, roles, scopes, create-flowfile, connection, schema = 8
-        expect(helpButtons.length).toBeGreaterThanOrEqual(6);
+        // name, enabled, path, auth-mode, roles, scopes, create-flowfile, connection, schema = 9
+        expect(helpButtons.length).toBeGreaterThanOrEqual(7);
+    });
+
+    // -------------------------------------------------------------------
+    // API Routes heading
+    // -------------------------------------------------------------------
+
+    it('should render API Routes heading as h3', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const heading = container.querySelector('h3.api-routes-heading');
+        expect(heading).not.toBeNull();
+        expect(heading.textContent).toBe('route.api.heading');
+    });
+
+    // -------------------------------------------------------------------
+    // Form field order and roles/scopes visibility
+    // -------------------------------------------------------------------
+
+    it('should render auth-mode before roles and scopes in form field order', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const fields = form.querySelector('.form-fields');
+        const containers = Array.from(fields.querySelectorAll('.form-field'));
+        const authModeIdx = containers.findIndex((el) => el.classList.contains('field-container-auth-mode'));
+        const rolesIdx = containers.findIndex((el) => el.classList.contains('field-container-required-roles'));
+        const scopesIdx = containers.findIndex((el) => el.classList.contains('field-container-required-scopes'));
+
+        expect(authModeIdx).toBeGreaterThan(-1);
+        expect(rolesIdx).toBeGreaterThan(-1);
+        expect(scopesIdx).toBeGreaterThan(-1);
+        expect(authModeIdx).toBeLessThan(rolesIdx);
+        expect(authModeIdx).toBeLessThan(scopesIdx);
+    });
+
+    it('should hide roles and scopes containers when auth-mode is none', async () => {
+        const propsNone = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.health.auth-mode': 'none'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsNone,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const rolesContainer = form.querySelector('.field-container-required-roles');
+        const scopesContainer = form.querySelector('.field-container-required-scopes');
+
+        expect(rolesContainer.classList.contains('hidden')).toBe(true);
+        expect(scopesContainer.classList.contains('hidden')).toBe(true);
+    });
+
+    it('should show roles and scopes containers when auth-mode includes bearer', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const rolesContainer = form.querySelector('.field-container-required-roles');
+        const scopesContainer = form.querySelector('.field-container-required-scopes');
+
+        // Default auth-mode is 'bearer', so roles/scopes should be visible
+        expect(rolesContainer.classList.contains('hidden')).toBe(false);
+        expect(scopesContainer.classList.contains('hidden')).toBe(false);
     });
 
     // -------------------------------------------------------------------
