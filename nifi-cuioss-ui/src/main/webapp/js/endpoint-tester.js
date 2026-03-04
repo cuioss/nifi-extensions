@@ -104,13 +104,13 @@ const loadRoutes = async (container) => {
             `<option value="${escapeAttr(r.path)}" data-methods="${escapeAttr((r.methods || []).join(','))}">${escapeHtml(r.name)} (${escapeHtml(r.path)})</option>`
         ).join('');
 
-        // Update method selector to match route's allowed methods
-        selector.addEventListener('change', () => {
+        // Update method selector and body visibility for the selected route
+        const updateForSelectedRoute = () => {
             updateMethodsForRoute(container);
             updateBodyVisibility(container);
-        });
-        updateMethodsForRoute(container);
-        updateBodyVisibility(container);
+        };
+        selector.addEventListener('change', updateForSelectedRoute);
+        updateForSelectedRoute();
     } catch (err) {
         log.error('Failed to load routes for tester:', err.message);
         selector.innerHTML = `<option value="">${t('tester.routes.failed')}</option>`;
