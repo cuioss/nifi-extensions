@@ -101,7 +101,7 @@ The `tabs_context_mcp` call frequently returns "Browser extension is not connect
 5. Click the Username input field and type `testUser`
 6. Click the Password input field and type `drowssap`
 7. Click the "Log in" button
-8. Wait 3 seconds, then verify the URL contains `#/process-groups/` and the page title is "NiFi Flow"
+8. Wait until the URL contains `#/process-groups/` and the page title is "NiFi Flow" to verify a successful login
 9. Report login success to the user
 
 **Notes:**
