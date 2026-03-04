@@ -110,6 +110,7 @@ export const cleanup = () => { /* no persistent resources */ };
 const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
+const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**
  * Detect whether a schema value is a file path or inline JSON.
@@ -279,6 +280,10 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
     for (const ep of managementEndpoints) {
         const row = document.createElement('tr');
         row.dataset.mgmtName = ep.name;
+        row.dataset.mgmtEnabled = String(ep.enabled);
+        row.dataset.mgmtAuthMode = ep.authMode || 'local-only,bearer';
+        row.dataset.mgmtRoles = ep.requiredRoles || '';
+        row.dataset.mgmtScopes = ep.requiredScopes || '';
         const enabledClass = ep.enabled ? 'status-enabled' : 'status-disabled';
         const enabledText = ep.enabled ? t('common.status.enabled') : t('common.status.disabled');
         row.innerHTML = `
@@ -333,6 +338,13 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
 
     tableRow.classList.add('hidden');
 
+    // Read current values from data attributes (updated after each save)
+    // rather than the original ep object (captured at render time).
+    const currentEnabled = tableRow.dataset.mgmtEnabled !== 'false';
+    const currentAuthMode = tableRow.dataset.mgmtAuthMode || ep.authMode || 'bearer';
+    const currentRoles = tableRow.dataset.mgmtRoles || '';
+    const currentScopes = tableRow.dataset.mgmtScopes || '';
+
     const idx = formCounter++;
     const form = document.createElement('div');
     form.className = 'mgmt-edit-form route-form inline-edit';
@@ -360,7 +372,7 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
     enabledCheckbox.type = 'checkbox';
     enabledCheckbox.id = `mgmt-enabled-${idx}`;
     enabledCheckbox.className = 'mgmt-enabled route-enabled';
-    if (ep.enabled) enabledCheckbox.checked = true;
+    if (currentEnabled) enabledCheckbox.checked = true;
     enabledCheckbox.setAttribute('aria-label', t('mgmt.enabled'));
     enabledLabel.appendChild(enabledCheckbox);
     enabledLabel.append(` ${t('mgmt.enabled')}`);
@@ -371,7 +383,7 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
     const authModeChip = createAuthModeChipInput({
         container: fields,
         idx,
-        value: ep.authMode || 'bearer'
+        value: currentAuthMode
     });
 
     // Required Roles field
@@ -379,10 +391,10 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
         container: fields, idx, name: 'required-roles',
         label: t('mgmt.roles.label'),
         placeholder: t('mgmt.roles.placeholder'),
-        value: ep.requiredRoles || '',
+        value: currentRoles,
         helpKey: 'contexthelp.route.roles',
         propertyKey: `rest.gateway.management.${ep.name}.required-roles`,
-        currentValue: ep.requiredRoles || ''
+        currentValue: currentRoles
     });
 
     // Required Scopes field
@@ -390,10 +402,10 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
         container: fields, idx, name: 'required-scopes',
         label: t('mgmt.scopes.label'),
         placeholder: t('mgmt.scopes.placeholder'),
-        value: ep.requiredScopes || '',
+        value: currentScopes,
         helpKey: 'contexthelp.route.scopes',
         propertyKey: `rest.gateway.management.${ep.name}.required-scopes`,
-        currentValue: ep.requiredScopes || ''
+        currentValue: currentScopes
     });
 
     // Hide roles/scopes when bearer is not among selected auth modes
@@ -491,16 +503,20 @@ const saveManagementEndpoint = async (ep, componentId, enabled, authModeValue,
         try {
             await api.updateComponentProperties(componentId, updates);
             // Update the table row in-place
-            updateManagementTableRow(tableRow, enabled, authModeValue);
+            updateManagementTableRow(tableRow, enabled, authModeValue, rolesValue, scopesValue);
             tableRow.classList.remove('hidden');
             form.remove();
+            const rc = tableRow.closest('.route-config-editor')?.querySelector('.routes-container');
+            if (rc) refreshExportPanel(rc);
         } catch (error) {
             displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
         }
     } else {
-        updateManagementTableRow(tableRow, enabled, authModeValue);
+        updateManagementTableRow(tableRow, enabled, authModeValue, rolesValue, scopesValue);
         tableRow.classList.remove('hidden');
         form.remove();
+        const rc = tableRow.closest('.route-config-editor')?.querySelector('.routes-container');
+        if (rc) refreshExportPanel(rc);
     }
 };
 
@@ -509,14 +525,20 @@ const saveManagementEndpoint = async (ep, componentId, enabled, authModeValue,
  * @param {HTMLTableRowElement} row  the table row to update
  * @param {boolean} enabled  new enabled state
  * @param {string} authModeValue  comma-separated auth modes
+ * @param {string} rolesValue  comma-separated required roles
+ * @param {string} scopesValue  comma-separated required scopes
  */
-const updateManagementTableRow = (row, enabled, authModeValue) => {
+const updateManagementTableRow = (row, enabled, authModeValue, rolesValue, scopesValue) => {
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=path, 2=enabled, 3=authmode, 4=actions
     const enabledClass = enabled ? 'status-enabled' : 'status-disabled';
     const enabledText = enabled ? t('common.status.enabled') : t('common.status.disabled');
     cells[2].innerHTML = `<span class="${enabledClass}">${enabledText}</span>`;
     cells[3].innerHTML = formatAuthModeBadges(authModeValue);
+    row.dataset.mgmtEnabled = String(enabled);
+    row.dataset.mgmtAuthMode = authModeValue;
+    row.dataset.mgmtRoles = rolesValue;
+    row.dataset.mgmtScopes = scopesValue;
 };
 
 const loadExistingConfig = async (container, routesContainer, componentId) => {
@@ -671,11 +693,14 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
             <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
         </td>`;
 
+    // Store props reference on the row so it can be updated after save
+    row._routeProps = props;
+
     row.querySelector('.edit-route-button').addEventListener('click', () => {
         // Close any currently open editor first
         closeActiveEditor(routesContainer);
         row.classList.add('hidden');
-        openInlineEditor(routesContainer, name, props, componentId, row);
+        openInlineEditor(routesContainer, row.dataset.routeName, row._routeProps, componentId, row);
     });
 
     row.querySelector('.remove-route-button').addEventListener('click', async () => {
@@ -730,6 +755,20 @@ const updateTableRow = (row, formData) => {
     cells[5].innerHTML = `<span class="${statusClass}">${statusText}</span>`;
 
     row.dataset.routeName = formData.routeName;
+
+    // Keep the stored props in sync so re-editing shows current values
+    if (row._routeProps) {
+        row._routeProps.path = formData.path;
+        row._routeProps.methods = formData.methods;
+        row._routeProps.enabled = String(formData.enabled);
+        row._routeProps['required-roles'] = formData['required-roles'] || '';
+        row._routeProps['required-scopes'] = formData['required-scopes'] || '';
+        row._routeProps['auth-mode'] = formData['auth-mode'] || 'bearer';
+        row._routeProps['max-request-size'] = formData['max-request-size'] || '';
+        row._routeProps.schema = formData.schema || '';
+        row._routeProps['success-outcome'] = formData['success-outcome'] || '';
+        row._routeProps['create-flowfile'] = formData['create-flowfile'] === false ? 'false' : 'true';
+    }
 };
 
 /**
@@ -1202,6 +1241,38 @@ const buildExportText = (routesContainer) => {
 };
 
 /**
+ * Build management endpoint export text from current table state.
+ * Only emits properties that differ from their defaults.
+ * @param {HTMLElement} editor  the .route-config-editor element
+ * @returns {string} property lines (empty string if all defaults)
+ */
+const buildManagementExportText = (editor) => {
+    const rows = editor.querySelectorAll('tr[data-mgmt-name]');
+    const lines = [];
+    for (const row of rows) {
+        const name = row.dataset.mgmtName;
+        const enabled = row.dataset.mgmtEnabled;
+        const authMode = row.dataset.mgmtAuthMode || '';
+        const roles = row.dataset.mgmtRoles || '';
+        const scopes = row.dataset.mgmtScopes || '';
+
+        if (enabled === 'false') {
+            lines.push(`${MGMT_PREFIX}${name}.enabled = false`);
+        }
+        if (authMode && authMode !== 'local-only,bearer') {
+            lines.push(`${MGMT_PREFIX}${name}.auth-mode = ${authMode}`);
+        }
+        if (roles) {
+            lines.push(`${MGMT_PREFIX}${name}.required-roles = ${roles}`);
+        }
+        if (scopes) {
+            lines.push(`${MGMT_PREFIX}${name}.required-scopes = ${scopes}`);
+        }
+    }
+    return lines.join('\n');
+};
+
+/**
  * Refresh the export panel textarea content.
  * @param {HTMLElement} routesContainer  the .routes-container element
  */
@@ -1210,7 +1281,12 @@ const refreshExportPanel = (routesContainer) => {
     if (!editor) return;
     const textarea = editor.querySelector('.property-export-textarea');
     if (textarea) {
-        textarea.value = buildExportText(routesContainer);
+        let text = buildExportText(routesContainer);
+        const mgmtText = buildManagementExportText(editor);
+        if (mgmtText) {
+            text += `\n\n# ${t('route.management.heading')}\n${mgmtText}`;
+        }
+        textarea.value = text;
     }
 };
 
