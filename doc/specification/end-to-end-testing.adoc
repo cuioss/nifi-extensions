@@ -151,10 +151,12 @@ Tests the Custom UI displays gateway-specific tabs and content for the RestApiGa
 Verified scenarios:
 
 1. Display gateway-specific tabs in custom UI (Endpoint Configuration, Endpoint Tester, Issuer Configuration, Token Verification, Metrics, Help)
-2. Verify endpoint configuration tab content
+2. Verify endpoint configuration tab content (Global Settings, Management Endpoints, API Routes)
 3. Verify endpoint tester functionality
 4. Verify issuer configuration tab content
 5. Verify token verification tab functionality
+6. Verify metrics tab content (Token Validation, HTTP Security, Gateway Events sections)
+7. Verify help tab content
 
 === Accessibility Tests
 

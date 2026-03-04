@@ -23,9 +23,9 @@ See link:../../nifi-cuioss-ui/src/main/webapp/js/app.js[app.js] for the `configu
 
 === JWT Processor Tabs
 
-* **Issuer Configuration** -- manage issuer configurations (add, edit, delete, validate JWKS)
+* **Configuration** -- manage issuer configurations (add, edit, delete, validate JWKS)
 * **Token Verification** -- paste and verify JWT tokens against current configuration
-* **Metrics** -- display OAuth-Sheriff SecurityEventCounter metrics
+* **Metrics** -- displays "Metrics Not Available" notice (metrics are only available for the gateway processor)
 * **Help** -- processor documentation and troubleshooting
 
 === Gateway Processor Tabs
