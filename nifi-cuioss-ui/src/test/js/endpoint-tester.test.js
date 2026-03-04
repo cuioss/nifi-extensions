@@ -491,10 +491,11 @@ describe('endpoint-tester', () => {
         it('should fetch token and populate textarea', async () => {
             await init(container);
 
-            // Fill in required fields
+            // Fill in required fields (default grant type is password/ROPC)
             container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-client-secret').value = 'secret';
+            container.querySelector('.tf-username').value = 'testUser';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -515,6 +516,7 @@ describe('endpoint-tester', () => {
 
             container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
             container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-username').value = 'testUser';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -531,6 +533,7 @@ describe('endpoint-tester', () => {
 
             container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
             container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-username').value = 'testUser';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));

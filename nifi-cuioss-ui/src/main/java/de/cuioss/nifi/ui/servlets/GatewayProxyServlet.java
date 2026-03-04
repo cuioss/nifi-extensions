@@ -645,7 +645,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 }
             }
         } catch (Exception e) {
-            LOGGER.warn("Failed to resolve issuer hosts for SSRF check: %s",
+            LOGGER.warn(e, "Failed to resolve issuer hosts for SSRF check: %s",
                     e.getMessage());
         }
 

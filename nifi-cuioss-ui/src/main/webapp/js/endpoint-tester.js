@@ -413,7 +413,10 @@ const handleFetchToken = async (container) => {
         return;
     }
 
-    if (!clientId) {
+    const username = grantType === 'password'
+        ? container.querySelector('.tf-username').value.trim() : '';
+
+    if (!clientId || (grantType === 'password' && !username)) {
         statusEl.textContent = t('tester.token.fetch.error.missing.fields');
         statusEl.className = 'token-fetch-status error';
         return;
@@ -422,7 +425,7 @@ const handleFetchToken = async (container) => {
     const payload = { tokenEndpointUrl, grantType, clientId, clientSecret, scope };
 
     if (grantType === 'password') {
-        payload.username = container.querySelector('.tf-username').value.trim();
+        payload.username = username;
         payload.password = container.querySelector('.tf-password').value;
     }
 
