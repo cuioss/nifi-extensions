@@ -1136,6 +1136,31 @@ describe('rest-endpoint-config', () => {
         expect(modBadge.title).toBe('In dieser Sitzung geändert');
     });
 
+    it('should show saved values when reopening route editor', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Edit health route: change path and roles, then save
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+        const form1 = container.querySelector('.route-form');
+        form1.querySelector('.field-path').value = '/api/health/v2';
+        form1.querySelector('.field-required-roles').value = 'admin';
+        form1.querySelector('.save-route-button').click();
+        await tick();
+
+        // Reopen editor — fields should retain saved values
+        healthRow.querySelector('.edit-route-button').click();
+        const form2 = container.querySelector('.route-form');
+        expect(form2.querySelector('.field-path').value).toBe('/api/health/v2');
+        expect(form2.querySelector('.field-required-roles').value).toBe('admin');
+    });
+
     // -----------------------------------------------------------------------
     // Export annotation (session-only prefix)
     // -----------------------------------------------------------------------
@@ -1293,6 +1318,166 @@ describe('rest-endpoint-config', () => {
 
         const textarea = container.querySelector('.property-export-textarea');
         expect(textarea.value).toContain('success-outcome = api-data');
+    });
+
+    // -----------------------------------------------------------------------
+    // Management endpoint export
+    // -----------------------------------------------------------------------
+
+    it('should include management properties in export when non-default', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: false, authMode: 'bearer', methods: 'GET',
+                    requiredRoles: 'admin', requiredScopes: '' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        // Trigger export refresh via route save
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('rest.gateway.management.health.enabled = false');
+        expect(textarea.value).toContain('rest.gateway.management.health.auth-mode = bearer');
+        expect(textarea.value).toContain('rest.gateway.management.health.required-roles = admin');
+    });
+
+    it('should include management section header when management properties are non-default', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: false, authMode: 'local-only,bearer', methods: 'GET' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        // Trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('# route.management.heading');
+    });
+
+    it('should omit management section when all values are defaults', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: 'GET' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        // Trigger export refresh
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).not.toContain('rest.gateway.management.');
+        expect(textarea.value).not.toContain('# route.management.heading');
+    });
+
+    it('should store management data attributes on table rows', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'bearer', methods: 'GET',
+                    requiredRoles: 'admin', requiredScopes: 'read' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        expect(row.dataset.mgmtEnabled).toBe('true');
+        expect(row.dataset.mgmtAuthMode).toBe('bearer');
+        expect(row.dataset.mgmtRoles).toBe('admin');
+        expect(row.dataset.mgmtScopes).toBe('read');
+    });
+
+    it('should show saved roles/scopes when reopening management editor', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: 'GET' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        // First edit: enter roles and scopes, then save
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        row.querySelector('.btn-edit').click();
+        const form1 = container.querySelector('.mgmt-edit-form');
+        form1.querySelector('.field-required-roles').value = 'admin,operator';
+        form1.querySelector('.field-required-scopes').value = 'metrics:read';
+        form1.querySelector('.save-route-button').click();
+        await tick();
+
+        // Reopen editor — fields should retain saved values
+        row.querySelector('.btn-edit').click();
+        const form2 = container.querySelector('.mgmt-edit-form');
+        expect(form2.querySelector('.field-required-roles').value).toBe('admin,operator');
+        expect(form2.querySelector('.field-required-scopes').value).toBe('metrics:read');
+    });
+
+    it('should refresh export after management endpoint save', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+        api.fetchGatewayApi.mockResolvedValue({
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: 'GET' }
+            ]
+        });
+
+        await init(container);
+        await tick();
+
+        // Open management editor and disable the endpoint
+        const row = container.querySelector('tr[data-mgmt-name="health"]');
+        row.querySelector('.btn-edit').click();
+        const form = container.querySelector('.mgmt-edit-form');
+        form.querySelector('.mgmt-enabled').checked = false;
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('rest.gateway.management.health.enabled = false');
     });
 
     // -----------------------------------------------------------------------

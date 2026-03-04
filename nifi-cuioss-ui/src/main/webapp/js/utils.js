@@ -502,7 +502,7 @@ export const TRANSLATIONS = {
         'route.heading': 'Gateway-Routen-Konfiguration',
         'route.btn.add': 'Route hinzuf\u00fcgen',
         'route.btn.save': 'Route speichern',
-        'route.export.heading': 'Eigenschaften exportieren',
+        'route.export.heading': 'Konfiguration exportieren',
         'route.export.copy': 'In Zwischenablage kopieren',
         'route.export.copied': 'Kopiert!',
         'route.table.name': 'Name',
