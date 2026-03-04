@@ -356,6 +356,43 @@ describe('endpoint-tester', () => {
         );
     });
 
+    it('should show body editor automatically when route only has POST', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            routes: [
+                { name: 'validated', path: '/api/validated', methods: ['POST'], requiredRoles: [], requiredScopes: [] }
+            ]
+        });
+
+        await init(container);
+
+        const bodyGroup = container.querySelector('.body-group');
+        expect(bodyGroup.classList.contains('hidden')).toBe(false);
+    });
+
+    it('should show body editor when switching to a POST-only route', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            routes: [
+                { name: 'health', path: '/api/health', methods: ['GET'], requiredRoles: [], requiredScopes: [] },
+                { name: 'validated', path: '/api/validated', methods: ['POST'], requiredRoles: [], requiredScopes: [] }
+            ]
+        });
+
+        await init(container);
+
+        // Initially GET route is selected — body should be hidden
+        const bodyGroup = container.querySelector('.body-group');
+        expect(bodyGroup.classList.contains('hidden')).toBe(true);
+
+        // Switch to POST-only route
+        const routeSelector = container.querySelector('.route-selector');
+        routeSelector.selectedIndex = 1;
+        routeSelector.dispatchEvent(new Event('change'));
+
+        expect(bodyGroup.classList.contains('hidden')).toBe(false);
+    });
+
     it('should call cleanup without error', () => {
         expect(() => cleanup()).not.toThrow();
     });

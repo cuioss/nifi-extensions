@@ -1080,6 +1080,33 @@ test.describe("REST API Gateway Tabs", () => {
         expect(responseText).toMatch(/\d{3}|status|response/i);
     });
 
+    test("should show body input automatically for POST-only route", async ({
+        customUIFrame,
+        processorService,
+    }) => {
+        // Navigate to Endpoint Tester tab
+        await processorService.clickTab(customUIFrame, "Endpoint Tester");
+
+        const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
+
+        // First switch to a GET-only route to ensure body is hidden
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await routeSelector.selectOption("/api/admin");
+
+        const bodyGroup = endpointTesterPanel.locator(".body-group");
+        await expect(bodyGroup).toBeHidden({ timeout: 5000 });
+
+        // Now select the POST-only 'validated' route by value
+        await routeSelector.selectOption("/api/validated");
+
+        // Body group must become visible without any manual method change
+        await expect(bodyGroup).toBeVisible({ timeout: 5000 });
+
+        const bodyInput = endpointTesterPanel.locator(".body-input");
+        await expect(bodyInput).toBeVisible({ timeout: 5000 });
+    });
+
     test("should display metrics for gateway processor with actual content", async ({
         customUIFrame,
         processorService,

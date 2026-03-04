@@ -73,10 +73,8 @@ export const init = async (element) => {
     await loadRoutes(container);
 
     // Toggle body editor based on method
-    container.querySelector('.method-selector').addEventListener('change', (e) => {
-        const bodyGroup = container.querySelector('.body-group');
-        const needsBody = ['POST', 'PUT', 'PATCH'].includes(e.target.value);
-        bodyGroup.classList.toggle('hidden', !needsBody);
+    container.querySelector('.method-selector').addEventListener('change', () => {
+        updateBodyVisibility(container);
     });
 
     // Send request handler
@@ -106,11 +104,13 @@ const loadRoutes = async (container) => {
             `<option value="${escapeAttr(r.path)}" data-methods="${escapeAttr((r.methods || []).join(','))}">${escapeHtml(r.name)} (${escapeHtml(r.path)})</option>`
         ).join('');
 
-        // Update method selector to match route's allowed methods
-        selector.addEventListener('change', () => {
+        // Update method selector and body visibility for the selected route
+        const updateForSelectedRoute = () => {
             updateMethodsForRoute(container);
-        });
-        updateMethodsForRoute(container);
+            updateBodyVisibility(container);
+        };
+        selector.addEventListener('change', updateForSelectedRoute);
+        updateForSelectedRoute();
     } catch (err) {
         log.error('Failed to load routes for tester:', err.message);
         selector.innerHTML = `<option value="">${t('tester.routes.failed')}</option>`;
@@ -133,6 +133,13 @@ const updateMethodsForRoute = (container) => {
             ).join('');
         }
     }
+};
+
+const updateBodyVisibility = (container) => {
+    const method = container.querySelector('.method-selector').value;
+    const bodyGroup = container.querySelector('.body-group');
+    const needsBody = ['POST', 'PUT', 'PATCH'].includes(method);
+    bodyGroup.classList.toggle('hidden', !needsBody);
 };
 
 const handleSendRequest = async (container) => {
