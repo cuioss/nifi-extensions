@@ -59,6 +59,15 @@
     display: none;
 }
 
+/* API Routes heading (between management endpoints and user routes) */
+
+.api-routes-heading {
+    margin-top: var(--spacing-lg, 24px);
+    margin-bottom: var(--spacing-sm, 8px);
+    border-bottom: 1px solid var(--border-color, #ccc);
+    padding-bottom: var(--spacing-xs, 4px);
+}
+
 /* Routes container */
 
 .routes-container {
@@ -100,20 +109,6 @@
     border: 1px solid var(--border-color);
     margin-left: 10px;
     border-radius: 3px;
-}
-
-.route-enabled-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: normal !important;
-    cursor: pointer;
-}
-
-.route-enabled {
-    width: auto;
-    margin: 0;
-    cursor: pointer;
 }
 
 /* Action buttons in table cells */
@@ -714,6 +709,21 @@
 
 .mgmt-edit-form {
     margin-top: var(--spacing-sm, 8px);
+}
+
+/* Enabled checkbox — override generic form-field label/input styles */
+.route-form .form-field .route-enabled-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.route-form .form-field .route-enabled {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
 }
 
 .mgmt-edit-form .form-header {

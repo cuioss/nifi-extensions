@@ -251,12 +251,20 @@ class GatewayProxyServletTest {
                             equalTo(true))
                     .body("managementEndpoints.find { it.name == 'health' }.authMode",
                             equalTo("local-only,bearer"))
+                    .body("managementEndpoints.find { it.name == 'health' }.requiredRoles",
+                            equalTo(""))
+                    .body("managementEndpoints.find { it.name == 'health' }.requiredScopes",
+                            equalTo(""))
                     .body("managementEndpoints.find { it.name == 'metrics' }.path",
                             equalTo("/metrics"))
                     .body("managementEndpoints.find { it.name == 'metrics' }.enabled",
                             equalTo(true))
                     .body("managementEndpoints.find { it.name == 'metrics' }.authMode",
-                            equalTo("local-only,bearer"));
+                            equalTo("local-only,bearer"))
+                    .body("managementEndpoints.find { it.name == 'metrics' }.requiredRoles",
+                            equalTo(""))
+                    .body("managementEndpoints.find { it.name == 'metrics' }.requiredScopes",
+                            equalTo(""));
         }
 
         @Test

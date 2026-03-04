@@ -39,8 +39,9 @@ public class HealthEndpointHandler extends AbstractManagementHandler {
     static final String HEALTH_PATH = "/health";
     private static final String JSON_CONTENT_TYPE = "application/json";
 
-    public HealthEndpointHandler(boolean enabled, Set<AuthMode> authModes) {
-        super(enabled, authModes);
+    public HealthEndpointHandler(boolean enabled, Set<AuthMode> authModes,
+            Set<String> requiredRoles, Set<String> requiredScopes) {
+        super(enabled, authModes, requiredRoles, requiredScopes);
     }
 
     @Override

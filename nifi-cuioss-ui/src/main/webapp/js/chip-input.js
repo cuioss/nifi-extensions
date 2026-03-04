@@ -12,6 +12,7 @@
  */
 
 import { sanitizeHtml } from './utils.js';
+import { createContextHelp } from './context-help.js';
 
 /**
  * @typedef {object} ChipInputConfig
@@ -28,6 +29,9 @@ import { sanitizeHtml } from './utils.js';
  * @property {(v:string)=>boolean} isAllowed       validates whether a typed value is acceptable
  * @property {number}   [minSelected=0] minimum selected items (prevents removing below this)
  * @property {boolean}  [dispatchChange=false] dispatch 'change' event on hidden field
+ * @property {string}   [helpKey]       i18n key for context-help description (optional)
+ * @property {string}   [propertyKey]   NiFi property key shown in help panel (optional)
+ * @property {string}   [currentValue]  current property value shown in help panel (optional)
  */
 
 /**
@@ -45,12 +49,23 @@ export const createChipInput = ({ container, idx, value, config }) => {
         cssPrefix, availableValues, fieldName, fieldClass,
         label, placeholder, ariaLabel,
         normalize, displayLabel, removeAriaLabel, isAllowed,
-        minSelected = 0, dispatchChange = false
+        minSelected = 0, dispatchChange = false,
+        helpKey, propertyKey, currentValue
     } = config;
 
     const wrapper = document.createElement('div');
     wrapper.className = `form-field field-container-${cssPrefix}`;
-    wrapper.innerHTML = `<label for="${cssPrefix}-input-${idx}">${label}</label>`;
+    const labelEl = document.createElement('label');
+    labelEl.setAttribute('for', `${cssPrefix}-input-${idx}`);
+    labelEl.textContent = label;
+    if (helpKey) {
+        const { button, panel } = createContextHelp({ helpKey, propertyKey, currentValue });
+        labelEl.appendChild(button);
+        wrapper.appendChild(labelEl);
+        wrapper.appendChild(panel);
+    } else {
+        wrapper.appendChild(labelEl);
+    }
 
     const chipArea = document.createElement('div');
     chipArea.className = `${cssPrefix}-chip-area`;

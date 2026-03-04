@@ -147,9 +147,9 @@ test.describe("REST API Gateway Tabs", () => {
         const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
         await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
 
-        // Look for management endpoints table
+        // Management endpoints load asynchronously with a built-in retry.
         const mgmtTable = customUIFrame.locator(".management-endpoints-table");
-        await expect(mgmtTable).toBeVisible({ timeout: 10000 });
+        await expect(mgmtTable).toBeVisible({ timeout: 15000 });
 
         // Verify Edit buttons exist
         const editButtons = mgmtTable.locator(".btn-edit");
@@ -483,6 +483,135 @@ test.describe("REST API Gateway Tabs", () => {
 
         // Connection name container should be visible again
         await expect(outcomeContainer).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should display API Routes heading", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table to ensure content is loaded
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // API Routes heading should be visible
+        const heading = endpointConfigPanel.locator("h3.api-routes-heading");
+        await expect(heading).toBeVisible({ timeout: 5000 });
+        const headingText = await heading.textContent();
+        expect(
+            headingText === "API Routes" || headingText === "API-Routen",
+        ).toBe(true);
+    });
+
+    test("should show context-help toggle on auth-mode field", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the first route
+        const firstEditBtn = summaryTable
+            .locator(".edit-route-button")
+            .first();
+        await expect(firstEditBtn).toBeVisible({ timeout: 5000 });
+        await firstEditBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Auth-mode field container should have a context-help toggle button
+        const authModeHelp = routeForm.locator(
+            ".field-container-auth-mode .context-help-toggle",
+        );
+        await expect(authModeHelp).toBeVisible({ timeout: 5000 });
+
+        // Cancel to clean up
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should hide roles and scopes when bearer is removed from auth-mode", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click Edit on the data route (default auth-mode is bearer)
+        const dataRow = summaryTable.locator(
+            'tr[data-route-name="data"]',
+        );
+        const editBtn = dataRow.locator(".edit-route-button");
+        await editBtn.click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Roles and scopes containers should be visible when bearer is selected
+        const rolesContainer = routeForm.locator(
+            ".field-container-required-roles",
+        );
+        const scopesContainer = routeForm.locator(
+            ".field-container-required-scopes",
+        );
+        await expect(rolesContainer).toBeVisible({ timeout: 3000 });
+        await expect(scopesContainer).toBeVisible({ timeout: 3000 });
+
+        // Remove bearer chip to trigger hide
+        const bearerChipRemove = routeForm.locator(
+            '.auth-mode-chip[data-mode="bearer"] .auth-mode-chip-remove',
+        );
+
+        // First add another auth mode so we can remove bearer (minSelected=1)
+        const authModeInput = routeForm.locator(".auth-mode-chip-text-input");
+        await authModeInput.fill("none");
+        // Select from dropdown
+        const noneOption = routeForm.locator(
+            ".auth-mode-dropdown-item",
+        ).first();
+        await expect(noneOption).toBeVisible({ timeout: 3000 });
+        await noneOption.click();
+
+        // Now remove bearer
+        await expect(bearerChipRemove).toBeVisible({ timeout: 3000 });
+        await bearerChipRemove.click();
+
+        // Roles and scopes containers should now be hidden
+        await expect(rolesContainer).toBeHidden();
+        await expect(scopesContainer).toBeHidden();
 
         // Cancel to clean up
         const cancelBtn = routeForm.locator(".cancel-route-button");
@@ -1255,5 +1384,112 @@ test.describe("REST API Gateway Tabs", () => {
         const helpSections = helpContent.locator("h3, h4, h5, .help-section, section");
         const sectionCount = await helpSections.count();
         expect(sectionCount).toBeGreaterThanOrEqual(1);
+    });
+
+    test("should show roles and scopes fields in management editor", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for management endpoints table
+        const mgmtTable = customUIFrame.locator(".management-endpoints-table");
+        await expect(mgmtTable).toBeVisible({ timeout: 10000 });
+
+        // Click Edit on the health endpoint
+        const healthRow = mgmtTable.locator('tr[data-mgmt-name="health"]');
+        const editBtn = healthRow.locator(".btn-edit");
+        await editBtn.click();
+
+        // Verify management editor form appears
+        const mgmtForm = customUIFrame.locator(".mgmt-edit-form");
+        await expect(mgmtForm).toBeVisible({ timeout: 5000 });
+
+        // Roles and scopes fields should be present
+        const rolesContainer = mgmtForm.locator(
+            ".field-container-required-roles",
+        );
+        const scopesContainer = mgmtForm.locator(
+            ".field-container-required-scopes",
+        );
+        await expect(rolesContainer).toBeVisible({ timeout: 3000 });
+        await expect(scopesContainer).toBeVisible({ timeout: 3000 });
+
+        // Verify input fields exist
+        const rolesInput = mgmtForm.locator(".field-required-roles");
+        const scopesInput = mgmtForm.locator(".field-required-scopes");
+        await expect(rolesInput).toBeVisible({ timeout: 3000 });
+        await expect(scopesInput).toBeVisible({ timeout: 3000 });
+
+        // Cancel to clean up
+        const cancelBtn = mgmtForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should hide management roles/scopes when bearer is removed", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for management endpoints table
+        const mgmtTable = customUIFrame.locator(".management-endpoints-table");
+        await expect(mgmtTable).toBeVisible({ timeout: 10000 });
+
+        // Click Edit on the health endpoint
+        const healthRow = mgmtTable.locator('tr[data-mgmt-name="health"]');
+        const editBtn = healthRow.locator(".btn-edit");
+        await editBtn.click();
+
+        const mgmtForm = customUIFrame.locator(".mgmt-edit-form");
+        await expect(mgmtForm).toBeVisible({ timeout: 5000 });
+
+        // Roles/scopes should be visible (bearer is in auth-mode)
+        const rolesContainer = mgmtForm.locator(
+            ".field-container-required-roles",
+        );
+        const scopesContainer = mgmtForm.locator(
+            ".field-container-required-scopes",
+        );
+        await expect(rolesContainer).toBeVisible({ timeout: 3000 });
+        await expect(scopesContainer).toBeVisible({ timeout: 3000 });
+
+        // Remove bearer chip — first add 'none' so we can remove bearer
+        const authModeInput = mgmtForm.locator(".auth-mode-chip-text-input");
+        await authModeInput.fill("none");
+        const noneOption = mgmtForm.locator(
+            ".auth-mode-dropdown-item",
+        ).first();
+        await expect(noneOption).toBeVisible({ timeout: 3000 });
+        await noneOption.click();
+
+        // Now remove bearer
+        const bearerChipRemove = mgmtForm.locator(
+            '.auth-mode-chip[data-mode="bearer"] .auth-mode-chip-remove',
+        );
+        await expect(bearerChipRemove).toBeVisible({ timeout: 3000 });
+        await bearerChipRemove.click();
+
+        // Roles/scopes should now be hidden
+        await expect(rolesContainer).toBeHidden();
+        await expect(scopesContainer).toBeHidden();
+
+        // Cancel to clean up
+        const cancelBtn = mgmtForm.locator(".cancel-route-button");
+        await cancelBtn.click();
     });
 });
