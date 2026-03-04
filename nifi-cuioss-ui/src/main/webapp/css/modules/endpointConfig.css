@@ -111,20 +111,6 @@
     border-radius: 3px;
 }
 
-.route-enabled-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: normal !important;
-    cursor: pointer;
-}
-
-.route-enabled {
-    width: auto;
-    margin: 0;
-    cursor: pointer;
-}
-
 /* Action buttons in table cells */
 
 .edit-route-button {
@@ -725,9 +711,19 @@
     margin-top: var(--spacing-sm, 8px);
 }
 
-/* Override form-field label block display for checkbox labels inside mgmt editor */
-.mgmt-edit-form .form-field .route-enabled-label {
+/* Enabled checkbox — override generic form-field label/input styles */
+.route-form .form-field .route-enabled-label {
     display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.route-form .form-field .route-enabled {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
 }
 
 .mgmt-edit-form .form-header {
