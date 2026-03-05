@@ -496,6 +496,7 @@ describe('endpoint-tester', () => {
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-client-secret').value = 'secret';
             container.querySelector('.tf-username').value = 'testUser';
+            container.querySelector('.tf-password').value = 'testPass';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -517,6 +518,7 @@ describe('endpoint-tester', () => {
             container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-username').value = 'testUser';
+            container.querySelector('.tf-password').value = 'testPass';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -534,6 +536,7 @@ describe('endpoint-tester', () => {
             container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-username').value = 'testUser';
+            container.querySelector('.tf-password').value = 'testPass';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -547,13 +550,15 @@ describe('endpoint-tester', () => {
             await init(container);
 
             container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-username').value = 'testUser';
+            container.querySelector('.tf-password').value = 'pass';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
 
             const status = container.querySelector('.token-fetch-status');
             expect(status.classList.contains('error')).toBe(true);
-            expect(status.textContent).toContain('tester.token.fetch.error.missing.endpoint');
+            expect(container.querySelector('.token-endpoint-url').classList.contains('input-error')).toBe(true);
         });
 
         it('should show error when client ID is missing', async () => {
@@ -708,6 +713,264 @@ describe('endpoint-tester', () => {
 
             const status = container.querySelector('.token-fetch-status');
             expect(status.classList.contains('error')).toBe(true);
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // Red border validation
+    // -----------------------------------------------------------------------
+
+    describe('red border validation', () => {
+        it('should add input-error to empty endpoint URL on submit', async () => {
+            await init(container);
+
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.token-endpoint-url').classList.contains('input-error')).toBe(true);
+        });
+
+        it('should add input-error to empty client-id on submit', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.tf-client-id').classList.contains('input-error')).toBe(true);
+        });
+
+        it('should clear input-error on typing', async () => {
+            await init(container);
+
+            // Trigger error state
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const urlField = container.querySelector('.token-endpoint-url');
+            expect(urlField.classList.contains('input-error')).toBe(true);
+
+            // Type in the field
+            urlField.value = 'https://keycloak:8443/token';
+            urlField.dispatchEvent(new Event('input', { bubbles: true }));
+
+            expect(urlField.classList.contains('input-error')).toBe(false);
+        });
+
+        it('should clear all input-error classes on next submit attempt', async () => {
+            await init(container);
+
+            // Trigger errors
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+            expect(container.querySelector('.token-endpoint-url').classList.contains('input-error')).toBe(true);
+
+            // Fill in all fields and submit again
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.token-endpoint-url').classList.contains('input-error')).toBe(false);
+            expect(container.querySelector('.tf-client-id').classList.contains('input-error')).toBe(false);
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // Required field asterisks
+    // -----------------------------------------------------------------------
+
+    describe('required field asterisks', () => {
+        it('should mark correct labels for ROPC grant type', async () => {
+            await init(container);
+
+            const body = container.querySelector('.token-fetch-body');
+            const requiredLabels = body.querySelectorAll('label.required-field');
+            const forValues = Array.from(requiredLabels).map((l) => l.getAttribute('for'));
+
+            expect(forValues).toContain('token-endpoint-url');
+            expect(forValues).toContain('tf-client-id');
+            expect(forValues).toContain('tf-username');
+            expect(forValues).toContain('tf-password');
+            expect(forValues).not.toContain('tf-client-secret');
+        });
+
+        it('should mark correct labels for client_credentials grant type', async () => {
+            await init(container);
+
+            const grantSelector = container.querySelector('.grant-type-selector');
+            grantSelector.value = 'client_credentials';
+            grantSelector.dispatchEvent(new Event('change'));
+
+            const body = container.querySelector('.token-fetch-body');
+            const requiredLabels = body.querySelectorAll('label.required-field');
+            const forValues = Array.from(requiredLabels).map((l) => l.getAttribute('for'));
+
+            expect(forValues).toContain('token-endpoint-url');
+            expect(forValues).toContain('tf-client-id');
+            expect(forValues).toContain('tf-client-secret');
+            expect(forValues).not.toContain('tf-username');
+            expect(forValues).not.toContain('tf-password');
+        });
+
+        it('should update asterisks when grant type changes', async () => {
+            await init(container);
+
+            const grantSelector = container.querySelector('.grant-type-selector');
+
+            // Switch to client_credentials
+            grantSelector.value = 'client_credentials';
+            grantSelector.dispatchEvent(new Event('change'));
+
+            const body = container.querySelector('.token-fetch-body');
+            let forValues = Array.from(body.querySelectorAll('label.required-field'))
+                .map((l) => l.getAttribute('for'));
+            expect(forValues).toContain('tf-client-secret');
+
+            // Switch back to password
+            grantSelector.value = 'password';
+            grantSelector.dispatchEvent(new Event('change'));
+
+            forValues = Array.from(body.querySelectorAll('label.required-field'))
+                .map((l) => l.getAttribute('for'));
+            expect(forValues).toContain('tf-username');
+            expect(forValues).not.toContain('tf-client-secret');
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // Expiry countdown
+    // -----------------------------------------------------------------------
+
+    describe('expiry countdown', () => {
+        it('should start countdown after successful token fetch', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('success')).toBe(true);
+            expect(status.textContent).toContain('tester.token.fetch.success');
+        });
+
+        it('should show expired message when countdown reaches 0', async () => {
+            jest.useFakeTimers({ legacyFakeTimers: false });
+
+            api.fetchOAuthToken.mockResolvedValue({
+                access_token: 'token-123',
+                expires_in: 2,
+                idpStatus: 200
+            });
+
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            container.querySelector('.fetch-token-btn').click();
+            // Flush microtasks (promises) without advancing timers
+            await jest.advanceTimersByTimeAsync(0);
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('success')).toBe(true);
+
+            // Advance past expiry
+            jest.advanceTimersByTime(2000);
+
+            expect(status.textContent).toContain('tester.token.fetch.expired');
+            expect(status.classList.contains('error')).toBe(true);
+
+            jest.useRealTimers();
+        });
+
+        it('should stop previous countdown on re-fetch', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+
+            // First fetch
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Second fetch should not throw
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('success')).toBe(true);
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // Validation rules per grant type
+    // -----------------------------------------------------------------------
+
+    describe('validation rules per grant type', () => {
+        it('should require password for ROPC grant', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            // password left empty
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.tf-password').classList.contains('input-error')).toBe(true);
+            expect(api.fetchOAuthToken).not.toHaveBeenCalled();
+        });
+
+        it('should require client-secret for client_credentials grant', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.grant-type-selector').value = 'client_credentials';
+            container.querySelector('.tf-client-id').value = 'client';
+            // client secret left empty
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.tf-client-secret').classList.contains('input-error')).toBe(true);
+            expect(api.fetchOAuthToken).not.toHaveBeenCalled();
+        });
+
+        it('should allow empty client-secret for ROPC grant', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'user';
+            container.querySelector('.tf-password').value = 'pass';
+            // client secret intentionally empty
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.tf-client-secret').classList.contains('input-error')).toBe(false);
+            expect(api.fetchOAuthToken).toHaveBeenCalled();
         });
     });
 });

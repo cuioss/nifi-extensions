@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -135,13 +136,16 @@ class IntegrationTestSupport {
     static String fetchKeycloakToken(HttpClient client, String endpoint,
             String clientId, String clientSecret,
             String username, String password) throws Exception {
-        String body = formEncode(Map.of(
+        var params = new LinkedHashMap<>(Map.of(
                 "grant_type", "password",
                 "client_id", clientId,
-                "client_secret", clientSecret,
                 "username", username,
                 "password", password,
                 "scope", "openid"));
+        if (clientSecret != null && !clientSecret.isEmpty()) {
+            params.put("client_secret", clientSecret);
+        }
+        String body = formEncode(params);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))

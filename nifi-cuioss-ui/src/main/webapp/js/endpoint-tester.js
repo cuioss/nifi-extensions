@@ -146,10 +146,21 @@ export const init = async (element) => {
         toggleTokenFetchSection(container);
     });
 
-    // Grant type toggle: show/hide ROPC fields
+    // Grant type toggle: show/hide ROPC fields + update required markers
     container.querySelector('.grant-type-selector').addEventListener('change', () => {
         updateRopcFieldsVisibility(container);
+        updateRequiredFieldMarkers(container);
     });
+
+    // Clear input-error on typing/change
+    const tokenFetchBody = container.querySelector('.token-fetch-body');
+    const clearInputError = (e) => {
+        if (e.target.classList.contains('input-error')) {
+            e.target.classList.remove('input-error');
+        }
+    };
+    tokenFetchBody.addEventListener('input', clearInputError);
+    tokenFetchBody.addEventListener('change', clearInputError);
 
     // Discover button
     container.querySelector('.discover-btn').addEventListener('click', () => {
@@ -163,9 +174,12 @@ export const init = async (element) => {
 
     // Load issuers for the dropdown
     loadIssuers(container);
+
+    // Set initial required field markers
+    updateRequiredFieldMarkers(container);
 };
 
-export const cleanup = () => { /* no persistent resources */ };
+export const cleanup = () => { stopExpiryCountdown(); };
 
 // ---------------------------------------------------------------------------
 // Internal
@@ -317,6 +331,68 @@ const updateRopcFieldsVisibility = (container) => {
     ropcFields.classList.toggle('hidden', grantType !== 'password');
 };
 
+let expiryIntervalId = null;
+
+const clearInputErrors = (container) => {
+    for (const el of container.querySelectorAll('.input-error')) {
+        el.classList.remove('input-error');
+    }
+};
+
+const markFieldError = (container, selector) => {
+    const el = container.querySelector(selector);
+    if (el) el.classList.add('input-error');
+};
+
+const updateRequiredFieldMarkers = (container) => {
+    const grantType = container.querySelector('.grant-type-selector').value;
+    const body = container.querySelector('.token-fetch-body');
+    if (!body) return;
+
+    // Clear all existing markers
+    for (const label of body.querySelectorAll('label.required-field')) {
+        label.classList.remove('required-field');
+    }
+
+    // Always required: token endpoint URL, client ID
+    for (const selector of ['token-endpoint-url', 'tf-client-id']) {
+        const label = body.querySelector(`label[for="${selector}"]`);
+        if (label) label.classList.add('required-field');
+    }
+
+    if (grantType === 'password') {
+        for (const selector of ['tf-username', 'tf-password']) {
+            const label = body.querySelector(`label[for="${selector}"]`);
+            if (label) label.classList.add('required-field');
+        }
+    } else if (grantType === 'client_credentials') {
+        const label = body.querySelector('label[for="tf-client-secret"]');
+        if (label) label.classList.add('required-field');
+    }
+};
+
+const startExpiryCountdown = (statusEl, expiresIn) => {
+    stopExpiryCountdown();
+    let remaining = expiresIn;
+    expiryIntervalId = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+            stopExpiryCountdown();
+            statusEl.textContent = t('tester.token.fetch.expired');
+            statusEl.className = 'token-fetch-status error';
+        } else {
+            statusEl.textContent = t('tester.token.fetch.success', remaining);
+        }
+    }, 1000);
+};
+
+const stopExpiryCountdown = () => {
+    if (expiryIntervalId !== null) {
+        clearInterval(expiryIntervalId);
+        expiryIntervalId = null;
+    }
+};
+
 const loadIssuers = async (container) => {
     const selector = container.querySelector('.issuer-selector');
     try {
@@ -399,6 +475,9 @@ const handleDiscoverTokenEndpoint = async (container) => {
 };
 
 const handleFetchToken = async (container) => {
+    clearInputErrors(container);
+    stopExpiryCountdown();
+
     const tokenEndpointUrl = container.querySelector('.token-endpoint-url').value.trim();
     const grantType = container.querySelector('.grant-type-selector').value;
     const clientId = container.querySelector('.tf-client-id').value.trim();
@@ -407,16 +486,38 @@ const handleFetchToken = async (container) => {
     const statusEl = container.querySelector('.token-fetch-status');
     const fetchBtn = container.querySelector('.fetch-token-btn');
 
+    let hasErrors = false;
+
     if (!tokenEndpointUrl) {
-        statusEl.textContent = t('tester.token.fetch.error.missing.endpoint');
-        statusEl.className = 'token-fetch-status error';
-        return;
+        markFieldError(container, '.token-endpoint-url');
+        hasErrors = true;
     }
 
-    const username = grantType === 'password'
-        ? container.querySelector('.tf-username').value.trim() : '';
+    if (!clientId) {
+        markFieldError(container, '.tf-client-id');
+        hasErrors = true;
+    }
 
-    if (!clientId || (grantType === 'password' && !username)) {
+    let username, password;
+    if (grantType === 'password') {
+        username = container.querySelector('.tf-username').value.trim();
+        password = container.querySelector('.tf-password').value;
+        if (!username) {
+            markFieldError(container, '.tf-username');
+            hasErrors = true;
+        }
+        if (!password) {
+            markFieldError(container, '.tf-password');
+            hasErrors = true;
+        }
+    } else if (grantType === 'client_credentials') {
+        if (!clientSecret) {
+            markFieldError(container, '.tf-client-secret');
+            hasErrors = true;
+        }
+    }
+
+    if (hasErrors) {
         statusEl.textContent = t('tester.token.fetch.error.missing.fields');
         statusEl.className = 'token-fetch-status error';
         return;
@@ -426,7 +527,7 @@ const handleFetchToken = async (container) => {
 
     if (grantType === 'password') {
         payload.username = username;
-        payload.password = container.querySelector('.tf-password').value;
+        payload.password = password;
     }
 
     fetchBtn.disabled = true;
@@ -439,11 +540,16 @@ const handleFetchToken = async (container) => {
 
         if (result.access_token) {
             container.querySelector('.token-input').value = result.access_token;
-            const expiresMsg = result.expires_in
-                ? t('tester.token.fetch.success', result.expires_in)
+            const expiresIn = result.expires_in;
+            const expiresMsg = expiresIn
+                ? t('tester.token.fetch.success', expiresIn)
                 : t('tester.token.fetch.success', '?');
             statusEl.textContent = expiresMsg;
             statusEl.className = 'token-fetch-status success';
+
+            if (expiresIn) {
+                startExpiryCountdown(statusEl, expiresIn);
+            }
         } else {
             const errorMsg = result.error || 'No access_token in response';
             statusEl.textContent = t('tester.token.fetch.error', errorMsg);

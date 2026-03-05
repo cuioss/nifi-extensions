@@ -1519,4 +1519,126 @@ test.describe("REST API Gateway Tabs", () => {
         const cancelBtn = mgmtForm.locator(".cancel-route-button");
         await cancelBtn.click();
     });
+
+    // ── Token Fetch Validation ─────────────────────────────────────────
+
+    test("should show red borders on empty required fields when fetching token", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Tester tab
+        const testerTab = customUIFrame.locator('a[href="#endpoint-tester"]');
+        await expect(testerTab).toBeVisible({ timeout: 5000 });
+        await testerTab.click();
+
+        const testerPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(testerPanel).toBeVisible({ timeout: 5000 });
+
+        // Expand token fetch section
+        const toggleBtn = testerPanel.locator(".token-fetch-toggle");
+        await expect(toggleBtn).toBeVisible({ timeout: 5000 });
+        await toggleBtn.click();
+
+        const tokenFetchBody = testerPanel.locator(".token-fetch-body");
+        await expect(tokenFetchBody).toBeVisible({ timeout: 5000 });
+
+        // Click fetch with all fields empty
+        const fetchBtn = testerPanel.locator(".fetch-token-btn");
+        await fetchBtn.click();
+
+        // Verify red borders on required fields
+        const urlInput = testerPanel.locator(".token-endpoint-url");
+        await expect(urlInput).toHaveClass(/input-error/, { timeout: 3000 });
+
+        const clientIdInput = testerPanel.locator(".tf-client-id");
+        await expect(clientIdInput).toHaveClass(/input-error/, { timeout: 3000 });
+    });
+
+    test("should fetch token with valid ROPC credentials (public client, no secret)", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Tester tab
+        const testerTab = customUIFrame.locator('a[href="#endpoint-tester"]');
+        await expect(testerTab).toBeVisible({ timeout: 5000 });
+        await testerTab.click();
+
+        const testerPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(testerPanel).toBeVisible({ timeout: 5000 });
+
+        // Expand token fetch section
+        const toggleBtn = testerPanel.locator(".token-fetch-toggle");
+        const tokenFetchBody = testerPanel.locator(".token-fetch-body");
+        if (await tokenFetchBody.isHidden()) {
+            await toggleBtn.click();
+        }
+        await expect(tokenFetchBody).toBeVisible({ timeout: 5000 });
+
+        // Use auto-discovery via the issuer dropdown (resolves Docker-internal URL)
+        const issuerSelector = testerPanel.locator(".issuer-selector");
+        await expect(issuerSelector).toBeVisible({ timeout: 10000 });
+
+        // Wait for issuers to load (select value should not be empty)
+        await expect(issuerSelector).not.toHaveValue("", { timeout: 10000 });
+
+        // Trigger discover by clicking the discover button
+        const discoverBtn = testerPanel.locator(".discover-btn");
+        await discoverBtn.click();
+
+        // Wait for token endpoint URL to be populated
+        const tokenEndpointInput = testerPanel.locator(".token-endpoint-url");
+        await expect(tokenEndpointInput).not.toHaveValue("", { timeout: 10000 });
+
+        // Fill in ROPC fields — public client, no secret needed
+        await testerPanel.locator(".tf-client-id").fill(CONSTANTS.KEYCLOAK_CONFIG.CLIENT_ID);
+        await testerPanel.locator(".tf-username").fill(CONSTANTS.AUTH.USERNAME);
+        await testerPanel.locator(".tf-password").fill(CONSTANTS.AUTH.PASSWORD);
+        // Client secret intentionally left empty
+
+        // Click fetch
+        const fetchBtn = testerPanel.locator(".fetch-token-btn");
+        await fetchBtn.click();
+
+        // Wait for success status with countdown
+        const statusEl = testerPanel.locator(".token-fetch-status");
+        await expect(statusEl).toHaveClass(/success/, { timeout: 15000 });
+
+        // Verify token was populated in textarea
+        const tokenInput = testerPanel.locator(".token-input");
+        const tokenValue = await tokenInput.inputValue();
+        expect(tokenValue.length).toBeGreaterThan(10);
+    });
+
+    test("should update required field asterisks when switching grant type", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Tester tab
+        const testerTab = customUIFrame.locator('a[href="#endpoint-tester"]');
+        await expect(testerTab).toBeVisible({ timeout: 5000 });
+        await testerTab.click();
+
+        const testerPanel = customUIFrame.locator("#endpoint-tester");
+        await expect(testerPanel).toBeVisible({ timeout: 5000 });
+
+        // Expand token fetch section
+        const toggleBtn = testerPanel.locator(".token-fetch-toggle");
+        const tokenFetchBody = testerPanel.locator(".token-fetch-body");
+        if (await tokenFetchBody.isHidden()) {
+            await toggleBtn.click();
+        }
+        await expect(tokenFetchBody).toBeVisible({ timeout: 5000 });
+
+        // In ROPC mode, username/password should be required
+        const usernameLabel = tokenFetchBody.locator('label[for="tf-username"]');
+        await expect(usernameLabel).toHaveClass(/required-field/, { timeout: 3000 });
+
+        // Switch to Client Credentials
+        const grantSelector = testerPanel.locator(".grant-type-selector");
+        await grantSelector.selectOption("client_credentials");
+
+        // Client secret should now be required
+        const secretLabel = tokenFetchBody.locator('label[for="tf-client-secret"]');
+        await expect(secretLabel).toHaveClass(/required-field/, { timeout: 3000 });
+
+        // Username should no longer be required
+        await expect(usernameLabel).not.toHaveClass(/required-field/);
+    });
 });

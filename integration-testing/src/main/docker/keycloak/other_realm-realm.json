@@ -28,7 +28,8 @@
       "webOrigins": ["*"],
       "publicClient": false,
       "protocol": "openid-connect",
-      "directAccessGrantsEnabled": true
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true
     }
   ],
   "roles": {

@@ -16,14 +16,13 @@
  */
 package de.cuioss.nifi.integration;
 
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 
 import javax.net.ssl.SSLContext;
 import java.net.URI;
@@ -98,7 +97,7 @@ class CustomUIEndpointsIT {
 
         // Fetch a Keycloak token for endpoint tests that need a real JWT
         keycloakToken = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
 
         // Fetch JWKS from Keycloak for JWKS content validation tests
         HttpRequest jwksRequest = HttpRequest.newBuilder()

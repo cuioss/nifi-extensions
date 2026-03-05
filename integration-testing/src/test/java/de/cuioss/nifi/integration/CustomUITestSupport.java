@@ -16,15 +16,14 @@
  */
 package de.cuioss.nifi.integration;
 
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import lombok.experimental.UtilityClass;
-
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import lombok.experimental.UtilityClass;
 
 import java.io.StringReader;
 import java.net.URI;
