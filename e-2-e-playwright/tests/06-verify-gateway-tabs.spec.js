@@ -1576,10 +1576,10 @@ test.describe("REST API Gateway Tabs", () => {
         const issuerSelector = testerPanel.locator(".issuer-selector");
         await expect(issuerSelector).toBeVisible({ timeout: 10000 });
 
-        // Wait for issuers to load (first option should not be "loading" or "none")
-        await expect(issuerSelector.locator("option").first()).not.toHaveValue("", { timeout: 10000 });
+        // Wait for issuers to load (select value should not be empty)
+        await expect(issuerSelector).not.toHaveValue("", { timeout: 10000 });
 
-        // Trigger discover by changing issuer selection
+        // Trigger discover by clicking the discover button
         const discoverBtn = testerPanel.locator(".discover-btn");
         await discoverBtn.click();
 
