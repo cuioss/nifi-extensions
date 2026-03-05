@@ -1427,11 +1427,11 @@
           "version": "1.0-SNAPSHOT"
         },
         "properties": {
-          "jwt.validation.require.https.for.jwks": "false",
+          "jwt.validation.require.https.for.jwks": "true",
           "jwt.validation.jwks.allow.private.network.addresses": "true",
           "issuer.keycloak.jwks-type": "url",
-          "issuer.keycloak.jwks-url": "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs",
-          "issuer.keycloak.issuer": "http://keycloak:8080/realms/oauth_integration_tests"
+          "issuer.keycloak.jwks-url": "https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs",
+          "issuer.keycloak.issuer": "https://keycloak:8443/realms/oauth_integration_tests"
         },
         "propertyDescriptors": {
           "jwt.validation.require.https.for.jwks": {

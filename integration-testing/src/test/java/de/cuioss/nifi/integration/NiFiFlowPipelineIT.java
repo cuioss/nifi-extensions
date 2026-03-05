@@ -54,12 +54,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("NiFi Flow Pipeline Integration Tests")
 class NiFiFlowPipelineIT {
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private static HttpClient HTTP_CLIENT;
 
     @BeforeAll
     static void waitForFlowEndpoint() throws Exception {
+        HTTP_CLIENT = HttpClient.newBuilder()
+                .sslContext(createSslContext())
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
         waitForEndpoint(HTTP_CLIENT, FLOW_ENDPOINT, Duration.ofSeconds(120));
     }
 

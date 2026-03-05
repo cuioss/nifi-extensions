@@ -73,9 +73,14 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.2.5
+    command:
+      - start-dev
+      - --import-realm
+      - --https-certificate-file=/opt/keycloak/certificates/localhost.crt
+      - --https-certificate-key-file=/opt/keycloak/certificates/localhost.key
+      - --https-port=8443
     ports:
-      - "9080:8080"  # HTTP admin port
-      - "9085:8443"  # HTTPS port
+      - "9085:8443"  # HTTPS (primary)
       - "9086:9000"  # Management port (health checks)
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
@@ -84,19 +89,17 @@ services:
       - KC_METRICS_ENABLED=true
       - KC_DB=dev-mem
       - KC_LOG_LEVEL=INFO
-      # Hostname configuration for well-known discovery endpoint
       - KC_HOSTNAME_STRICT=false
-      - KC_HTTP_ENABLED=true
-      - KC_HOSTNAME=http://keycloak:8080
+      # HTTP enabled internally for management/health checks but not mapped to host port
+      - KC_HTTPS_PORT=8443
+      - KC_HOSTNAME=https://keycloak:8443
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
-    command: 
-      - start-dev
-      - --import-realm
+      - ./certificates:/opt/keycloak/certificates:ro
     healthcheck:
-      # TCP socket-based health check (works with minimal Keycloak images v21+)
-      # Keycloak's minimal container doesn't include curl, so we use bash TCP sockets
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost:9000\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'UP' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
+      # Readiness check via HTTP on port 8080 (management port 9000 uses HTTPS which bash TCP can't handle).
+      # Checking the test realm endpoint verifies both server readiness and realm import completion.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /realms/oauth_integration_tests HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'oauth_integration_tests' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 12

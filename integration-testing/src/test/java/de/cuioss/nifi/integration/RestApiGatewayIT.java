@@ -16,14 +16,15 @@
  */
 package de.cuioss.nifi.integration;
 
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -64,6 +65,7 @@ class RestApiGatewayIT {
     @BeforeAll
     static void setUp() throws Exception {
         HttpClient httpClient = HttpClient.newBuilder()
+                .sslContext(createSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 
@@ -298,6 +300,7 @@ class RestApiGatewayIT {
         @DisplayName("should return 401 for token signed by different realm")
         void shouldReturn401ForTokenFromWrongRealm() throws Exception {
             HttpClient httpClient = HttpClient.newBuilder()
+                    .sslContext(createSslContext())
                     .connectTimeout(Duration.ofSeconds(10))
                     .build();
             String otherToken = fetchKeycloakToken(httpClient,

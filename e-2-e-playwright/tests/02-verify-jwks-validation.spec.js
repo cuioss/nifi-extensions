@@ -47,7 +47,7 @@ test.describe("JWKS Validation", () => {
 
         // Use localhost Keycloak JWKS URL — SSRF protection should block this
         await jwksUrlInput.fill(
-            "http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs",
+            "https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs",
         );
 
         const validateButton = form.getByRole("button", { name: "Test Connection" });

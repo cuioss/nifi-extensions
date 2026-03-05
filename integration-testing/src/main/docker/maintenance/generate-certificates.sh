@@ -6,8 +6,8 @@
 # Exit on error
 set -e
 
-# Define paths
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Define paths — the script lives in maintenance/ but operates on the parent docker/ directory
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CERT_DIR="${SCRIPT_DIR}/certificates"
 
 # Create certificates directory if it doesn't exist
@@ -55,7 +55,7 @@ keytool -genkeypair \
   -keysize 2048 \
   -validity ${CERT_VALIDITY} \
   -dname "${CERT_DNAME}" \
-  -ext san=dns:localhost,ip:127.0.0.1 \
+  -ext san=dns:localhost,dns:keycloak,dns:nifi,ip:127.0.0.1,ip:0.0.0.0 \
   -keystore "${CERT_DIR}/keystore.p12" \
   -storetype PKCS12 \
   -storepass "${KEYSTORE_PASSWORD}" \

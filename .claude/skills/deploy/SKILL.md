@@ -41,9 +41,9 @@ Parse the argument to determine which workflow to execute. Default (no args) = s
 Builds NAR, copies to `target/nifi-deploy/`, starts Keycloak + NiFi.
 NiFi takes ~60-80s to become healthy. URLs after start:
 - NiFi: https://localhost:9095/nifi (testUser / drowssap)
-- Keycloak: http://localhost:9080 (admin / admin)
+- Keycloak: https://localhost:9085 (admin / admin)
 
-**After containers are healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure.**
+**After containers are healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure, then display the [Sandbox Credentials](#sandbox-credentials).**
 
 #### redeploy
 ```bash
@@ -53,7 +53,7 @@ Rebuilds NAR, copies to deploy dir, runs `docker compose restart nifi`.
 Wait ~60-80s for NiFi to become healthy.
 Verify: `./integration-testing/src/main/docker/check-status.sh`
 
-**After NiFi is healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure.**
+**After NiFi is healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure, then display the [Sandbox Credentials](#sandbox-credentials).**
 
 #### test [file]
 ```bash
@@ -126,6 +126,33 @@ The `tabs_context_mcp` call frequently returns "Browser extension is not connect
 | `integration-testing/src/main/docker/*.sh` | Local deployment scripts |
 | `e-2-e-playwright/scripts/*.sh` | Maven-phase scripts |
 | `e-2-e-playwright/target/test-results/` | Test artifacts |
+
+## Sandbox Credentials
+
+After a successful **start** or **redeploy** (and browser login), display these credentials to the user so they can use the Token Fetch form in the Endpunkt-Tester tab:
+
+```
+Sandbox Keycloak Credentials (for Token Fetch)
+───────────────────────────────────────────────
+Realm:         oauth_integration_tests
+Client-ID:     test_client
+Client-Secret: yTKslWLtf4giJcWCaoVJ20H8sy6STexM
+
+ROPC (password grant):
+  Username:    testUser
+  Password:    drowssap
+
+Token Endpoint (auto-discovered via issuer):
+  https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/token
+
+Other realm (for cross-issuer testing):
+  Realm:         other_realm
+  Client-ID:     other_client
+  Client-Secret: otherClientSecretValue123456789
+  Username:      otherUser / drowssap
+```
+
+**Note:** The issuer dropdown in the Endpunkt-Tester auto-populates from the processor's Controller Service config. The token endpoint is resolved via OIDC discovery when clicking "Ermitteln".
 
 ## NiFi Custom UI Browser Verification
 

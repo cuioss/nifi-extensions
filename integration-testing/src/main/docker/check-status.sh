@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 NIFI_URL="https://localhost:9095"
-KEYCLOAK_URL="http://localhost:9080"
+KEYCLOAK_URL="https://localhost:9085"
 TIMEOUT_SECONDS=2
 CHECK_INTERVAL=1
 
@@ -35,7 +35,7 @@ usage() {
     echo ""
     echo "Environment Variables:"
     echo "  NIFI_URL                NiFi base URL (default: https://localhost:9095)"
-    echo "  KEYCLOAK_URL            Keycloak base URL (default: http://localhost:9080)"
+    echo "  KEYCLOAK_URL            Keycloak base URL (default: https://localhost:9085)"
     echo ""
     echo "Examples:"
     echo "  $0                      # Basic status check"
@@ -79,7 +79,7 @@ done
 
 # Override URLs from environment if set
 NIFI_URL="${NIFI_URL:-https://localhost:9095}"
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:9080}"
+KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:9085}"
 
 # Logging functions
 log_info() {
@@ -173,7 +173,7 @@ check_http_endpoint() {
 
     log_verbose "Checking HTTP endpoint: $url"
 
-    if curl --fail --silent --max-time "$timeout" "$url" > /dev/null 2>&1; then
+    if curl -k --fail --silent --max-time "$timeout" "$url" > /dev/null 2>&1; then
         log_verbose "$description is responding"
         return 0
     else
@@ -197,7 +197,7 @@ check_nifi_health() {
     fi
 
     # Check if NiFi is in anonymous mode (common for testing)
-    local access_status=$(curl --silent --max-time 2 "${base_url}/nifi-api/access" 2>/dev/null || echo "")
+    local access_status=$(curl -k --silent --max-time 2 "${base_url}/nifi-api/access" 2>/dev/null || echo "")
     if [[ "$access_status" == *"anonymous"* ]]; then
         log_verbose "NiFi is running in anonymous access mode"
     fi

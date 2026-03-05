@@ -55,10 +55,11 @@ class NiFiProcessorMetricsIT {
     @BeforeAll
     static void setUp() throws Exception {
         nifiClient = HttpClient.newBuilder()
-                .sslContext(createTrustAllSslContext())
+                .sslContext(createSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         plainClient = HttpClient.newBuilder()
+                .sslContext(createSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
 

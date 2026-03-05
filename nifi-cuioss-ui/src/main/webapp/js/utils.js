@@ -242,6 +242,32 @@ export const TRANSLATIONS = {
         'tester.error.no.route': 'Please select a route',
         'tester.error.request.failed': 'Request failed: {0}',
 
+        // -- token fetch --
+        'tester.token.fetch.heading': 'Fetch Token',
+        'tester.token.fetch.issuer': 'Issuer',
+        'tester.token.fetch.issuer.select': 'Select issuer...',
+        'tester.token.fetch.issuer.custom': 'Custom URL...',
+        'tester.token.fetch.issuer.loading': 'Loading issuers...',
+        'tester.token.fetch.issuer.none': 'No issuers configured',
+        'tester.token.fetch.endpoint': 'Token Endpoint URL',
+        'tester.token.fetch.endpoint.placeholder': 'https://keycloak:8080/realms/master/protocol/openid-connect/token',
+        'tester.token.fetch.grant.type': 'Grant Type',
+        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)', // NOSONAR — i18n label
+        'tester.token.fetch.grant.client': 'Client Credentials',
+        'tester.token.fetch.client.id': 'Client ID',
+        'tester.token.fetch.client.secret': 'Client Secret',
+        'tester.token.fetch.username': 'Username',
+        'tester.token.fetch.password': 'Password', // NOSONAR — i18n label
+        'tester.token.fetch.scope': 'Scope',
+        'tester.token.fetch.btn': 'Fetch Token',
+        'tester.token.fetch.btn.fetching': 'Fetching...',
+        'tester.token.fetch.success': 'Token fetched successfully (expires in {0}s)',
+        'tester.token.fetch.error': 'Token fetch failed: {0}',
+        'tester.token.fetch.error.missing.fields': 'Please fill in all required fields',
+        'tester.token.fetch.error.missing.endpoint': 'Token endpoint URL is required',
+        'tester.token.fetch.discover': 'Discover',
+        'tester.token.fetch.discovering': 'Discovering...',
+
         // -- metrics --
         'metrics.btn.refresh': 'Refresh',
         'metrics.btn.export': 'Export',
@@ -585,7 +611,7 @@ export const TRANSLATIONS = {
         'tester.form.method': 'Methode',
         'tester.form.token': 'Autorisierungs-Token',
         'tester.form.token.placeholder': 'Bearer eyJ\u2026',
-        'tester.form.body': 'Anfragek\u00f6rper',
+        'tester.form.body': 'Anfrageinhalt (Body)',
         'tester.form.body.placeholder': '{"key": "value"}',
         'tester.btn.send': 'Anfrage senden',
         'tester.btn.sending': 'Sende\u2026',
@@ -598,6 +624,32 @@ export const TRANSLATIONS = {
         'tester.response.no.headers': 'Keine Header',
         'tester.error.no.route': 'Bitte w\u00e4hlen Sie eine Route',
         'tester.error.request.failed': 'Anfrage fehlgeschlagen: {0}',
+
+        // -- token fetch --
+        'tester.token.fetch.heading': 'Token abrufen',
+        'tester.token.fetch.issuer': 'Issuer',
+        'tester.token.fetch.issuer.select': 'Issuer ausw\u00e4hlen\u2026',
+        'tester.token.fetch.issuer.custom': 'Eigene URL\u2026',
+        'tester.token.fetch.issuer.loading': 'Lade Issuers\u2026',
+        'tester.token.fetch.issuer.none': 'Keine Issuers konfiguriert',
+        'tester.token.fetch.endpoint': 'Token-Endpunkt-URL',
+        'tester.token.fetch.endpoint.placeholder': 'https://keycloak:8080/realms/master/protocol/openid-connect/token',
+        'tester.token.fetch.grant.type': 'Grant-Typ',
+        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)', // NOSONAR — i18n label
+        'tester.token.fetch.grant.client': 'Client Credentials',
+        'tester.token.fetch.client.id': 'Client-ID',
+        'tester.token.fetch.client.secret': 'Client-Secret',
+        'tester.token.fetch.username': 'Benutzername',
+        'tester.token.fetch.password': 'Passwort', // NOSONAR — i18n label
+        'tester.token.fetch.scope': 'Scope',
+        'tester.token.fetch.btn': 'Token abrufen',
+        'tester.token.fetch.btn.fetching': 'Rufe ab\u2026',
+        'tester.token.fetch.success': 'Token erfolgreich abgerufen (l\u00e4uft in {0}s ab)',
+        'tester.token.fetch.error': 'Token-Abruf fehlgeschlagen: {0}',
+        'tester.token.fetch.error.missing.fields': 'Bitte f\u00fcllen Sie alle Pflichtfelder aus',
+        'tester.token.fetch.error.missing.endpoint': 'Token-Endpunkt-URL ist erforderlich',
+        'tester.token.fetch.discover': 'Ermitteln',
+        'tester.token.fetch.discovering': 'Ermittle\u2026',
 
         // -- metrics --
         'metrics.btn.refresh': 'Aktualisieren',

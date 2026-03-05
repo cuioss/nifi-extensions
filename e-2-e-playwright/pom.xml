@@ -20,7 +20,7 @@
         <maven.install.skip>true</maven.install.skip>
         <docker.script.dir>${project.basedir}/../integration-testing/src/main/docker</docker.script.dir>
         <nifi.base.url>https://localhost:9095/nifi</nifi.base.url>
-        <keycloak.url>http://localhost:9080</keycloak.url>
+        <keycloak.url>https://localhost:9085</keycloak.url>
         <!-- Fail-fast configuration -->
         <maven.test.failure.ignore>false</maven.test.failure.ignore>
         <maven.build.timeout>180</maven.build.timeout> <!-- 3 minutes max -->
@@ -159,6 +159,7 @@
                                 <TEST_RESULTS_DIR>${playwright.output.dir}/test-results</TEST_RESULTS_DIR>
                                 <PLAYWRIGHT_REPORT_DIR>${playwright.output.dir}/playwright-report</PLAYWRIGHT_REPORT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                                <NODE_EXTRA_CA_CERTS>${docker.script.dir}/certificates/localhost.crt</NODE_EXTRA_CA_CERTS>
                             </environmentVariables>
                             <skip>${skip.docker.deployment}</skip>
                         </configuration>

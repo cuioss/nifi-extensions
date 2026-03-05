@@ -11,6 +11,13 @@ import { init, cleanup } from '../../main/webapp/js/endpoint-tester.js';
 import * as api from '../../main/webapp/js/api.js';
 import * as utils from '../../main/webapp/js/utils.js';
 
+const SAMPLE_CS_PROPERTIES = {
+    properties: {
+        'issuer.primary.issuer': 'https://keycloak:8443/realms/master',
+        'issuer.primary.jwks-url': 'https://keycloak:8443/realms/master/protocol/openid-connect/certs'
+    }
+};
+
 const SAMPLE_CONFIG = {
     component: 'RestApiGatewayProcessor',
     port: 9443,
@@ -52,6 +59,17 @@ describe('endpoint-tester', () => {
 
         api.fetchGatewayApi.mockResolvedValue(SAMPLE_CONFIG);
         api.sendGatewayTestRequest.mockResolvedValue(SAMPLE_RESPONSE);
+        api.getComponentId.mockReturnValue('test-processor-id');
+        api.resolveJwtConfigServiceId.mockResolvedValue('test-cs-id');
+        api.getControllerServiceProperties.mockResolvedValue(SAMPLE_CS_PROPERTIES);
+        api.fetchOAuthToken.mockResolvedValue({
+            access_token: 'fetched-token-123',
+            expires_in: 300,
+            idpStatus: 200
+        });
+        api.discoverTokenEndpoint.mockResolvedValue({
+            tokenEndpoint: 'https://keycloak:8443/realms/master/protocol/openid-connect/token'
+        });
     });
 
     afterEach(() => {
@@ -239,8 +257,11 @@ describe('endpoint-tester', () => {
 
     it('should not re-initialize if already initialized', async () => {
         await init(container);
+        // Wait for async issuer loading to settle
+        await new Promise((r) => setTimeout(r, 10));
         const firstContent = container.innerHTML;
         await init(container);
+        await new Promise((r) => setTimeout(r, 10));
         expect(container.innerHTML).toBe(firstContent);
     });
 
@@ -395,5 +416,298 @@ describe('endpoint-tester', () => {
 
     it('should call cleanup without error', () => {
         expect(() => cleanup()).not.toThrow();
+    });
+
+    // -----------------------------------------------------------------------
+    // Token fetch section
+    // -----------------------------------------------------------------------
+
+    describe('token fetch section', () => {
+        it('should render collapsed token fetch section', async () => {
+            await init(container);
+
+            const section = container.querySelector('.token-fetch-section');
+            expect(section).not.toBeNull();
+
+            const body = container.querySelector('.token-fetch-body');
+            expect(body.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should toggle token fetch section on click', async () => {
+            await init(container);
+
+            const toggle = container.querySelector('.token-fetch-toggle');
+            const body = container.querySelector('.token-fetch-body');
+
+            // Expand
+            toggle.click();
+            expect(body.classList.contains('hidden')).toBe(false);
+
+            // Collapse
+            toggle.click();
+            expect(body.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should populate issuer dropdown from controller service', async () => {
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const selector = container.querySelector('.issuer-selector');
+            expect(selector.options.length).toBeGreaterThanOrEqual(1);
+            expect(selector.options[0].value).toBe('https://keycloak:8443/realms/master');
+        });
+
+        it('should show custom URL option in issuer dropdown', async () => {
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const selector = container.querySelector('.issuer-selector');
+            const lastOption = selector.options[selector.options.length - 1];
+            expect(lastOption.value).toBe('__custom__');
+        });
+
+        it('should hide ROPC fields for client_credentials grant', async () => {
+            await init(container);
+
+            const grantSelector = container.querySelector('.grant-type-selector');
+            grantSelector.value = 'client_credentials';
+            grantSelector.dispatchEvent(new Event('change'));
+
+            const ropcFields = container.querySelector('.ropc-fields');
+            expect(ropcFields.classList.contains('hidden')).toBe(true);
+        });
+
+        it('should show ROPC fields for password grant', async () => {
+            await init(container);
+
+            const grantSelector = container.querySelector('.grant-type-selector');
+            grantSelector.value = 'password';
+            grantSelector.dispatchEvent(new Event('change'));
+
+            const ropcFields = container.querySelector('.ropc-fields');
+            expect(ropcFields.classList.contains('hidden')).toBe(false);
+        });
+
+        it('should fetch token and populate textarea', async () => {
+            await init(container);
+
+            // Fill in required fields (default grant type is password/ROPC)
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-client-secret').value = 'secret';
+            container.querySelector('.tf-username').value = 'testUser';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.fetchOAuthToken).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    tokenEndpointUrl: 'https://keycloak:8443/token',
+                    clientId: 'test-client'
+                })
+            );
+
+            const tokenInput = container.querySelector('.token-input');
+            expect(tokenInput.value).toBe('fetched-token-123');
+        });
+
+        it('should show success status after token fetch', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-username').value = 'testUser';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('success')).toBe(true);
+            expect(status.textContent).toContain('tester.token.fetch.success');
+        });
+
+        it('should show error when token fetch fails', async () => {
+            api.fetchOAuthToken.mockRejectedValue(new Error('Network error'));
+
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.tf-client-id').value = 'test-client';
+            container.querySelector('.tf-username').value = 'testUser';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+            expect(status.textContent).toContain('tester.token.fetch.error');
+        });
+
+        it('should show error when token endpoint URL is missing', async () => {
+            await init(container);
+
+            container.querySelector('.tf-client-id').value = 'test-client';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+            expect(status.textContent).toContain('tester.token.fetch.error.missing.endpoint');
+        });
+
+        it('should show error when client ID is missing', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+            expect(status.textContent).toContain('tester.token.fetch.error.missing.fields');
+        });
+
+        it('should discover token endpoint via OIDC', async () => {
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Issuer should have loaded and first option should be the issuer URL
+            const issuerSelector = container.querySelector('.issuer-selector');
+            expect(issuerSelector.options[0].value).toBe(
+                'https://keycloak:8443/realms/master'
+            );
+
+            // Trigger change to discover endpoint
+            issuerSelector.dispatchEvent(new Event('change'));
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.discoverTokenEndpoint).toHaveBeenCalled();
+        });
+
+        it('should handle empty issuers gracefully', async () => {
+            api.resolveJwtConfigServiceId.mockResolvedValue(null);
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const selector = container.querySelector('.issuer-selector');
+            expect(selector.options[0].textContent).toContain('tester.token.fetch.issuer.none');
+        });
+
+        it('should handle issuer loading error gracefully', async () => {
+            api.resolveJwtConfigServiceId.mockRejectedValue(new Error('Not found'));
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const selector = container.querySelector('.issuer-selector');
+            expect(selector.options[0].textContent).toContain('tester.token.fetch.issuer.none');
+        });
+
+        it('should include username and password for password grant', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.grant-type-selector').value = 'password';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-username').value = 'admin';
+            container.querySelector('.tf-password').value = 'secret';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(api.fetchOAuthToken).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    grantType: 'password',
+                    username: 'admin',
+                    password: 'secret'
+                })
+            );
+        });
+
+        it('should not include username and password for client_credentials grant', async () => {
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.grant-type-selector').value = 'client_credentials';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-client-secret').value = 'secret';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const calledPayload = api.fetchOAuthToken.mock.calls[0][0];
+            expect(calledPayload.grantType).toBe('client_credentials');
+            expect(calledPayload.username).toBeUndefined();
+            expect(calledPayload.password).toBeUndefined();
+        });
+
+        it('should show error status for IDP error response', async () => {
+            api.fetchOAuthToken.mockResolvedValue({
+                idpStatus: 401,
+                error: 'invalid_client'
+            });
+
+            await init(container);
+
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.grant-type-selector').value = 'client_credentials';
+            container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-client-secret').value = 'secret';
+
+            container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+        });
+
+        it('should clear endpoint URL when custom issuer is selected', async () => {
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Set a URL first
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+
+            // Select custom option
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.value = '__custom__';
+            issuerSelector.dispatchEvent(new Event('change'));
+
+            expect(container.querySelector('.token-endpoint-url').value).toBe('');
+        });
+
+        it('should populate endpoint URL from auto-discovery on issuer change', async () => {
+            api.discoverTokenEndpoint.mockResolvedValue({
+                tokenEndpoint: 'https://keycloak:8443/realms/master/protocol/openid-connect/token'
+            });
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.dispatchEvent(new Event('change'));
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.token-endpoint-url').value).toBe(
+                'https://keycloak:8443/realms/master/protocol/openid-connect/token'
+            );
+        });
+
+        it('should show error when token endpoint discovery fails', async () => {
+            api.discoverTokenEndpoint.mockRejectedValue(new Error('Discovery failed'));
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.dispatchEvent(new Event('change'));
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+        });
     });
 });

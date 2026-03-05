@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -65,6 +66,25 @@ class GatewayProxyServletTest {
     private static final AtomicReference<Map<String, String>> processorProperties =
             new AtomicReference<>(createDefaultProperties());
 
+    /** Configurable IDP response body — reset before each test. */
+    private static final AtomicReference<String> idpResponseBody =
+            new AtomicReference<>("{\"access_token\":\"test-token\",\"expires_in\":300}");
+
+    /** Configurable IDP response status code — reset before each test. */
+    private static final AtomicReference<Integer> idpResponseStatus =
+            new AtomicReference<>(200);
+
+    /** Configurable controller service properties — reset before each test. */
+    private static final AtomicReference<Map<String, String>> csProperties =
+            new AtomicReference<>(createDefaultCsProperties());
+
+    private static Map<String, String> createDefaultCsProperties() {
+        Map<String, String> props = new HashMap<>();
+        props.put("issuer.primary.issuer", "https://keycloak:8443/realms/master");
+        props.put("issuer.primary.jwks-url", "https://keycloak:8443/realms/master/protocol/openid-connect/certs");
+        return props;
+    }
+
     private static Map<String, String> createDefaultProperties() {
         Map<String, String> props = new HashMap<>();
         props.put("rest.gateway.listening.port", "9443");
@@ -75,6 +95,7 @@ class GatewayProxyServletTest {
         props.put("rest.gateway.management.health.auth-mode", "local-only,bearer");
         props.put("rest.gateway.management.metrics.enabled", "true");
         props.put("rest.gateway.management.metrics.auth-mode", "local-only,bearer");
+        props.put("rest.gateway.jwt.config.service", "cs-id-1234");
         props.put("restapi.users.path", "/api/users");
         props.put("restapi.users.methods", "GET,POST");
         props.put("restapi.users.required-roles", "ADMIN");
@@ -124,6 +145,20 @@ class GatewayProxyServletTest {
                         return new GatewayResponse(200, "{\"result\":\"ok\"}",
                                 Map.of("Content-Type", "application/json"));
                     }
+
+                    @Override
+                    protected IdpResponse executeIdpRequest(String url, String method,
+                            String contentType, String body) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return new IdpResponse(idpResponseStatus.get(), idpResponseBody.get());
+                    }
+
+                    @Override
+                    protected Map<String, String> resolveControllerServiceProperties(
+                            String csId, HttpServletRequest request) throws IOException {
+                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        return csProperties.get();
+                    }
                 }), "/gateway/*"));
     }
 
@@ -138,6 +173,9 @@ class GatewayProxyServletTest {
         gatewayGetStatusCode.set(200);
         gatewayFailing.set(false);
         processorProperties.set(createDefaultProperties());
+        idpResponseBody.set("{\"access_token\":\"test-token\",\"expires_in\":300}");
+        idpResponseStatus.set(200);
+        csProperties.set(createDefaultCsProperties());
     }
 
     // -----------------------------------------------------------------------
@@ -640,6 +678,473 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .body(containsString("UP"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // POST — /token-fetch endpoint
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("POST /token-fetch endpoint")
+    class TokenFetchEndpoint {
+
+        @Test
+        @DisplayName("Should fetch token with valid password grant")
+        void shouldFetchTokenWithPasswordGrant() {
+            // Default CS properties already include an issuer with host "keycloak"
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"password","clientId":"test-client","clientSecret":"secret",\
+                            "username":"admin","password":"admin","scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"))
+                    .body("expires_in", equalTo(300))
+                    .body("idpStatus", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("Should fetch token with client_credentials grant")
+        void shouldFetchTokenWithClientCredentialsGrant() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"test-client","clientSecret":"secret",\
+                            "scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should reject missing processor ID")
+        void shouldRejectMissingProcessorId() {
+            handle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/token",\
+                            "grantType":"password","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
+        }
+
+        @Test
+        @DisplayName("Should reject missing required fields")
+        void shouldRejectMissingRequiredFields() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"grantType":"password"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing required fields"));
+        }
+
+        @Test
+        @DisplayName("Should reject invalid grant type")
+        void shouldRejectInvalidGrantType() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/token",\
+                            "grantType":"authorization_code","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid grant type"));
+        }
+
+        @Test
+        @DisplayName("Should reject password grant with missing username")
+        void shouldRejectPasswordGrantWithMissingUsername() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/token",\
+                            "grantType":"password","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing required field for password grant: username"));
+        }
+
+        @Test
+        @DisplayName("Should block SSRF for disallowed host")
+        void shouldBlockSsrfForDisallowedHost() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://evil.com/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Token endpoint host not allowed"));
+        }
+
+        @Test
+        @DisplayName("Should allow localhost for token endpoint")
+        void shouldAllowLocalhostForTokenEndpoint() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            "grantType":"password","clientId":"c","clientSecret":"s",\
+                            "username":"u","password":"p","scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should forward IDP error response")
+        void shouldForwardIdpErrorResponse() {
+            idpResponseStatus.set(401);
+            idpResponseBody.set("{\"error\":\"invalid_client\"}");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"password","clientId":"c","clientSecret":"s",\
+                            "username":"u","password":"p","scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("idpStatus", equalTo(401))
+                    .body("error", containsString("Token request failed"));
+        }
+
+        @Test
+        @DisplayName("Should handle blank scope by omitting it from request")
+        void shouldHandleBlankScope() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s",\
+                            "scope":""}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should handle IDP 200 response without access_token")
+        void shouldHandleIdpResponseWithoutAccessToken() {
+            idpResponseBody.set("{\"token_type\":\"bearer\",\"expires_in\":300}");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("idpStatus", equalTo(200))
+                    .body("$", not(hasKey("access_token")));
+        }
+
+        @Test
+        @DisplayName("Should handle IDP non-200 with null body")
+        void shouldHandleIdpNon200WithNullBody() {
+            idpResponseStatus.set(500);
+            idpResponseBody.set(null);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("idpStatus", equalTo(500))
+                    .body("error", containsString("Token request failed"));
+        }
+
+        @Test
+        @DisplayName("Should handle IDP 200 with malformed JSON body")
+        void shouldHandleIdp200WithMalformedJson() {
+            idpResponseBody.set("not-json-at-all");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid JSON"));
+        }
+
+        @Test
+        @DisplayName("Should handle token fetch when gateway is unavailable (IOException)")
+        void shouldHandleTokenFetchWhenGatewayUnavailable() {
+            gatewayFailing.set(true);
+
+            // Use localhost URL because when gateway is failing, resolveProcessorProperties
+            // throws and SSRF check falls back to localhost-only allowed hosts
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(502)
+                    .body("error", containsString("Token fetch failed"));
+        }
+
+        @Test
+        @DisplayName("Should fetch token when no controller service is configured")
+        void shouldFetchTokenWithNoControllerService() {
+            // Remove controller service reference — SSRF check falls back to localhost-only
+            Map<String, String> propsNoCs = new HashMap<>(createDefaultProperties());
+            propsNoCs.remove("rest.gateway.jwt.config.service");
+            processorProperties.set(propsNoCs);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should reject invalid JSON body")
+        void shouldRejectInvalidJson() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{ not valid }")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid JSON"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // POST — /discover-token-endpoint
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("POST /discover-token-endpoint")
+    class DiscoverTokenEndpoint {
+
+        @Test
+        @DisplayName("Should discover token endpoint from OIDC configuration")
+        void shouldDiscoverTokenEndpoint() {
+            idpResponseBody.set("""
+                    {"issuer":"https://keycloak:8443/realms/master",\
+                    "token_endpoint":"https://keycloak:8443/realms/master/protocol/openid-connect/token"}""");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(200)
+                    .body("tokenEndpoint", equalTo(
+                            "https://keycloak:8443/realms/master/protocol/openid-connect/token"));
+        }
+
+        @Test
+        @DisplayName("Should reject missing issuer URL")
+        void shouldRejectMissingIssuerUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":""}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing required field: issuerUrl"));
+        }
+
+        @Test
+        @DisplayName("Should reject missing processor ID")
+        void shouldRejectMissingProcessorId() {
+            handle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing processor ID"));
+        }
+
+        @Test
+        @DisplayName("Should block SSRF for disallowed issuer host")
+        void shouldBlockSsrfForDisallowedIssuerHost() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"http://evil.com/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Issuer host not allowed"));
+        }
+
+        @Test
+        @DisplayName("Should return error when discovery doc has no token_endpoint")
+        void shouldReturnErrorWhenNoTokenEndpointInDiscovery() {
+            idpResponseBody.set("""
+                    {"issuer":"https://keycloak:8443/realms/master"}""");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(502)
+                    .body("error", containsString("No token_endpoint"));
+        }
+
+        @Test
+        @DisplayName("Should reject invalid JSON body for discover")
+        void shouldRejectInvalidJsonForDiscover() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("{ not valid }")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid JSON"));
+        }
+
+        @Test
+        @DisplayName("Should handle IDP discovery failure")
+        void shouldHandleIdpDiscoveryFailure() {
+            idpResponseStatus.set(404);
+            idpResponseBody.set("Not Found");
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(502)
+                    .body("error", containsString("OIDC discovery failed"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Token endpoint SSRF host allowlist (pure unit tests)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Token endpoint host allowlist")
+    class AllowedIssuerHosts {
+
+        @Test
+        @DisplayName("Should always allow localhost variants")
+        void shouldAlwaysAllowLocalhost() {
+            Set<String> hosts = Set.of("localhost", "127.0.0.1", "::1");
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://localhost:8080/token", hosts));
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://127.0.0.1:8080/token", hosts));
+        }
+
+        @Test
+        @DisplayName("Should allow configured issuer hosts")
+        void shouldAllowConfiguredIssuerHosts() {
+            Set<String> hosts = Set.of("localhost", "keycloak", "idp.example.com");
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "https://keycloak:8443/realms/master/protocol/openid-connect/token", hosts));
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "https://idp.example.com/token", hosts));
+        }
+
+        @Test
+        @DisplayName("Should reject non-configured hosts")
+        void shouldRejectNonConfiguredHosts() {
+            Set<String> hosts = Set.of("localhost", "keycloak");
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://evil.com/token", hosts));
+        }
+
+        @Test
+        @DisplayName("Should handle malformed URLs")
+        void shouldHandleMalformedUrls() {
+            Set<String> hosts = Set.of("localhost");
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "not-a-valid-url", hosts));
+        }
+
+        @Test
+        @DisplayName("Should be case-insensitive for host matching")
+        void shouldBeCaseInsensitiveForHostMatching() {
+            Set<String> hosts = Set.of("keycloak");
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://Keycloak:8080/token", hosts));
         }
     }
 }

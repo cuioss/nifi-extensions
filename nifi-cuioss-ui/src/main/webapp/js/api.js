@@ -214,6 +214,24 @@ export const fetchGatewayApi = (path) =>
 export const sendGatewayTestRequest = (payload) =>
     request('POST', `${BASE_URL}/gateway/test`, payload);
 
+/**
+ * Fetch an OAuth token from the IDP via the backend proxy.
+ *
+ * @param {Object} payload  token request: {tokenEndpointUrl, grantType, clientId, clientSecret, username, password, scope}
+ * @returns {Promise<Object>}  token response: {access_token, expires_in, idpStatus, error?}
+ */
+export const fetchOAuthToken = (payload) =>
+    request('POST', `${BASE_URL}/gateway/token-fetch`, payload);
+
+/**
+ * Discover the token endpoint URL via OIDC discovery.
+ *
+ * @param {string} issuerUrl  the issuer URL
+ * @returns {Promise<Object>}  discovery response: {tokenEndpoint}
+ */
+export const discoverTokenEndpoint = (issuerUrl) =>
+    request('POST', `${BASE_URL}/gateway/discover-token-endpoint`, { issuerUrl });
+
 // ---------------------------------------------------------------------------
 // Direct Controller Service accessors (bypass detectComponentType cache)
 // ---------------------------------------------------------------------------
