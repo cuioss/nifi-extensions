@@ -471,6 +471,13 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
+            if ("password".equals(grantType)
+                    && requestBody.getString("username", "").isBlank()) {
+                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                        "Missing required field for password grant: username");
+                return;
+            }
+
             // SSRF protection: check token endpoint host against allowed issuer hosts
             Set<String> allowedHosts = resolveAllowedIssuerHosts(processorId, req);
             if (!isAllowedTokenEndpointHost(tokenEndpointUrl, allowedHosts)) {

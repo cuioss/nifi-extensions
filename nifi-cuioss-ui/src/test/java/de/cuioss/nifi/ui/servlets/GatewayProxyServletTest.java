@@ -773,6 +773,22 @@ class GatewayProxyServletTest {
         }
 
         @Test
+        @DisplayName("Should reject password grant with missing username")
+        void shouldRejectPasswordGrantWithMissingUsername() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/token",\
+                            "grantType":"password","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Missing required field for password grant: username"));
+        }
+
+        @Test
         @DisplayName("Should block SSRF for disallowed host")
         void shouldBlockSsrfForDisallowedHost() {
             handle.spec()
@@ -780,7 +796,7 @@ class GatewayProxyServletTest {
                     .contentType("application/json")
                     .body("""
                             {"tokenEndpointUrl":"http://evil.com/token",\
-                            "grantType":"password","clientId":"c","clientSecret":"s"}""")
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
                     .when()
                     .post("/gateway/token-fetch")
                     .then()
