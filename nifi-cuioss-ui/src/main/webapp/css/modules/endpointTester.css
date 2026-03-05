@@ -279,3 +279,17 @@
 .token-fetch-status.error {
     color: var(--error-color, #c62828);
 }
+
+/* Validation error state */
+.token-fetch-body input.input-error,
+.token-fetch-body select.input-error {
+    border-color: var(--error-color, #c62828);
+    box-shadow: 0 0 0 1px var(--error-color, #c62828);
+}
+
+/* Required field asterisk */
+.token-fetch-body .form-group label.required-field::after {
+    content: ' *';
+    color: var(--error-color, #c62828);
+    font-weight: bold;
+}

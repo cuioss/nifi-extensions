@@ -24,7 +24,6 @@ export class KeycloakTokenService {
     this.keycloakBase = CONSTANTS.SERVICE_URLS.KEYCLOAK_BASE;
     this.realm = CONSTANTS.KEYCLOAK_CONFIG.REALM;
     this.clientId = CONSTANTS.KEYCLOAK_CONFIG.CLIENT_ID;
-    this.clientSecret = CONSTANTS.KEYCLOAK_CONFIG.CLIENT_SECRET;
     this.tokenEndpoint = CONSTANTS.SERVICE_URLS.KEYCLOAK_TOKEN;
   }
 
@@ -47,7 +46,6 @@ export class KeycloakTokenService {
         body: new URLSearchParams({
           grant_type: 'password',
           client_id: this.clientId,
-          client_secret: this.clientSecret,
           username: CONSTANTS.AUTH.USERNAME,
           password: CONSTANTS.AUTH.PASSWORD,
           scope: 'openid'
@@ -236,7 +234,6 @@ export async function getLimitedUserAccessToken() {
     body: new URLSearchParams({
       grant_type: 'password',
       client_id: service.clientId,
-      client_secret: service.clientSecret,
       username: LIMITED_USER_CONFIG.USERNAME,
       password: LIMITED_USER_CONFIG.PASSWORD,
       scope: 'openid'

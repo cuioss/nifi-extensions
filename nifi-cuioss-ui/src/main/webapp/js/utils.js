@@ -267,6 +267,7 @@ export const TRANSLATIONS = {
         'tester.token.fetch.error.missing.endpoint': 'Token endpoint URL is required',
         'tester.token.fetch.discover': 'Discover',
         'tester.token.fetch.discovering': 'Discovering...',
+        'tester.token.fetch.expired': 'Token expired',
 
         // -- metrics --
         'metrics.btn.refresh': 'Refresh',
@@ -650,6 +651,7 @@ export const TRANSLATIONS = {
         'tester.token.fetch.error.missing.endpoint': 'Token-Endpunkt-URL ist erforderlich',
         'tester.token.fetch.discover': 'Ermitteln',
         'tester.token.fetch.discovering': 'Ermittle\u2026',
+        'tester.token.fetch.expired': 'Token abgelaufen',
 
         // -- metrics --
         'metrics.btn.refresh': 'Aktualisieren',

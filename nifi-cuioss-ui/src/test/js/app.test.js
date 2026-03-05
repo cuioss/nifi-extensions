@@ -20,7 +20,8 @@ jest.mock('../../main/webapp/js/rest-endpoint-config.js', () => ({
     init: jest.fn()
 }));
 jest.mock('../../main/webapp/js/endpoint-tester.js', () => ({
-    init: jest.fn()
+    init: jest.fn(),
+    cleanup: jest.fn()
 }));
 jest.mock('../../main/webapp/js/api.js', () => ({
     getComponentId: jest.fn().mockReturnValue(''),

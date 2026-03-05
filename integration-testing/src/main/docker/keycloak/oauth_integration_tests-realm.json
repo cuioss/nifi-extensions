@@ -37,11 +37,9 @@
     {
       "clientId": "test_client",
       "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "yTKslWLtf4giJcWCaoVJ20H8sy6STexM",
+      "publicClient": true,
       "redirectUris": ["*"],
       "webOrigins": ["*"],
-      "publicClient": false,
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true,
       "protocolMappers": [

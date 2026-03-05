@@ -29,8 +29,7 @@ export const AUTH = {
  */
 export const KEYCLOAK_CONFIG = {
   REALM: 'oauth_integration_tests',
-  CLIENT_ID: 'test_client',
-  CLIENT_SECRET: 'yTKslWLtf4giJcWCaoVJ20H8sy6STexM'
+  CLIENT_ID: 'test_client'
 };
 
 /**

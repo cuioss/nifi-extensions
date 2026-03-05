@@ -16,6 +16,11 @@
  */
 package de.cuioss.nifi.integration;
 
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SSLConfig;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.hamcrest.Matcher;
@@ -25,12 +30,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 
 import java.io.StringReader;
 import java.net.http.HttpClient;
@@ -88,7 +87,6 @@ class KeycloakRealmConfigIT {
                 .setAccept(ContentType.JSON)
                 .addFormParam("grant_type", "password")
                 .addFormParam("client_id", CLIENT_ID)
-                .addFormParam("client_secret", CLIENT_SECRET)
                 .addFormParam("scope", "openid")
                 .build();
 
@@ -208,18 +206,33 @@ class KeycloakRealmConfigIT {
         }
 
         @Test
-        @DisplayName("test_client should NOT support client_credentials grant")
+        @DisplayName("test_client (public) should NOT support client_credentials grant")
         void testClientShouldRejectClientCredentialsGrant() {
             given().baseUri(KEYCLOAK_TOKEN_ENDPOINT)
                     .config(keycloakSslConfig)
                     .contentType("application/x-www-form-urlencoded")
                     .formParam("grant_type", "client_credentials")
                     .formParam("client_id", CLIENT_ID)
-                    .formParam("client_secret", CLIENT_SECRET)
                     .when()
                     .post()
                     .then()
                     .statusCode(401);
+        }
+
+        @Test
+        @DisplayName("other_client (confidential) should support client_credentials grant")
+        void otherClientShouldSupportClientCredentialsGrant() {
+            given().baseUri(OTHER_REALM_TOKEN_ENDPOINT)
+                    .config(keycloakSslConfig)
+                    .contentType("application/x-www-form-urlencoded")
+                    .formParam("grant_type", "client_credentials")
+                    .formParam("client_id", OTHER_CLIENT_ID)
+                    .formParam("client_secret", OTHER_CLIENT_SECRET)
+                    .when()
+                    .post()
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", notNullValue());
         }
     }
 

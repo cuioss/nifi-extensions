@@ -16,15 +16,14 @@
  */
 package de.cuioss.nifi.integration;
 
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -72,7 +71,7 @@ class RestApiGatewayIT {
         waitForEndpoint(httpClient, GATEWAY_BASE + "/api/data", Duration.ofSeconds(120));
 
         String token = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, CLIENT_SECRET, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
 
         authSpec = new RequestSpecBuilder()
                 .setBaseUri(GATEWAY_BASE)

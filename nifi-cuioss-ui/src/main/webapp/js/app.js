@@ -13,7 +13,7 @@ import { init as initIssuerConfig } from './issuer-config.js';
 import { init as initTokenVerifier } from './token-verifier.js';
 import { init as initMetrics, cleanup as cleanupMetrics } from './metrics.js';
 import { init as initEndpointConfig } from './rest-endpoint-config.js';
-import { init as initEndpointTester } from './endpoint-tester.js';
+import { init as initEndpointTester, cleanup as cleanupEndpointTester } from './endpoint-tester.js';
 import { getComponentId, detectComponentType, resolveJwtConfigServiceId } from './api.js';
 import { log, t, lang } from './utils.js';
 
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Expose cleanup for potential NiFi lifecycle
-globalThis.jwtUICleanup = () => { cleanupMetrics(); };
+globalThis.jwtUICleanup = () => { cleanupMetrics(); cleanupEndpointTester(); };
 
 // Expose for testing
 export { configureTabsForType, initComponents };
