@@ -1572,10 +1572,22 @@ test.describe("REST API Gateway Tabs", () => {
         }
         await expect(tokenFetchBody).toBeVisible({ timeout: 5000 });
 
+        // Use auto-discovery via the issuer dropdown (resolves Docker-internal URL)
+        const issuerSelector = testerPanel.locator(".issuer-selector");
+        await expect(issuerSelector).toBeVisible({ timeout: 10000 });
+
+        // Wait for issuers to load (first option should not be "loading" or "none")
+        await expect(issuerSelector.locator("option").first()).not.toHaveValue("", { timeout: 10000 });
+
+        // Trigger discover by changing issuer selection
+        const discoverBtn = testerPanel.locator(".discover-btn");
+        await discoverBtn.click();
+
+        // Wait for token endpoint URL to be populated
+        const tokenEndpointInput = testerPanel.locator(".token-endpoint-url");
+        await expect(tokenEndpointInput).not.toHaveValue("", { timeout: 10000 });
+
         // Fill in ROPC fields — public client, no secret needed
-        const tokenEndpointUrl = (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085') +
-            '/realms/oauth_integration_tests/protocol/openid-connect/token';
-        await testerPanel.locator(".token-endpoint-url").fill(tokenEndpointUrl);
         await testerPanel.locator(".tf-client-id").fill(CONSTANTS.KEYCLOAK_CONFIG.CLIENT_ID);
         await testerPanel.locator(".tf-username").fill(CONSTANTS.AUTH.USERNAME);
         await testerPanel.locator(".tf-password").fill(CONSTANTS.AUTH.PASSWORD);
