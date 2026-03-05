@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jest-environment-jsdom
+ * @jest-environment-options {"url": "http://localhost:8080/nifi-cuioss-ui/"}
+ */
 'use strict';
 
 /**
@@ -39,9 +43,8 @@ describe('issuer-config', () => {
         container.id = 'issuer-config';
         document.body.appendChild(container);
 
-        // Default: no processor ID in URL (standalone mode)
-        delete globalThis.location;
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/' };
+        // Reset location to default URL (jsdom 25+ makes location non-configurable)
+        history.replaceState({}, '', '/nifi-cuioss-ui/');
     });
 
     afterEach(() => {
@@ -79,7 +82,7 @@ describe('issuer-config', () => {
     });
 
     it('should load existing issuers when processor ID is present', async () => {
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
+        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
         api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
@@ -97,7 +100,7 @@ describe('issuer-config', () => {
     });
 
     it('should fall back to sample issuer when API fails', async () => {
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
+        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
         api.getComponentProperties.mockRejectedValue(new Error('API error'));
 
         await init(container);
@@ -183,7 +186,7 @@ describe('issuer-config', () => {
     });
 
     it('should save issuer via API when processor ID is present', async () => {
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
+        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
         api.getComponentProperties.mockResolvedValue({ properties: {} });
         api.updateComponentProperties.mockResolvedValue({});
 
@@ -287,7 +290,7 @@ describe('issuer-config', () => {
     });
 
     it('should show error when save via API fails', async () => {
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
+        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
         api.getComponentProperties.mockResolvedValue({ properties: {} });
         api.updateComponentProperties.mockRejectedValue(new Error('Save failed'));
 
@@ -322,7 +325,7 @@ describe('issuer-config', () => {
     });
 
     it('should remove issuer and clear API properties when processor ID is present', async () => {
-        globalThis.location = { href: 'http://localhost:8080/nifi-cuioss-ui/?id=test-processor-123' };
+        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
         api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
