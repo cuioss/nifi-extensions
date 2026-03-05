@@ -153,16 +153,14 @@ export const init = async (element) => {
     });
 
     // Clear input-error on typing/change
-    container.querySelector('.token-fetch-body').addEventListener('input', (e) => {
+    const tokenFetchBody = container.querySelector('.token-fetch-body');
+    const clearInputError = (e) => {
         if (e.target.classList.contains('input-error')) {
             e.target.classList.remove('input-error');
         }
-    });
-    container.querySelector('.token-fetch-body').addEventListener('change', (e) => {
-        if (e.target.classList.contains('input-error')) {
-            e.target.classList.remove('input-error');
-        }
-    });
+    };
+    tokenFetchBody.addEventListener('input', clearInputError);
+    tokenFetchBody.addEventListener('change', clearInputError);
 
     // Discover button
     container.querySelector('.discover-btn').addEventListener('click', () => {
@@ -500,9 +498,10 @@ const handleFetchToken = async (container) => {
         hasErrors = true;
     }
 
+    let username, password;
     if (grantType === 'password') {
-        const username = container.querySelector('.tf-username').value.trim();
-        const password = container.querySelector('.tf-password').value;
+        username = container.querySelector('.tf-username').value.trim();
+        password = container.querySelector('.tf-password').value;
         if (!username) {
             markFieldError(container, '.tf-username');
             hasErrors = true;
@@ -527,8 +526,8 @@ const handleFetchToken = async (container) => {
     const payload = { tokenEndpointUrl, grantType, clientId, clientSecret, scope };
 
     if (grantType === 'password') {
-        payload.username = container.querySelector('.tf-username').value.trim();
-        payload.password = container.querySelector('.tf-password').value;
+        payload.username = username;
+        payload.password = password;
     }
 
     fetchBtn.disabled = true;
