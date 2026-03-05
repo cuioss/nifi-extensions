@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jest-environment-jsdom
+ * @jest-environment-options {"url": "http://localhost:8080/nifi-jwt-ui/?id=test-processor-id"}
+ */
 'use strict';
 
 /**
@@ -68,10 +72,8 @@ describe('rest-endpoint-config', () => {
             return Promise.resolve(true);
         });
 
-        Object.defineProperty(globalThis, 'location', {
-            value: { href: 'http://localhost:8080/nifi-jwt-ui/?id=test-processor-id' },
-            writable: true
-        });
+        // Reset location (URL set via @jest-environment-options docblock)
+        history.replaceState({}, '', '/nifi-jwt-ui/?id=test-processor-id');
 
         container = document.createElement('div');
         container.id = 'endpoint-config';

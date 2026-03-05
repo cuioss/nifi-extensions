@@ -1,3 +1,7 @@
+/**
+ * @jest-environment jest-environment-jsdom
+ * @jest-environment-options {"url": "https://nifi:8443/nifi"}
+ */
 'use strict';
 
 import {
@@ -20,12 +24,8 @@ beforeEach(() => {
     globalThis.fetch = jest.fn();
     delete globalThis.jwtAuthConfig;
     resetComponentCache();
-    // Provide a default location for processor ID extraction
-    Object.defineProperty(globalThis, 'location', {
-        value: { search: '', href: 'https://nifi:8443/nifi' },
-        writable: true,
-        configurable: true
-    });
+    // Reset location to default URL (jsdom 25+ makes location non-configurable)
+    history.replaceState({}, '', '/nifi');
 });
 
 const mockJsonResponse = (data, ok = true, status = 200) => {
@@ -543,10 +543,7 @@ describe('processor ID header', () => {
     });
 
     test('extracts processorId from URL query param', async () => {
-        globalThis.location = {
-            search: '?id=url-proc-id',
-            href: 'https://nifi:8443/nifi?id=url-proc-id'
-        };
+        history.replaceState({}, '', '/nifi?id=url-proc-id');
         mockJsonResponse({});
 
         await verifyToken('test');
@@ -583,12 +580,12 @@ describe('getComponentId', () => {
     });
 
     test('extracts id from URL search params', () => {
-        globalThis.location = { search: '?id=url-id', href: 'https://nifi:8443' };
+        history.replaceState({}, '', '/?id=url-id');
         expect(getComponentId()).toBe('url-id');
     });
 
     test('returns empty string when no ID available', () => {
-        globalThis.location = { search: '', href: 'https://nifi:8443' };
+        history.replaceState({}, '', '/');
         expect(getComponentId()).toBe('');
     });
 });
