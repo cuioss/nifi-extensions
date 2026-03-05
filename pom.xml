@@ -151,7 +151,7 @@
         <version.jjwt>0.13.0</version.jjwt>
         <version.jspecify>1.0.0</version.jspecify>
         <version.awaitility>4.3.0</version.awaitility>
-        <version.json-schema>1.9.0</version.json-schema>
+        <version.json-schema>1.9.1</version.json-schema>
     </properties>
 
     <dependencyManagement>
