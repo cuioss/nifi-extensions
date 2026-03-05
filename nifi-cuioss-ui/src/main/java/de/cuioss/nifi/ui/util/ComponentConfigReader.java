@@ -25,19 +25,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.*;
 import org.jspecify.annotations.Nullable;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.*;
 
@@ -200,7 +193,7 @@ public class ComponentConfigReader {
         LOGGER.debug("Fetching component %s via REST API: %s", componentId, apiUrl);
 
         try {
-            HttpClient client = buildTrustAllHttpClient();
+            HttpClient client = buildHttpClient();
             HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .GET()
@@ -393,36 +386,17 @@ public class ComponentConfigReader {
         reqBuilder.header("Cookie", sb.toString());
     }
 
-    @SuppressWarnings("java:S4830") // Trust-all is required: NiFi uses self-signed certs in Docker
-    public static HttpClient buildTrustAllHttpClient() {
-        try {
-            TrustManager[] trustAllCerts = {new X509TrustManager() {
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }
-
-                @Override
-                public void checkClientTrusted(X509Certificate[] certs, String authType) {
-                    // Trust all — required for NiFi's self-signed certificates
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] certs, String authType) {
-                    // Trust all — required for NiFi's self-signed certificates
-                }
-            }};
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAllCerts, new SecureRandom());
-
-            return HttpClient.newBuilder()
-                    .sslContext(sslContext)
-                    .connectTimeout(Duration.ofSeconds(5))
-                    .build();
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            throw new IllegalStateException("Failed to create trust-all HTTP client", e);
-        }
+    /**
+     * Creates an HTTP client that uses the JVM's default truststore for TLS validation.
+     * The NiFi JVM is configured with a truststore containing the self-signed certificate
+     * via bootstrap.conf JVM arguments.
+     *
+     * @return an HTTP client with proper TLS validation
+     */
+    public static HttpClient buildHttpClient() {
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .build();
     }
 
     private ComponentDetails fetchDetails(String componentId, UiExtensionType extensionType,

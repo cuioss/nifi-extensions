@@ -41,7 +41,7 @@ Parse the argument to determine which workflow to execute. Default (no args) = s
 Builds NAR, copies to `target/nifi-deploy/`, starts Keycloak + NiFi.
 NiFi takes ~60-80s to become healthy. URLs after start:
 - NiFi: https://localhost:9095/nifi (testUser / drowssap)
-- Keycloak: http://localhost:9080 (admin / admin)
+- Keycloak: https://localhost:9085 (admin / admin)
 
 **After containers are healthy, run the [NiFi Browser Login](#nifi-browser-login) procedure, then display the [Sandbox Credentials](#sandbox-credentials).**
 
@@ -143,7 +143,7 @@ ROPC (password grant):
   Password:    drowssap
 
 Token Endpoint (auto-discovered via issuer):
-  http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/token
+  https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/token
 
 Other realm (for cross-issuer testing):
   Realm:         other_realm

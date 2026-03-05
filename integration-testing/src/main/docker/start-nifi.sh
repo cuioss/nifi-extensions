@@ -23,7 +23,6 @@ docker compose up -d nifi
 echo "Waiting for NiFi to be ready..."
 echo "NiFi will be available at: https://localhost:9095/nifi"
 echo "Keycloak HTTPS will be available at: https://localhost:9085"
-echo "Keycloak HTTP admin will be available at: http://localhost:9080"
 
 # Wait for health check with improved fail-fast
 echo "Checking health status with 2-minute timeout..."
@@ -44,7 +43,6 @@ if [ $COUNTER -lt $MAX_ATTEMPTS ]; then
     echo "✅ NiFi is ready!"
     echo "🌐 Access NiFi at: https://localhost:9095/nifi"
     echo "🔒 Keycloak HTTPS: https://localhost:9085"
-    echo "🔑 Keycloak HTTP Admin: http://localhost:9080"
     echo ""
     echo "Perfect for:"
     echo "  ✓ MCP Playwright testing (NiFi HTTP)"

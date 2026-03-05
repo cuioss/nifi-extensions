@@ -10,6 +10,8 @@ ENV NIFI_BOOTSTRAP_JVM_MIN=512m
 ENV NIFI_BOOTSTRAP_JVM_MAX=1g
 
 # Copy custom configuration files and set proper ownership
+# NOTE: NiFi 2.x requires flow.json.gz (gzipped). If you update flow.json,
+# regenerate it: gzip -c flow.json > flow.json.gz
 COPY --chown=nifi:nifi nifi/conf/ /opt/nifi/nifi-current/conf/
 
 # Expose HTTP, HTTPS, flow pipeline, and REST API gateway ports

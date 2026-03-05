@@ -16,9 +16,6 @@
  */
 package de.cuioss.nifi.integration;
 
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.hamcrest.Matcher;
@@ -28,6 +25,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SSLConfig;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 
 import java.io.StringReader;
 import java.net.http.HttpClient;
@@ -62,18 +65,25 @@ import static org.hamcrest.Matchers.*;
 @DisplayName("Keycloak Realm Configuration Tests")
 class KeycloakRealmConfigIT {
 
+    private static RestAssuredConfig keycloakSslConfig;
     private static RequestSpecification tokenSpec;
     private static RequestSpecification otherRealmTokenSpec;
 
     @BeforeAll
     static void setUp() throws Exception {
         HttpClient httpClient = HttpClient.newBuilder()
+                .sslContext(createSslContext())
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
         waitForEndpoint(httpClient, KEYCLOAK_BASE, Duration.ofSeconds(120));
 
+        keycloakSslConfig = RestAssuredConfig.config()
+                .sslConfig(SSLConfig.sslConfig().trustStore(
+                        "src/main/docker/certificates/truststore.p12", "password"));
+
         tokenSpec = new RequestSpecBuilder()
                 .setBaseUri(KEYCLOAK_TOKEN_ENDPOINT)
+                .setConfig(keycloakSslConfig)
                 .setContentType("application/x-www-form-urlencoded")
                 .setAccept(ContentType.JSON)
                 .addFormParam("grant_type", "password")
@@ -84,6 +94,7 @@ class KeycloakRealmConfigIT {
 
         otherRealmTokenSpec = new RequestSpecBuilder()
                 .setBaseUri(OTHER_REALM_TOKEN_ENDPOINT)
+                .setConfig(keycloakSslConfig)
                 .setContentType("application/x-www-form-urlencoded")
                 .setAccept(ContentType.JSON)
                 .addFormParam("grant_type", "password")
@@ -200,6 +211,7 @@ class KeycloakRealmConfigIT {
         @DisplayName("test_client should NOT support client_credentials grant")
         void testClientShouldRejectClientCredentialsGrant() {
             given().baseUri(KEYCLOAK_TOKEN_ENDPOINT)
+                    .config(keycloakSslConfig)
                     .contentType("application/x-www-form-urlencoded")
                     .formParam("grant_type", "client_credentials")
                     .formParam("client_id", CLIENT_ID)

@@ -13,8 +13,8 @@ cd "$SCRIPT_DIR"
 
 # Function to check if Keycloak is healthy
 check_keycloak_health() {
-    # Check the health/ready endpoint on the management port
-    curl -f -s http://localhost:9086/health/ready > /dev/null 2>&1
+    # Check the health/ready endpoint on the management port (HTTPS, self-signed cert)
+    curl -k -f -s https://localhost:9086/health/ready > /dev/null 2>&1
 }
 
 # Function to wait for Keycloak with improved instrumentation
@@ -23,7 +23,7 @@ wait_for_keycloak() {
     local attempt=1
     
     echo "⏳ Waiting for Keycloak to be ready..."
-    echo "  Checking: http://localhost:9086/health/ready"
+    echo "  Checking: https://localhost:9086/health/ready"
     
     while [ $attempt -le $max_attempts ]; do
         if check_keycloak_health; then
@@ -65,9 +65,8 @@ wait_for_keycloak() {
 # Main execution
 main() {
     echo "🔑 Starting Keycloak..."
-    echo "  HTTP Admin: http://localhost:9080"
     echo "  HTTPS: https://localhost:9085"
-    echo "  Health: http://localhost:9086/health"
+    echo "  Health: https://localhost:9086/health"
     
     # Check if Keycloak is already running
     if check_keycloak_health; then
@@ -95,7 +94,7 @@ main() {
     else
         echo ""
         echo "💡 Troubleshooting tips:"
-        echo "  1. Check if ports 9080, 9085, 9086 are already in use"
+        echo "  1. Check if ports 9085, 9086 are already in use"
         echo "  2. Ensure sufficient memory is available (Keycloak needs ~512MB)"
         echo "  3. Try: docker compose down keycloak && docker compose up -d keycloak"
         echo "  4. Check full logs: docker compose logs keycloak"

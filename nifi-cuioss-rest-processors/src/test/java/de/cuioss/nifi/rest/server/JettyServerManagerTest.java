@@ -27,8 +27,7 @@ import org.junit.jupiter.api.*;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -37,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -200,7 +198,7 @@ class JettyServerManagerTest {
 
             // Create client that trusts the self-signed cert
             HttpClient client = HttpClient.newBuilder()
-                    .sslContext(createTrustAllSslContext())
+                    .sslContext(createTestTrustSslContext())
                     .build();
 
             var response = client.send(
@@ -270,30 +268,20 @@ class JettyServerManagerTest {
     }
 
     /**
-     * Creates a trust-all SSLContext for the test HTTP client.
+     * Creates an SSLContext that trusts the test keystore's self-signed certificate.
+     * Uses the same keystore as trust material (the server cert is also the CA cert).
      */
-    @SuppressWarnings("java:S4830") // Trust-all is intentional for self-signed test certs
-    private static SSLContext createTrustAllSslContext() throws Exception {
-        TrustManager[] trustAll = {
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for test self-signed certs
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for test self-signed certs
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
+    @SuppressWarnings("java:S6437") // Hardcoded password intentional in tests
+    private static SSLContext createTestTrustSslContext() throws Exception {
+        KeyStore trustStore = KeyStore.getInstance("PKCS12");
+        try (var is = JettyServerManagerTest.class.getClassLoader().getResourceAsStream(TEST_KEYSTORE)) {
+            trustStore.load(is, KEYSTORE_PASSWORD);
+        }
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(trustStore);
         SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAll, new SecureRandom());
+        sslContext.init(null, tmf.getTrustManagers(), new SecureRandom());
         return sslContext;
     }
 }

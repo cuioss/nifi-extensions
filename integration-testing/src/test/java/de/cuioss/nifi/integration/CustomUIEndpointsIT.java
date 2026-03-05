@@ -16,13 +16,14 @@
  */
 package de.cuioss.nifi.integration;
 
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 
 import javax.net.ssl.SSLContext;
 import java.net.URI;
@@ -63,7 +64,7 @@ class CustomUIEndpointsIT {
 
     @BeforeAll
     static void setUp() throws Exception {
-        SSLContext sslContext = createTrustAllSslContext();
+        SSLContext sslContext = createSslContext();
 
         HttpClient httpClient = HttpClient.newBuilder()
                 .sslContext(sslContext)
@@ -250,7 +251,7 @@ class CustomUIEndpointsIT {
             // the SSRF check permits this.
             given().spec(authSpec)
                     .body(Map.of("jwksUrl",
-                            "http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs"))
+                            "https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs"))
                     .when()
                     .post("/nifi-api/processors/jwt/validate-jwks-url")
                     .then()

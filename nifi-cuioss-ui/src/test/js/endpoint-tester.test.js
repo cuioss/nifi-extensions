@@ -13,8 +13,8 @@ import * as utils from '../../main/webapp/js/utils.js';
 
 const SAMPLE_CS_PROPERTIES = {
     properties: {
-        'issuer.primary.issuer': 'http://keycloak:8080/realms/master',
-        'issuer.primary.jwks-url': 'http://keycloak:8080/realms/master/protocol/openid-connect/certs'
+        'issuer.primary.issuer': 'https://keycloak:8443/realms/master',
+        'issuer.primary.jwks-url': 'https://keycloak:8443/realms/master/protocol/openid-connect/certs'
     }
 };
 
@@ -68,7 +68,7 @@ describe('endpoint-tester', () => {
             idpStatus: 200
         });
         api.discoverTokenEndpoint.mockResolvedValue({
-            tokenEndpoint: 'http://keycloak:8080/realms/master/protocol/openid-connect/token'
+            tokenEndpoint: 'https://keycloak:8443/realms/master/protocol/openid-connect/token'
         });
     });
 
@@ -454,7 +454,7 @@ describe('endpoint-tester', () => {
 
             const selector = container.querySelector('.issuer-selector');
             expect(selector.options.length).toBeGreaterThanOrEqual(1);
-            expect(selector.options[0].value).toBe('http://keycloak:8080/realms/master');
+            expect(selector.options[0].value).toBe('https://keycloak:8443/realms/master');
         });
 
         it('should show custom URL option in issuer dropdown', async () => {
@@ -492,7 +492,7 @@ describe('endpoint-tester', () => {
             await init(container);
 
             // Fill in required fields (default grant type is password/ROPC)
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-client-secret').value = 'secret';
             container.querySelector('.tf-username').value = 'testUser';
@@ -502,7 +502,7 @@ describe('endpoint-tester', () => {
 
             expect(api.fetchOAuthToken).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    tokenEndpointUrl: 'http://keycloak:8080/token',
+                    tokenEndpointUrl: 'https://keycloak:8443/token',
                     clientId: 'test-client'
                 })
             );
@@ -514,7 +514,7 @@ describe('endpoint-tester', () => {
         it('should show success status after token fetch', async () => {
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-username').value = 'testUser';
 
@@ -531,7 +531,7 @@ describe('endpoint-tester', () => {
 
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.tf-client-id').value = 'test-client';
             container.querySelector('.tf-username').value = 'testUser';
 
@@ -559,7 +559,7 @@ describe('endpoint-tester', () => {
         it('should show error when client ID is missing', async () => {
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
 
             container.querySelector('.fetch-token-btn').click();
             await new Promise((r) => setTimeout(r, 10));
@@ -576,7 +576,7 @@ describe('endpoint-tester', () => {
             // Issuer should have loaded and first option should be the issuer URL
             const issuerSelector = container.querySelector('.issuer-selector');
             expect(issuerSelector.options[0].value).toBe(
-                'http://keycloak:8080/realms/master'
+                'https://keycloak:8443/realms/master'
             );
 
             // Trigger change to discover endpoint
@@ -609,7 +609,7 @@ describe('endpoint-tester', () => {
         it('should include username and password for password grant', async () => {
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.grant-type-selector').value = 'password';
             container.querySelector('.tf-client-id').value = 'client';
             container.querySelector('.tf-username').value = 'admin';
@@ -630,7 +630,7 @@ describe('endpoint-tester', () => {
         it('should not include username and password for client_credentials grant', async () => {
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
             container.querySelector('.grant-type-selector').value = 'client_credentials';
             container.querySelector('.tf-client-id').value = 'client';
             container.querySelector('.tf-client-secret').value = 'secret';
@@ -652,10 +652,58 @@ describe('endpoint-tester', () => {
 
             await init(container);
 
-            container.querySelector('.token-endpoint-url').value = 'http://keycloak:8080/token';
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+            container.querySelector('.grant-type-selector').value = 'client_credentials';
             container.querySelector('.tf-client-id').value = 'client';
+            container.querySelector('.tf-client-secret').value = 'secret';
 
             container.querySelector('.fetch-token-btn').click();
+            await new Promise((r) => setTimeout(r, 10));
+
+            const status = container.querySelector('.token-fetch-status');
+            expect(status.classList.contains('error')).toBe(true);
+        });
+
+        it('should clear endpoint URL when custom issuer is selected', async () => {
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            // Set a URL first
+            container.querySelector('.token-endpoint-url').value = 'https://keycloak:8443/token';
+
+            // Select custom option
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.value = '__custom__';
+            issuerSelector.dispatchEvent(new Event('change'));
+
+            expect(container.querySelector('.token-endpoint-url').value).toBe('');
+        });
+
+        it('should populate endpoint URL from auto-discovery on issuer change', async () => {
+            api.discoverTokenEndpoint.mockResolvedValue({
+                tokenEndpoint: 'https://keycloak:8443/realms/master/protocol/openid-connect/token'
+            });
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.dispatchEvent(new Event('change'));
+            await new Promise((r) => setTimeout(r, 10));
+
+            expect(container.querySelector('.token-endpoint-url').value).toBe(
+                'https://keycloak:8443/realms/master/protocol/openid-connect/token'
+            );
+        });
+
+        it('should show error when token endpoint discovery fails', async () => {
+            api.discoverTokenEndpoint.mockRejectedValue(new Error('Discovery failed'));
+
+            await init(container);
+            await new Promise((r) => setTimeout(r, 10));
+
+            const issuerSelector = container.querySelector('.issuer-selector');
+            issuerSelector.dispatchEvent(new Event('change'));
             await new Promise((r) => setTimeout(r, 10));
 
             const status = container.querySelector('.token-fetch-status');

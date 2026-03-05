@@ -16,14 +16,15 @@
  */
 package de.cuioss.nifi.integration;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import lombok.experimental.UtilityClass;
+
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import lombok.experimental.UtilityClass;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -126,7 +127,7 @@ class CustomUITestSupport {
      * Builds a REST Assured {@link RequestSpecification} pre-configured with:
      * <ul>
      *   <li>Base URI = Custom UI base path</li>
-     *   <li>Relaxed HTTPS validation (trust-all for Docker self-signed certs)</li>
+     *   <li>Truststore-based HTTPS validation (Docker self-signed certs)</li>
      *   <li>{@code Authorization: Bearer <jwt>} header</li>
      *   <li>{@code X-Processor-Id: <uuid>} header</li>
      *   <li>{@code Content-Type: application/json}</li>
@@ -146,7 +147,9 @@ class CustomUITestSupport {
         return new RequestSpecBuilder()
                 .setBaseUri(customUIBase)
                 .setConfig(RestAssuredConfig.config()
-                        .sslConfig(SSLConfig.sslConfig().relaxedHTTPSValidation()))
+                        .sslConfig(SSLConfig.sslConfig().trustStore(
+                                "src/main/docker/certificates/truststore.p12",
+                                "password")))
                 .addHeader("Authorization", "Bearer " + bearerToken)
                 .addHeader("X-Processor-Id", processorId)
                 .setContentType(ContentType.JSON)
@@ -169,7 +172,9 @@ class CustomUITestSupport {
         return new RequestSpecBuilder()
                 .setBaseUri(customUIBase)
                 .setConfig(RestAssuredConfig.config()
-                        .sslConfig(SSLConfig.sslConfig().relaxedHTTPSValidation()))
+                        .sslConfig(SSLConfig.sslConfig().trustStore(
+                                "src/main/docker/certificates/truststore.p12",
+                                "password")))
                 .addHeader("Authorization", "Bearer " + bearerToken)
                 .setContentType(ContentType.JSON)
                 .setAccept(ContentType.JSON)

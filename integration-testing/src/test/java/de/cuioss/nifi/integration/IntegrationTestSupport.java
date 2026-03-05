@@ -23,8 +23,7 @@ import jakarta.json.JsonValue;
 import lombok.experimental.UtilityClass;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
@@ -33,8 +32,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyStore;
 import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
@@ -51,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class IntegrationTestSupport {
 
     // ── Keycloak: oauth_integration_tests realm ────────────────────────
-    static final String KEYCLOAK_BASE = "http://localhost:9080";
+    static final String KEYCLOAK_BASE = "https://localhost:9085";
     static final String KEYCLOAK_TOKEN_ENDPOINT = KEYCLOAK_BASE
             + "/realms/oauth_integration_tests/protocol/openid-connect/token";
     static final String KEYCLOAK_JWKS_ENDPOINT = KEYCLOAK_BASE
@@ -76,7 +77,7 @@ class IntegrationTestSupport {
     static final String GATEWAY_BASE = "http://localhost:9443";
 
     // Expected issuer value (as seen by NiFi inside Docker network)
-    static final String EXPECTED_ISSUER = "http://keycloak:8080/realms/oauth_integration_tests";
+    static final String EXPECTED_ISSUER = "https://keycloak:8443/realms/oauth_integration_tests";
 
     private static final String NIFI_USERNAME = "testUser";
     private static final String NIFI_PASSWORD = "drowssap";
@@ -173,35 +174,28 @@ class IntegrationTestSupport {
                 .collect(Collectors.joining("&"));
     }
 
+    private static final Path TRUSTSTORE_PATH = Path.of(
+            "src/main/docker/certificates/truststore.p12");
+    private static final char[] TRUSTSTORE_PASSWORD = "password".toCharArray();
+
     /**
-     * Creates an SSLContext that trusts all certificates, suitable for
-     * Docker-based integration tests with self-signed certificates.
+     * Creates an SSLContext that trusts the project's self-signed certificates
+     * via the Docker truststore. Unlike a trust-all approach, this validates
+     * certificates properly against the known CA.
      *
-     * @return an SSLContext configured to trust all certificates
+     * @return an SSLContext configured with the project truststore
      */
-    @SuppressWarnings("java:S4830") // Trust-all SSL is intentional for self-signed Docker certs
-    static SSLContext createTrustAllSslContext() throws Exception {
-        TrustManager[] trustAllManagers = {
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        // Trust all for Docker self-signed certs
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
-
+    @SuppressWarnings("java:S6437") // Hardcoded password intentional in tests
+    static SSLContext createSslContext() throws Exception {
+        KeyStore trustStore = KeyStore.getInstance("PKCS12");
+        try (var is = Files.newInputStream(TRUSTSTORE_PATH)) {
+            trustStore.load(is, TRUSTSTORE_PASSWORD);
+        }
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(trustStore);
         SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllManagers, new SecureRandom());
+        sslContext.init(null, tmf.getTrustManagers(), new SecureRandom());
         return sslContext;
     }
 

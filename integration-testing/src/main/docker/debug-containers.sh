@@ -56,12 +56,5 @@ else
     echo "❌ Keycloak HTTPS (9085) is not accessible"
 fi
 
-echo "Checking port 9080 (Keycloak HTTP):"
-if curl --fail --max-time 3 --silent http://localhost:9080/ > /dev/null 2>&1; then
-    echo "✅ Keycloak HTTP (9080) is accessible"
-else
-    echo "❌ Keycloak HTTP (9080) is not accessible"
-fi
-
 echo ""
 echo "=== End of Diagnostics ==="

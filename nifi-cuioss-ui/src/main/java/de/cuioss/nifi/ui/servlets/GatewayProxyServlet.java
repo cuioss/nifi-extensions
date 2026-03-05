@@ -87,6 +87,9 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
     static final Set<String> ALLOWED_GRANT_TYPES = Set.of("password", "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
+    private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
+    private static final String MSG_INVALID_JSON = "Invalid JSON request body";
+    private static final String FALSE_STRING = "false";
 
     /** Cached gateway ports by processor ID. */
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
@@ -110,7 +113,7 @@ public class GatewayProxyServlet extends HttpServlet {
             String processorId = req.getHeader(PROCESSOR_ID_HEADER);
             if (processorId == null || processorId.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing processor ID");
+                        MSG_MISSING_PROCESSOR_ID);
                 return;
             }
 
@@ -142,7 +145,7 @@ public class GatewayProxyServlet extends HttpServlet {
 
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
@@ -174,7 +177,7 @@ public class GatewayProxyServlet extends HttpServlet {
             String processorId = req.getHeader(PROCESSOR_ID_HEADER);
             if (processorId == null || processorId.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing processor ID");
+                        MSG_MISSING_PROCESSOR_ID);
                 return;
             }
 
@@ -239,10 +242,10 @@ public class GatewayProxyServlet extends HttpServlet {
 
         } catch (JsonException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid JSON request body");
+                    MSG_INVALID_JSON);
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
@@ -326,7 +329,7 @@ public class GatewayProxyServlet extends HttpServlet {
     protected GatewayGetResponse executeGatewayGet(String url, String accept)
             throws IOException {
         try {
-            HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
+            HttpClient client = ComponentConfigReader.buildHttpClient();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -359,7 +362,7 @@ public class GatewayProxyServlet extends HttpServlet {
     protected GatewayResponse executeGatewayRequest(String url, String method,
             Map<String, String> headers, String body) throws IOException {
         try {
-            HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
+            HttpClient client = ComponentConfigReader.buildHttpClient();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -405,7 +408,7 @@ public class GatewayProxyServlet extends HttpServlet {
     protected IdpResponse executeIdpRequest(String url, String method,
             String contentType, String body) throws IOException {
         try {
-            HttpClient client = ComponentConfigReader.buildTrustAllHttpClient();
+            HttpClient client = ComponentConfigReader.buildHttpClient();
 
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -439,7 +442,7 @@ public class GatewayProxyServlet extends HttpServlet {
             String processorId = req.getHeader(PROCESSOR_ID_HEADER);
             if (processorId == null || processorId.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing processor ID");
+                        MSG_MISSING_PROCESSOR_ID);
                 return;
             }
 
@@ -477,58 +480,24 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            // Build form-urlencoded body
-            Map<String, String> params = new LinkedHashMap<>();
-            params.put("grant_type", grantType);
-            params.put("client_id", clientId);
-            if (!clientSecret.isBlank()) {
-                params.put("client_secret", clientSecret);
-            }
-            if ("password".equals(grantType)) {
-                params.put("username", requestBody.getString("username", ""));
-                params.put("password", requestBody.getString("password", ""));
-            }
-            if (!scope.isBlank()) {
-                params.put("scope", scope);
-            }
-
-            String formBody = params.entrySet().stream()
-                    .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
-                            + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                    .collect(Collectors.joining("&"));
+            String formBody = buildTokenFormBody(requestBody, grantType,
+                    clientId, clientSecret, scope);
 
             IdpResponse idpResp = executeIdpRequest(tokenEndpointUrl, "POST",
                     "application/x-www-form-urlencoded", formBody);
 
             JsonObjectBuilder result = Json.createObjectBuilder()
                     .add("idpStatus", idpResp.statusCode());
-
-            if (idpResp.statusCode() == 200 && idpResp.body() != null) {
-                try (var jsonReader = JSON_READER.createReader(
-                             new StringReader(idpResp.body()))) {
-                    JsonObject tokenResponse = jsonReader.readObject();
-                    if (tokenResponse.containsKey("access_token")) {
-                        result.add("access_token",
-                                tokenResponse.getString("access_token"));
-                    }
-                    if (tokenResponse.containsKey("expires_in")) {
-                        result.add("expires_in",
-                                tokenResponse.getInt("expires_in"));
-                    }
-                }
-            } else {
-                result.add("error", idpResp.body() != null ? idpResp.body()
-                        : "Token request failed with status " + idpResp.statusCode());
-            }
+            parseTokenResponse(idpResp, result);
 
             writeJsonResponse(resp, HttpServletResponse.SC_OK, result.build());
         } catch (JsonException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid JSON request body");
-        } catch (Exception e) {
+                    MSG_INVALID_JSON);
+        } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_TOKEN_FETCH_FAILED, e.getMessage());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                    "Token fetch failed: " + e.getMessage());
+                    "Token fetch failed");
         }
     }
 
@@ -538,7 +507,7 @@ public class GatewayProxyServlet extends HttpServlet {
             String processorId = req.getHeader(PROCESSOR_ID_HEADER);
             if (processorId == null || processorId.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing processor ID");
+                        MSG_MISSING_PROCESSOR_ID);
                 return;
             }
 
@@ -596,12 +565,59 @@ public class GatewayProxyServlet extends HttpServlet {
             }
         } catch (JsonException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid JSON request body");
-        } catch (Exception e) {
+                    MSG_INVALID_JSON);
+        } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_OIDC_DISCOVERY_FAILED,
                     e.getMessage());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                    "OIDC discovery failed: " + e.getMessage());
+                    "OIDC discovery failed");
+        }
+    }
+
+    /**
+     * Builds the URL-encoded form body for the token request.
+     */
+    private static String buildTokenFormBody(JsonObject requestBody, String grantType,
+            String clientId, String clientSecret, String scope) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("grant_type", grantType);
+        params.put("client_id", clientId);
+        if (!clientSecret.isBlank()) {
+            params.put("client_secret", clientSecret);
+        }
+        if ("password".equals(grantType)) {
+            params.put("username", requestBody.getString("username", ""));
+            params.put("password", requestBody.getString("password", ""));
+        }
+        if (!scope.isBlank()) {
+            params.put("scope", scope);
+        }
+        return params.entrySet().stream()
+                .map(e -> URLEncoder.encode(e.getKey(), StandardCharsets.UTF_8)
+                        + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+                .collect(Collectors.joining("&"));
+    }
+
+    /**
+     * Parses the IDP token response and adds fields to the result builder.
+     */
+    private static void parseTokenResponse(IdpResponse idpResp, JsonObjectBuilder result) {
+        if (idpResp.statusCode() == 200 && idpResp.body() != null) {
+            try (var jsonReader = JSON_READER.createReader(
+                         new StringReader(idpResp.body()))) {
+                JsonObject tokenResponse = jsonReader.readObject();
+                if (tokenResponse.containsKey("access_token")) {
+                    result.add("access_token",
+                            tokenResponse.getString("access_token"));
+                }
+                if (tokenResponse.containsKey("expires_in")) {
+                    result.add("expires_in",
+                            tokenResponse.getInt("expires_in"));
+                }
+            }
+        } else {
+            result.add("error",
+                    "Token request failed (HTTP " + idpResp.statusCode() + ")");
         }
     }
 
@@ -644,7 +660,7 @@ public class GatewayProxyServlet extends HttpServlet {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.warn(e, "Failed to resolve issuer hosts for SSRF check: %s",
                     e.getMessage());
         }
@@ -773,7 +789,7 @@ public class GatewayProxyServlet extends HttpServlet {
             JsonObjectBuilder routeObj = Json.createObjectBuilder();
             routeObj.add("name", routeEntry.getKey());
             routeObj.add("path", path);
-            routeObj.add("enabled", !"false".equalsIgnoreCase(
+            routeObj.add("enabled", !FALSE_STRING.equalsIgnoreCase(
                     routeProps.getOrDefault("enabled", "true")));
             routeObj.add("methods", buildStringArray(routeProps.get("methods")));
             routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
@@ -785,10 +801,10 @@ public class GatewayProxyServlet extends HttpServlet {
             String successOutcome = routeProps.get("success-outcome");
             if (successOutcome != null && !successOutcome.isBlank()) {
                 routeObj.add("successOutcome", successOutcome);
-            } else if (!"false".equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
+            } else if (!FALSE_STRING.equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
                 routeObj.add("successOutcome", routeEntry.getKey());
             }
-            routeObj.add("createFlowFile", !"false".equalsIgnoreCase(
+            routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
                     routeProps.getOrDefault("create-flowfile", "true")));
             String authMode = routeProps.getOrDefault("auth-mode", "bearer");
             routeObj.add("authMode", authMode);
@@ -822,7 +838,7 @@ public class GatewayProxyServlet extends HttpServlet {
         health.add("name", "health");
         health.add("path", "/health");
         health.add("methods", Json.createArrayBuilder().add("GET"));
-        health.add("enabled", !"false".equalsIgnoreCase(
+        health.add("enabled", !FALSE_STRING.equalsIgnoreCase(
                 prop(props, HEALTH_ENABLED_PROPERTY, "true")));
         health.add("authMode", prop(props, HEALTH_AUTH_MODE_PROPERTY, "local-only,bearer"));
         health.add("requiredRoles", prop(props, HEALTH_REQUIRED_ROLES_PROPERTY, ""));
@@ -834,7 +850,7 @@ public class GatewayProxyServlet extends HttpServlet {
         metrics.add("name", "metrics");
         metrics.add("path", "/metrics");
         metrics.add("methods", Json.createArrayBuilder().add("GET"));
-        metrics.add("enabled", !"false".equalsIgnoreCase(
+        metrics.add("enabled", !FALSE_STRING.equalsIgnoreCase(
                 prop(props, METRICS_ENABLED_PROPERTY, "true")));
         metrics.add("authMode", prop(props, METRICS_AUTH_MODE_PROPERTY, "local-only,bearer"));
         metrics.add("requiredRoles", prop(props, METRICS_REQUIRED_ROLES_PROPERTY, ""));
