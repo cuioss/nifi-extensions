@@ -85,6 +85,7 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
+    @SuppressWarnings("java:S2068") // "password" is the OAuth 2.0 grant type name, not a credential
     static final Set<String> ALLOWED_GRANT_TYPES = Set.of("password", "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";

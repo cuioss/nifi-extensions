@@ -252,12 +252,12 @@ export const TRANSLATIONS = {
         'tester.token.fetch.endpoint': 'Token Endpoint URL',
         'tester.token.fetch.endpoint.placeholder': 'https://keycloak:8080/realms/master/protocol/openid-connect/token',
         'tester.token.fetch.grant.type': 'Grant Type',
-        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)',
+        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)', // NOSONAR — i18n label
         'tester.token.fetch.grant.client': 'Client Credentials',
         'tester.token.fetch.client.id': 'Client ID',
         'tester.token.fetch.client.secret': 'Client Secret',
         'tester.token.fetch.username': 'Username',
-        'tester.token.fetch.password': 'Password',
+        'tester.token.fetch.password': 'Password', // NOSONAR — i18n label
         'tester.token.fetch.scope': 'Scope',
         'tester.token.fetch.btn': 'Fetch Token',
         'tester.token.fetch.btn.fetching': 'Fetching...',
@@ -635,12 +635,12 @@ export const TRANSLATIONS = {
         'tester.token.fetch.endpoint': 'Token-Endpunkt-URL',
         'tester.token.fetch.endpoint.placeholder': 'https://keycloak:8080/realms/master/protocol/openid-connect/token',
         'tester.token.fetch.grant.type': 'Grant-Typ',
-        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)',
+        'tester.token.fetch.grant.password': 'Resource Owner Password (ROPC)', // NOSONAR — i18n label
         'tester.token.fetch.grant.client': 'Client Credentials',
         'tester.token.fetch.client.id': 'Client-ID',
         'tester.token.fetch.client.secret': 'Client-Secret',
         'tester.token.fetch.username': 'Benutzername',
-        'tester.token.fetch.password': 'Passwort',
+        'tester.token.fetch.password': 'Passwort', // NOSONAR — i18n label
         'tester.token.fetch.scope': 'Scope',
         'tester.token.fetch.btn': 'Token abrufen',
         'tester.token.fetch.btn.fetching': 'Rufe ab\u2026',
