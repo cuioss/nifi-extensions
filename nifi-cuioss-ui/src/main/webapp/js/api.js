@@ -276,11 +276,13 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
 /**
  * Update a processor's run status (RUNNING or STOPPED).
  */
-const updateProcessorRunStatus = (componentId, state, revision) =>
-    request('PUT', `/nifi-api/processors/${componentId}/run-status`, {
+const updateProcessorRunStatus = (componentId, state, revision) => {
+    assertValidUuid(componentId, 'Processor ID');
+    return request('PUT', `/nifi-api/processors/${componentId}/run-status`, {
         revision,
         state
     });
+};
 
 /**
  * Poll until the processor reaches the desired state (max ~10s).
@@ -293,6 +295,7 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
         if (data.component?.state === desiredState) return;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
+    throw new Error(`Processor did not reach state '${desiredState}' within ${maxAttempts * delayMs / 1000} seconds.`);
 };
 
 /**
@@ -346,6 +349,7 @@ const autoTerminateStaleRelationships = async (componentId, info) => {
  * @returns {Promise<Set<string>>}  set of connected relationship names
  */
 export const getConnectedRelationships = async (componentId) => {
+    assertValidUuid(componentId, 'Processor ID');
     try {
         const proc = await request('GET', `/nifi-api/processors/${componentId}`);
         const pgId = proc.component?.parentGroupId;

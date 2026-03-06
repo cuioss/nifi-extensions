@@ -349,32 +349,33 @@ describe('updateComponentProperties', () => {
     });
 
     test('should stop RUNNING processor before updating and restart after', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-run' };
+        const procId = '00000000-0000-0000-0000-000000000010';
+        globalThis.jwtAuthConfig = { processorId: procId };
         const autoTerminated = ['failure', 'disabled-test'];
         // Detection
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // GET current — RUNNING
-        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-run', state: 'RUNNING', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 1 }, component: { id: procId, state: 'RUNNING', config: { autoTerminatedRelationships: autoTerminated } } });
         // PUT stop run-status
         mockJsonResponse({ revision: { version: 2 } });
         // GET poll state — STOPPED
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
         // GET fresh revision
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
         // PUT property update
         mockJsonResponse({ revision: { version: 3 } });
         // GET for autoTerminateUnconnectedRelationships — no validation errors
-        mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-run', state: 'STOPPED', validationErrors: [] } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: procId, state: 'STOPPED', validationErrors: [] } });
         // GET for restart
-        mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: procId, state: 'STOPPED' } });
         // PUT restart run-status
         mockJsonResponse({ revision: { version: 4 } });
 
-        await updateComponentProperties('proc-run', { 'key': 'value' });
+        await updateComponentProperties(procId, { 'key': 'value' });
 
         // Verify stop was called
         const stopCall = globalThis.fetch.mock.calls[2];
-        expect(stopCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
+        expect(stopCall[0]).toBe(`/nifi-api/processors/${procId}/run-status`);
         expect(JSON.parse(stopCall[1].body).state).toBe('STOPPED');
 
         // Verify property update has correct structure and preserves autoTerminatedRelationships
@@ -385,29 +386,30 @@ describe('updateComponentProperties', () => {
 
         // Verify restart was called
         const restartCall = globalThis.fetch.mock.calls[8];
-        expect(restartCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
+        expect(restartCall[0]).toBe(`/nifi-api/processors/${procId}/run-status`);
         expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
     });
 
     test('should auto-terminate stale relationships but keep active ones during restart', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-stale' };
+        const procId = '00000000-0000-0000-0000-000000000011';
+        globalThis.jwtAuthConfig = { processorId: procId };
         // Detection
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // GET current — RUNNING
-        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-stale', state: 'RUNNING', config: { autoTerminatedRelationships: [] } } });
+        mockJsonResponse({ revision: { version: 1 }, component: { id: procId, state: 'RUNNING', config: { autoTerminatedRelationships: [] } } });
         // PUT stop
         mockJsonResponse({ revision: { version: 2 } });
         // GET poll — STOPPED
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-stale', state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
         // GET fresh
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-stale', state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
         // PUT property update
         mockJsonResponse({ revision: { version: 3 } });
         // GET for autoTerminateStaleRelationships — has stale + active unconnected relationships
         mockJsonResponse({
             revision: { version: 3 },
             component: {
-                id: 'proc-stale', state: 'STOPPED',
+                id: procId, state: 'STOPPED',
                 validationErrors: [
                     "'Relationship old-rel' is invalid because Relationship 'old-rel' is not connected to any component and is not auto-terminated",
                     "'Relationship new-rel' is invalid because Relationship 'new-rel' is not connected to any component and is not auto-terminated"
@@ -423,11 +425,11 @@ describe('updateComponentProperties', () => {
         // PUT auto-terminate stale only
         mockJsonResponse({ revision: { version: 4 } });
         // GET for restart
-        mockJsonResponse({ revision: { version: 4 }, component: { id: 'proc-stale', state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 4 }, component: { id: procId, state: 'STOPPED' } });
         // PUT restart
         mockJsonResponse({ revision: { version: 5 } });
 
-        await updateComponentProperties('proc-stale', { 'key': 'value' });
+        await updateComponentProperties(procId, { 'key': 'value' });
 
         // Verify auto-terminate PUT only includes 'old-rel' (stale), not 'new-rel' (active)
         const autoTermCall = globalThis.fetch.mock.calls[7];
@@ -441,33 +443,37 @@ describe('updateComponentProperties', () => {
 // ---------------------------------------------------------------------------
 
 describe('getConnectedRelationships', () => {
+    const PROC_UUID = '00000000-0000-0000-0000-000000000001';
+    const OTHER_UUID = '00000000-0000-0000-0000-000000000099';
+    const PG_UUID = '00000000-0000-0000-0000-00000000000a';
+
     test('should return set of connected relationship names', async () => {
         // GET processor
-        mockJsonResponse({ component: { id: 'proc-1', parentGroupId: 'pg-1' } });
+        mockJsonResponse({ component: { id: PROC_UUID, parentGroupId: PG_UUID } });
         // GET connections
         mockJsonResponse({
             connections: [
-                { component: { source: { id: 'proc-1' }, selectedRelationships: ['admin', 'data'] } },
-                { component: { source: { id: 'other-proc' }, selectedRelationships: ['unrelated'] } },
-                { component: { source: { id: 'proc-1' }, selectedRelationships: ['validated'] } }
+                { component: { source: { id: PROC_UUID }, selectedRelationships: ['admin', 'data'] } },
+                { component: { source: { id: OTHER_UUID }, selectedRelationships: ['unrelated'] } },
+                { component: { source: { id: PROC_UUID }, selectedRelationships: ['validated'] } }
             ]
         });
 
-        const result = await getConnectedRelationships('proc-1');
+        const result = await getConnectedRelationships(PROC_UUID);
         expect(result).toEqual(new Set(['admin', 'data', 'validated']));
     });
 
     test('should return empty set when no parentGroupId', async () => {
-        mockJsonResponse({ component: { id: 'proc-1' } });
+        mockJsonResponse({ component: { id: PROC_UUID } });
 
-        const result = await getConnectedRelationships('proc-1');
+        const result = await getConnectedRelationships(PROC_UUID);
         expect(result).toEqual(new Set());
     });
 
     test('should return empty set on error', async () => {
         globalThis.fetch.mockRejectedValueOnce(new Error('Network error'));
 
-        const result = await getConnectedRelationships('proc-1');
+        const result = await getConnectedRelationships(PROC_UUID);
         expect(result).toEqual(new Set());
     });
 });
