@@ -1297,27 +1297,27 @@ test.describe("REST API Gateway Tabs", () => {
         });
         await expect(refreshButton).toBeVisible({ timeout: 5000 });
 
-        // Wait 1.1s so the timestamp will differ (second-level granularity)
-        await page.waitForTimeout(1100);
+        // Wait 2s so the timestamp will differ (second-level granularity, CI can be slow)
+        await page.waitForTimeout(2000);
 
         // Click refresh
         await refreshButton.click();
 
-        // Wait for refresh to complete
-        await page.waitForLoadState("networkidle");
+        // Wait for timestamp to actually change (poll up to 10s)
+        if (!timestampBefore.includes("Never")) {
+            await expect(lastUpdated).not.toHaveText(timestampBefore, {
+                timeout: 10000,
+            });
+        }
 
         // Verify metrics content remains visible and stable after refresh
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
 
         // Verify last-updated element is still present (refresh didn't break the UI)
-        await expect(lastUpdated).toBeVisible({ timeout: 5000 });
         const timestampAfter = await lastUpdated.textContent();
 
         // Gateway metrics are real — timestamp should have changed after refresh
         expect(timestampAfter).toContain("Last updated:");
-        if (!timestampBefore.includes("Never")) {
-            expect(timestampAfter).not.toBe(timestampBefore);
-        }
     });
 
     test("should export gateway metrics in JSON format", async ({
