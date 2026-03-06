@@ -569,7 +569,8 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         await loadManagement();
 
         const routes = parseRouteProperties(props);
-        renderRouteSummaryTable(routesContainer, routes, componentId);
+        const connectedRels = await api.getConnectedRelationships(componentId);
+        renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
     } catch {
         renderRouteSummaryTable(routesContainer, {}, componentId);
     }
@@ -584,8 +585,9 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
  * @param {HTMLElement} container  the .routes-container element
  * @param {Object} routes  parsed route map {name: {path, methods, enabled, ...}}
  * @param {string} componentId  NiFi processor component ID
+ * @param {Set<string>} [connectedRels]  set of relationship names wired on the NiFi canvas
  */
-const renderRouteSummaryTable = (container, routes, componentId) => {
+const renderRouteSummaryTable = (container, routes, componentId, connectedRels) => {
     // Remove any existing table
     const existing = container.querySelector('.route-summary-table');
     if (existing) existing.remove();
@@ -615,7 +617,9 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
-            const row = createTableRow(name, routes[name], componentId, container);
+            const outcome = routes[name]?.['success-outcome']?.trim() || name;
+            const origin = connectedRels && connectedRels.has(outcome) ? 'persisted' : 'new';
+            const row = createTableRow(name, routes[name], componentId, container, origin);
             tbody.appendChild(row);
         }
     }

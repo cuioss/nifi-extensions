@@ -71,6 +71,8 @@ describe('rest-endpoint-config', () => {
             onConfirm();
             return Promise.resolve(true);
         });
+        // Default: all relationships appear connected (bootstrapped on NiFi canvas)
+        api.getConnectedRelationships.mockResolvedValue(new Set(['health', 'data', 'api-data']));
 
         // Reset location (URL set via @jest-environment-options docblock)
         history.replaceState({}, '', '/nifi-jwt-ui/?id=test-processor-id');
@@ -1211,6 +1213,43 @@ describe('rest-endpoint-config', () => {
         for (const line of dataLines) {
             expect(line).not.toContain('# [session-only]');
         }
+    });
+
+    it('should show lock icon only for routes with connected relationships', async () => {
+        // Only 'health' is connected; 'data' is not
+        api.getConnectedRelationships.mockResolvedValue(new Set(['health']));
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        expect(healthRow.querySelector('.origin-persisted')).not.toBeNull();
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        expect(dataRow.dataset.origin).toBe('new');
+        expect(dataRow.querySelector('.origin-new')).not.toBeNull();
+        expect(dataRow.querySelector('.origin-persisted')).toBeNull();
+    });
+
+    it('should use success-outcome for connection check when specified', async () => {
+        // 'api-data' is connected (custom outcome), 'health' is not
+        api.getConnectedRelationships.mockResolvedValue(new Set(['api-data']));
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        expect(dataRow.dataset.origin).toBe('persisted');
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('new');
     });
 
     it('should show dash in Connection column when create-flowfile is false', async () => {

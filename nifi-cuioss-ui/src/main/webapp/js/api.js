@@ -262,7 +262,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
         // Always restart if it was running, even if the update failed
         if (wasRunning) {
             try {
-                await autoTerminateUnconnectedRelationships(componentId, info);
+                await autoTerminateStaleRelationships(componentId, info);
                 const latest = await request('GET', `${info.apiPath}/${componentId}`);
                 await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
             } catch { /* best effort restart */ }
@@ -294,11 +294,13 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
 };
 
 /**
- * After a property update, check if the processor has unconnected relationships
- * (e.g. stale dynamic relationships from removed routes) and auto-terminate them
- * so the processor can restart.
+ * After a property update, auto-terminate only *stale* unconnected relationships
+ * (from removed routes). Newly added route relationships are left unconnected so
+ * the user can wire them on the NiFi canvas.
+ *
+ * Stale = relationship exists but no restapi.*.success-outcome property references it.
  */
-const autoTerminateUnconnectedRelationships = async (componentId, info) => {
+const autoTerminateStaleRelationships = async (componentId, info) => {
     const proc = await request('GET', `${info.apiPath}/${componentId}`);
     const errors = proc.component?.validationErrors || [];
     // Parse relationship names from validation errors like:
@@ -313,12 +315,49 @@ const autoTerminateUnconnectedRelationships = async (componentId, info) => {
 
     if (unconnected.length === 0) return;
 
+    // Determine which relationships are backed by current route properties
+    const props = proc.component?.config?.properties || {};
+    const activeOutcomes = new Set(
+        Object.entries(props)
+            .filter(([k]) => k.endsWith('.success-outcome'))
+            .map(([, v]) => v)
+            .filter(Boolean)
+    );
+
+    // Only auto-terminate stale relationships (no matching success-outcome)
+    const stale = unconnected.filter((rel) => !activeOutcomes.has(rel));
+    if (stale.length === 0) return;
+
     const current = proc.component?.config?.autoTerminatedRelationships || [];
-    const updated = [...new Set([...current, ...unconnected])];
+    const updated = [...new Set([...current, ...stale])];
     await request('PUT', `${info.apiPath}/${componentId}`, {
         revision: proc.revision,
         component: { id: componentId, config: { autoTerminatedRelationships: updated } }
     });
+};
+
+/**
+ * Get the set of relationship names that are connected to downstream components
+ * on the NiFi canvas for a given processor.
+ *
+ * @param {string} componentId  processor ID
+ * @returns {Promise<Set<string>>}  set of connected relationship names
+ */
+export const getConnectedRelationships = async (componentId) => {
+    try {
+        const proc = await request('GET', `/nifi-api/processors/${componentId}`);
+        const pgId = proc.component?.parentGroupId;
+        if (!pgId) return new Set();
+        const connData = await request('GET', `/nifi-api/process-groups/${pgId}/connections`);
+        const connections = connData.connections || [];
+        return new Set(
+            connections
+                .filter((c) => c.component?.source?.id === componentId)
+                .flatMap((c) => c.component.selectedRelationships || [])
+        );
+    } catch {
+        return new Set();
+    }
 };
 
 /**
