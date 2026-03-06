@@ -349,16 +349,17 @@ describe('updateComponentProperties', () => {
 
     test('should stop RUNNING processor before updating and restart after', async () => {
         globalThis.jwtAuthConfig = { processorId: 'proc-run' };
+        const autoTerminated = ['failure', 'disabled-test'];
         // Detection
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // GET current — RUNNING
-        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-run', state: 'RUNNING' } });
+        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-run', state: 'RUNNING', config: { autoTerminatedRelationships: autoTerminated } } });
         // PUT stop run-status
         mockJsonResponse({ revision: { version: 2 } });
         // GET poll state — STOPPED
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
         // GET fresh revision
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
         // PUT property update
         mockJsonResponse({ revision: { version: 3 } });
         // GET for restart
@@ -373,10 +374,11 @@ describe('updateComponentProperties', () => {
         expect(stopCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
         expect(JSON.parse(stopCall[1].body).state).toBe('STOPPED');
 
-        // Verify property update has correct structure
+        // Verify property update has correct structure and preserves autoTerminatedRelationships
         const updateCall = globalThis.fetch.mock.calls[5];
         const updateBody = JSON.parse(updateCall[1].body);
         expect(updateBody.component.config.properties.key).toBe('value');
+        expect(updateBody.component.config.autoTerminatedRelationships).toEqual(autoTerminated);
 
         // Verify restart was called
         const restartCall = globalThis.fetch.mock.calls[7];

@@ -245,11 +245,18 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
         ? await request('GET', `${info.apiPath}/${componentId}`)
         : current;
 
+    // Preserve autoTerminatedRelationships so NiFi doesn't reset them
+    const autoTerminated = fresh.component?.config?.autoTerminatedRelationships || [];
+    const componentBody = buildComponentBody(componentId, info.propsPath, properties);
+    if (componentBody.config) {
+        componentBody.config.autoTerminatedRelationships = autoTerminated;
+    }
+
     let result;
     try {
         result = await request('PUT', `${info.apiPath}/${componentId}`, {
             revision: fresh.revision,
-            component: buildComponentBody(componentId, info.propsPath, properties)
+            component: componentBody
         });
     } finally {
         // Always restart if it was running, even if the update failed
