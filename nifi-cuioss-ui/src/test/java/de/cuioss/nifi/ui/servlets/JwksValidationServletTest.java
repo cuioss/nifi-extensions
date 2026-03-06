@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for {@link JwksValidationServlet} using embedded Jetty + REST Assured.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security-architecture.adoc">Security Architecture</a>
  */
 @EnableTestLogger
 @DisplayName("JWKS Validation Servlet Tests")

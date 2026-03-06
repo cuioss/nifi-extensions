@@ -4,7 +4,7 @@
 :toc-title: Error Types
 :sectnums:
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Overview
 

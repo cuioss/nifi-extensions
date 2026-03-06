@@ -5,7 +5,7 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-xref:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Static Configuration Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.6[NIFI-AUTH-7.6: Static Configuration for Container Environments]_
@@ -281,5 +281,5 @@ Best practices for secure configuration:
 * xref:configuration.adoc[Configuration Overview]
 * xref:configuration-ui.adoc[UI Configuration]
 * xref:token-validation.adoc[Token Validation]
-* xref:security.adoc[Security]
+* link:security-architecture.adoc[Security Architecture]
 * xref:error-handling.adoc[Error Handling]

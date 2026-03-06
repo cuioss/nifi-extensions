@@ -6,7 +6,7 @@
 :source-highlighter: highlight.js
 :imagesdir: ../plantuml
 
-xref:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7[NIFI-AUTH-7: Configuration Requirements]_
@@ -389,7 +389,7 @@ jwt.validation.issuer.2.enabled = false  # Disabled in production
 == See Also
 
 === Core Documentation
-* xref:../Specification.adoc[Main Specification]
+* link:../../README.adoc[Project Documentation]
 * xref:../Requirements.adoc[Requirements]
 
 === Configuration Details

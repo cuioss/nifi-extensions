@@ -5,7 +5,7 @@
 :sectnums:
 :imagesdir: ../plantuml
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Error Handling Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-10[NIFI-AUTH-10: Error Handling Requirements]_
@@ -251,19 +251,19 @@ Error responses are carefully crafted to:
 
 == Testing Error Handling
 
-For details on how error handling is tested, including specific test cases and verification approaches, see link:testing.adoc[Testing Specification].
+For details on how error handling is tested, including specific test cases and verification approaches, see link:integration-testing.adoc[Integration Testing].
 
 == See Also
 
 === Core Documentation
-* link:../Specification.adoc[Main Specification]
+* link:../../README.adoc[Project Documentation]
 * link:../Requirements.adoc[Requirements]
 * link:../LogMessages.adoc[Log Message Documentation]
 * link:../rest-errors/index.adoc[REST API Error Reference]
 
 === Related Implementation
 * link:token-validation.adoc[Token Validation]
-* link:security.adoc[Security]
+* link:security-architecture.adoc[Security Architecture]
 * link:configuration-ui.adoc[UI Configuration]
 * link:observability.adoc[Observability]
-* link:testing.adoc[Testing]
+* link:integration-testing.adoc[Integration Testing]

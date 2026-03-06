@@ -4,7 +4,7 @@
 :toc-title: Table of Contents
 :sectnums:
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Observability Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-18[NIFI-AUTH-18: Security Event Monitoring]_
@@ -231,7 +231,7 @@ Security metrics are designed to protect sensitive information:
 2. Instance identifiers can be anonymized if needed
 3. No sensitive information is exposed in metric names or values
 
-For more information on security considerations, see link:security.adoc[Security].
+For more information on security considerations, see link:security-architecture.adoc[Security Architecture].
 
 === Audit Trail Integration
 
@@ -240,12 +240,12 @@ Security events can be integrated with NiFi's Provenance Repository for complian
 == See Also
 
 === Core Documentation
-* link:../Specification.adoc[Main Specification]
+* link:../../README.adoc[Project Documentation]
 * link:../Requirements.adoc[Requirements]
 * link:../Requirements.adoc#NIFI-AUTH-18[Security Event Monitoring Requirements]
 
 === Related Implementation
-* link:security.adoc[Security]
+* link:security-architecture.adoc[Security Architecture]
 * link:token-validation.adoc[Token Validation]
 * link:error-handling.adoc[Error Handling]
 * link:configuration-ui.adoc[UI Configuration]

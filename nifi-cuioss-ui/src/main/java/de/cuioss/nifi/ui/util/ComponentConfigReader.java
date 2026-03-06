@@ -44,7 +44,7 @@ import java.util.*;
  * component type by trying the processor API first, then falling back
  * to the controller service API.</p>
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security-architecture.adoc">Security Architecture</a>
  */
 public class ComponentConfigReader {
 
