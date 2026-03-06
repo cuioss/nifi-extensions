@@ -445,55 +445,49 @@ class IssuerConfigurationParserTest {
         @DisplayName("Should load issuers from ConfigurationManager")
         void shouldLoadIssuersFromConfigManager(@TempDir Path tempDir) throws IOException {
             // Arrange
-            Path configFile = tempDir.resolve("jwt-validation.properties");
+            Path confDir = tempDir.resolve("conf");
+            Files.createDirectories(confDir);
+            Path configFile = confDir.resolve("cui-nifi-extensions.properties");
             String content = """
                     jwt.validation.issuer.external1.name=External Issuer
                     jwt.validation.issuer.external1.jwks-url=https://external.com/jwks
                     """;
             Files.writeString(configFile, content);
 
-            System.setProperty("jwt.Config.path", configFile.toString());
-            try {
-                ConfigurationManager configManager = new ConfigurationManager();
-                Map<String, String> properties = new HashMap<>();
+            ConfigurationManager configManager = new ConfigurationManager(tempDir.toString() + "/");
+            Map<String, String> properties = new HashMap<>();
 
-                // Act
-                List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+            // Act
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-                // Assert
-                assertEquals(1, configs.size());
-                assertEquals("External Issuer", configs.getFirst().getIssuerIdentifier());
-            } finally {
-                System.clearProperty("jwt.Config.path");
-            }
+            // Assert
+            assertEquals(1, configs.size());
+            assertEquals("External Issuer", configs.getFirst().getIssuerIdentifier());
         }
 
         @Test
         @DisplayName("Should merge UI and external configurations")
         void shouldMergeUIAndExternalConfigs(@TempDir Path tempDir) throws IOException {
             // Arrange
-            Path configFile = tempDir.resolve("jwt-validation.properties");
+            Path confDir = tempDir.resolve("conf");
+            Files.createDirectories(confDir);
+            Path configFile = confDir.resolve("cui-nifi-extensions.properties");
             String content = """
                     jwt.validation.issuer.external1.name=External Issuer
                     jwt.validation.issuer.external1.jwks-url=https://external.com/jwks
                     """;
             Files.writeString(configFile, content);
 
-            System.setProperty("jwt.Config.path", configFile.toString());
-            try {
-                ConfigurationManager configManager = new ConfigurationManager();
-                Map<String, String> properties = new HashMap<>();
-                properties.put("issuer.ui1.name", "UI Issuer");
-                properties.put("issuer.ui1.jwks-url", "https://ui.com/jwks");
+            ConfigurationManager configManager = new ConfigurationManager(tempDir.toString() + "/");
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.ui1.name", "UI Issuer");
+            properties.put("issuer.ui1.jwks-url", "https://ui.com/jwks");
 
-                // Act
-                List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+            // Act
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-                // Assert
-                assertEquals(2, configs.size());
-            } finally {
-                System.clearProperty("jwt.Config.path");
-            }
+            // Assert
+            assertEquals(2, configs.size());
         }
 
         @Test

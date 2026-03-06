@@ -125,11 +125,12 @@ The static configuration has the following behavioral characteristics:
 
 == Configuration File Locations
 
-The processor looks for configuration files in the following locations (in order of precedence):
+The processor looks for configuration files at the following default paths in the NiFi installation directory:
 
-1. Path specified by `jwt.config.path` JVM system property
-2. Path specified by `JWT_CONFIG_PATH` environment variable
-3. `conf/jwt-validation.properties` or `conf/jwt-validation.yml` in the NiFi installation directory
+* `conf/cui-nifi-extensions.properties`
+* `conf/cui-nifi-extensions.yml`
+
+The properties file is checked first. If neither file exists, no file-based configuration is loaded.
 
 == Dynamic Configuration Loading
 
@@ -239,7 +240,7 @@ services:
     ports:
       - "8443:8443"
     volumes:
-      - ./config/issuers.yaml:/opt/nifi/nifi-current/conf/jwt-validation.yaml:ro
+      - ./config/issuers.yaml:/opt/nifi/nifi-current/conf/cui-nifi-extensions.yml:ro
     environment:
       - NIFI_WEB_HTTPS_PORT=8443
       - SINGLE_USER_CREDENTIALS_USERNAME=admin

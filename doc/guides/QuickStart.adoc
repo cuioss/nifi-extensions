@@ -225,13 +225,9 @@ On successful validation the processor sets these attributes on the FlowFile:
 
 == Static Configuration Files
 
-For container or automated deployments, the Controller Service can load configuration from a file in one of these locations (checked in order):
+For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`.
 
-. Path from JVM system property `jwt.config.path`
-. Path from environment variable `JWT_CONFIG_PATH`
-. `$NIFI_HOME/conf/jwt-validation.properties` or `$NIFI_HOME/conf/jwt-validation.yml`
-
-.Example: `jwt-validation.properties`
+.Example: `cui-nifi-extensions.properties`
 [source,properties]
 ----
 jwt.validation.require.valid.token=true
@@ -246,7 +242,7 @@ jwt.validation.issuer.2.audience=api://my-service
 jwt.validation.issuer.2.enabled=true
 ----
 
-.Example: `jwt-validation.yml`
+.Example: `cui-nifi-extensions.yml`
 [source,yaml]
 ----
 jwt:
