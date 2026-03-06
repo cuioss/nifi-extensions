@@ -120,6 +120,9 @@ public class GatewayProxyServlet extends HttpServlet {
 
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
+                // Invalidate cached port/protocol — properties may have changed
+                portCache.remove(processorId);
+                protocolCache.remove(processorId);
                 var componentConfig = resolveComponentConfig(processorId, req);
                 writeConfigResponse(resp, componentConfig.properties(),
                         componentConfig.componentClass());

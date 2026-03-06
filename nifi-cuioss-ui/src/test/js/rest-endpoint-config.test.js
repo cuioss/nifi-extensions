@@ -71,6 +71,8 @@ describe('rest-endpoint-config', () => {
             onConfirm();
             return Promise.resolve(true);
         });
+        // Default: all relationships appear connected (bootstrapped on NiFi canvas)
+        api.getConnectedRelationships.mockResolvedValue(new Set(['health', 'data', 'api-data']));
 
         // Reset location (URL set via @jest-environment-options docblock)
         history.replaceState({}, '', '/nifi-jwt-ui/?id=test-processor-id');
@@ -990,7 +992,7 @@ describe('rest-endpoint-config', () => {
         expect(badge).not.toBeNull();
     });
 
-    it('should show new badge for UI-created route', async () => {
+    it('should mark UI-created route as persisted when componentId is set', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -999,7 +1001,7 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Add a new route
+        // Add a new route — with componentId present, it gets persisted
         container.querySelector('.add-route-button').click();
         const form = container.querySelector('.route-form');
         form.querySelector('.route-name').value = 'brand-new';
@@ -1008,11 +1010,9 @@ describe('rest-endpoint-config', () => {
         await tick();
 
         const newRow = container.querySelector('tr[data-route-name="brand-new"]');
-        expect(newRow.dataset.origin).toBe('new');
-        const badge = newRow.querySelector('.origin-new');
-        expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('origin.badge.new');
-        expect(badge.title).toBe('origin.badge.new.title');
+        expect(newRow.dataset.origin).toBe('persisted');
+        // No lock icon — route is persisted but not yet connected on canvas
+        expect(newRow.querySelector('.origin-persisted')).toBeNull();
     });
 
     it('should show persisted badge with tooltip', async () => {
@@ -1029,7 +1029,7 @@ describe('rest-endpoint-config', () => {
         expect(badge.title).toBe('origin.badge.persisted.title');
     });
 
-    it('should show modified badge after editing persisted route', async () => {
+    it('should keep persisted origin after editing and saving persisted route', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1041,21 +1041,18 @@ describe('rest-endpoint-config', () => {
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         expect(healthRow.dataset.origin).toBe('persisted');
 
-        // Edit and save
+        // Edit and save — with componentId, it gets persisted again
         healthRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
         form.querySelector('.field-path').value = '/api/health/v2';
         form.querySelector('.save-route-button').click();
         await tick();
 
-        expect(healthRow.dataset.origin).toBe('modified');
-        const badge = healthRow.querySelector('.origin-modified');
-        expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('origin.badge.modified');
-        expect(badge.title).toBe('origin.badge.modified.title');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        // After save, lock icon is not shown (connection status unknown until reload)
     });
 
-    it('should keep new badge when editing a new route', async () => {
+    it('should keep persisted origin when re-editing a persisted route', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1064,7 +1061,7 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Add a new route
+        // Add a new route — persisted via API
         container.querySelector('.add-route-button').click();
         let form = container.querySelector('.route-form');
         form.querySelector('.route-name').value = 'temp-route';
@@ -1073,18 +1070,17 @@ describe('rest-endpoint-config', () => {
         await tick();
 
         const newRow = container.querySelector('tr[data-route-name="temp-route"]');
-        expect(newRow.dataset.origin).toBe('new');
+        expect(newRow.dataset.origin).toBe('persisted');
 
-        // Edit the new route
+        // Edit the route again
         newRow.querySelector('.edit-route-button').click();
         form = container.querySelector('.route-form');
         form.querySelector('.field-path').value = '/api/temp/v2';
         form.querySelector('.save-route-button').click();
         await tick();
 
-        // Should still be 'new', not 'modified'
-        expect(newRow.dataset.origin).toBe('new');
-        expect(newRow.querySelector('.origin-new')).not.toBeNull();
+        // Should still be 'persisted'
+        expect(newRow.dataset.origin).toBe('persisted');
     });
 
     it('should use i18n keys for origin badge text and tooltips', async () => {
@@ -1095,7 +1091,8 @@ describe('rest-endpoint-config', () => {
                 'origin.badge.new.title': 'In dieser Sitzung erstellt',
                 'origin.badge.modified': 'Geändert',
                 'origin.badge.modified.title': 'In dieser Sitzung geändert',
-                'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen'
+                'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen',
+                'route.save.success.banner': 'Erfolgreich gespeichert.'
             };
             return translations[key] || key;
         });
@@ -1108,34 +1105,20 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Verify persisted badge tooltip uses translated text
+        // Verify persisted badge tooltip uses translated text (health is connected in mock)
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         const persistedBadge = healthRow.querySelector('.origin-persisted');
         expect(persistedBadge.title).toBe('Aus Prozessor-Eigenschaften geladen');
 
-        // Add a new route and verify badge uses translated text
-        container.querySelector('.add-route-button').click();
-        const form = container.querySelector('.route-form');
-        form.querySelector('.route-name').value = 'i18n-test';
-        form.querySelector('.field-path').value = '/api/i18n';
-        form.querySelector('.save-route-button').click();
-        await tick();
-
-        const newRow = container.querySelector('tr[data-route-name="i18n-test"]');
-        const newBadge = newRow.querySelector('.origin-new');
-        expect(newBadge.textContent).toBe('Neu');
-        expect(newBadge.title).toBe('In dieser Sitzung erstellt');
-
-        // Edit persisted route and verify modified badge uses translated text
+        // After editing and saving, origin stays persisted but lock icon
+        // is not shown (connection status unknown until page reload)
         healthRow.querySelector('.edit-route-button').click();
         const editForm = container.querySelector('.route-form');
         editForm.querySelector('.field-path').value = '/api/health/v2';
         editForm.querySelector('.save-route-button').click();
         await tick();
 
-        const modBadge = healthRow.querySelector('.origin-modified');
-        expect(modBadge.textContent).toBe('Geändert');
-        expect(modBadge.title).toBe('In dieser Sitzung geändert');
+        expect(healthRow.dataset.origin).toBe('persisted');
     });
 
     it('should show saved values when reopening route editor', async () => {
@@ -1167,7 +1150,7 @@ describe('rest-endpoint-config', () => {
     // Export annotation (session-only prefix)
     // -----------------------------------------------------------------------
 
-    it('should annotate session-only routes in export', async () => {
+    it('should not annotate persisted routes in export when saved with componentId', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1176,7 +1159,7 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Add a new route
+        // Add a new route — persisted via API
         container.querySelector('.add-route-button').click();
         const form = container.querySelector('.route-form');
         form.querySelector('.route-name').value = 'export-test';
@@ -1185,7 +1168,9 @@ describe('rest-endpoint-config', () => {
         await tick();
 
         const textarea = container.querySelector('.property-export-textarea');
-        expect(textarea.value).toContain('# [session-only] restapi.export-test.path');
+        // Route was persisted, so no session-only prefix
+        expect(textarea.value).toContain('restapi.export-test.path = /api/export-test');
+        expect(textarea.value).not.toContain('# [session-only]');
     });
 
     it('should not annotate persisted routes in export', async () => {
@@ -1210,6 +1195,48 @@ describe('rest-endpoint-config', () => {
         for (const line of dataLines) {
             expect(line).not.toContain('# [session-only]');
         }
+    });
+
+    it('should show lock icon only for routes with connected relationships', async () => {
+        // Only 'health' is connected; 'data' is not
+        api.getConnectedRelationships.mockResolvedValue(new Set(['health']));
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Both routes are persisted (loaded from properties)
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        expect(healthRow.querySelector('.origin-persisted')).not.toBeNull();
+
+        // Unconnected route: still persisted, but no lock icon
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        expect(dataRow.dataset.origin).toBe('persisted');
+        expect(dataRow.querySelector('.origin-persisted')).toBeNull();
+    });
+
+    it('should use success-outcome for connection check when specified', async () => {
+        // 'api-data' is connected (custom outcome), 'health' is not
+        api.getConnectedRelationships.mockResolvedValue(new Set(['api-data']));
+        api.getComponentProperties.mockResolvedValue({
+            properties: PROPERTIES_WITH_OUTCOME,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // data route uses custom outcome 'api-data' which is connected → lock icon
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        expect(dataRow.dataset.origin).toBe('persisted');
+        expect(dataRow.querySelector('.origin-persisted')).not.toBeNull();
+
+        // health route has no connection → no lock icon
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        expect(healthRow.querySelector('.origin-persisted')).toBeNull();
     });
 
     it('should show dash in Connection column when create-flowfile is false', async () => {
@@ -1649,7 +1676,7 @@ describe('rest-endpoint-config', () => {
     // Info banner (ephemeral change warning)
     // -----------------------------------------------------------------------
 
-    it('should show info banner after saving a route', async () => {
+    it('should show success banner after saving a route with componentId', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1668,7 +1695,8 @@ describe('rest-endpoint-config', () => {
 
         const banner = container.querySelector('.info-banner');
         expect(banner).not.toBeNull();
-        expect(banner.textContent).toContain('route.info.banner');
+        expect(banner.textContent).toContain('route.save.success.banner');
+        expect(banner.classList.contains('info-banner-success')).toBe(true);
     });
 
     // -----------------------------------------------------------------------

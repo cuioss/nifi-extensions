@@ -569,7 +569,8 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         await loadManagement();
 
         const routes = parseRouteProperties(props);
-        renderRouteSummaryTable(routesContainer, routes, componentId);
+        const connectedRels = await api.getConnectedRelationships(componentId);
+        renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
     } catch {
         renderRouteSummaryTable(routesContainer, {}, componentId);
     }
@@ -584,8 +585,9 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
  * @param {HTMLElement} container  the .routes-container element
  * @param {Object} routes  parsed route map {name: {path, methods, enabled, ...}}
  * @param {string} componentId  NiFi processor component ID
+ * @param {Set<string>} [connectedRels]  set of relationship names wired on the NiFi canvas
  */
-const renderRouteSummaryTable = (container, routes, componentId) => {
+const renderRouteSummaryTable = (container, routes, componentId, connectedRels) => {
     // Remove any existing table
     const existing = container.querySelector('.route-summary-table');
     if (existing) existing.remove();
@@ -615,7 +617,9 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
-            const row = createTableRow(name, routes[name], componentId, container);
+            const outcome = routes[name]?.['success-outcome']?.trim() || name;
+            const connected = !connectedRels || connectedRels.has(outcome);
+            const row = createTableRow(name, routes[name], componentId, container, 'persisted', connected);
             tbody.appendChild(row);
         }
     }
@@ -626,16 +630,20 @@ const renderRouteSummaryTable = (container, routes, componentId) => {
 /**
  * Build an origin badge HTML snippet for a route row.
  * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {boolean} connected  whether the route's relationship is wired on the NiFi canvas
  * @returns {string} HTML string for the badge
  */
-const buildOriginBadge = (origin) => {
+const buildOriginBadge = (origin, connected) => {
     if (origin === 'new') {
         return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
     }
     if (origin === 'modified') {
         return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
     }
-    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+    if (connected) {
+        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+    }
+    return '';
 };
 
 /**
@@ -645,9 +653,10 @@ const buildOriginBadge = (origin) => {
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
  * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {boolean} [connected=true]  whether the route's relationship is wired on the NiFi canvas
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted') => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted', connected = false) => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
     row.dataset.origin = origin;
@@ -666,7 +675,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
 
-    const originBadge = buildOriginBadge(origin);
+    const originBadge = buildOriginBadge(origin, connected);
 
     // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
@@ -716,12 +725,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  * @param {Object} formData  extracted form data
  */
 const updateTableRow = (row, formData) => {
-    // Mark persisted routes as modified after edit
-    if (row.dataset.origin === 'persisted') {
-        row.dataset.origin = 'modified';
-    }
     const origin = row.dataset.origin || 'persisted';
-    const originBadge = buildOriginBadge(origin);
+    const originBadge = buildOriginBadge(origin, false);
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
@@ -1374,6 +1379,25 @@ const showInfoBanner = (routesContainer) => {
 };
 
 /**
+ * Show a success banner after persisting changes to NiFi.
+ * Auto-hides after 5 seconds.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const showSaveSuccessBanner = (routesContainer) => {
+    const editor = routesContainer.closest('.route-config-editor');
+    if (!editor) return;
+    const existing = editor.querySelector('.info-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'info-banner info-banner-success';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML = t('route.save.success.banner');
+    routesContainer.parentNode.insertBefore(banner, routesContainer);
+    setTimeout(() => banner.remove(), 5000);
+};
+
+/**
  * Save route: validate, persist, update table row, close editor.
  * @param {HTMLElement} form  the inline editor form
  * @param {HTMLElement} errEl  error display element
@@ -1409,16 +1433,17 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
             form.dataset.originalName = f.routeName;
 
             if (tableRow) {
-                // Update the existing table row and show it
+                // Mark as persisted before updating (prevents 'modified' badge)
+                tableRow.dataset.origin = 'persisted';
                 updateTableRow(tableRow, f);
                 tableRow.classList.remove('hidden');
             } else {
-                // New route — add a row to the table
-                addRowToTable(routesContainer, f, componentId);
+                // New route — add a row to the table (persisted origin)
+                addRowToTable(routesContainer, f, componentId, 'persisted');
             }
             form.remove();
 
-            showInfoBanner(routesContainer);
+            showSaveSuccessBanner(routesContainer);
             refreshExportPanel(routesContainer);
             refreshConnectionMap(routesContainer);
         } catch (error) {
@@ -1445,8 +1470,9 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
  * @param {HTMLElement} routesContainer
  * @param {Object} formData
  * @param {string} componentId
+ * @param {'persisted'|'new'} [origin='new']  the route origin state
  */
-const addRowToTable = (routesContainer, formData, componentId) => {
+const addRowToTable = (routesContainer, formData, componentId, origin = 'new') => {
     const table = routesContainer.querySelector('.route-summary-table');
     if (!table) return;
     const tbody = table.querySelector('tbody');
@@ -1467,7 +1493,7 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         'success-outcome': formData['success-outcome'] || '',
         'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true'
     };
-    const row = createTableRow(formData.routeName, props, componentId, routesContainer, 'new');
+    const row = createTableRow(formData.routeName, props, componentId, routesContainer, origin);
     tbody.appendChild(row);
 };
 
