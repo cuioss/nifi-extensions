@@ -656,7 +656,7 @@ const buildOriginBadge = (origin, connected) => {
  * @param {boolean} [connected=true]  whether the route's relationship is wired on the NiFi canvas
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted', connected = true) => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted', connected = false) => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
     row.dataset.origin = origin;
@@ -726,7 +726,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  */
 const updateTableRow = (row, formData) => {
     const origin = row.dataset.origin || 'persisted';
-    const originBadge = buildOriginBadge(origin, origin === 'persisted');
+    const originBadge = buildOriginBadge(origin, false);
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions

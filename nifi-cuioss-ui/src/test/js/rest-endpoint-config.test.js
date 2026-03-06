@@ -992,7 +992,7 @@ describe('rest-endpoint-config', () => {
         expect(badge).not.toBeNull();
     });
 
-    it('should show persisted badge for UI-created route when componentId is set', async () => {
+    it('should mark UI-created route as persisted when componentId is set', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1011,9 +1011,8 @@ describe('rest-endpoint-config', () => {
 
         const newRow = container.querySelector('tr[data-route-name="brand-new"]');
         expect(newRow.dataset.origin).toBe('persisted');
-        const badge = newRow.querySelector('.origin-persisted');
-        expect(badge).not.toBeNull();
-        expect(badge.title).toBe('origin.badge.persisted.title');
+        // No lock icon — route is persisted but not yet connected on canvas
+        expect(newRow.querySelector('.origin-persisted')).toBeNull();
     });
 
     it('should show persisted badge with tooltip', async () => {
@@ -1030,7 +1029,7 @@ describe('rest-endpoint-config', () => {
         expect(badge.title).toBe('origin.badge.persisted.title');
     });
 
-    it('should keep persisted badge after editing and saving persisted route', async () => {
+    it('should keep persisted origin after editing and saving persisted route', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1050,12 +1049,10 @@ describe('rest-endpoint-config', () => {
         await tick();
 
         expect(healthRow.dataset.origin).toBe('persisted');
-        const badge = healthRow.querySelector('.origin-persisted');
-        expect(badge).not.toBeNull();
-        expect(badge.title).toBe('origin.badge.persisted.title');
+        // After save, lock icon is not shown (connection status unknown until reload)
     });
 
-    it('should keep persisted badge when re-editing a persisted route', async () => {
+    it('should keep persisted origin when re-editing a persisted route', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -1084,7 +1081,6 @@ describe('rest-endpoint-config', () => {
 
         // Should still be 'persisted'
         expect(newRow.dataset.origin).toBe('persisted');
-        expect(newRow.querySelector('.origin-persisted')).not.toBeNull();
     });
 
     it('should use i18n keys for origin badge text and tooltips', async () => {
@@ -1109,34 +1105,20 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Verify persisted badge tooltip uses translated text
+        // Verify persisted badge tooltip uses translated text (health is connected in mock)
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         const persistedBadge = healthRow.querySelector('.origin-persisted');
         expect(persistedBadge.title).toBe('Aus Prozessor-Eigenschaften geladen');
 
-        // Add a new route — with componentId, it gets persisted
-        container.querySelector('.add-route-button').click();
-        const form = container.querySelector('.route-form');
-        form.querySelector('.route-name').value = 'i18n-test';
-        form.querySelector('.field-path').value = '/api/i18n';
-        form.querySelector('.save-route-button').click();
-        await tick();
-
-        const newRow = container.querySelector('tr[data-route-name="i18n-test"]');
-        const badge = newRow.querySelector('.origin-persisted');
-        expect(badge).not.toBeNull();
-        expect(badge.title).toBe('Aus Prozessor-Eigenschaften geladen');
-
-        // Edit persisted route — stays persisted after save
+        // After editing and saving, origin stays persisted but lock icon
+        // is not shown (connection status unknown until page reload)
         healthRow.querySelector('.edit-route-button').click();
         const editForm = container.querySelector('.route-form');
         editForm.querySelector('.field-path').value = '/api/health/v2';
         editForm.querySelector('.save-route-button').click();
         await tick();
 
-        const editedBadge = healthRow.querySelector('.origin-persisted');
-        expect(editedBadge).not.toBeNull();
-        expect(editedBadge.title).toBe('Aus Prozessor-Eigenschaften geladen');
+        expect(healthRow.dataset.origin).toBe('persisted');
     });
 
     it('should show saved values when reopening route editor', async () => {
