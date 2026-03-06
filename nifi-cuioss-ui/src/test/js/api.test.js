@@ -12,7 +12,8 @@ import {
     getControllerServiceProperties, updateControllerServiceProperties,
     resolveJwtConfigServiceId,
     getComponentId, detectComponentType, resetComponentCache,
-    fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES
+    fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES,
+    getConnectedRelationships
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
@@ -386,6 +387,88 @@ describe('updateComponentProperties', () => {
         const restartCall = globalThis.fetch.mock.calls[8];
         expect(restartCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
         expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
+    });
+
+    test('should auto-terminate stale relationships but keep active ones during restart', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'proc-stale' };
+        // Detection
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // GET current — RUNNING
+        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-stale', state: 'RUNNING', config: { autoTerminatedRelationships: [] } } });
+        // PUT stop
+        mockJsonResponse({ revision: { version: 2 } });
+        // GET poll — STOPPED
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-stale', state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        // GET fresh
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-stale', state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        // PUT property update
+        mockJsonResponse({ revision: { version: 3 } });
+        // GET for autoTerminateStaleRelationships — has stale + active unconnected relationships
+        mockJsonResponse({
+            revision: { version: 3 },
+            component: {
+                id: 'proc-stale', state: 'STOPPED',
+                validationErrors: [
+                    "'Relationship old-rel' is invalid because Relationship 'old-rel' is not connected to any component and is not auto-terminated",
+                    "'Relationship new-rel' is invalid because Relationship 'new-rel' is not connected to any component and is not auto-terminated"
+                ],
+                config: {
+                    autoTerminatedRelationships: [],
+                    properties: {
+                        'restapi.active.success-outcome': 'new-rel'
+                    }
+                }
+            }
+        });
+        // PUT auto-terminate stale only
+        mockJsonResponse({ revision: { version: 4 } });
+        // GET for restart
+        mockJsonResponse({ revision: { version: 4 }, component: { id: 'proc-stale', state: 'STOPPED' } });
+        // PUT restart
+        mockJsonResponse({ revision: { version: 5 } });
+
+        await updateComponentProperties('proc-stale', { 'key': 'value' });
+
+        // Verify auto-terminate PUT only includes 'old-rel' (stale), not 'new-rel' (active)
+        const autoTermCall = globalThis.fetch.mock.calls[7];
+        const autoTermBody = JSON.parse(autoTermCall[1].body);
+        expect(autoTermBody.component.config.autoTerminatedRelationships).toEqual(['old-rel']);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getConnectedRelationships
+// ---------------------------------------------------------------------------
+
+describe('getConnectedRelationships', () => {
+    test('should return set of connected relationship names', async () => {
+        // GET processor
+        mockJsonResponse({ component: { id: 'proc-1', parentGroupId: 'pg-1' } });
+        // GET connections
+        mockJsonResponse({
+            connections: [
+                { component: { source: { id: 'proc-1' }, selectedRelationships: ['admin', 'data'] } },
+                { component: { source: { id: 'other-proc' }, selectedRelationships: ['unrelated'] } },
+                { component: { source: { id: 'proc-1' }, selectedRelationships: ['validated'] } }
+            ]
+        });
+
+        const result = await getConnectedRelationships('proc-1');
+        expect(result).toEqual(new Set(['admin', 'data', 'validated']));
+    });
+
+    test('should return empty set when no parentGroupId', async () => {
+        mockJsonResponse({ component: { id: 'proc-1' } });
+
+        const result = await getConnectedRelationships('proc-1');
+        expect(result).toEqual(new Set());
+    });
+
+    test('should return empty set on error', async () => {
+        globalThis.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+        const result = await getConnectedRelationships('proc-1');
+        expect(result).toEqual(new Set());
     });
 });
 

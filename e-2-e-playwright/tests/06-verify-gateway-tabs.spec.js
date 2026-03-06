@@ -911,15 +911,12 @@ test.describe("REST API Gateway Tabs", () => {
         await saveBtn.click();
         await expect(routeForm).toHaveCount(0, { timeout: 5000 });
 
-        // Verify the new row has origin="new" and the blue "New" badge
+        // Verify the new row was persisted (saved via API with componentId)
         const newRow = summaryTable.locator(
             'tr[data-route-name="e2e-origin-test"]',
         );
         await expect(newRow).toBeVisible({ timeout: 5000 });
-        await expect(newRow).toHaveAttribute("data-origin", "new");
-        const badge = newRow.locator(".origin-new");
-        await expect(badge).toBeVisible({ timeout: 3000 });
-        await expect(badge).toContainText("New");
+        await expect(newRow).toHaveAttribute("data-origin", "persisted");
     });
 
     test("should show modified badge after editing a persisted route", async ({
@@ -960,14 +957,11 @@ test.describe("REST API Gateway Tabs", () => {
         await saveBtn.click();
         await expect(routeForm).toHaveCount(0, { timeout: 5000 });
 
-        // Re-locate row by name (data-origin changed so old locator is stale)
-        const modifiedRow = summaryTable.locator(
+        // Re-locate row by name — origin stays persisted after save with componentId
+        const savedRow = summaryTable.locator(
             `tbody tr[data-route-name="${routeName}"]`,
         );
-        await expect(modifiedRow).toHaveAttribute("data-origin", "modified");
-        const badge = modifiedRow.locator(".origin-modified");
-        await expect(badge).toBeVisible({ timeout: 3000 });
-        await expect(badge).toContainText("Modified");
+        await expect(savedRow).toHaveAttribute("data-origin", "persisted");
     });
 
     test("should display endpoint tester with route selector and controls", async ({
