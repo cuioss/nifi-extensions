@@ -1,4 +1,4 @@
-# Example JWT Validation Configuration in YAML format
+# Example CUI NiFi Extensions Configuration in YAML format
 # This file demonstrates the YAML configuration options for the MultiIssuerJWTTokenAuthenticator
 
 # JWT validation settings

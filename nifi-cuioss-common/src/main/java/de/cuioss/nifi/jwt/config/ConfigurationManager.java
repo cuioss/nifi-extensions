@@ -38,10 +38,8 @@ public class ConfigurationManager {
 
     private static final CuiLogger LOGGER = new CuiLogger(ConfigurationManager.class);
     private static final String COMPONENT_NAME = "ConfigurationManager";
-    private static final String CONFIG_PATH_PROPERTY = "jwt.Config.path";
-    private static final String CONFIG_PATH_ENV = "JWT_CONFIG_PATH";
-    private static final String DEFAULT_PROPERTIES_PATH = "conf/jwt-validation.properties";
-    private static final String DEFAULT_YAML_PATH = "conf/jwt-validation.yml";
+    private static final String DEFAULT_PROPERTIES_PATH = "conf/cui-nifi-extensions.properties";
+    private static final String DEFAULT_YAML_PATH = "conf/cui-nifi-extensions.yml";
     private static final String ENV_PREFIX = "JWT_";
     private static final String ISSUER_ENV_PREFIX = "JWT_ISSUER_";
     private static final String JWT_VALIDATION_ISSUER_PREFIX = "jwt.validation.issuer.";
@@ -51,8 +49,14 @@ public class ConfigurationManager {
     @Getter private final Map<String, String> staticProperties = new HashMap<>();
     @Getter private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
     @Getter private boolean configurationLoaded = false;
+    private final String basePath;
 
     public ConfigurationManager() {
+        this("");
+    }
+
+    ConfigurationManager(String basePath) {
+        this.basePath = basePath;
         loadConfiguration();
     }
 
@@ -96,25 +100,12 @@ public class ConfigurationManager {
     }
 
     private boolean loadFromConfigFile() {
-        String configPath = System.getProperty(CONFIG_PATH_PROPERTY);
-        if (configPath == null || configPath.isEmpty()) {
-            configPath = System.getenv(CONFIG_PATH_ENV);
-        }
-        if (configPath != null && !configPath.isEmpty()) {
-            File file = new File(configPath);
-            if (file.exists() && file.isFile()) {
-                configFile = file;
-                return loadConfigurationFile(file);
-            } else {
-                LOGGER.warn(JwtLogMessages.WARN.CONFIG_FILE_NOT_FOUND, configPath);
-            }
-        }
-        File propertiesFile = new File(DEFAULT_PROPERTIES_PATH);
+        File propertiesFile = new File(basePath + DEFAULT_PROPERTIES_PATH);
         if (propertiesFile.exists() && propertiesFile.isFile()) {
             configFile = propertiesFile;
             return loadConfigurationFile(propertiesFile);
         }
-        File yamlFile = new File(DEFAULT_YAML_PATH);
+        File yamlFile = new File(basePath + DEFAULT_YAML_PATH);
         if (yamlFile.exists() && yamlFile.isFile()) {
             configFile = yamlFile;
             return loadConfigurationFile(yamlFile);
