@@ -393,4 +393,33 @@ describe('metrics — gateway mode', () => {
         // Data should still be visible
         expect(grid.querySelectorAll('.metric-card').length).toBe(3);
     });
+
+    it('should retry refresh after 404 disabled auto-refresh', async () => {
+        // First call succeeds (init), second call returns 404 (simulates processor restart),
+        // third call succeeds (manual refresh retries despite disabled flag)
+        api.fetchGatewayApi
+            .mockResolvedValueOnce(GATEWAY_METRICS)   // init
+            .mockRejectedValueOnce({ status: 404 })   // first click → disables metricsEndpointAvailable
+            .mockResolvedValueOnce(GATEWAY_METRICS);   // second click → handleRefresh resets flag
+
+        init(container, true);
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Click once — triggers 404, sets metricsEndpointAvailable=false
+        // (but does NOT call cleanup, so _isGateway stays true)
+        document.getElementById('refresh-metrics-btn').click();
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Banner should appear but the tab is not permanently dead
+        expect(document.querySelector('.metrics-status-banner')).not.toBeNull();
+
+        // Click again — handleRefresh resets metricsEndpointAvailable, fetch succeeds
+        document.getElementById('refresh-metrics-btn').click();
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Third mock (success) should have been consumed
+        expect(api.fetchGatewayApi).toHaveBeenCalledTimes(3);
+        // Banner should be cleared by successful data load
+        expect(document.querySelector('.metrics-status-banner')).toBeNull();
+    });
 });

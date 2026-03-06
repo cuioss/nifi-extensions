@@ -156,6 +156,8 @@ export const cleanup = () => {
 const handleRefresh = async () => {
     const ind = document.querySelector('[data-testid="refresh-indicator"]');
     if (ind) ind.classList.remove('hidden');
+    // Manual refresh should always retry, even if a previous 404 disabled auto-refresh
+    metricsEndpointAvailable = true;
     await refreshMetrics();
     if (ind) setTimeout(() => { ind.classList.add('hidden'); }, 500);
 };
@@ -163,7 +165,7 @@ const handleRefresh = async () => {
 const refreshMetrics = async () => {
     if (!metricsEndpointAvailable) return;
     if (!_isGateway) {
-        showNotAvailable();
+        showNotAvailable(true);
         return;
     }
     // Generation counter prevents stale in-flight requests from overwriting
@@ -274,13 +276,13 @@ const showError = () => {
     }
 };
 
-const showNotAvailable = () => {
+const showNotAvailable = (permanent = false) => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
         showStatusBanner(el, 'validation-error',
             `<div class="error-content"><strong>${t('metrics.error.not.available.title')}</strong> — ${t('metrics.error.not.available')}</div>`);
     }
-    cleanup();
+    if (permanent) cleanup();
 };
 
 // ---------------------------------------------------------------------------
