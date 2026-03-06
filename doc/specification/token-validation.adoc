@@ -57,7 +57,7 @@ For more details on the OAuth-Sheriff library, see link:../library/oauth-sheriff
 
 The processor initializes and uses the OAuth-Sheriff library as follows:
 
-Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from OAuth-Sheriff. For details on the TokenValidator initialization, see link:technical-components.adoc#tokenvalidator[TokenValidator Component].
+Token validation is implemented in link:../../nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java[MultiIssuerJWTTokenAuthenticator] using the `TokenValidator.createAccessToken()` method from OAuth-Sheriff. For details on the Controller Service architecture, see link:configuration.adoc#_controller_service_architecture[Controller Service Architecture].
 
 == Handling TokenValidator Lifecycle in NiFi
 
@@ -105,7 +105,7 @@ NiFi processors have specific lifecycle events that need to be handled:
 2. **@OnStopped**: Clean up resources when the processor is stopped
 3. **@OnUnscheduled**: Optional cleanup when the processor is unscheduled
 
-For detailed implementation of this lifecycle management, see link:technical-components.adoc#tokenvalidator-lifecycle-in-nifi[TokenValidator Lifecycle in NiFi].
+For detailed implementation of this lifecycle management, see link:configuration.adoc#_controller_service_architecture[Controller Service Architecture].
 
 === Authorization Checking
 
@@ -185,20 +185,6 @@ To use the OAuth-Sheriff library in the NiFi processor, add the following depend
 
 This will provide access to all the library features needed for token validation.
 
-== Best Practices
-
-Based on the OAuth-Sheriff library recommendations, the processor follows these best practices:
-
-1. Uses the TokenValidator as the main entry point for all token operations
-2. Configures IssuerConfig with appropriate validation settings for each issuer
-3. Uses ParserConfig to set token size limits and security settings
-4. Requires HTTPS for JWKS endpoints in production environments
-5. Validates token scopes and roles before granting access to protected resources
-6. Sets appropriate refresh intervals for JWKS key rotation
-7. Implements proper error handling for token validation failures
-
-For more details on security best practices, see link:security.adoc[Security Considerations].
-
 == See Also
 
 === Core Documentation
@@ -207,7 +193,6 @@ For more details on security best practices, see link:security.adoc[Security Con
 * link:../library/oauth-sheriff/Usage.adoc[Library Documentation]
 
 === Implementation
-* link:technical-components.adoc[Technical Components]
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security Considerations]
 * link:error-handling.adoc[Error Handling]

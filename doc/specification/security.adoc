@@ -191,7 +191,7 @@ auth server development = https://auth-dev.example.com/.well-known/jwks.json
 auth server development.enabled = false
 ----
 
-For more details on multi-issuer implementation, see link:technical-components.adoc[Technical Components].
+For more details on multi-issuer implementation, see link:configuration.adoc#_controller_service_architecture[Controller Service Architecture].
 
 == Runtime Security
 [.requirement]
@@ -275,4 +275,4 @@ For more details on security testing, see link:testing.adoc[Testing].
 * link:token-validation.adoc[Token Validation]
 * link:configuration.adoc[Configuration]
 * link:error-handling.adoc[Error Handling]
-* link:technical-components.adoc[Technical Components]
+* link:configuration.adoc[Configuration Reference]

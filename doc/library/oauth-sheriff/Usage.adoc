@@ -6,7 +6,7 @@
 
 == Overview
 
-This document provides usage examples for the OAuth-Sheriff library. For detailed technical specifications, see the link:../../specification/technical-components.adoc[Technical Components] document.
+This document provides usage examples for the OAuth-Sheriff library. For detailed technical specifications, see the link:../../specification/configuration.adoc[Configuration Reference].
 
 === Document Navigation
 
@@ -16,7 +16,7 @@ This document provides usage examples for the OAuth-Sheriff library. For detaile
 * link:../../Build.adoc[Building and Development] - Information for contributors
 
 == TokenValidator: The Main Entry Point
-_See link:../../specification/technical-components.adoc#_tokenvalidator[TokenValidator Technical Specification]_
+_See link:../../specification/configuration.adoc#_controller_service_architecture[Controller Service Architecture]_
 
 The `TokenValidator` serves as the primary entry point for token operations.
 It provides:
@@ -52,7 +52,7 @@ RefreshTokenContent refreshToken = validator.createRefreshToken(tokenString);
 ----
 
 == Multi-Issuer Support
-_See link:../../specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/configuration.adoc[Configuration Reference] for details_
 
 The module provides robust support for multi-issuer environments:
 
@@ -94,7 +94,7 @@ SecurityEventCounter securityEventCounter = validator.getSecurityEventCounter();
 ----
 
 == Custom Claim Mappers
-_See link:../../specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/configuration.adoc[Configuration Reference] for details_
 
 The module supports custom claim mappers that take precedence over the default ones:
 
@@ -263,7 +263,7 @@ The mapper:
 You can also implement your own custom mappers for special formats:
 
 == Security Settings
-_See link:../../specification/technical-components.adoc[Technical Specification] for details_
+_See link:../../specification/configuration.adoc[Configuration Reference] for details_
 
 The `ParserConfig` class provides important security settings for token processing:
 

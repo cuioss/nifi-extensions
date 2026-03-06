@@ -69,7 +69,7 @@ Unit tests for the processor verify:
 
 For processor unit testing examples using NiFi's TestRunner, see link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest] and link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java[MultiIssuerJWTTokenAuthenticatorExtendedTest]. These tests verify property validation, token extraction, flow file routing, and attribute generation.
 
-See link:technical-components.adoc[Technical Components] for processor implementation details.
+See link:configuration.adoc#_controller_service_architecture[Controller Service Architecture] for processor implementation details.
 
 == Integration Testing
 
@@ -262,7 +262,6 @@ Tests are run automatically as part of the build process:
 * link:token-validation.adoc[Token Validation]
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
-* link:technical-components.adoc[Technical Components]
 * xref:integration-testing.adoc[Integration Testing — Flow Pipeline Design]
 * link:../Requirements.adoc#NIFI-AUTH-14[Unit Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]

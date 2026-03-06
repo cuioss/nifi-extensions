@@ -22,7 +22,6 @@ _See Requirement xref:Requirements.adoc#NIFI-AUTH-13[NIFI-AUTH-13: Documentation
 
 This specification is organized into the following documents:
 
-* xref:specification/technical-components.adoc[Technical Components] - Core implementation details and module architecture
 * xref:specification/configuration.adoc[Configuration] - Configuration properties for both processors and Controller Service
 * xref:specification/token-validation.adoc[Token Validation] - Token validation implementation
 * xref:specification/error-handling.adoc[Error Handling] - Error handling for JWT processor and RFC 9457 gateway errors

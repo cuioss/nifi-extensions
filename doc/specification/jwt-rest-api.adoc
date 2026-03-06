@@ -236,6 +236,75 @@ Uses Jakarta JSON API for all JSON parsing and generation to maintain consistenc
 === Configuration Access
 Servlets access processor configuration via NiFi's REST API to ensure consistency with the processor's TokenValidator instance.
 
+== RestApiGateway Request Pipeline
+
+The `GatewayRequestHandler` processes each request through a 6-stage pipeline:
+
+1. **Input Sanitization** -- Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
+2. **Route Matching** -- Matches the sanitized path against configured routes (exact match). Returns 404 (route not found) or 405 (method not allowed).
+3. **JWT Authentication** -- Extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure.
+4. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes).
+5. **Body Validation** -- Reads the request body up to the configured maximum size. Returns 413 if the body exceeds the limit.
+6. **Enqueue** -- Places the validated `HttpRequestContainer` on the internal queue for `onTrigger` processing. Returns 503 if the queue is full (back-pressure).
+
+All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`.
+
+== FlowFile Output Attributes
+
+[cols="1,2"]
+|===
+|Attribute |Description
+
+|`rest.route.name`
+|Matched route name
+
+|`rest.route.path`
+|Matched route path pattern
+
+|`http.method`
+|HTTP method (GET, POST, etc.)
+
+|`http.request.uri`
+|Full request URI path
+
+|`http.remote.host`
+|Client remote host address
+
+|`mime.type`
+|Content-Type of request body
+
+|`http.query.<name>`
+|Query parameter values (one attribute per parameter)
+
+|`jwt.content.<claim>`
+|JWT token claims mapped by `TokenClaimMapper`
+|===
+
+== Dependencies
+
+[cols="1,2"]
+|===
+|Component |Purpose
+
+|de.cuioss.sheriff.oauth:oauth-sheriff-core
+|Token validation framework
+
+|org.eclipse.jetty:jetty-server (Jetty 12)
+|Embedded HTTP server for RestApiGatewayProcessor
+
+|de.cuioss.cui-http:cui-http
+|HTTP security pipeline (input sanitization, security event counters)
+
+|jakarta.json:jakarta.json-api
+|JSON processing for RFC 9457 ProblemDetail responses
+
+|cui-java-tools
+|Logging and utilities
+
+|cui-i18n-bundle
+|Internationalization support
+|===
+
 == Related Documentation
 
 * link:../Requirements.adoc[Requirements Document]

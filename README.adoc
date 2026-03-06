@@ -159,7 +159,6 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator` gateway on port 7777
 * link:doc/specification/configuration-ui.adoc[UI Configuration]
 * link:doc/specification/security.adoc[Security]
 * link:doc/specification/token-validation.adoc[Token Validation]
-* link:doc/specification/technical-components.adoc[Technical Components]
 
 === Guides
 
