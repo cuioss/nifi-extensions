@@ -7,6 +7,8 @@
  * @module js/api
  */
 
+import { log } from './utils.js';
+
 const BASE_URL = 'nifi-api/processors/jwt';
 
 /** Component type definitions with NiFi REST API paths. */
@@ -265,7 +267,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
                 await autoTerminateStaleRelationships(componentId, info);
                 const latest = await request('GET', `${info.apiPath}/${componentId}`);
                 await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
-            } catch { /* best effort restart */ }
+            } catch (e) { log.warn('Failed to restart processor after property update:', e); }
         }
     }
     return result;
@@ -355,7 +357,8 @@ export const getConnectedRelationships = async (componentId) => {
                 .filter((c) => c.component?.source?.id === componentId)
                 .flatMap((c) => c.component.selectedRelationships || [])
         );
-    } catch {
+    } catch (e) {
+        log.warn('Failed to fetch connected relationships:', e);
         return new Set();
     }
 };

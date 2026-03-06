@@ -54,9 +54,9 @@ IMPORTANT: Always stop Docker containers before running Maven E2E (`./mvnw verif
 
 - **No Mockito, PowerMock** — use CUI test alternatives
 - **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
-- **No log4j, slf4j, System.out/err** — use CuiLogger
+- **No log4j, slf4j, System.out/err** in Java — use CuiLogger
 - **No `var`** keyword in JavaScript — use `const`/`let`
-- **No console.log** — use structured logging
+- **No raw `console.log`** in JavaScript — use the `log` utility from `utils.js` (`log.info`, `log.warn`, `log.error`, `log.debug`)
 - **No commits without pre-commit checks** — always run `./mvnw -Ppre-commit clean install -DskipTests` then `./mvnw clean install`
 - **No hardcoded credentials or secrets**
 - **No null returns** in Java — use Optional or empty collections
