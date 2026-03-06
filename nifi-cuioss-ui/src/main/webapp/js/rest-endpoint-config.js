@@ -618,8 +618,8 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
     } else {
         for (const name of routeNames) {
             const outcome = routes[name]?.['success-outcome']?.trim() || name;
-            const origin = connectedRels && connectedRels.has(outcome) ? 'persisted' : 'new';
-            const row = createTableRow(name, routes[name], componentId, container, origin);
+            const connected = !connectedRels || connectedRels.has(outcome);
+            const row = createTableRow(name, routes[name], componentId, container, 'persisted', connected);
             tbody.appendChild(row);
         }
     }
@@ -630,16 +630,20 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
 /**
  * Build an origin badge HTML snippet for a route row.
  * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {boolean} connected  whether the route's relationship is wired on the NiFi canvas
  * @returns {string} HTML string for the badge
  */
-const buildOriginBadge = (origin) => {
+const buildOriginBadge = (origin, connected) => {
     if (origin === 'new') {
         return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
     }
     if (origin === 'modified') {
         return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
     }
-    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+    if (connected) {
+        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+    }
+    return '';
 };
 
 /**
@@ -649,9 +653,10 @@ const buildOriginBadge = (origin) => {
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
  * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {boolean} [connected=true]  whether the route's relationship is wired on the NiFi canvas
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted') => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted', connected = true) => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
     row.dataset.origin = origin;
@@ -670,7 +675,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
 
-    const originBadge = buildOriginBadge(origin);
+    const originBadge = buildOriginBadge(origin, connected);
 
     // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
@@ -721,7 +726,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  */
 const updateTableRow = (row, formData) => {
     const origin = row.dataset.origin || 'persisted';
-    const originBadge = buildOriginBadge(origin);
+    const originBadge = buildOriginBadge(origin, origin === 'persisted');
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions

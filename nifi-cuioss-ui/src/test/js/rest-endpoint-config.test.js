@@ -1225,13 +1225,14 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
+        // Both routes are persisted (loaded from properties)
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         expect(healthRow.dataset.origin).toBe('persisted');
         expect(healthRow.querySelector('.origin-persisted')).not.toBeNull();
 
+        // Unconnected route: still persisted, but no lock icon
         const dataRow = container.querySelector('tr[data-route-name="data"]');
-        expect(dataRow.dataset.origin).toBe('new');
-        expect(dataRow.querySelector('.origin-new')).not.toBeNull();
+        expect(dataRow.dataset.origin).toBe('persisted');
         expect(dataRow.querySelector('.origin-persisted')).toBeNull();
     });
 
@@ -1245,11 +1246,15 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
+        // data route uses custom outcome 'api-data' which is connected → lock icon
         const dataRow = container.querySelector('tr[data-route-name="data"]');
         expect(dataRow.dataset.origin).toBe('persisted');
+        expect(dataRow.querySelector('.origin-persisted')).not.toBeNull();
 
+        // health route has no connection → no lock icon
         const healthRow = container.querySelector('tr[data-route-name="health"]');
-        expect(healthRow.dataset.origin).toBe('new');
+        expect(healthRow.dataset.origin).toBe('persisted');
+        expect(healthRow.querySelector('.origin-persisted')).toBeNull();
     });
 
     it('should show dash in Connection column when create-flowfile is false', async () => {
