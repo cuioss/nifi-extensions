@@ -857,7 +857,8 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // All loaded rows should have data-origin="persisted" and the lock icon badge
+        // All loaded rows should have data-origin="persisted"
+        // Lock icon badge only appears for routes with connected relationships on the canvas
         const dataRows = summaryTable.locator("tbody tr[data-route-name]");
         const rowCount = await dataRows.count();
         expect(rowCount).toBeGreaterThanOrEqual(1);
@@ -865,9 +866,10 @@ test.describe("REST API Gateway Tabs", () => {
         for (let i = 0; i < rowCount; i++) {
             const row = dataRows.nth(i);
             await expect(row).toHaveAttribute("data-origin", "persisted");
-            const badge = row.locator(".origin-persisted");
-            await expect(badge).toHaveCount(1);
         }
+        // At least one route should have the lock icon (connected on canvas)
+        const connectedBadges = summaryTable.locator(".origin-persisted");
+        expect(await connectedBadges.count()).toBeGreaterThanOrEqual(1);
     });
 
     test("should show new badge after adding a route", async ({
