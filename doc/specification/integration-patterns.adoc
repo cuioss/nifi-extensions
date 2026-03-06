@@ -282,7 +282,7 @@ In this pattern, the processor:
 </flow>
 ----
 
-For more details on multi-issuer support, see link:technical-components.adoc#_multi_issuer_support[Multi-Issuer Support].
+For more details on multi-issuer support, see link:configuration.adoc#_controller_service_architecture[Controller Service Architecture].
 
 == Implementation Examples
 
@@ -335,4 +335,4 @@ For performance considerations, see link:configuration.adoc#_performance_propert
 * link:configuration.adoc[Configuration]
 * link:security.adoc[Security]
 * link:testing.adoc[Testing]
-* link:technical-components.adoc[Technical Components]
+* link:configuration.adoc[Configuration Reference]

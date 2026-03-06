@@ -65,9 +65,6 @@ The processor UI organizes properties into logical groups for better usability:
 
 === Standard Properties Tab
 
-[.text-center]
-image::../plantuml/configuration-properties-ui.png[Configuration Properties UI, align="center"]
-
 Properties in the UI are organized into sections:
 
 1. **Basic Properties**: Core settings displayed by default
@@ -87,9 +84,6 @@ Properties in the UI are organized into sections:
      - issuer.<N>.roles
 
 === Dynamic Properties
-
-[.text-center]
-image::../plantuml/configuration-issuers-ui.png[Issuer Management UI, align="center"]
 
 Each issuer requires a unique Name and a validated Type. The Type determines how the JWKS is provided:
 
@@ -128,9 +122,6 @@ _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verifica
 
 The processor includes a token verification interface to test JWT tokens:
 
-[.text-center]
-image::../plantuml/token-verification-ui.png[Token Verification UI (Success), align="center"]
-
 This interface allows users to:
 
 1. Paste a JWT token for validation
@@ -152,9 +143,6 @@ This ensures that each UI verification is isolated, does not affect processor me
 
 In case of an error, the interface displays a clear error message and does not show token details:
 
-[.text-center]
-image::../plantuml/token-verification-ui_001.png[Token Verification UI (Error), align="center"]
-
 The error state highlights the invalid status in red and provides the reason for the failure (e.g., signature verification failed).
 
 == Custom UI Tabs
@@ -174,9 +162,6 @@ badges. See link:gateway-ui.adoc[REST API Gateway — Custom UI] for details.
 Provides the token verification interface for testing tokens against the current configuration.
 
 === Metrics Tab
-
-[.text-center]
-image::../plantuml/configuration-metrics-ui.png[Metrics & Statistics UI, align="center"]
 
 Displays security event metrics and validation statistics:
 

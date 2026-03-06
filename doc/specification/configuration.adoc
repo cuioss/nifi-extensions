@@ -34,6 +34,30 @@ image::../plantuml/configuration-overview.png[Configuration Overview Diagram, al
 === Verification
 * link:../../nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorTest.java[MultiIssuerJWTTokenAuthenticatorTest]
 
+== Controller Service Architecture
+
+Both processors share JWT validation capabilities through the `JwtIssuerConfigService` Controller Service:
+
+[cols="1,2"]
+|===
+|Component |Specification
+
+|Interface
+|link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtIssuerConfigService.java[JwtIssuerConfigService] (in `nifi-cuioss-api`)
+
+|Implementation
+|link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java[StandardJwtIssuerConfigService] (in `nifi-cuioss-common`)
+
+|Config Record
+|link:../../nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtAuthenticationConfig.java[JwtAuthenticationConfig] (in `nifi-cuioss-api`)
+|===
+
+The Controller Service provides:
+
+* `validateToken(String rawToken)` -- validates a raw JWT string and returns `AccessTokenContent`
+* `getAuthenticationConfig()` -- returns immutable authentication configuration snapshot
+* `getSecurityEventCounter()` -- returns the oauth-sheriff `SecurityEventCounter` for metrics
+
 === Configuration Architecture
 
 Configuration is split between processors and a shared Controller Service (CS):
@@ -398,5 +422,4 @@ jwt.validation.issuer.2.enabled = false  # Disabled in production
 
 === Related Implementation
 * xref:token-validation.adoc[Token Validation]
-* xref:technical-components.adoc[Technical Components]
 * xref:error-handling.adoc[Error Handling]

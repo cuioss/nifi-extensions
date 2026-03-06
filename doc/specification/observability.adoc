@@ -249,4 +249,4 @@ Security events can be integrated with NiFi's Provenance Repository for complian
 * link:token-validation.adoc[Token Validation]
 * link:error-handling.adoc[Error Handling]
 * link:configuration-ui.adoc[UI Configuration]
-* link:technical-components.adoc[Technical Components]
+* link:configuration.adoc[Configuration Reference]

@@ -24,7 +24,7 @@ import lombok.experimental.UtilityClass;
  * that are not specific to any particular NiFi processor.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
  */
 @UtilityClass
 public final class JwtConstants {
