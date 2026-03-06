@@ -716,10 +716,6 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  * @param {Object} formData  extracted form data
  */
 const updateTableRow = (row, formData) => {
-    // Mark persisted routes as modified after edit
-    if (row.dataset.origin === 'persisted') {
-        row.dataset.origin = 'modified';
-    }
     const origin = row.dataset.origin || 'persisted';
     const originBadge = buildOriginBadge(origin);
 
@@ -1374,6 +1370,25 @@ const showInfoBanner = (routesContainer) => {
 };
 
 /**
+ * Show a success banner after persisting changes to NiFi.
+ * Auto-hides after 5 seconds.
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ */
+const showSaveSuccessBanner = (routesContainer) => {
+    const editor = routesContainer.closest('.route-config-editor');
+    if (!editor) return;
+    const existing = editor.querySelector('.info-banner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'info-banner info-banner-success';
+    banner.setAttribute('role', 'status');
+    banner.innerHTML = t('route.save.success.banner');
+    routesContainer.parentNode.insertBefore(banner, routesContainer);
+    setTimeout(() => banner.remove(), 5000);
+};
+
+/**
  * Save route: validate, persist, update table row, close editor.
  * @param {HTMLElement} form  the inline editor form
  * @param {HTMLElement} errEl  error display element
@@ -1409,16 +1424,17 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
             form.dataset.originalName = f.routeName;
 
             if (tableRow) {
-                // Update the existing table row and show it
+                // Mark as persisted before updating (prevents 'modified' badge)
+                tableRow.dataset.origin = 'persisted';
                 updateTableRow(tableRow, f);
                 tableRow.classList.remove('hidden');
             } else {
-                // New route — add a row to the table
-                addRowToTable(routesContainer, f, componentId);
+                // New route — add a row to the table (persisted origin)
+                addRowToTable(routesContainer, f, componentId, 'persisted');
             }
             form.remove();
 
-            showInfoBanner(routesContainer);
+            showSaveSuccessBanner(routesContainer);
             refreshExportPanel(routesContainer);
             refreshConnectionMap(routesContainer);
         } catch (error) {
@@ -1445,8 +1461,9 @@ const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) =>
  * @param {HTMLElement} routesContainer
  * @param {Object} formData
  * @param {string} componentId
+ * @param {'persisted'|'new'} [origin='new']  the route origin state
  */
-const addRowToTable = (routesContainer, formData, componentId) => {
+const addRowToTable = (routesContainer, formData, componentId, origin = 'new') => {
     const table = routesContainer.querySelector('.route-summary-table');
     if (!table) return;
     const tbody = table.querySelector('tbody');
@@ -1467,7 +1484,7 @@ const addRowToTable = (routesContainer, formData, componentId) => {
         'success-outcome': formData['success-outcome'] || '',
         'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true'
     };
-    const row = createTableRow(formData.routeName, props, componentId, routesContainer, 'new');
+    const row = createTableRow(formData.routeName, props, componentId, routesContainer, origin);
     tbody.appendChild(row);
 };
 

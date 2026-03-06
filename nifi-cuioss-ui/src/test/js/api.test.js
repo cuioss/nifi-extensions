@@ -158,7 +158,8 @@ describe('updateProcessorProperties', () => {
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(3);
-        expect(putBody.component.properties['issuer.keycloak.issuer']).toBe(
+        // Properties must be under component.config.properties for processors
+        expect(putBody.component.config.properties['issuer.keycloak.issuer']).toBe(
             'https://auth.example.com'
         );
     });
@@ -305,12 +306,12 @@ describe('getComponentProperties', () => {
 // ---------------------------------------------------------------------------
 
 describe('updateComponentProperties', () => {
-    test('should use correct API path for update', async () => {
+    test('should use config.properties path for PROCESSOR type', async () => {
         globalThis.jwtAuthConfig = { processorId: 'proc-123' };
         // Detection
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
-        // GET current
-        mockJsonResponse({ revision: { version: 5 }, component: { id: 'proc-123' } });
+        // GET current (processor not running)
+        mockJsonResponse({ revision: { version: 5 }, component: { id: 'proc-123', state: 'STOPPED' } });
         // PUT update
         mockJsonResponse({ revision: { version: 6 } });
 
@@ -323,7 +324,64 @@ describe('updateComponentProperties', () => {
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(5);
-        expect(putBody.component.properties.key).toBe('value');
+        // Properties must be under component.config.properties (not component.properties)
+        expect(putBody.component.config.properties.key).toBe('value');
+        expect(putBody.component.properties).toBeUndefined();
+    });
+
+    test('should use properties path for CONTROLLER_SERVICE type', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
+        // Detection
+        mockJsonResponse({ type: 'CONTROLLER_SERVICE', componentClass: 'SomeCS' });
+        // GET current
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'cs-456' } });
+        // PUT update
+        mockJsonResponse({ revision: { version: 3 } });
+
+        await updateComponentProperties('cs-456', { 'csKey': 'csVal' });
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+        const putBody = JSON.parse(globalThis.fetch.mock.calls[2][1].body);
+        // CS properties are directly under component.properties
+        expect(putBody.component.properties.csKey).toBe('csVal');
+        expect(putBody.component.config).toBeUndefined();
+    });
+
+    test('should stop RUNNING processor before updating and restart after', async () => {
+        globalThis.jwtAuthConfig = { processorId: 'proc-run' };
+        // Detection
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // GET current — RUNNING
+        mockJsonResponse({ revision: { version: 1 }, component: { id: 'proc-run', state: 'RUNNING' } });
+        // PUT stop run-status
+        mockJsonResponse({ revision: { version: 2 } });
+        // GET poll state — STOPPED
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        // GET fresh revision
+        mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        // PUT property update
+        mockJsonResponse({ revision: { version: 3 } });
+        // GET for restart
+        mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-run', state: 'STOPPED' } });
+        // PUT restart run-status
+        mockJsonResponse({ revision: { version: 4 } });
+
+        await updateComponentProperties('proc-run', { 'key': 'value' });
+
+        // Verify stop was called
+        const stopCall = globalThis.fetch.mock.calls[2];
+        expect(stopCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
+        expect(JSON.parse(stopCall[1].body).state).toBe('STOPPED');
+
+        // Verify property update has correct structure
+        const updateCall = globalThis.fetch.mock.calls[5];
+        const updateBody = JSON.parse(updateCall[1].body);
+        expect(updateBody.component.config.properties.key).toBe('value');
+
+        // Verify restart was called
+        const restartCall = globalThis.fetch.mock.calls[7];
+        expect(restartCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
+        expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
     });
 });
 

@@ -182,6 +182,8 @@ export const getComponentProperties = async (componentId) => {
 
 /**
  * Update component properties (fetches current revision first).
+ * For processors, uses a stop → update → start cycle because NiFi
+ * rejects property updates on RUNNING processors (HTTP 409).
  *
  * @param {string} componentId  NiFi component UUID
  * @param {Object} properties   properties to update
@@ -189,11 +191,98 @@ export const getComponentProperties = async (componentId) => {
  */
 export const updateComponentProperties = async (componentId, properties) => {
     const info = await detectComponentType(componentId);
+
+    if (info.type === 'PROCESSOR') {
+        return updateProcessorWithStopStart(componentId, info, properties);
+    }
+
     const current = await request('GET', `${info.apiPath}/${componentId}`);
     return request('PUT', `${info.apiPath}/${componentId}`, {
         revision: current.revision,
         component: { id: componentId, properties }
     });
+};
+
+/**
+ * Build the PUT body using propsPath so the nested structure matches NiFi's DTO.
+ * PROCESSOR: { id, config: { properties } }
+ * CONTROLLER_SERVICE: { id, properties }
+ *
+ * @param {string} componentId
+ * @param {string[]} propsPath  e.g. ['component', 'config', 'properties']
+ * @param {Object} properties
+ * @returns {Object}  the component body for the PUT request
+ */
+const buildComponentBody = (componentId, propsPath, properties) => {
+    const componentBody = { id: componentId };
+    let target = componentBody;
+    // Skip 'component' (first) and 'properties' (last) — build intermediate nesting
+    for (const segment of propsPath.slice(1, -1)) {
+        target[segment] = {};
+        target = target[segment];
+    }
+    target.properties = properties;
+    return componentBody;
+};
+
+/**
+ * Stop a RUNNING processor, update properties, then restart.
+ * If the processor is already stopped, just updates and restarts.
+ */
+const updateProcessorWithStopStart = async (componentId, info, properties) => {
+    const current = await request('GET', `${info.apiPath}/${componentId}`);
+    const wasRunning = current.component?.status?.runStatus === 'Running'
+        || current.component?.state === 'RUNNING';
+
+    // Stop the processor if running
+    if (wasRunning) {
+        await updateProcessorRunStatus(componentId, 'STOPPED', current.revision);
+        await waitForProcessorState(componentId, info, 'STOPPED');
+    }
+
+    // Fetch fresh revision after state change
+    const fresh = wasRunning
+        ? await request('GET', `${info.apiPath}/${componentId}`)
+        : current;
+
+    let result;
+    try {
+        result = await request('PUT', `${info.apiPath}/${componentId}`, {
+            revision: fresh.revision,
+            component: buildComponentBody(componentId, info.propsPath, properties)
+        });
+    } finally {
+        // Always restart if it was running, even if the update failed
+        if (wasRunning) {
+            try {
+                const latest = await request('GET', `${info.apiPath}/${componentId}`);
+                await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
+            } catch { /* best effort restart */ }
+        }
+    }
+    return result;
+};
+
+/**
+ * Update a processor's run status (RUNNING or STOPPED).
+ */
+const updateProcessorRunStatus = (componentId, state, revision) =>
+    request('PUT', `/nifi-api/processors/${componentId}/run-status`, {
+        revision,
+        state
+    });
+
+/**
+ * Poll until the processor reaches the desired state (max ~10s).
+ */
+const waitForProcessorState = async (componentId, info, desiredState) => {
+    const maxAttempts = 20;
+    const delayMs = 500;
+    for (let i = 0; i < maxAttempts; i++) {
+        const data = await request('GET', `${info.apiPath}/${componentId}`);
+        if (data.component?.state === desiredState) return;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
 };
 
 /**
@@ -298,7 +387,7 @@ export const updateProcessorProperties = async (processorId, properties) => {
     const proc = await getProcessorProperties(processorId);
     return request('PUT', `/nifi-api/processors/${processorId}`, {
         revision: proc.revision,
-        component: { id: processorId, properties }
+        component: { id: processorId, config: { properties } }
     });
 };
 

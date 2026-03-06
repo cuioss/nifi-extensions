@@ -465,4 +465,26 @@ class CustomUIEndpointsIT {
                     .body("status", equalTo(200));
         }
     }
+
+    // ── Route Config Persistence Tests ────────────────────────────────
+
+    @Nested
+    @DisplayName("Route Configuration Persistence")
+    class RouteConfigPersistence {
+
+        @Test
+        @DisplayName("should persist route config via /config endpoint round-trip")
+        void routeConfigRoundTrip() {
+            // Verify gateway config endpoint returns routes
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes", notNullValue())
+                    .body("routes.size()", greaterThan(0))
+                    .body("routes.name", hasItem("data"));
+        }
+    }
 }
