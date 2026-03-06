@@ -1,15 +1,21 @@
-= Authentication Architecture
+= Security Architecture
 :toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
 :source-highlighter: highlight.js
 
-link:../Specification.adoc[Back to Main Specification] | link:security.adoc[Security Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Overview
+[.requirement]
+_See Requirement: link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]_
 
-This document describes the end-to-end authentication and authorization architecture across all three service layers: the NiFi Web UI servlets, the GatewayProxyServlet, and the REST API Gateway's embedded Jetty server.
+This document describes the security architecture for the NiFi Extensions project, covering authentication and authorization across all three service layers, algorithm restrictions, SSRF protection, and multi-issuer security considerations.
+
+== Authentication Layers
+
+This section describes the end-to-end authentication and authorization architecture across all three service layers: the NiFi Web UI servlets, the GatewayProxyServlet, and the REST API Gateway's embedded Jetty server.
 
 == Authentication Layers
 
@@ -321,8 +327,85 @@ This means users accessing management data through the NiFi UI get full three-la
 |Embedded Jetty lifecycle with configurable host binding
 |===
 
+== Algorithm Restrictions
+
+The processor restricts token algorithms to those considered secure:
+
+[cols="1,3"]
+|===
+|Algorithm |Security Status
+
+|RS256, RS384, RS512
+|Secure - RSA with SHA-2
+
+|ES256, ES384, ES512
+|Secure - ECDSA with SHA-2
+
+|PS256, PS384, PS512
+|Secure - RSA PSS with SHA-2
+
+|HS256, HS384, HS512
+|**Not recommended** - Requires shared secret
+
+|none
+|**Blocked** - "none" algorithm is never allowed
+|===
+
+== SSRF Protection
+
+By default, JWKS URLs that resolve to private, loopback, link-local, or any-local addresses are blocked to prevent Server-Side Request Forgery (SSRF) attacks. This protection can be disabled when the Identity Provider (IdP) runs on an internal network.
+
+[cols="1,3"]
+|===
+|Property |Description
+
+|`jwt.validation.jwks.allow.private.network.addresses`
+|When set to `true` on the `StandardJwtIssuerConfigService` controller service, allows JWKS URLs that resolve to private/loopback network addresses. Default: `false`.
+|===
+
+**Use case:** Enterprise deployments where Keycloak or another IdP runs on a site-local address (e.g., `10.x.x.x`, `172.16.x.x`, `192.168.x.x`).
+
+WARNING: Only enable this setting in trusted network environments where the NiFi instance and IdP are on the same private network. Disabling SSRF protection in untrusted environments exposes the system to internal network scanning attacks.
+
+==== Security Model for Processor ID Header
+
+The `X-Processor-Id` header used in JWKS validation requests is a *configuration lookup key*, not a security credential or trust token. It cannot be used to bypass SSRF protection:
+
+1. **Lookup only**: The header value is passed to `NiFiWebConfigurationContext` to read the referenced processor's existing, admin-configured properties.
+2. **No privilege escalation**: The `allowPrivateAddresses` flag is read from a controller service that the administrator has explicitly configured.
+3. **Fail-secure defaults**: If the configuration context is unavailable, the header is missing, or any exception occurs during property resolution, the method returns `false` (private addresses blocked).
+4. **NiFi session authentication**: The Custom UI servlet endpoints are only reachable within NiFi's authenticated web container (iframe).
+
+== Multi-Issuer Security
+
+The multi-issuer support introduces additional security considerations:
+
+1. **Issuer Isolation**: Each issuer is validated independently
+2. **Key Separation**: Each issuer has its own key set
+3. **Dynamic Configuration**: Issuers can be enabled/disabled without redeployment
+4. **Per-Issuer Audience**: Each issuer can have specific audience requirements
+
+== Implementation Classes (Security)
+
+[cols="2,3"]
+|===
+|Class |Role
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java[JwksValidationServlet]
+|JWKS URL/file/content validation with SSRF and path traversal protection
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ComponentConfigReader.java[ComponentConfigReader]
+|Secure processor configuration retrieval via NiFi REST API
+
+|link:../../nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/TokenMasking.java[TokenMasking]
+|Sensitive token masking for log output
+|===
+
 == See Also
 
-* link:security.adoc[Security Specification] -- Token validation security, JWKS protection, runtime security
 * link:jwt-rest-api.adoc[JWT REST API] -- Custom UI endpoint details and request/response formats
+* link:token-validation.adoc[Token Validation]
+* link:configuration.adoc[Configuration]
+* link:error-handling.adoc[Error Handling]
+* link:technical-components.adoc[Technical Components]
 * link:../Requirements.adoc#NIFI-AUTH-8[NIFI-AUTH-8: Security Requirements]

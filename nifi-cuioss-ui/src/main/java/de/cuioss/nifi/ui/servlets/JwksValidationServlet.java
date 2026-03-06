@@ -60,7 +60,7 @@ import java.util.Map;
  * All methods use POST and expect JSON request bodies.
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security-architecture.adoc">Security Architecture</a>
  */
 public class JwksValidationServlet extends HttpServlet {
 

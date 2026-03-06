@@ -5,7 +5,7 @@
 :sectnums:
 :imagesdir: ../plantuml
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Component Architecture
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-2[NIFI-AUTH-2: Core Functionality]_
@@ -152,7 +152,7 @@ See the relationship definitions in link:../../nifi-cuioss-processors/src/main/j
 
 ==== Output Attributes
 
-For detailed information about attribute handling and token validation output, see link:../library/oauth-sheriff/Usage.adoc#flow-file-attribute-generation[Flow File Attribute Generation].
+For detailed information about attribute handling and token validation output, see the https://github.com/cuioss/oauth-sheriff[OAuth-Sheriff] documentation.
 
 == RestApiGateway Processor
 
@@ -278,7 +278,7 @@ The TokenValidator serves as the primary entry point for token operations. It pr
 * Automatic key retrieval and caching
 * Claim validation including audience checks
 
-For detailed implementation of token validation, see link:../library/oauth-sheriff/Usage.adoc[Token Validation Specification].
+For detailed implementation of token validation, see the https://github.com/cuioss/oauth-sheriff[OAuth-Sheriff] documentation.
 
 === IssuerConfig
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-3[NIFI-AUTH-3: Token Validation Requirements]_
@@ -291,14 +291,14 @@ The IssuerConfig handles token validation for a specific issuer. It allows confi
 * Custom claim validation rules
 * Key refresh intervals
 
-For more configuration details, see link:../library/oauth-sheriff/Usage.adoc[Configuration Specification].
+For more configuration details, see the https://github.com/cuioss/oauth-sheriff[OAuth-Sheriff] documentation.
 
 === Multi-Issuer Support
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-4[NIFI-AUTH-4: Multiple Issuer Support]_
 
 Both processors support multiple issuers simultaneously through the shared Controller Service, allowing validation of tokens from different identity providers.
 
-For detailed implementation examples and integration patterns, see link:integration-patterns.adoc[Integration Patterns].
+For detailed implementation examples, see link:../guides/QuickStart.adoc[Quick Start Guide].
 
 == TokenValidator Lifecycle in NiFi
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-11[NIFI-AUTH-11: NiFi Integration]_
@@ -310,7 +310,7 @@ The OAuth-Sheriff library's `TokenValidator` is designed to be stateful and main
 
 Both processors reference the same Controller Service instance, ensuring consistent token validation and shared JWKS caches.
 
-For complete details on TokenValidator lifecycle management, including thread safety and resource management, see link:../library/oauth-sheriff/Usage.adoc#handling-tokenvalidator-lifecycle-in-nifi[Handling TokenValidator Lifecycle in NiFi].
+For complete details on TokenValidator lifecycle management, including thread safety and resource management, see the https://github.com/cuioss/oauth-sheriff[OAuth-Sheriff] documentation.
 
 == Error Handling
 
@@ -318,12 +318,12 @@ The processors implement comprehensive error handling using standardized error c
 
 == Security Considerations
 
-Security is paramount in JWT token validation. For information about security implementation, best practices, and threat mitigations, see link:../library/oauth-sheriff/Usage.adoc[Security Specification].
+Security is paramount in JWT token validation. For information about security implementation, best practices, and threat mitigations, see link:security-architecture.adoc[Security Architecture].
 
 == See Also
 
 === Core Documentation
-* link:../Specification.adoc[Main Specification]
+* link:../../README.adoc[Project Documentation]
 * link:../Requirements.adoc[Requirements]
 
 === Configuration
@@ -332,13 +332,10 @@ Security is paramount in JWT token validation. For information about security im
 * link:configuration-static.adoc[Static Configuration]
 
 === Implementation
-* link:../library/oauth-sheriff/Usage.adoc[Token Validation]
+* link:token-validation.adoc[Token Validation]
 * link:error-handling.adoc[Error Handling]
-* link:../library/oauth-sheriff/Usage.adoc[Security]
-* link:internationalization.adoc[Internationalization]
+* link:security-architecture.adoc[Security Architecture]
+* link:configuration-ui.adoc#_internationalization[Internationalization]
 * link:observability.adoc[Observability]
 * link:../rest-errors/index.adoc[REST API Error Reference]
-
-=== Integration
-* link:integration-patterns.adoc[Integration Patterns]
-* link:testing.adoc[Testing]
+* link:integration-testing.adoc[Integration Testing]

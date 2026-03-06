@@ -12,7 +12,7 @@ This document outlines the requirements for the NiFi Extensions project, which p
 * **RestApiGatewayProcessor** -- self-contained REST API gateway with embedded HTTP server, route-based dispatching, and RFC 9457 error responses
 * **JwtIssuerConfigService** -- shared Controller Service for JWT issuer configuration and token validation
 
-For detailed implementation specifications, see the xref:Specification.adoc[Specification Document].
+For detailed implementation specifications, see the link:../README.adoc[Documentation Index].
 
 == General Requirements
 
@@ -22,8 +22,6 @@ For detailed implementation specifications, see the xref:Specification.adoc[Spec
 * Enable simplified REST API endpoint provisioning in NiFi
 * Provide standardized JWT validation capabilities
 * Support OAuth 2.0 token validation workflow
-
-_Implementation details: xref:Specification.adoc[Main Specification]_
 
 == MultiIssuerJWTTokenAuthenticator
 
@@ -36,8 +34,6 @@ _Implementation details: xref:Specification.adoc[Main Specification]_
 * Extract token information
 * Route flow files based on validation results
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-AUTH-3]
 === NIFI-AUTH-3: Token Validation Requirements
 
@@ -48,8 +44,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Validate token audience if present (aud claim)
 * Support multiple token issuers
 
-_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
-
 [#NIFI-AUTH-4]
 === NIFI-AUTH-4: Multiple Issuer Support
 
@@ -58,16 +52,12 @@ _Implementation details: xref:specification/token-validation.adoc[Token Validati
 * Support different signing algorithms per issuer
 * Allow dynamic issuer key/certificate updates
 
-_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
-
 [#NIFI-AUTH-5]
 === NIFI-AUTH-5: Input Requirements
 
 * Accept JWT token in flow file
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
-
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-5.1]
 ==== NIFI-AUTH-5.1: Token Location
@@ -76,26 +66,18 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Format: "Bearer <token>"
 * Support validation of header presence and format
 
-_Implementation details: xref:specification/token-validation.adoc[Token Validation]_
-
 [#NIFI-AUTH-5.2]
 ==== NIFI-AUTH-5.2: Dynamic Properties
 
 The processor must support dynamic properties for custom claim mapping.
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-5.3]
 ==== NIFI-AUTH-5.3: Advanced Properties
 
 The processor must support advanced properties that are only shown when explicitly requested by the user.
 
-_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
-
 [#NIFI-AUTH-6]
 === NIFI-AUTH-6: Output Requirements
-
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-6.1]
 ==== NIFI-AUTH-6.1: Success Path
@@ -103,8 +85,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Route validated tokens to "success" relationship
 * Extract and provide token claims as flow file attributes
 * Include validation metadata (issuer, validation time)
-
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
 
 [#NIFI-AUTH-6.2]
 ==== NIFI-AUTH-6.2: Failure Path
@@ -118,12 +98,8 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
   ** Unknown issuer
   ** Invalid claims
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.1]
 ==== NIFI-AUTH-7.1: UI Configuration
@@ -135,8 +111,6 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
   ** Button should validate that the JWKS endpoint is accessible
   ** Provide immediate feedback on connection success/failure
   ** Display appropriate error messages for connection failures
-
-_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
 
 [#NIFI-AUTH-7.2]
 ==== NIFI-AUTH-7.2: Token Validation Configuration
@@ -150,8 +124,6 @@ _Implementation details: xref:specification/configuration-ui.adoc[UI Configurati
 * Support dynamic addition/removal of issuers
 * Validate configuration inputs
 * Provide clear error messages for invalid configurations
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.3]
 ==== NIFI-AUTH-7.3: Verification
@@ -170,8 +142,6 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
   ** Suggest possible fixes based on error type
 * Support testing without affecting processor state or flow files
 
-_Implementation details: xref:specification/configuration-ui.adoc[UI Configuration]_
-
 [#NIFI-AUTH-7.4]
 ==== NIFI-AUTH-7.4: Authorization Configuration
 
@@ -183,8 +153,6 @@ _Implementation details: xref:specification/configuration-ui.adoc[UI Configurati
   ** Required Roles (List of String) — roles that must be present in token
   ** All configured requirements (scopes, roles) for the matched issuer must be met for success
 
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
-
 [#NIFI-AUTH-7.5]
 ==== NIFI-AUTH-7.5: Configuration Properties
 
@@ -192,8 +160,6 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Per issuer configuration:
   ** Issuer Identifier
   ** JWKS endpoint URL or public key
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-AUTH-7.6]
 ==== NIFI-AUTH-7.6: Static Configuration for Container Environments
@@ -217,8 +183,6 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
   ** Allow runtime reload without restart
   ** Log configuration changes at appropriate level
 
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
-
 [#NIFI-AUTH-8]
 === NIFI-AUTH-8: Security Requirements
 
@@ -226,8 +190,6 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * No sensitive information logging
 * Proper error handling without information leakage
 * Compliance with security best practices
-
-_Implementation details: xref:specification/security.adoc[Security]_
 
 [#NIFI-AUTH-9]
 === NIFI-AUTH-9: Performance Requirements
@@ -242,8 +204,6 @@ _Implementation details: xref:specification/security.adoc[Security]_
   ** Token validation latency: <50ms per token
   ** Memory usage: <100MB additional heap usage
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-AUTH-10]
 === NIFI-AUTH-10: Error Handling Requirements
 
@@ -256,8 +216,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Recovery mechanisms for transient errors
 * Proper logging of errors with appropriate severity levels
 
-_Implementation details: xref:specification/error-handling.adoc[Error Handling]_
-
 == Integration Requirements
 
 [#NIFI-AUTH-11]
@@ -268,8 +226,6 @@ _Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 * Support for NiFi's configuration framework
 * Integration with NiFi's security features
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-AUTH-12]
 === NIFI-AUTH-12: Integration Examples
 
@@ -277,8 +233,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Example flow for service-to-service authentication
 * Example flow for token transformation
 * Example flow for multi-tenant API routing
-
-_Implementation details: xref:specification/integration-patterns.adoc[Integration Patterns]_
 
 [#NIFI-AUTH-13]
 === NIFI-AUTH-13: Documentation Requirements
@@ -288,8 +242,6 @@ _Implementation details: xref:specification/integration-patterns.adoc[Integratio
 * Troubleshooting guide
 * Security considerations
 * Performance tuning recommendations
-
-_Implementation details: xref:Specification.adoc[Specification Document]_
 
 == Testing Requirements
 
@@ -303,8 +255,6 @@ _Implementation details: xref:Specification.adoc[Specification Document]_
   ** Error case generation
   ** Log message verification
 
-_Implementation details: xref:specification/testing.adoc[Testing]_
-
 [#NIFI-AUTH-15]
 === NIFI-AUTH-15: Integration Testing
 
@@ -313,8 +263,6 @@ _Implementation details: xref:specification/testing.adoc[Testing]_
 * Error handling scenarios
 * Load testing
 * Performance testing with >1000 tokens/sec throughput
-
-_Implementation details: xref:specification/testing.adoc[Testing]_
 
 == Success Criteria
 
@@ -328,8 +276,6 @@ _Implementation details: xref:specification/testing.adoc[Testing]_
 * Passes all security requirements
 * Complete documentation
 * Test coverage meets standards
-
-_Implementation details: xref:Specification.adoc[Specification Document]_
 
 == Internationalization Requirements
 
@@ -349,8 +295,6 @@ _Implementation details: xref:Specification.adoc[Specification Document]_
 ====
 Log messages (as defined in xref:LogMessages.adoc[LogMessages]) are not internationalized. They are always written in English for consistency in logs and monitoring systems.
 ====
-
-_Implementation details: xref:specification/internationalization.adoc[Internationalization]_
 
 == Observability Requirements
 
@@ -380,8 +324,6 @@ _Implementation details: xref:specification/internationalization.adoc[Internatio
 * Provide metrics breakdown in the UI configuration dialog
 * Support runtime metric reset functionality
 
-_Implementation details: xref:specification/observability.adoc[Observability]_
-
 [#NIFI-AUTH-18.2]
 ==== NIFI-AUTH-18.2: Metrics System Integration
 
@@ -389,8 +331,6 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Register all security event metrics as NiFi reportable metrics
 * Apply standard NiFi metric naming conventions
 * Support all NiFi metric aggregation mechanisms
-
-_Implementation details: xref:specification/observability.adoc[Observability]_
 
 [#NIFI-AUTH-18.3]
 ==== NIFI-AUTH-18.3: External Monitoring System Support
@@ -400,8 +340,6 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Provide metadata tags for metric categorization
 * Support metric scraping via NiFi's monitoring endpoints
 * Include proper documentation for external system configuration
-
-_Implementation details: xref:specification/observability.adoc[Observability]_
 
 == REST API Gateway Requirements
 
@@ -413,8 +351,6 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Support optional SSL/TLS via NiFi's SSLContextProvider
 * Accept HTTP requests directly without requiring HandleHttpRequest/HandleHttpResponse
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-GATEWAY-2]
 === NIFI-GATEWAY-2: Multi-Route Configuration
 
@@ -422,8 +358,6 @@ _Implementation details: xref:specification/technical-components.adoc[Technical 
 * Each route defines: path (exact match), allowed HTTP methods, required roles, required scopes
 * Default HTTP methods: GET, POST, PUT, DELETE
 * Each route creates a corresponding NiFi relationship for FlowFile routing
-
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
 
 [#NIFI-GATEWAY-3]
 === NIFI-GATEWAY-3: Per-Route JWT Authorization
@@ -433,16 +367,12 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Return RFC 6750 compliant WWW-Authenticate headers on authentication failure
 * Return 403 Forbidden for missing roles, 401 with `insufficient_scope` for missing scopes
 
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_
-
 [#NIFI-GATEWAY-4]
 === NIFI-GATEWAY-4: RFC 9457 Error Responses
 
 * All error responses must use `application/problem+json` format per RFC 9457
 * Each error type must link to human-readable documentation via the `type` field
 * Support error types: 400, 401, 403, 404, 405, 413, 422, 500, 503
-
-_Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 
 [#NIFI-GATEWAY-6]
 === NIFI-GATEWAY-6: Management Endpoint
@@ -452,8 +382,6 @@ _Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 * Support optional API key authentication for the management endpoint
 * Expose token validation, transport security, and gateway application metrics
 
-_Implementation details: xref:specification/observability.adoc[Observability]_
-
 [#NIFI-GATEWAY-7]
 === NIFI-GATEWAY-7: Request Size Limits
 
@@ -461,13 +389,9 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Return 413 Payload Too Large when exceeded
 * Default limit: 1 MB
 
-_Implementation details: xref:specification/configuration.adoc[Configuration]_
-
 [#NIFI-GATEWAY-8]
 === NIFI-GATEWAY-8: Back-Pressure Integration
 
 * Use a bounded request queue for NiFi flow integration
 * Return 503 Service Unavailable when the queue is full
 * Configurable queue size (default: 50)
-
-_Implementation details: xref:specification/technical-components.adoc[Technical Components]_

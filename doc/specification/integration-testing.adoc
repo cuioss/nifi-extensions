@@ -5,7 +5,7 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-xref:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Referenced Implementation
 
@@ -745,9 +745,7 @@ Changes require restarting the NiFi container for the new flow to take effect.
 
 == See Also
 
-* xref:testing.adoc[Testing Specification]
-* xref:end-to-end-testing.adoc[End-to-End Testing (Playwright)]
 * xref:token-validation.adoc[Token Validation]
 * xref:configuration.adoc[Configuration]
 * xref:../../integration-testing/README.adoc[Integration Testing README]
-* xref:../Specification.adoc[Back to Main Specification]
+* link:../../README.adoc[Back to Project Documentation]

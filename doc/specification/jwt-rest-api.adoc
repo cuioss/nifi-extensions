@@ -5,7 +5,7 @@
 :sectnums:
 :source-highlighter: highlight.js
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Overview
 _See Requirement link:../Requirements.adoc#NIFI-AUTH-7.3[NIFI-AUTH-7.3: Verification]_
@@ -241,4 +241,4 @@ Servlets access processor configuration via NiFi's REST API to ensure consistenc
 * link:../Requirements.adoc[Requirements Document]
 * link:configuration.adoc[Configuration Specification]
 * link:token-validation.adoc[Token Validation Specification]
-* link:security.adoc[Security Specification]
+* link:security-architecture.adoc[Security Architecture]

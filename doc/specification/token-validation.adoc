@@ -5,7 +5,7 @@
 :sectnums:
 :imagesdir: ../plantuml
 
-link:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == Implementation Status
 
@@ -51,7 +51,7 @@ The processor utilizes the following key features from the OAuth-Sheriff library
 * **AccessTokenContent**: Parsed token with convenient access to claims and validation status
 * **HttpJwksLoaderConfig**: Configuration for JWKS key loading with automatic key rotation
 
-For more details on the OAuth-Sheriff library, see link:../library/oauth-sheriff/Usage.adoc[Library Documentation].
+For more details on the OAuth-Sheriff library, see the https://github.com/cuioss/oauth-sheriff[oauth-sheriff] project documentation.
 
 === How the Processor Uses OAuth-Sheriff
 
@@ -197,18 +197,66 @@ Based on the OAuth-Sheriff library recommendations, the processor follows these 
 6. Sets appropriate refresh intervals for JWKS key rotation
 7. Implements proper error handling for token validation failures
 
-For more details on security best practices, see link:security.adoc[Security Considerations].
+For more details on security best practices, see link:security-architecture.adoc[Security Architecture].
+
+== Test Utilities
+
+Test data for JWT validation is best generated using the oauth-sheriff-core test utilities. These utilities provide:
+
+* Easy creation of valid and invalid JWT tokens
+* In-memory key material and JWKS generation (no filesystem required)
+* Token tampering utilities for negative testing
+* Support for multiple algorithms (RS256, RS384, RS512)
+
+=== Example: Creating Test Tokens
+
+[source,java]
+----
+// Create a valid signed JWT with default claims
+String token = TestTokenProducer.validSignedEmptyJWT();
+
+// Create a valid signed JWT with custom claims
+String tokenWithClaims = TestTokenProducer.validSignedJWTWithClaims("path/to/claims.json");
+
+// Create a valid signed JWT with custom expiration
+String tokenWithExpiration = TestTokenProducer.validSignedJWTExpireAt(Instant.now().plus(1, ChronoUnit.HOURS));
+----
+
+=== Example: In-Memory JWKS and Key Material
+
+[source,java]
+----
+// Get default private/public key for RS256
+PrivateKey privateKey = InMemoryKeyMaterialHandler.getDefaultPrivateKey();
+PublicKey publicKey = InMemoryKeyMaterialHandler.getDefaultPublicKey();
+
+// Create JWKS content for the default RS256 key
+String jwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+
+// Create a JwksLoader for the default RS256 key
+JwksLoader jwksLoader = InMemoryKeyMaterialHandler.createDefaultJwksLoader();
+----
+
+=== Example: Tampering with Tokens
+
+[source,java]
+----
+// Create a tampered token with modified claims
+String tamperedToken = JwtTokenTamperingUtil.tamperWithClaim(originalToken, "sub", "modified-subject");
+
+// Create a token with an invalid signature
+String invalidSignatureToken = JwtTokenTamperingUtil.invalidateSignature(originalToken);
+----
 
 == See Also
 
 === Core Documentation
-* link:../Specification.adoc[Main Specification]
+* link:../../README.adoc[Back to Project Documentation]
 * link:../Requirements.adoc[Requirements]
-* link:../library/oauth-sheriff/Usage.adoc[Library Documentation]
 
 === Implementation
 * link:technical-components.adoc[Technical Components]
 * link:configuration.adoc[Configuration]
-* link:security.adoc[Security Considerations]
+* link:security-architecture.adoc[Security Architecture]
 * link:error-handling.adoc[Error Handling]
 * link:observability.adoc[Observability]

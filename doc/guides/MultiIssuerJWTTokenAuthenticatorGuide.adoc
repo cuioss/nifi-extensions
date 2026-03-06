@@ -58,6 +58,5 @@ Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interact
 
 == Further Reading
 
-* link:QuickStart.adoc[Quick Start Guide] -- processor properties, issuer configuration, relationships, output attributes
-* link:IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with troubleshooting
+* link:QuickStart.adoc[Quick Start Guide] -- processor properties, issuer configuration, relationships, output attributes, troubleshooting
 * link:../../doc/specification/token-validation.adoc[Token Validation Specification]

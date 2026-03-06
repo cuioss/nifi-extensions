@@ -4,7 +4,7 @@
 :toc-title: Table of Contents
 :sectnums:
 
-xref:../Specification.adoc[Back to Main Specification]
+link:../../README.adoc[Back to Project Documentation]
 
 == UI Configuration Overview
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-7.1[NIFI-AUTH-7.1: UI Configuration]_
@@ -167,8 +167,42 @@ The standard NiFi properties tab with the processor's configuration properties.
 === Gateway Configuration Tab
 For the `RestApiGatewayProcessor`, an **Endpoint Configuration** tab replaces
 the standard issuer-management UI. It provides a CRUD editor for route
-definitions and tracks persisted vs session-only changes with visual origin
-badges. See link:gateway-ui.adoc[REST API Gateway — Custom UI] for details.
+definitions and tracks persisted vs session-only changes with visual origin badges.
+
+==== Persistence Model
+
+The REST API Gateway reads its route configuration from NiFi processor
+properties at start-up and configures a static Jetty server accordingly.
+
+[cols="1,3"]
+|===
+| Persisted routes | Defined in processor properties (`restapi.<name>.*`).
+  Survive processor restarts.
+| Session-only changes | Routes added or modified through the Custom UI during
+  the current session. Lost when the processor is restarted or the dialog is
+  closed.
+|===
+
+==== Origin Indicators
+
+Each route row in the summary table shows a visual badge indicating its origin:
+
+[cols="1,1,3"]
+|===
+| Badge | CSS class | Meaning
+
+| Lock icon (muted)
+| `.origin-persisted`
+| Loaded from processor properties, unmodified.
+
+| **Modified** (amber)
+| `.origin-modified`
+| Originally from properties, but edited in the current UI session.
+
+| **New** (blue)
+| `.origin-new`
+| Created via "Add Route" during the current UI session.
+|===
 
 === Verification Tab
 Provides the token verification interface for testing tokens against the current configuration.
@@ -188,12 +222,49 @@ Displays security event metrics and validation statistics:
 === Help Tab
 Provides inline documentation and usage examples specific to the processor.
 
-== Internationalized UI Elements
+== Internationalization
 _See Requirement xref:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All UI elements use internationalization through NiFi's I18nResolver API. See link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] for how translated property descriptors are created using link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys].
 
-For more details on internationalization, see xref:internationalization.adoc[Internationalization].
+=== Resource Bundles
+
+Resource bundles follow the NiFi convention for processor internationalization:
+
+[cols="1,2"]
+|===
+|File |Description
+
+|nifi-cuioss-processors-resources.properties
+|Default (English) messages
+
+|nifi-cuioss-processors-resources_de.properties
+|German translations
+|===
+
+Location: `src/main/resources/i18n/[bundlename].properties`
+
+=== Key Naming Conventions
+
+Resource keys follow these naming conventions:
+
+* `property.[property-name].[attribute]` -- For processor properties
+* `processor.jwt.[element]` -- For UI elements specific to the JWT processor
+* `error.[category].[type]` -- For error messages
+* `validation.[field].[rule]` -- For validation messages
+
+=== Adding a New Language
+
+1. Create a new resource bundle file: `nifi-cuioss-processors-resources_[language-code].properties`
+2. Translate all keys from the default bundle
+3. Include the new bundle in the build process
+4. Run verification tests to ensure all bundles contain the required keys
+
+=== Implementation Classes
+
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolver.java[NiFiI18nResolver] -- NiFi-specific resource bundle resolution
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/I18nResolver.java[I18nResolver] -- Interface for internationalized message resolution
+* link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys] -- Centralized translation key constants
 
 == Custom Validators
 
@@ -237,4 +308,3 @@ When static configuration is active, the UI:
 * xref:configuration.adoc[Configuration Overview]
 * xref:configuration-static.adoc[Static Configuration]
 * xref:token-validation.adoc[Token Validation]
-* xref:internationalization.adoc[Internationalization]

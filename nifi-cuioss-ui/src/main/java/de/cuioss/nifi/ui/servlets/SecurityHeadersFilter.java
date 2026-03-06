@@ -34,7 +34,7 @@ import java.io.IOException;
  * {@code style-src 'self'} still applies as fallback for {@code style-src-attr}, keeping inline
  * {@code style=""} attributes blocked.</p>
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security-architecture.adoc">Security Architecture</a>
  */
 public class SecurityHeadersFilter implements Filter {
 

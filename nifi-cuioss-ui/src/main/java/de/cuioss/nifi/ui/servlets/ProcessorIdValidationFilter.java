@@ -47,7 +47,7 @@ import java.util.UUID;
  * to escalate privileges or access other components' data.</p>
  *
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security-architecture.adoc">Security Architecture</a>
  */
 @WebFilter("/nifi-api/processors/jwt/*")
 public class ProcessorIdValidationFilter implements Filter {

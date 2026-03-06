@@ -316,6 +316,31 @@ The JWT processor includes a custom web UI with four tabs beyond the standard Ni
 
 image::ui-token-verification-tab.png[Token Verification Tab]
 
+== Choosing the Right Processor
+
+[cols="1,1"]
+|===
+|Manual (HandleHttpRequest + JWT Processor) |RestApiGatewayProcessor
+
+|Requires 3+ processors and complex routing
+|Single processor with built-in HTTP server
+
+|Error responses require HandleHttpResponse
+|RFC 9457 error responses returned automatically
+
+|No built-in metrics endpoint
+|`/metrics` endpoint with Prometheus/JSON formats
+
+|Back-pressure requires manual queue management
+|Built-in request queue with 503 back-pressure
+
+|Route configuration requires NiFi flow design
+|Routes configured via dynamic properties
+|===
+
+* **Use RestApiGateway** when building a REST API endpoint that needs JWT authentication, route-based dispatching, and standardized error responses.
+* **Use MultiIssuerJWTTokenAuthenticator** when you need to validate JWT tokens on existing FlowFiles in a NiFi flow (e.g., tokens extracted from message queues, files, or upstream processors).
+
 == RestApiGateway Quick Start
 
 The `RestApiGatewayProcessor` provides a self-contained REST API gateway with embedded HTTP server, JWT authentication, and route-based access control. It has its own custom UI with six tabs: **Endpoint Configuration**, **Endpoint Tester**, **Issuer Configuration**, **Token Verification**, **Metrics**, and **Help**.
@@ -488,9 +513,39 @@ The **Help** tab provides built-in documentation covering key features, tab desc
 
 image::ui-gateway-help.png[Gateway Help Tab]
 
+== Troubleshooting
+
+=== Custom UI Tab Not Visible
+
+If the "Issuer Configuration" tab is not visible:
+
+1. Check browser console for errors (F12 > Console)
+2. Verify that the custom UI components are loaded (look for `[DEBUG_LOG] Loading CSS for custom UI components`)
+3. Try refreshing the page or using a different browser
+4. Fall back to using dynamic properties for configuration
+
+=== Configuration Not Applied
+
+If the issuer configuration is not being applied:
+
+1. Check the NiFi logs: `docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi`
+2. Verify that the JWKS URL is correct and accessible
+3. Ensure the issuer URI matches the `iss` claim in the JWT
+4. Try restarting the processor
+
+=== Token Validation Failures
+
+If tokens are not being validated correctly:
+
+1. Use the **Token Verification** tab to check the token claims
+2. Verify that the token is not expired
+3. Ensure the issuer URI in the configuration matches the `iss` claim in the token
+4. Check that the JWKS URL is accessible and returns valid keys
+5. Verify that the token's signing algorithm is in the list of allowed algorithms
+
 == Next Steps
 
-* link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough] -- step-by-step guide with test environment setup and troubleshooting
+* link:MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation with integration test flow
 * link:../../doc/specification/configuration.adoc[Configuration specification] -- complete configuration reference
-* link:../../doc/specification/security.adoc[Security specification] -- algorithm restrictions, SSRF protection, security headers
+* link:../../doc/specification/security-architecture.adoc[Security Architecture] -- algorithm restrictions, SSRF protection, security headers
 * link:../../doc/rest-errors/index.adoc[REST API error reference] -- RFC 9457 error types returned by the gateway
