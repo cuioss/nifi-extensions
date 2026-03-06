@@ -362,6 +362,8 @@ describe('updateComponentProperties', () => {
         mockJsonResponse({ revision: { version: 2 }, component: { id: 'proc-run', state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
         // PUT property update
         mockJsonResponse({ revision: { version: 3 } });
+        // GET for autoTerminateUnconnectedRelationships — no validation errors
+        mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-run', state: 'STOPPED', validationErrors: [] } });
         // GET for restart
         mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-run', state: 'STOPPED' } });
         // PUT restart run-status
@@ -381,7 +383,7 @@ describe('updateComponentProperties', () => {
         expect(updateBody.component.config.autoTerminatedRelationships).toEqual(autoTerminated);
 
         // Verify restart was called
-        const restartCall = globalThis.fetch.mock.calls[7];
+        const restartCall = globalThis.fetch.mock.calls[8];
         expect(restartCall[0]).toBe('/nifi-api/processors/proc-run/run-status');
         expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
     });

@@ -262,6 +262,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
         // Always restart if it was running, even if the update failed
         if (wasRunning) {
             try {
+                await autoTerminateUnconnectedRelationships(componentId, info);
                 const latest = await request('GET', `${info.apiPath}/${componentId}`);
                 await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
             } catch { /* best effort restart */ }
@@ -290,6 +291,34 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
         if (data.component?.state === desiredState) return;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
+};
+
+/**
+ * After a property update, check if the processor has unconnected relationships
+ * (e.g. stale dynamic relationships from removed routes) and auto-terminate them
+ * so the processor can restart.
+ */
+const autoTerminateUnconnectedRelationships = async (componentId, info) => {
+    const proc = await request('GET', `${info.apiPath}/${componentId}`);
+    const errors = proc.component?.validationErrors || [];
+    // Parse relationship names from validation errors like:
+    // "'Relationship foo' is invalid because Relationship 'foo' is not connected..."
+    const unconnected = errors
+        .filter((e) => e.includes('is not connected') && e.includes('is not auto-terminated'))
+        .map((e) => {
+            const match = e.match(/Relationship '([^']+)'/);
+            return match ? match[1] : null;
+        })
+        .filter(Boolean);
+
+    if (unconnected.length === 0) return;
+
+    const current = proc.component?.config?.autoTerminatedRelationships || [];
+    const updated = [...new Set([...current, ...unconnected])];
+    await request('PUT', `${info.apiPath}/${componentId}`, {
+        revision: proc.revision,
+        component: { id: componentId, config: { autoTerminatedRelationships: updated } }
+    });
 };
 
 /**
