@@ -281,5 +281,5 @@ Best practices for secure configuration:
 * xref:configuration.adoc[Configuration Overview]
 * xref:configuration-ui.adoc[UI Configuration]
 * xref:token-validation.adoc[Token Validation]
-* xref:security-architecture.adoc[Security Architecture]
+* link:security-architecture.adoc[Security Architecture]
 * xref:error-handling.adoc[Error Handling]

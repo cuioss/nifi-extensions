@@ -223,7 +223,7 @@ Displays security event metrics and validation statistics:
 Provides inline documentation and usage examples specific to the processor.
 
 == Internationalization
-_See Requirement xref:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
+_See Requirement link:../Requirements.adoc#NIFI-AUTH-17[NIFI-AUTH-17: Internationalization Support]_
 
 All UI elements use internationalization through NiFi's I18nResolver API. See link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerPropertyDescriptorFactory.java[IssuerPropertyDescriptorFactory] for how translated property descriptors are created using link:../../nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JWTTranslationKeys.java[JWTTranslationKeys].
 
