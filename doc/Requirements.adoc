@@ -36,7 +36,7 @@ _Implementation details: xref:Specification.adoc[Main Specification]_
 * Extract token information
 * Route flow files based on validation results
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-3]
 === NIFI-AUTH-3: Token Validation Requirements
@@ -67,7 +67,7 @@ _Implementation details: xref:specification/token-validation.adoc[Token Validati
 * Support configurable token location in flow file
 * Handle various token formats (Bearer, raw JWT)
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-5.1]
 ==== NIFI-AUTH-5.1: Token Location
@@ -95,7 +95,7 @@ _Implementation details: xref:specification/configuration-ui.adoc[UI Configurati
 [#NIFI-AUTH-6]
 === NIFI-AUTH-6: Output Requirements
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-6.1]
 ==== NIFI-AUTH-6.1: Success Path
@@ -104,7 +104,7 @@ _Implementation details: xref:specification/configuration.adoc[Configuration Ref
 * Extract and provide token claims as flow file attributes
 * Include validation metadata (issuer, validation time)
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-6.2]
 ==== NIFI-AUTH-6.2: Failure Path
@@ -118,7 +118,7 @@ _Implementation details: xref:specification/configuration.adoc[Configuration Ref
   ** Unknown issuer
   ** Invalid claims
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-7]
 === NIFI-AUTH-7: Configuration Requirements
@@ -242,7 +242,7 @@ _Implementation details: xref:specification/security.adoc[Security]_
   ** Token validation latency: <50ms per token
   ** Memory usage: <100MB additional heap usage
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-10]
 === NIFI-AUTH-10: Error Handling Requirements
@@ -268,7 +268,7 @@ _Implementation details: xref:specification/error-handling.adoc[Error Handling]_
 * Support for NiFi's configuration framework
 * Integration with NiFi's security features
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-AUTH-12]
 === NIFI-AUTH-12: Integration Examples
@@ -413,7 +413,7 @@ _Implementation details: xref:specification/observability.adoc[Observability]_
 * Support optional SSL/TLS via NiFi's SSLContextProvider
 * Accept HTTP requests directly without requiring HandleHttpRequest/HandleHttpResponse
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-GATEWAY-2]
 === NIFI-GATEWAY-2: Multi-Route Configuration
@@ -433,7 +433,7 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Return RFC 6750 compliant WWW-Authenticate headers on authentication failure
 * Return 403 Forbidden for missing roles, 401 with `insufficient_scope` for missing scopes
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
 
 [#NIFI-GATEWAY-4]
 === NIFI-GATEWAY-4: RFC 9457 Error Responses
@@ -470,4 +470,4 @@ _Implementation details: xref:specification/configuration.adoc[Configuration]_
 * Return 503 Service Unavailable when the queue is full
 * Configurable queue size (default: 50)
 
-_Implementation details: xref:specification/configuration.adoc[Configuration Reference]_
+_Implementation details: link:specification/configuration.adoc[Configuration Reference]_
