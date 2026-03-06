@@ -142,6 +142,12 @@
                         <goals>
                             <goal>test-jar</goal>
                         </goals>
+                        <configuration>
+                            <!-- Ensure test-jar is always packaged even with -Dmaven.test.skip=true,
+                                 because nifi-cuioss-rest-processors depends on it at test scope.
+                                 Without this, the deploy-snapshot CI job fails on dependency resolution. -->
+                            <skip>false</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
