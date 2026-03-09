@@ -31,7 +31,7 @@ import static org.hamcrest.Matchers.equalTo;
 /**
  * Tests for {@link SecurityHeadersFilter} using embedded Jetty + REST Assured.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/gateway.adoc">Gateway Architecture</a>
  */
 @DisplayName("Security Headers Filter Tests")
 class SecurityHeadersFilterTest {

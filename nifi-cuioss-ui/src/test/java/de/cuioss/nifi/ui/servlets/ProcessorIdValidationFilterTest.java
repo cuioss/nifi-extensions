@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.*;
 /**
  * Tests for {@link ProcessorIdValidationFilter} using embedded Jetty + REST Assured.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/gateway.adoc">Gateway Architecture</a>
  */
 @EnableTestLogger
 @DisplayName("Processor ID Validation Filter Tests")

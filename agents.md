@@ -73,7 +73,7 @@ This document supplements `CLAUDE.md` with detailed architecture, how-to tasks, 
 - Exception parameter always first
 - `%s` for substitutions (not `{}`)
 - Log level ranges: INFO (001-99), WARN (100-199), ERROR (200-299), FATAL (300-399)
-- All messages documented in `doc/LogMessages.adoc`
+- All messages documented in `AuthLogMessages.java` and `JwtLogMessages.java`
 
 ## JavaScript Testing Details
 
@@ -162,13 +162,13 @@ docker compose logs -f nifi keycloak    # View logs
 ## Documentation
 
 - **Format**: AsciiDoc (.adoc), located in `doc/`
-- **Key files**: `Requirements.adoc`, `Specification.adoc`, `LogMessages.adoc`, `README.adoc`
+- **Key files**: `README.adoc`, `doc/architecture/README.adoc`, `doc/reference/configuration.adoc`
 - **Standards**: Use `xref:` for cross-references, blank lines before lists, consistent heading hierarchy
 
 ## Additional Resources
 
 - `/README.adoc` — Project overview
-- `/doc/Build.adoc` — Build instructions
+- `/doc/guides/BuildingGuide.adoc` — Build instructions
 - `/e-2-e-playwright/README.adoc` — E2E test documentation
 - `/e-2-e-playwright/docs/accessibility-testing-guide.adoc` — Accessibility guide
 - https://github.com/cuioss/cui-llm-rules/ — CUI standards repository

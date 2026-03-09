@@ -282,7 +282,7 @@ class ProblemDetailTest {
     class TypeUriConvention {
 
         @Test
-        @DisplayName("All type URIs should point to doc/rest-errors/ directory")
+        @DisplayName("All type URIs should point to doc/reference/error-reference.adoc")
         void allTypeUrisShouldPointToDocRestErrors() {
             assertTrue(ProblemDetail.TYPE_BAD_REQUEST.startsWith(ProblemDetail.ERROR_DOC_BASE));
             assertTrue(ProblemDetail.TYPE_UNAUTHORIZED.startsWith(ProblemDetail.ERROR_DOC_BASE));

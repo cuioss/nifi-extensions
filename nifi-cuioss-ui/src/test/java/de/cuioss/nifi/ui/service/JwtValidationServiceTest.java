@@ -51,8 +51,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * - verifyToken method via NiFiWebConfigurationContext mock
  * - Error handling and edge cases
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/jwt-processor.adoc">JWT Processor Architecture</a>
  */
 @EnableGeneratorController
 @EnableTestLogger

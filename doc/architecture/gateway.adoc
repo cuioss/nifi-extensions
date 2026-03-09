@@ -1,0 +1,250 @@
+= Gateway Architecture
+:sectnums:
+:imagesdir: ../plantuml
+
+The `RestApiGatewayProcessor` embeds a Jetty 12 HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses.
+
+image::api-gateway-pattern.png[RestApiGateway Pattern]
+
+== Request Pipeline
+
+The `GatewayRequestHandler` processes each request through a 6-stage pipeline:
+
+1. **Input Sanitization** -- Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
+2. **Route Matching** -- Matches the sanitized path against configured routes (exact match). Returns 404 (route not found) or 405 (method not allowed).
+3. **JWT Authentication** -- Extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure.
+4. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes).
+5. **Body Validation** -- Reads the request body up to the configured maximum size. Returns 413 if the body exceeds the limit. If a route specifies a JSON Schema (`schemaName`), returns 422 on validation failure.
+6. **Enqueue** -- Places the validated `HttpRequestContainer` on the internal queue for `onTrigger` processing. Returns 503 if the queue is full (back-pressure).
+
+All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`. See link:../reference/error-reference.adoc[Error Reference] for the full error type table.
+
+== Authentication Layers
+
+Requests flow through up to three authentication layers depending on the entry point:
+
+[source]
+----
+                         +----------------------------------------------------------+
+                         |                    NiFi Web Container                     |
+                         |                      (Layer 1)                            |
+                         |  +-----------------------------------------------------+ |
+                         |  |              Custom UI WAR (Layer 2)                 | |
+                         |  |                                                     | |
+  NiFi UI                |  |  SecurityHeadersFilter --> all responses            | |
+  (iframe)  --- HTTPS -->|  |         |                                           | |
+                         |  |  ProcessorIdValidationFilter                        | |
+                         |  |         |  (X-Processor-Id UUID check)              | |
+                         |  |         |                                           | |
+                         |  |         +---> GatewayProxyServlet --------+          | |
+                         |  |                 |  /config: local        |          | |
+                         |  |                 |  /metrics: proxy -+    |          | |
+                         |  |                 |  /test: proxy     |    |          | |
+                         |  +-------------------------------------|----+----------+ |
+                         +-------------------------------------|----+--------------+
+                                                               |    |
+                                                               v    |
+                         +-------------------------------+          |
+                         |  Gateway Embedded Jetty       |<- reads -+
+                         |        (Layer 3)              |   port, config
+                         |                               |
+                         |  GatewayRequestHandler        |
+                         |  (command-pattern dispatch)   |
+                         |         |                     |
+  External   -- HTTP --->|    path lookup -> handler map |
+  Clients                |    auth-mode dispatch:        |
+  (direct)               |    BEARER / NONE / LOCAL_ONLY |
+                         |         |                     |
+                         |         +--> /health          |
+                         |         +--> /metrics         |
+                         |         +--> /api/**          |
+                         +-------------------------------+
+----
+
+* **Layer 1 (NiFi Container)**: NiFi session authentication -- unauthenticated users cannot reach Custom UI servlets.
+* **Layer 2 (Custom UI)**: `SecurityHeadersFilter` (defense-in-depth headers), `ProcessorIdValidationFilter` (UUID check), per-component NiFi authorization via `ComponentConfigReader`.
+* **Layer 3 (Gateway Jetty)**: Auth-mode dispatch per endpoint.
+
+== Auth-Mode Dispatch
+
+Each endpoint (built-in or user-defined route) has a configurable `auth-mode`:
+
+* **`BEARER`** (default for data routes) -- Full JWT Bearer authentication with role/scope authorization.
+* **`LOCAL_ONLY`** (default for management endpoints) -- Loopback requests (127.0.0.1, ::1) bypass authentication; remote requests require JWT Bearer auth.
+* **`NONE`** -- No authentication required (anonymous access).
+
+Management endpoint auth-mode is configured via static NiFi properties:
+
+* `rest.gateway.management.health.auth-mode` (default: `local-only`)
+* `rest.gateway.management.metrics.auth-mode` (default: `local-only`)
+
+== Endpoint Authorization Matrix
+
+=== Custom UI Endpoints (Layer 2)
+
+[cols="3,1,1,2"]
+|===
+|Endpoint |Per-Component Auth |HTTP Methods |Notes
+
+|`/nifi-api/processors/jwt/verify-token`
+|Yes
+|POST
+|Token verification (shared by both processors)
+
+|`/nifi-api/processors/jwt/gateway/config`
+|Yes
+|GET
+|Serves config locally from processor properties
+
+|`/nifi-api/processors/jwt/gateway/metrics`
+|Yes
+|GET
+|Proxies to gateway `/metrics`
+
+|`/nifi-api/processors/jwt/gateway/test`
+|Yes
+|POST
+|Proxies test requests to gateway + SSRF protection
+
+|`/nifi-api/processors/jwt/validate-jwks-*`
+|No
+|POST
+|Stateless JWKS validation (URL, file, content)
+|===
+
+=== Gateway Embedded Jetty Endpoints (Layer 3)
+
+[cols="2,1,1,2"]
+|===
+|Endpoint |Auth Mode |HTTP Methods |Notes
+
+|`/health`
+|`local-only`
+|GET
+|Returns `{"status":"UP","timestamp":"..."}`
+
+|`/metrics`
+|`local-only`
+|GET
+|Prometheus/JSON metrics from security event counters
+
+|Data routes (`/api/**`)
+|`bearer` (per-route)
+|Per-route config
+|Full cui-http security pipeline; auth mode configurable via `restapi.<name>.auth-mode`
+|===
+
+== FlowFile Output Attributes
+
+[cols="1,2"]
+|===
+|Attribute |Description
+
+|`rest.route.name`
+|Matched route name
+
+|`rest.route.path`
+|Matched route path pattern
+
+|`http.method`
+|HTTP method (GET, POST, etc.)
+
+|`http.request.uri`
+|Full request URI path
+
+|`http.remote.host`
+|Client remote host address
+
+|`mime.type`
+|Content-Type of request body
+
+|`http.query.<name>`
+|Query parameter values (one attribute per parameter)
+
+|`jwt.content.<claim>`
+|JWT token claims mapped by `TokenClaimMapper`
+|===
+
+== RFC 9457 Error Types
+
+[cols="1,1,3"]
+|===
+|Status |Title |When Returned
+
+|400 |Bad Request |Input sanitization failed (malformed path, query, or headers)
+|401 |Unauthorized |Missing or invalid Bearer token; includes `WWW-Authenticate: Bearer` per RFC 6750
+|403 |Forbidden |Valid token but missing required roles for the matched route
+|404 |Not Found |No route configured for the requested path
+|405 |Method Not Allowed |Route exists but HTTP method not in allowed set; includes `Allow` header
+|413 |Payload Too Large |Request body exceeds `rest.gateway.max.request.size`
+|422 |Unprocessable Content |Request body fails JSON Schema validation
+|500 |Internal Server Error |Unexpected internal error
+|503 |Service Unavailable |Request queue is full (back-pressure)
+|===
+
+== Security Events
+
+[cols="2,1,2"]
+|===
+|Event Type |HTTP Status |Description
+
+|MISSING_BEARER_TOKEN |401 |No Authorization header or malformed Bearer prefix
+|AUTH_FAILED |401 |Token validation failed (expired, bad signature, etc.)
+|AUTHZ_ROLE_DENIED |403 |Valid token but missing required roles
+|AUTHZ_SCOPE_DENIED |401 |Valid token but missing required scopes
+|BODY_TOO_LARGE |413 |Request body exceeds configured maximum
+|ROUTE_NOT_FOUND |404 |No route configured for requested path
+|METHOD_NOT_ALLOWED |405 |Route exists but HTTP method not allowed
+|QUEUE_FULL |503 |Request queue at capacity (back-pressure)
+|===
+
+These counters are exposed through the `/metrics` management endpoint.
+
+== /metrics Endpoint
+
+The `/metrics` endpoint aggregates three metric sources:
+
+1. **Token Validation** (`tokenValidation`) -- OAuth-Sheriff `SecurityEventCounter` events
+2. **Transport Security** (`httpSecurity`) -- cui-http security events (input sanitization)
+3. **Gateway Application Events** (`gatewayEvents`) -- Application-level events from `GatewaySecurityEvents`
+
+=== Prometheus Format (default)
+
+[source]
+----
+# Token validation metrics
+nifi_jwt_validations_total{result="validTokens"} 15126
+nifi_jwt_validations_total{result="invalidTokens"} 297
+
+# Transport security metrics (cui-http)
+nifi_gateway_http_security_events_total{type="sanitized_path"} 42
+
+# Gateway application metrics
+nifi_gateway_events_total{type="MISSING_BEARER_TOKEN"} 12
+nifi_gateway_events_total{type="AUTH_FAILED"} 85
+----
+
+=== JSON Format
+
+Requested with `Accept: application/json`:
+
+[source,json]
+----
+{
+  "tokenValidation": { "validTokens": 15126, "invalidTokens": 297 },
+  "httpSecurity": { "sanitized_path": 42 },
+  "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
+}
+----
+
+== Dependencies
+
+[cols="1,2"]
+|===
+|Component |Purpose
+
+|de.cuioss.sheriff.oauth:oauth-sheriff-core |Token validation framework
+|org.eclipse.jetty:jetty-server (Jetty 12) |Embedded HTTP server
+|de.cuioss.cui-http:cui-http |HTTP security pipeline (input sanitization, security event counters)
+|jakarta.json:jakarta.json-api |JSON processing for RFC 9457 ProblemDetail responses
+|===

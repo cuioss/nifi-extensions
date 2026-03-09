@@ -21,7 +21,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Utility for masking sensitive token values in log output.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/gateway.adoc">Gateway Architecture</a>
  */
 public final class TokenMasking {
 

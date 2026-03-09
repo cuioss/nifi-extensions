@@ -23,8 +23,236 @@ Typical scenarios:
 
 == How It Works
 
-The processor reads a JWT from a configurable FlowFile attribute (default: `Authorization` header), validates signature, expiry, issuer, and optionally required roles, then routes the FlowFile to `success` or `auth-failed`.
+The processor reads a JWT from a configurable FlowFile attribute (default: `jwt.token`), validates signature, expiry, issuer, and optionally required roles, then routes the FlowFile to `success` or `authentication-failed`.
 On success, token claims are written as `jwt.*` FlowFile attributes (subject, issuer, roles, expiry, etc.).
+
+== Step 1: Add the Processor
+
+. Open the NiFi UI.
+. Drag a new processor onto the canvas.
+. Search for **MultiIssuerJWTTokenAuthenticator** and select it.
+
+== Step 2: Configure the Processor
+
+. Right-click the processor and select **Configure**.
+. In the **Properties** tab, review the defaults -- they work for the most common case (see <<Processor Properties>> for all options).
+. Switch to the **Configuration** tab in the custom UI to configure issuers visually:
+
+image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
+
+. Alternatively, add a dynamic property for your identity provider by clicking the **+** button:
++
+[cols="1,2"]
+|===
+|Property Name |Value
+
+|`issuer.1.jwks-url`
+|Your JWKS endpoint URL, e.g. `\https://auth.example.com/.well-known/jwks.json`
+|===
+
+. _(Optional)_ Add audience validation:
++
+[cols="1,2"]
+|===
+|Property Name |Value
+
+|`issuer.1.audience`
+|Your expected audience claim, e.g. `api://my-service`
+|===
+
+. Click **Apply**.
+
+== Step 3: Connect Relationships
+
+Connect both relationships to downstream processors:
+
+[cols="1,3"]
+|===
+|Relationship |Route to
+
+|`success`
+|Your normal processing flow (token is valid)
+
+|`authentication-failed`
+|Error handling for rejected tokens (expired, wrong issuer, bad signature, missing token)
+|===
+
+== Step 4: Start the Processor
+
+. Right-click the processor and select **Start**.
+. Send a FlowFile with a `jwt.token` attribute containing the raw JWT token.
+. Verify that valid tokens route to `success` and invalid tokens route to `authentication-failed`.
+
+== Processor Properties
+
+[cols="2,1,1,4"]
+|===
+|Property |Default |Required |Description
+
+|JWT Issuer Config Service
+|--
+|Yes
+|Reference to the `JwtIssuerConfigService` Controller Service that manages issuer configuration and token validation
+
+|Token Attribute
+|`jwt.token`
+|Yes
+|The FlowFile attribute name containing the raw JWT token
+
+|Require Valid Token
+|`true`
+|Yes
+|When `true`, missing or invalid tokens route to `authentication-failed`
+
+|Required Roles
+|--
+|No
+|Comma-separated list of roles the token must contain for authorization
+
+|Required Scopes
+|--
+|No
+|Comma-separated list of scopes the token must contain for authorization
+|===
+
+== Controller Service Properties
+
+The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, and token validation settings:
+
+[cols="2,1,1,4"]
+|===
+|Property |Default |Required |Description
+
+|JWKS Refresh Interval
+|`3600`
+|Yes
+|Seconds between JWKS key refreshes
+
+|JWKS Connection Timeout
+|`10`
+|Yes
+|Seconds before a JWKS endpoint request times out
+
+|Maximum Token Size
+|`16384`
+|Yes
+|Maximum JWT size in bytes (rejects oversized tokens)
+
+|Allowed Algorithms
+|Secure defaults
+|No
+|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm and weak HMAC algorithms are always blocked.
+
+|Require HTTPS for JWKS URLs
+|`true`
+|Yes
+|Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
+|===
+
+== Issuer Configuration (CS Dynamic Properties)
+
+Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<N>.`:
+
+[cols="2,3,1"]
+|===
+|Dynamic Property |Description |Example
+
+|`issuer.<N>.jwks-url`
+|JWKS endpoint URL, file path, or inline key content (depends on JWKS Source Type)
+|`\https://auth.example.com/.well-known/jwks.json`
+
+|`issuer.<N>.enabled`
+|Enable or disable this issuer without removing the configuration
+|`true`
+
+|`issuer.<N>.audience`
+|Required `aud` claim for tokens from this issuer
+|`api://my-service`
+
+|`issuer.<N>.scopes`
+|Comma-separated scopes required for authorization
+|`read,write`
+
+|`issuer.<N>.roles`
+|Comma-separated roles required for authorization
+|`admin,user`
+|===
+
+=== Adding Multiple Issuers
+
+To accept tokens from more than one identity provider, add additional dynamic properties:
+
+[source]
+----
+issuer.1.jwks-url  = https://keycloak.example.com/realms/myapp/protocol/openid-connect/certs
+issuer.1.audience  = api://my-service
+
+issuer.2.jwks-url  = https://login.microsoftonline.com/{tenant}/discovery/v2.0/keys
+issuer.2.audience  = api://my-service
+
+issuer.3.jwks-url  = https://your-domain.auth0.com/.well-known/jwks.json
+issuer.3.audience  = https://api.example.com
+----
+
+Each issuer can have its own audience, scopes, and roles. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`.
+
+== Output FlowFile Attributes
+
+On successful validation the processor sets these attributes on the FlowFile:
+
+[cols="2,3"]
+|===
+|Attribute |Description
+
+|`jwt.present`
+|`true` if a JWT was found in the request
+
+|`jwt.subject`
+|The `sub` claim
+
+|`jwt.issuer`
+|The `iss` claim
+
+|`jwt.expiration`
+|The `exp` claim
+
+|`jwt.roles`
+|Comma-separated roles from the token
+
+|`jwt.scopes`
+|Comma-separated scopes from the token
+
+|`jwt.authorized`
+|`true` if scope/role authorization passed
+
+|`jwt.content.<claim>`
+|Individual token claims (prefixed)
+
+|`jwt.error.code`
+|Error code on validation failure
+
+|`jwt.error.reason`
+|Human-readable error description
+|===
+
+== Static Configuration Files
+
+For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. See the link:../reference/configuration.adoc#_static_configuration_files[Configuration Reference] for full details and examples.
+
+== Environment Variables
+
+For Kubernetes and Docker deployments, core settings can be provided through environment variables. See the link:../reference/configuration.adoc#_environment_variables[Configuration Reference] for the full table.
+
+== Verifying with the Custom UI
+
+The JWT processor includes a custom web UI with four tabs beyond the standard NiFi properties dialog:
+
+* **Configuration** -- visually manage issuer configurations (see <<Step 2>>)
+* **Token Verification** -- paste a JWT to test it against the current configuration (isolated -- does not affect processor metrics)
+* **Metrics** -- displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
+* **Help** -- built-in documentation and troubleshooting
+
+image::ui-token-verification-tab.png[Token Verification Tab]
 
 == Integration Test Flow
 
@@ -58,6 +286,6 @@ Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interact
 
 == Further Reading
 
-* link:QuickStart.adoc[Quick Start Guide] -- processor properties, issuer configuration, relationships, output attributes
+* link:QuickStart.adoc[Quick Start Guide] -- RestApiGateway setup
 * link:IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with troubleshooting
-* link:../../doc/specification/token-validation.adoc[Token Validation Specification]
+* link:../architecture/jwt-processor.adoc[JWT Processor Architecture] -- flow, lifecycle, OAuth-Sheriff integration

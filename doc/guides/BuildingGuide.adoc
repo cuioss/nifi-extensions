@@ -46,3 +46,14 @@ cd e-2-e-playwright && npm run playwright:test
 ----
 
 See link:../../integration-testing/README.adoc[Integration Testing] and link:../../e-2-e-playwright/README.adoc[E2E Testing] for detailed instructions.
+
+== PlantUML Diagrams
+
+To regenerate PlantUML PNG images from `.puml` sources (requires PlantUML installed locally):
+
+[source,bash]
+----
+./doc/plantuml/generate-plantuml.sh
+----
+
+This finds all `.puml` files in `doc/plantuml/` and generates corresponding PNG images.

@@ -23,7 +23,7 @@ import lombok.experimental.UtilityClass;
  * This class organizes all JWT-related attribute keys in a hierarchical structure
  * for better discoverability and type safety.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 @UtilityClass
 public final class JWTAttributes {

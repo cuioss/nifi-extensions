@@ -56,7 +56,7 @@ import java.util.stream.Collectors;
  * <p><strong>Security:</strong> Whitelist-based path validation for GET requests.
  * SSRF protection for test requests (only localhost targets allowed).
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 public class GatewayProxyServlet extends HttpServlet {
 

@@ -27,7 +27,7 @@ import lombok.experimental.UtilityClass;
  * Processor-specific log messages remain in
  * {@code de.cuioss.nifi.processors.auth.AuthLogMessages}.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/error-handling.adoc">Error Handling Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/error-reference.adoc">Error Reference</a>
  */
 @UtilityClass
 public final class JwtLogMessages {

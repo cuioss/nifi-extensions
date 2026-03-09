@@ -1,0 +1,68 @@
+= JWT Processor Architecture
+:sectnums:
+:imagesdir: ../plantuml
+
+The `MultiIssuerJWTTokenAuthenticator` validates JWT tokens from FlowFile attributes against one or more identity providers and routes FlowFiles based on validation results.
+
+== Token Processing Flow
+
+image::jwt-token-flow.png[JWT Token Processing Flow]
+
+1. Read raw JWT from a configurable FlowFile attribute (default: `jwt.token`)
+2. Validate signature, expiry, issuer, and audience via OAuth-Sheriff
+3. Check required roles and scopes via `AuthorizationValidator`
+4. Route to `success` (valid) or `authentication-failed` (invalid)
+5. Write token claims as `jwt.*` FlowFile attributes on success
+
+== Controller Service Shared Architecture
+
+Both processors share JWT validation through the `JwtIssuerConfigService` Controller Service:
+
+* **Interface**: `JwtIssuerConfigService` (in `nifi-cuioss-api` -- separate NAR for NiFi 2.x classloader separation)
+* **Implementation**: `StandardJwtIssuerConfigService` (in `nifi-cuioss-common`)
+* **Config Record**: `JwtAuthenticationConfig` (immutable snapshot)
+
+The CS provides:
+
+* `validateToken(String rawToken)` -- validates a raw JWT string, returns `AccessTokenContent`
+* `getAuthenticationConfig()` -- returns immutable configuration snapshot
+* `getSecurityEventCounter()` -- returns the OAuth-Sheriff `SecurityEventCounter` for metrics
+
+== OAuth-Sheriff Lifecycle in NiFi
+
+The `TokenValidator` is stateful -- it maintains JWKS key caches and background refresh tasks. The processor preserves a single instance between invocations:
+
+* **`@OnScheduled`**: Initialize `TokenValidator` with configured issuers. Use `volatile` reference with double-checked locking for thread safety.
+* **`onTrigger`**: Detect configuration changes (hash comparison). If changed, recreate the `TokenValidator`. Validate tokens using the cached instance.
+* **`@OnStopped`**: Clean up resources (HTTP connections, background threads, caches).
+
+Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint traffic, higher latency, and potential rate limiting.
+
+== Output FlowFile Attributes
+
+[cols="2,3"]
+|===
+|Attribute |Description
+
+|`jwt.present` |`true` if a JWT was found
+|`jwt.subject` |The `sub` claim
+|`jwt.issuer` |The `iss` claim
+|`jwt.expiration` |The `exp` claim
+|`jwt.roles` |Comma-separated roles from the token
+|`jwt.scopes` |Comma-separated scopes from the token
+|`jwt.authorized` |`true` if scope/role authorization passed
+|`jwt.content.<claim>` |Individual token claims (prefixed)
+|`jwt.error.code` |Error code on validation failure
+|`jwt.error.reason` |Human-readable error description
+|===
+
+== Error Routing
+
+* **`success`** -- token is valid and authorization passed
+* **`authentication-failed`** -- token is missing, invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes
+
+== Token Verification UI
+
+The Custom UI provides a Token Verification tab for testing JWT tokens against the current configuration. Each UI verification request creates an isolated `TokenValidator` and `SecurityEventCounter` to avoid polluting the main processor's security metrics.
+
+See link:../guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] for usage instructions.

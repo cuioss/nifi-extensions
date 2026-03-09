@@ -1,0 +1,6 @@
+= Reference Documentation
+
+Property tables, configuration formats, and error types for both processors.
+
+* link:configuration.adoc[Configuration Reference] -- all property tables, static config, environment variables
+* link:error-reference.adoc[Error Reference (RFC 9457)] -- consolidated error types returned by the gateway
