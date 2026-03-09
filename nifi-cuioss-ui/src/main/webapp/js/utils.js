@@ -49,6 +49,9 @@ export const TRANSLATIONS = {
         'origin.badge.new.title': 'Created in this session (not yet persisted)',
         'origin.badge.modified': 'Modified',
         'origin.badge.new': 'New',
+        'origin.badge.external': 'External',
+        'origin.badge.external.title': 'Loaded from external configuration file (read-only)',
+        'route.source.external.tooltip': 'This route is defined in the external configuration file and cannot be edited here.',
 
         // -- validation --
         'validation.required': 'This field is required.',
@@ -434,6 +437,9 @@ export const TRANSLATIONS = {
         'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
         'origin.badge.modified': 'Ge\u00e4ndert',
         'origin.badge.new': 'Neu',
+        'origin.badge.external': 'Extern',
+        'origin.badge.external.title': 'Aus externer Konfigurationsdatei geladen (schreibgesch\u00fctzt)',
+        'route.source.external.tooltip': 'Diese Route ist in der externen Konfigurationsdatei definiert und kann hier nicht bearbeitet werden.',
 
         // -- validation --
         'validation.required': 'Dieses Feld ist erforderlich.',

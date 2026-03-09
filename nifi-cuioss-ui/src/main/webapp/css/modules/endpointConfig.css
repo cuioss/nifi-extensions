@@ -473,6 +473,11 @@
     color: var(--primary-color, #2196f3);
 }
 
+.origin-external {
+    background: var(--external-bg, #e8eaf6);
+    color: var(--external-color, #3949ab);
+}
+
 /* Schema badge in summary table */
 
 .schema-badge {

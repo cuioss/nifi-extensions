@@ -1147,4 +1147,154 @@ class GatewayProxyServletTest {
                     "http://Keycloak:8080/token", hosts));
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Merged routes array (pure unit tests)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("buildMergedRoutesArray")
+    class BuildMergedRoutesArray {
+
+        @Test
+        @DisplayName("Should mark external-only routes with source 'external'")
+        void shouldMarkExternalOnlyRoutes() {
+            Map<String, String> externalProps = Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.methods", "GET");
+            Map<String, String> nifiProps = Map.of();
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(1, result.size());
+            assertEquals("external", result.getJsonObject(0).getString("source"));
+            assertEquals("data", result.getJsonObject(0).getString("name"));
+        }
+
+        @Test
+        @DisplayName("Should mark NiFi-only routes with source 'nifi'")
+        void shouldMarkNifiOnlyRoutes() {
+            Map<String, String> externalProps = Map.of();
+            Map<String, String> nifiProps = Map.of(
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.methods", "GET,POST");
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(1, result.size());
+            assertEquals("nifi", result.getJsonObject(0).getString("source"));
+        }
+
+        @Test
+        @DisplayName("Should mark routes present in both sources with source 'both'")
+        void shouldMarkBothSourceRoutes() {
+            Map<String, String> externalProps = new HashMap<>();
+            externalProps.put("restapi.data.path", "/api/data-ext");
+            externalProps.put("restapi.data.methods", "GET");
+
+            Map<String, String> nifiProps = new HashMap<>();
+            nifiProps.put("restapi.data.path", "/api/data");
+            nifiProps.put("restapi.data.methods", "GET,POST");
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(1, result.size());
+            assertEquals("both", result.getJsonObject(0).getString("source"));
+            // NiFi properties should override external
+            assertEquals("/api/data", result.getJsonObject(0).getString("path"));
+        }
+
+        @Test
+        @DisplayName("Should include routes from both sources in merged result")
+        void shouldMergeRoutesFromBothSources() {
+            Map<String, String> externalProps = Map.of(
+                    "restapi.admin.path", "/api/admin",
+                    "restapi.admin.methods", "GET");
+
+            Map<String, String> nifiProps = Map.of(
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.methods", "POST");
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(2, result.size());
+        }
+
+        @Test
+        @DisplayName("Should skip routes without path")
+        void shouldSkipRoutesWithoutPath() {
+            Map<String, String> externalProps = Map.of(
+                    "restapi.broken.methods", "GET");
+            Map<String, String> nifiProps = Map.of();
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(0, result.size());
+        }
+
+        @Test
+        @DisplayName("Should exclude disabled routes from external config")
+        void shouldIncludeDisabledRoutesWithCorrectFlag() {
+            Map<String, String> externalProps = Map.of(
+                    "restapi.disabled.path", "/api/disabled",
+                    "restapi.disabled.methods", "GET",
+                    "restapi.disabled.enabled", "false");
+            Map<String, String> nifiProps = Map.of();
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(1, result.size());
+            assertFalse(result.getJsonObject(0).getBoolean("enabled"));
+            assertEquals("external", result.getJsonObject(0).getString("source"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // External config in /config response (integration-level servlet test)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("GET /config with external routes")
+    class GetConfigWithExternalRoutes {
+
+        @Test
+        @DisplayName("Should include external routes in /config response")
+        void shouldIncludeExternalRoutesInConfigResponse() {
+            // The default test servlet overrides loadExternalRouteProperties
+            // We need a separate test instance — use the static method directly
+            Map<String, String> externalProps = Map.of(
+                    "restapi.ext-data.path", "/api/ext-data",
+                    "restapi.ext-data.methods", "GET");
+            Map<String, String> nifiProps = Map.of(
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.methods", "POST");
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            assertEquals(2, result.size());
+
+            // Find external route
+            var extRoute = result.stream()
+                    .map(v -> v.asJsonObject())
+                    .filter(o -> "ext-data".equals(o.getString("name")))
+                    .findFirst()
+                    .orElseThrow();
+            assertEquals("external", extRoute.getString("source"));
+            assertEquals("/api/ext-data", extRoute.getString("path"));
+        }
+
+        @Test
+        @DisplayName("Should have NiFi properties override external config for same route")
+        void shouldHaveNifiOverrideExternal() {
+            Map<String, String> externalProps = new HashMap<>();
+            externalProps.put("restapi.data.path", "/api/data-ext");
+            externalProps.put("restapi.data.methods", "GET");
+            externalProps.put("restapi.data.required-roles", "USER");
+
+            Map<String, String> nifiProps = new HashMap<>();
+            nifiProps.put("restapi.data.path", "/api/data");
+            nifiProps.put("restapi.data.methods", "GET,POST");
+
+            var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
+            var dataRoute = result.getJsonObject(0);
+            assertEquals("both", dataRoute.getString("source"));
+            assertEquals("/api/data", dataRoute.getString("path"));
+            // NiFi methods override
+            var methods = dataRoute.getJsonArray("methods");
+            assertEquals(2, methods.size());
+        }
+    }
 }

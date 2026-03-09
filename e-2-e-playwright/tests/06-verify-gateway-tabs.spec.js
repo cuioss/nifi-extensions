@@ -1632,4 +1632,91 @@ test.describe("REST API Gateway Tabs", () => {
         // Username should no longer be required
         await expect(usernameLabel).not.toHaveClass(/required-field/);
     });
+
+    // ── External Config Routes in UI ─────────────────────────────────
+
+    test("should display externally configured routes with external badge", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        // Wait for summary table
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Verify external routes appear with External badge
+        const adminRow = summaryTable.locator('tbody tr[data-route-name="admin"]');
+        await expect(adminRow).toBeVisible({ timeout: 5000 });
+        const adminBadge = adminRow.locator(".origin-external");
+        await expect(adminBadge).toBeVisible();
+
+        // Verify other external routes exist
+        const validatedRow = summaryTable.locator(
+            'tbody tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+        const validatedBadge = validatedRow.locator(".origin-external");
+        await expect(validatedBadge).toBeVisible();
+
+        const inlineValidatedRow = summaryTable.locator(
+            'tbody tr[data-route-name="inline-validated"]',
+        );
+        await expect(inlineValidatedRow).toBeVisible({ timeout: 5000 });
+    });
+
+    test("should not show edit/delete actions for external routes", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // External routes should have no edit/delete buttons
+        const adminRow = summaryTable.locator('tbody tr[data-route-name="admin"]');
+        await expect(adminRow).toBeVisible({ timeout: 5000 });
+        await expect(adminRow.locator(".edit-route-button")).toHaveCount(0);
+        await expect(adminRow.locator(".remove-route-button")).toHaveCount(0);
+        // Should show info icon instead
+        await expect(adminRow.locator(".external-route-info")).toBeVisible();
+    });
+
+    test("should not display disabled-test route from external config", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel = customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        const summaryTable = endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Disabled route should not appear in the table
+        const disabledRow = summaryTable.locator(
+            'tbody tr[data-route-name="disabled-test"]',
+        );
+        await expect(disabledRow).toHaveCount(0);
+    });
 });

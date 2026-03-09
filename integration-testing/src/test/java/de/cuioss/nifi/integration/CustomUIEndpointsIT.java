@@ -487,4 +487,88 @@ class CustomUIEndpointsIT {
                     .body("routes.name", hasItem("data"));
         }
     }
+
+    // ── External Config Route Tests ──────────────────────────────────
+
+    @Nested
+    @DisplayName("External Config Routes in /config Response")
+    class ExternalConfigRoutes {
+
+        @Test
+        @DisplayName("should include externally loaded routes in config response")
+        void shouldIncludeExternalRoutesInConfigResponse() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.name", hasItems("data", "admin", "validated", "inline-validated"))
+                    .body("routes.find { it.name == 'admin' }.path", equalTo("/api/admin"))
+                    .body("routes.find { it.name == 'admin' }.requiredRoles", hasItem("ADMIN"))
+                    .body("routes.find { it.name == 'validated' }.path", equalTo("/api/validated"))
+                    .body("routes.find { it.name == 'inline-validated' }.path", equalTo("/api/inline-validated"));
+        }
+
+        @Test
+        @DisplayName("should include source field for each route")
+        void shouldIncludeSourceFieldForRoutes() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.source", everyItem(isOneOf("external", "nifi", "both")));
+        }
+
+        @Test
+        @DisplayName("should mark external-only routes with source 'external'")
+        void shouldMarkExternalOnlyRoutes() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.find { it.name == 'admin' }.source", equalTo("external"));
+        }
+
+        @Test
+        @DisplayName("should include externalConfigLoaded flag")
+        void shouldIncludeExternalConfigLoadedFlag() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("externalConfigLoaded", equalTo(true));
+        }
+
+        @Test
+        @DisplayName("should not include disabled external routes as enabled")
+        void shouldNotIncludeDisabledRoutesAsEnabled() {
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.find { it.name == 'disabled-test' }.enabled", equalTo(false));
+        }
+
+        @Test
+        @DisplayName("should mark external-only data route with source 'external'")
+        void shouldMarkDataRouteAsExternal() {
+            // 'data' route is defined only in cui-nifi-extensions.properties (not as NiFi dynamic property)
+            given().spec(gatewayAuthSpec)
+                    .when()
+                    .get("/nifi-api/processors/jwt/gateway/config")
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("routes.find { it.name == 'data' }.source", equalTo("external"));
+        }
+    }
 }
