@@ -1672,7 +1672,7 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(inlineValidatedRow).toBeVisible({ timeout: 5000 });
     });
 
-    test("should not show edit/delete actions for external routes", async ({
+    test("should show edit but no delete for external routes", async ({
         customUIFrame,
     }) => {
         // Navigate to Endpoint Configuration tab
@@ -1688,13 +1688,11 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // External routes should have no edit/delete buttons
+        // External routes should have edit button but no delete button
         const adminRow = summaryTable.locator('tbody tr[data-route-name="admin"]');
         await expect(adminRow).toBeVisible({ timeout: 5000 });
-        await expect(adminRow.locator(".edit-route-button")).toHaveCount(0);
+        await expect(adminRow.locator(".edit-route-button")).toBeVisible();
         await expect(adminRow.locator(".remove-route-button")).toHaveCount(0);
-        // Should show info icon instead
-        await expect(adminRow.locator(".external-route-info")).toBeVisible();
     });
 
     test("should not display disabled-test route from external config", async ({

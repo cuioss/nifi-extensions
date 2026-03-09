@@ -744,9 +744,10 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     row.dataset.authMode = authMode;
     const authModeBadge = formatAuthModeBadges(authMode);
 
-    const isExternal = origin === 'external';
-    const actionsHtml = isExternal
-        ? `<span class="external-route-info" title="${sanitizeHtml(t('route.source.external.tooltip'))}"><i class="fa fa-info-circle"></i></span>`
+    const isExternalOnly = origin === 'external';
+    // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
+    const actionsHtml = isExternalOnly
+        ? `<button class="edit-route-button" title="${sanitizeHtml(t('route.source.external.edit.tooltip'))}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>`
         : `<button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
             <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
 
@@ -762,14 +763,14 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     // Store props reference on the row so it can be updated after save
     row._routeProps = props;
 
-    if (!isExternal) {
-        row.querySelector('.edit-route-button').addEventListener('click', () => {
-            // Close any currently open editor first
-            closeActiveEditor(routesContainer);
-            row.classList.add('hidden');
-            openInlineEditor(routesContainer, row.dataset.routeName, row._routeProps, componentId, row);
-        });
+    row.querySelector('.edit-route-button').addEventListener('click', () => {
+        // Close any currently open editor first
+        closeActiveEditor(routesContainer);
+        row.classList.add('hidden');
+        openInlineEditor(routesContainer, row.dataset.routeName, row._routeProps, componentId, row);
+    });
 
+    if (!isExternalOnly) {
         row.querySelector('.remove-route-button').addEventListener('click', async () => {
             await confirmRemoveRoute(name, () => removeRoute(row, name, routesContainer, componentId));
         });

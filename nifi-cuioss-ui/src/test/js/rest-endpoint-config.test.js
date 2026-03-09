@@ -2375,7 +2375,7 @@ describe('rest-endpoint-config', () => {
             expect(badge).not.toBeNull();
         });
 
-        it('should not show edit/delete buttons for external routes', async () => {
+        it('should show edit button but no delete button for external routes', async () => {
             api.getComponentProperties.mockResolvedValue({
                 properties: SAMPLE_PROPERTIES,
                 revision: { version: 1 }
@@ -2386,10 +2386,8 @@ describe('rest-endpoint-config', () => {
             await tick();
 
             const dataRow = container.querySelector('tr[data-route-name="data"]');
-            expect(dataRow.querySelector('.edit-route-button')).toBeNull();
+            expect(dataRow.querySelector('.edit-route-button')).not.toBeNull();
             expect(dataRow.querySelector('.remove-route-button')).toBeNull();
-            // Should show info icon instead
-            expect(dataRow.querySelector('.external-route-info')).not.toBeNull();
         });
 
         it('should show edit/delete buttons for NiFi routes even when external routes exist', async () => {
