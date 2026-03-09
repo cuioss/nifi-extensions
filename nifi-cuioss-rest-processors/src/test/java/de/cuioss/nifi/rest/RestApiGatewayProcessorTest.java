@@ -428,6 +428,10 @@ class RestApiGatewayProcessorTest {
                                 .build(),
                         HttpResponse.BodyHandlers.ofString());
                 assertEquals(202, postResponse.statusCode());
+
+                // Verify FlowFile creation for the successful POST
+                runner.run(1, false, false);
+                assertEquals(1, runner.getFlowFilesForRelationship("myroute").size());
             } finally {
                 runner.stop();
             }
