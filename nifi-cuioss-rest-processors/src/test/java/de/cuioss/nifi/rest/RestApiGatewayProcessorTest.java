@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest;
 
+import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
@@ -26,11 +27,15 @@ import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -295,6 +300,185 @@ class RestApiGatewayProcessorTest {
         void shouldLogServerStarted() throws Exception {
             testRunner.run(1, false, true);
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, "REST-1:");
+        }
+    }
+
+    @Nested
+    @DisplayName("External Config Loading")
+    class ExternalConfigLoading {
+
+        @Test
+        @DisplayName("Should load routes from external config file")
+        void shouldLoadRoutesFromExternalConfig(@TempDir Path tempDir) throws Exception {
+            // Create config file with a route
+            writeConfigFile(tempDir, """
+                    restapi.external.path=/api/external
+                    restapi.external.methods=GET
+                    restapi.external.success-outcome=external
+                    """);
+
+            // Set up processor with external config and NO NiFi dynamic route properties
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            runner.run(1, false, true);
+            try {
+                int port = processor.serverManager.getPort();
+
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/external"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(200, response.statusCode());
+
+                runner.run(1, false, false);
+                assertEquals(1, runner.getFlowFilesForRelationship("external").size());
+
+                LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, "REST-10:");
+            } finally {
+                runner.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should merge external and NiFi routes")
+        void shouldMergeExternalAndNifiRoutes(@TempDir Path tempDir) throws Exception {
+            writeConfigFile(tempDir, """
+                    restapi.external.path=/api/external
+                    restapi.external.methods=GET
+                    restapi.external.success-outcome=external
+                    """);
+
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // Also add a NiFi dynamic property route
+            runner.setProperty("restapi.nifi-route.path", "/api/nifi-route");
+            runner.setProperty("restapi.nifi-route.methods", "GET");
+            runner.setProperty("restapi.nifi-route.success-outcome", "nifi-route");
+
+            runner.run(1, false, true);
+            try {
+                int port = processor.serverManager.getPort();
+
+                // Both routes should work
+                var externalResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/external"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, externalResponse.statusCode());
+
+                var nifiResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/nifi-route"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, nifiResponse.statusCode());
+
+                runner.run(2, false, false);
+                assertEquals(1, runner.getFlowFilesForRelationship("external").size());
+                assertEquals(1, runner.getFlowFilesForRelationship("nifi-route").size());
+            } finally {
+                runner.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("NiFi properties should override config file")
+        void nifiPropertiesShouldOverrideConfigFile(@TempDir Path tempDir) throws Exception {
+            // Config file defines route with GET only
+            writeConfigFile(tempDir, """
+                    restapi.myroute.path=/api/myroute
+                    restapi.myroute.methods=GET
+                    restapi.myroute.success-outcome=myroute
+                    """);
+
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // NiFi overrides methods to POST
+            runner.setProperty("restapi.myroute.path", "/api/myroute");
+            runner.setProperty("restapi.myroute.methods", "POST");
+            runner.setProperty("restapi.myroute.success-outcome", "myroute");
+
+            runner.run(1, false, true);
+            try {
+                int port = processor.serverManager.getPort();
+
+                // GET should NOT work (NiFi override says POST only)
+                var getResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/myroute"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(405, getResponse.statusCode());
+
+                // POST should work
+                var postResponse = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/myroute"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(202, postResponse.statusCode());
+            } finally {
+                runner.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should work without config file (NiFi-only)")
+        void shouldWorkWithoutConfigFile(@TempDir Path tempDir) throws Exception {
+            // Empty temp dir — no config file
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // Only NiFi dynamic properties
+            runner.setProperty("restapi.nifionly.path", "/api/nifionly");
+            runner.setProperty("restapi.nifionly.methods", "GET");
+            runner.setProperty("restapi.nifionly.success-outcome", "nifionly");
+
+            runner.run(1, false, true);
+            try {
+                int port = processor.serverManager.getPort();
+
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/nifionly"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, response.statusCode());
+
+                runner.run(1, false, false);
+                assertEquals(1, runner.getFlowFilesForRelationship("nifionly").size());
+            } finally {
+                runner.stop();
+            }
+        }
+
+        private TestRunner createRunner() throws Exception {
+            var runner = TestRunners.newTestRunner(RestApiGatewayProcessor.class);
+            runner.addControllerService(CS_ID, mockConfigService);
+            runner.enableControllerService(mockConfigService);
+            runner.setProperty(RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
+            runner.setProperty(RestApiGatewayConstants.Properties.LISTENING_PORT, "0");
+            runner.setProperty(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE, "50");
+            runner.setProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE, "1048576");
+            return runner;
+        }
+
+        private void writeConfigFile(Path tempDir, String content) throws IOException {
+            Path confDir = tempDir.resolve("conf");
+            Files.createDirectories(confDir);
+            Files.writeString(confDir.resolve("cui-nifi-extensions.properties"), content);
         }
     }
 

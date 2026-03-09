@@ -55,7 +55,7 @@ public class ConfigurationManager {
         this("");
     }
 
-    ConfigurationManager(String basePath) {
+    public ConfigurationManager(String basePath) {
         this.basePath = basePath;
         loadConfiguration();
     }

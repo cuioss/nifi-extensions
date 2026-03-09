@@ -93,6 +93,12 @@ public final class RestApiLogMessages {
                 .template("Authentication successful for %s %s from %s")
                 .build();
 
+        public static final LogRecord EXTERNAL_ROUTES_LOADED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(10)
+                .template("Loaded %s route properties from external configuration file")
+                .build();
+
     }
 
     @UtilityClass

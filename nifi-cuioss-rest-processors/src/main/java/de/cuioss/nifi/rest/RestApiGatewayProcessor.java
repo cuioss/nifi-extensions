@@ -17,6 +17,7 @@
 package de.cuioss.nifi.rest;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.nifi.rest.config.AuthMode;
@@ -80,6 +81,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES);
 
     final JettyServerManager serverManager = new JettyServerManager();
+    /** Injectable for testing — when null, a new instance is created in onScheduled. */
+    ConfigurationManager configurationManager;
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
     private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
@@ -116,8 +119,20 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int queueSize = context.getProperty(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE).asInteger();
         requestQueue = new LinkedBlockingQueue<>(queueSize);
 
-        // Parse routes from dynamic properties
+        // Load external config file routes first (lower priority)
         Map<String, String> allProperties = new HashMap<>();
+        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
+        if (configManager.isConfigurationLoaded()) {
+            configManager.getStaticProperties().forEach((key, value) -> {
+                if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
+                    allProperties.put(key, value);
+                }
+            });
+            if (!allProperties.isEmpty()) {
+                LOGGER.info(RestApiLogMessages.INFO.EXTERNAL_ROUTES_LOADED, allProperties.size());
+            }
+        }
+        // NiFi dynamic properties override (higher priority)
         context.getProperties().forEach((key, value) -> allProperties.put(key.getName(), value));
         List<RouteConfiguration> routes = RouteConfigurationParser.parse(allProperties);
 
