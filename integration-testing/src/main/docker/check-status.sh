@@ -173,11 +173,14 @@ check_http_endpoint() {
 
     log_verbose "Checking HTTP endpoint: $url"
 
-    if curl -k --fail --silent --max-time "$timeout" "$url" > /dev/null 2>&1; then
-        log_verbose "$description is responding"
+    local http_code
+    http_code=$(curl -k --silent --max-time "$timeout" -o /dev/null -w "%{http_code}" "$url" 2>/dev/null || echo "000")
+
+    if [[ "$http_code" != "000" ]]; then
+        log_verbose "$description is responding (HTTP $http_code)"
         return 0
     else
-        log_verbose "$description is not responding"
+        log_verbose "$description is not responding (connection failed)"
         return 1
     fi
 }
