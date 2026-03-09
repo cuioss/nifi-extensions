@@ -101,10 +101,6 @@ Add the following dependency to your test scope:
 </dependency>
 ----
 
-For full usage details and advanced configuration, see link:../library/cui-test-keycloak-integration/README.adoc[cui-test-keycloak-integration documentation].
-
-You can find example integration tests in the KeycloakITBaseTest class linked from the documentation.
-
 For more details on integration patterns, see link:integration-patterns.adoc[Integration Patterns].
 
 == System Testing
@@ -152,8 +148,6 @@ Test data for JWT validation is best generated using the oauth-sheriff-core test
 * In-memory key material and JWKS generation (no filesystem required)
 * Token tampering utilities for negative testing
 * Support for multiple algorithms (RS256, RS384, RS512)
-
-For full documentation, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].
 
 === Example: Creating Test Tokens
 
@@ -205,13 +199,6 @@ The project uses the cui-test-mockwebserver-junit5 extension for robust HTTP/HTT
 * Built-in support for HTTPS and custom certificates
 * Parameter injection for MockWebServer, URIBuilder, and SSLContext
 
-For details, see:
-
-* link:../library/cui-test-mockwebserver-junit5/README.adoc[MockWebServer JUnit5 Extension Overview]
-* link:../library/cui-test-mockwebserver-junit5/MockResponse.adoc[Working with @MockResponse]
-* link:../library/cui-test-mockwebserver-junit5/ModuleDispatcher.adoc[Working with @ModuleDispatcher]
-* link:../library/cui-test-mockwebserver-junit5/HttpsSupport.adoc[HTTPS Support and Certificates]
-
 === Example: Simulating a JWKS Endpoint
 
 Instead of manual WireMock or custom server code, use the extension as follows:
@@ -237,8 +224,6 @@ class JwksEndpointTest {
 ----
 
 For more advanced scenarios (dynamic responses, custom dispatchers, HTTPS certs), see the linked documentation above.
-
-For advanced JWKS endpoint simulation and HTTP/HTTPS testing, see the MockWebServer-based Testing section above and the detailed documentation in doc/library/cui-test-mockwebserver-junit5/.
 
 == Test Coverage
 
@@ -266,6 +251,3 @@ Tests are run automatically as part of the build process:
 * link:../Requirements.adoc#NIFI-AUTH-14[Unit Testing Requirements]
 * link:../Specification.adoc[Back to Main Specification]
 
-== JWT Validation Test Utilities
-
-For detailed documentation on the oauth-sheriff-core test utilities, see link:../library/oauth-sheriff/unit-testing.adoc[JWT Validation Test Utilities].

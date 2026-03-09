@@ -51,8 +51,6 @@ The processor utilizes the following key features from the OAuth-Sheriff library
 * **AccessTokenContent**: Parsed token with convenient access to claims and validation status
 * **HttpJwksLoaderConfig**: Configuration for JWKS key loading with automatic key rotation
 
-For more details on the OAuth-Sheriff library, see link:../library/oauth-sheriff/Usage.adoc[Library Documentation].
-
 === How the Processor Uses OAuth-Sheriff
 
 The processor initializes and uses the OAuth-Sheriff library as follows:
@@ -190,7 +188,6 @@ This will provide access to all the library features needed for token validation
 === Core Documentation
 * link:../Specification.adoc[Main Specification]
 * link:../Requirements.adoc[Requirements]
-* link:../library/oauth-sheriff/Usage.adoc[Library Documentation]
 
 === Implementation
 * link:configuration.adoc[Configuration]
