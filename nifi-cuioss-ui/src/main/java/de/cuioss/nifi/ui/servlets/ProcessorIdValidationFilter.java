@@ -46,8 +46,8 @@ import java.util.UUID;
  * only allows reading the referenced processor's own configuration; it cannot be used
  * to escalate privileges or access other components' data.</p>
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/security.adoc">Security Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/gateway.adoc">Gateway Architecture</a>
  */
 @WebFilter("/nifi-api/processors/jwt/*")
 public class ProcessorIdValidationFilter implements Filter {

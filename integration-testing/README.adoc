@@ -360,9 +360,6 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 
 == See Also
 
-* link:../doc/Specification.adoc[Specification]
-* link:../doc/Requirements.adoc[Requirements]
-* link:../doc/specification/testing.adoc[Testing Specification]
-* link:../doc/specification/integration-testing.adoc[Integration Testing — Flow Pipeline Design]
-* link:../doc/library/cui-test-keycloak-integration/README.adoc[Keycloak Integration]
+* link:../doc/architecture/README.adoc[Architecture Overview]
+* link:../doc/reference/configuration.adoc[Configuration Reference]
 * link:../e-2-e-playwright/README.adoc[E2E Playwright Tests]

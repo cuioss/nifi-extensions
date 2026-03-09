@@ -47,7 +47,7 @@ import static org.hamcrest.Matchers.*;
  * Uses a configurable {@link JwtValidationService} test double injected via
  * constructor. Each test sets the desired behavior before making HTTP requests.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 @EnableTestLogger
 @DisplayName("JwtVerificationServlet tests")

@@ -150,37 +150,30 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator` gateway on port 7777
 
 == Documentation
 
-=== Specifications
+=== Architecture
 
-* link:doc/Requirements.adoc[Requirements]
-* link:doc/Specification.adoc[Specification]
-* link:doc/specification/configuration.adoc[Configuration Reference]
-* link:doc/specification/configuration-static.adoc[Static Configuration & Container Deployment]
-* link:doc/specification/configuration-ui.adoc[UI Configuration]
-* link:doc/specification/security.adoc[Security]
-* link:doc/specification/token-validation.adoc[Token Validation]
-* link:doc/specification/technical-components.adoc[Technical Components]
+* link:doc/architecture/README.adoc[Architecture Overview] -- module overview, "which processor" decision guide
+* link:doc/architecture/gateway.adoc[Gateway Architecture] -- pipeline, auth layers, metrics, error handling
+* link:doc/architecture/jwt-processor.adoc[JWT Processor Architecture] -- flow, attributes, OAuth-Sheriff lifecycle
+* link:doc/architecture/standards.adoc[Standards Compliance] -- RFC/standards compliance table
 
 === Guides
 
-* link:doc/guides/QuickStart.adoc[Quick Start Guide] -- get running in under 5 minutes
+* link:doc/guides/QuickStart.adoc[Quick Start Guide] -- RestApiGateway setup in under 5 minutes
+* link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation with integration test flow
 * link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with test environment and troubleshooting
-* link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation processor with integration test flow
 * link:doc/guides/BuildingGuide.adoc[Building Guide] -- build, code quality, SonarQube, integration and E2E tests
+
+=== Reference
+
+* link:doc/reference/configuration.adoc[Configuration Reference] -- all property tables, static config, environment variables
+* link:doc/reference/error-reference.adoc[Error Reference (RFC 9457)] -- consolidated error types returned by the gateway
 
 === Testing
 
 * link:integration-testing/README.adoc[Integration Testing Environment] -- Docker setup with NiFi and Keycloak
 * link:e-2-e-playwright/README.adoc[End-to-End Testing] -- Playwright tests for processor UI and WCAG compliance
 * link:e-2-e-playwright/docs/accessibility-testing-guide.adoc[Accessibility Testing Guide]
-
-=== Development
-
-* link:doc/specification/error-handling.adoc[Error Handling]
-* link:doc/rest-errors/index.adoc[REST API Error Reference (RFC 9457)]
-* link:doc/specification/internationalization.adoc[Internationalization]
-* link:doc/specification/observability.adoc[Observability & Metrics]
-* link:doc/LogMessages.adoc[Log Messages Reference]
 
 == Building
 

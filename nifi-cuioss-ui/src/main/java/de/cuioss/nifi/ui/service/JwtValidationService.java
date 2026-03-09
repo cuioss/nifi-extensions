@@ -46,8 +46,8 @@ import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
  * timeout under load. The cached validator is invalidated when the resolved issuer
  * properties change (e.g., after a configuration update in the NiFi UI).
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/jwt-rest-api.adoc">JWT REST API Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/token-validation.adoc">Token Validation Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/jwt-processor.adoc">JWT Processor Architecture</a>
  */
 public class JwtValidationService {
 

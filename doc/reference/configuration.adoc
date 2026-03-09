@@ -1,0 +1,358 @@
+= Configuration Reference
+:toc: left
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
+:imagesdir: ../plantuml
+
+All configuration options for both processors and the shared Controller Service.
+
+image::configuration-overview.png[Configuration Overview Diagram, align="center"]
+
+== Controller Service Properties
+
+The `JwtIssuerConfigService` manages issuer configuration and token validation settings. Both processors reference the same CS instance.
+
+=== Performance Properties
+
+[cols="1,1,3,1"]
+|===
+|Property |Default |Description |Required
+
+|jwt.validation.jwks.refresh.interval
+|3600
+|Interval in seconds for refreshing JWKS keys
+|Yes
+
+|jwt.validation.jwks.connection.timeout
+|10
+|Seconds before a JWKS endpoint request times out
+|Yes
+
+|jwt.validation.maximum.token.size
+|16384
+|Maximum token size in bytes
+|Yes
+
+|jwt.validation.allowed.algorithms
+|Secure defaults
+|Comma-separated list of permitted signing algorithms (RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512). The `none` algorithm and weak HMAC algorithms are always blocked.
+|No
+
+|jwt.validation.require.https.for.jwks
+|true
+|Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
+|Yes
+
+|jwt.validation.jwks.allow.private.network.addresses
+|false
+|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development.
+|Yes
+|===
+
+=== Dynamic Properties (Issuers)
+
+The Controller Service supports multiple issuers through NiFi dynamic properties. Issuer properties use the prefix `issuer.<N>.<property>`:
+
+[cols="1,3,1"]
+|===
+|Property |Description |Example
+
+|issuer.<N>.jwks-url
+|JWKS endpoint URL, file path, or inline key content
+|https://auth.example.com/.well-known/jwks.json
+
+|issuer.<N>.enabled
+|Enable or disable this issuer without removing the configuration
+|true
+
+|issuer.<N>.audience
+|Required `aud` claim for tokens from this issuer
+|api://my-service
+
+|issuer.<N>.scopes
+|Comma-separated scopes required for authorization
+|read,write
+
+|issuer.<N>.roles
+|Comma-separated roles required for authorization
+|admin,user
+|===
+
+NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<property>` (see <<Static Configuration Files>>).
+
+== MultiIssuerJWTTokenAuthenticator Properties
+
+[cols="2,1,1,4"]
+|===
+|Property |Default |Required |Description
+
+|JWT Issuer Config Service
+|--
+|Yes
+|Reference to the `JwtIssuerConfigService` Controller Service
+
+|Token Attribute
+|`jwt.token`
+|Yes
+|The FlowFile attribute name containing the raw JWT token
+
+|Require Valid Token
+|`true`
+|Yes
+|When `true`, missing or invalid tokens route to `authentication-failed`
+
+|Required Roles
+|--
+|No
+|Comma-separated list of roles the token must contain for authorization
+
+|Required Scopes
+|--
+|No
+|Comma-separated list of scopes the token must contain for authorization
+|===
+
+== RestApiGateway Processor Properties
+
+[cols="2,1,3,1"]
+|===
+|Property |Default |Description |Required
+
+|rest.gateway.listening.port
+|9443
+|TCP port for the embedded Jetty HTTP server
+|Yes
+
+|rest.gateway.listening.host
+|0.0.0.0
+|Bind address for the embedded server
+|No
+
+|rest.gateway.jwt.config.service
+|--
+|Reference to the JwtIssuerConfigService Controller Service
+|Yes
+
+|rest.gateway.ssl.context.service
+|--
+|Reference to an SSLContextProvider for HTTPS
+|No
+
+|rest.gateway.max.request.size
+|1048576
+|Maximum request body size in bytes (default 1 MB)
+|Yes
+
+|rest.gateway.request.queue.size
+|50
+|Maximum number of requests queued for FlowFile processing
+|Yes
+
+|rest.gateway.management.health.enabled
+|true
+|Whether the `/health` management endpoint is active
+|No
+
+|rest.gateway.management.health.auth-mode
+|local-only
+|Authentication mode for `/health`: `bearer`, `none`, or `local-only`
+|No
+
+|rest.gateway.management.metrics.enabled
+|true
+|Whether the `/metrics` management endpoint is active
+|No
+
+|rest.gateway.management.metrics.auth-mode
+|local-only
+|Authentication mode for `/metrics`: `bearer`, `none`, or `local-only`
+|No
+|===
+
+== Route Configuration via Dynamic Properties
+
+Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
+
+[cols="1,3,1"]
+|===
+|Property Pattern |Description |Example
+
+|restapi.<name>.path |URL path for the route (exact match) |/api/users
+|restapi.<name>.methods |Comma-separated HTTP methods (default: GET,POST,PUT,DELETE) |GET,POST
+|restapi.<name>.required-roles |Comma-separated roles the JWT must carry |admin,editor
+|restapi.<name>.required-scopes |Comma-separated scopes the JWT must carry |read,write
+|restapi.<name>.success-outcome |NiFi relationship name; auto-populated with route name when absent |api-data
+|restapi.<name>.create-flowfile |Whether to create a FlowFile (default: true) |false
+|restapi.<name>.auth-mode |Authentication mode: `bearer` (default), `none`, `local-only` |none
+|restapi.<name>.max-request-size |Per-route max body size in bytes (0 = global default) |524288
+|restapi.<name>.enabled |Whether the route is active (default: true) |false
+|restapi.<name>.schema |File path to JSON Schema for request body validation |./conf/schemas/user.json
+|===
+
+=== Multi-Route Configuration Example
+
+[source,properties]
+----
+# Route 1: User API (read-only)
+restapi.users.path = /api/users
+restapi.users.methods = GET
+restapi.users.required-roles = read
+
+# Route 2: Admin API (full access)
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+restapi.admin.required-scopes = admin:write
+
+# Route 3: Public health check (no authentication)
+restapi.public.path = /api/public
+restapi.public.methods = GET
+restapi.public.auth-mode = none
+restapi.public.create-flowfile = false
+----
+
+== Static Configuration Files
+
+For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. The properties file is checked first. Static configuration takes precedence over UI settings and is displayed as read-only in the UI.
+
+image::configuration-properties.png[Configuration Properties Hierarchy, align="center"]
+
+=== Properties Format
+
+[source,properties]
+----
+jwt.validation.issuer.count=2
+
+jwt.validation.issuer.1.name=Primary Auth Server
+jwt.validation.issuer.1.enabled=true
+jwt.validation.issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
+jwt.validation.issuer.1.audience=my-api
+jwt.validation.issuer.1.scopes=read,write
+jwt.validation.issuer.1.roles=admin,user
+
+jwt.validation.issuer.2.name=Secondary Auth Server
+jwt.validation.issuer.2.enabled=false
+jwt.validation.issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
+jwt.validation.issuer.2.audience=my-secondary-api
+----
+
+=== YAML Format
+
+[source,yaml]
+----
+jwt:
+  validation:
+    issuers:
+      - name: "Primary Auth Server"
+        enabled: true
+        jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+        audience: "my-api"
+        scopes: "read,write"
+        roles: "admin,user"
+      - name: "Secondary Auth Server"
+        enabled: false
+        jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+        audience: "my-secondary-api"
+----
+
+=== Dynamic Reload
+
+The processor monitors configuration files for changes and reloads automatically. On reload failure, the processor falls back to the previous valid configuration.
+
+== Environment Variables
+
+[cols="2,1,3"]
+|===
+|Variable |Type |Description
+
+|`JWT_JWKS_REFRESH_INTERVAL` |Duration |JWKS cache refresh (e.g. `30 minutes`, `1 hour`)
+|`JWT_REQUIRE_VALID_TOKEN` |Boolean |Require valid token for success routing
+|`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer
+|`JWT_ISSUER_{NAME}_PUBLIC_KEY` |String |PEM-encoded public key for an issuer
+|===
+
+=== Kubernetes Deployment Example
+
+[source,yaml]
+----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nifi-deployment
+spec:
+  template:
+    spec:
+      containers:
+      - name: nifi
+        image: apache/nifi:2.7.2
+        env:
+        - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
+          value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
+----
+
+== Common Configuration Scenarios
+
+=== Basic JWT Processor with Single Issuer
+
+[source,properties]
+----
+jwt.validation.require.valid.token = true
+jwt.validation.jwks.refresh.interval = 3600
+jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
+jwt.validation.issuer.1.audience = api://my-service
+----
+
+=== RestApiGateway with Multiple Routes
+
+[source,properties]
+----
+rest.gateway.listening.port = 9443
+restapi.users.path = /api/users
+restapi.users.methods = GET,POST
+restapi.users.required-roles = user
+
+restapi.admin.path = /api/admin
+restapi.admin.methods = GET,POST,PUT,DELETE
+restapi.admin.required-roles = admin
+----
+
+=== Multiple Issuers
+
+[source,properties]
+----
+jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
+jwt.validation.issuer.1.audience = api://my-service-prod
+
+jwt.validation.issuer.2.jwks-url = https://auth-test.example.com/.well-known/jwks.json
+jwt.validation.issuer.2.audience = api://my-service-test
+jwt.validation.issuer.2.enabled = false
+----
+
+== Custom UI REST Endpoints
+
+The Custom UI backend provides REST endpoints shared by both processors:
+
+=== Token Verification
+
+* *Path*: `/nifi-api/processors/jwt/verify-token`
+* *Method*: POST
+* Verifies JWT tokens using the same configuration as the processor
+* Isolated -- does not affect processor metrics
+
+=== JWKS Validation
+
+* *Path*: `/nifi-api/processors/jwt/validate-jwks-url` (and `-file`, `-content`)
+* *Method*: POST
+* Stateless JWKS structure and accessibility validation
+
+=== Gateway Proxy Endpoints
+
+[cols="1,1,2"]
+|===
+|UI Endpoint |Method |Description
+
+|`/api/gateway/config` |GET |Retrieves current route configuration
+|`/api/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint
+|`/api/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
+|===

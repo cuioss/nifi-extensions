@@ -1,0 +1,58 @@
+= Architecture Overview
+:sectnums:
+:imagesdir: ../plantuml
+
+== System Architecture
+
+image::architecture.png[NiFi Extensions Architecture]
+
+== Module Overview
+
+[cols="1,3"]
+|===
+|Module |Purpose
+
+|nifi-cuioss-api
+|Controller Service API interfaces (`JwtIssuerConfigService`, `JwtAuthenticationConfig`) -- packaged as separate NAR for NiFi 2.x classloader separation
+
+|nifi-cuioss-common
+|Shared JWT infrastructure: Controller Service implementation, configuration management, utilities
+
+|nifi-cuioss-processors
+|`MultiIssuerJWTTokenAuthenticator` -- FlowFile-based JWT validation processor
+
+|nifi-cuioss-rest-processors
+|`RestApiGatewayProcessor` -- REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
+
+|nifi-cuioss-ui
+|Unified Custom UI serving both processors -- issuer configuration, token verification, endpoint configuration, metrics
+|===
+
+Both processors share JWT validation through a common `JwtIssuerConfigService` Controller Service, which supports multiple identity providers with automatic JWKS key rotation and caching.
+
+== Which Processor to Use
+
+[cols="1,1"]
+|===
+|RestApiGatewayProcessor |MultiIssuerJWTTokenAuthenticator
+
+|You need an HTTP endpoint with JWT auth, route dispatching, and RFC 9457 errors
+|You need to validate JWT on FlowFiles already in a NiFi flow
+
+|Replaces multi-processor gateway patterns (`HandleHttpRequest` + JWT + `HandleHttpResponse`) with a single node
+|Drops into any flow as a single node -- reads JWT from a FlowFile attribute, validates, routes
+
+|Built-in `/metrics` (Prometheus), `/health`, RFC 9457 error responses, back-pressure (503)
+|Routes to `success` or `authentication-failed`; writes `jwt.*` attributes
+
+|Routes configured via dynamic properties with per-route roles/scopes
+|Authorization via required roles/scopes on the processor
+|===
+
+== Further Reading
+
+* link:gateway.adoc[Gateway Architecture] -- pipeline, auth layers, metrics, error handling
+* link:jwt-processor.adoc[JWT Processor Architecture] -- flow, attributes, lifecycle
+* link:standards.adoc[Standards Compliance]
+* link:../reference/configuration.adoc[Configuration Reference]
+* link:../reference/error-reference.adoc[Error Reference]

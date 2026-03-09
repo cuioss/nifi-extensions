@@ -1,13 +1,13 @@
 ---
 name: update-guide-screenshots
-description: Verify NiFi custom UI tabs via Chrome and update doc/guides screenshots, guides, and specifications
+description: Verify NiFi custom UI tabs via Chrome and update doc/guides screenshots and guides
 user-invocable: true
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, mcp__claude-in-chrome__*
 ---
 
 # Update Guide Screenshots Skill
 
-Verifies the NiFi custom UI against existing documentation, takes fresh screenshots, and updates `doc/guides/` and `doc/specification/` content to match the current UI.
+Verifies the NiFi custom UI against existing documentation, takes fresh screenshots, and updates `doc/guides/` content to match the current UI.
 
 ## Parameters
 
@@ -140,30 +140,7 @@ Common things to check and update:
 
 Do NOT change sections about tabs whose UI has not changed. Only update what is actually different.
 
-### Step 6: Update Specification Documentation (for `docs` and default mode)
-
-Review and update `doc/specification/` files to match the current UI state. The key files to check:
-
-#### 6a. `doc/specification/configuration-ui.adoc`
-
-- **Gateway Processor Tabs** section — must list all gateway tabs (Endpoint Configuration, Endpoint Tester, Issuer Configuration, Token Verification, Metrics, Help)
-- **JWT Processor Tabs** section — must list all JWT tabs (Configuration, Token Verification, Metrics, Help)
-- Tab toggling description must match the `configureTabsForType()` implementation in `app.js`
-
-#### 6b. `doc/specification/gateway-ui.adoc`
-
-- Purpose paragraph must mention all gateway tabs
-- Must have sections for each gateway-specific feature (Route Editor, Endpoint Tester, Issuer Configuration, Token Verification, etc.)
-- Related Topics must link to relevant specs (token-validation, configuration-ui, configuration)
-
-#### 6c. `doc/specification/end-to-end-testing.adoc`
-
-- **Gateway Tabs** verified scenarios must list all gateway tabs
-- Verified scenario items must cover all tabs tested in `06-verify-gateway-tabs.spec.js`
-
-Do NOT change specification sections that are unaffected by UI changes. Only update what is actually different.
-
-### Step 7: Report Summary
+### Step 6: Report Summary
 
 Output a summary table showing:
 - Which screenshots were updated/added/unchanged
@@ -177,9 +154,6 @@ Output a summary table showing:
 | `doc/guides/QuickStart.adoc` | Main quick start guide |
 | `doc/guides/IssuerConfigPropertiesGuide.adoc` | Detailed issuer configuration guide |
 | `doc/guides/*.png` | Guide screenshots |
-| `doc/specification/configuration-ui.adoc` | UI configuration spec (tab lists, architecture) |
-| `doc/specification/gateway-ui.adoc` | Gateway custom UI spec (route editor, tester, issuer config, token verification) |
-| `doc/specification/end-to-end-testing.adoc` | E2E test spec (gateway tab verified scenarios) |
 | `e-2-e-playwright/` | Playwright project root (has `node_modules/`) |
 | `e-2-e-playwright/utils/constants.js` | Processor type names for API lookups |
 

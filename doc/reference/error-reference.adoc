@@ -1,0 +1,112 @@
+= REST API Gateway Error Reference
+:sectnums:
+:source-highlighter: highlight.js
+
+The REST API Gateway returns error responses conforming to https://www.rfc-editor.org/rfc/rfc9457[RFC 9457 -- Problem Details for HTTP APIs].
+
+== Response Format
+
+Every error response uses content type `application/problem+json`:
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Missing or malformed Authorization header"
+}
+----
+
+The `type` field links to this documentation page. Error responses are produced by the `ProblemDetail` record.
+
+== Error Types
+
+[cols="1,1,3,2"]
+|===
+|Status |Title |When Returned |Example `detail` value
+
+|400
+|Bad Request
+|Input sanitization failed -- malformed path, query parameters, or headers detected by cui-http security pipelines
+|`Request rejected: POTENTIAL_ATTACK_DETECTED`
+
+|401
+|Unauthorized
+|Missing or invalid Bearer token. Includes `WWW-Authenticate: Bearer` header per RFC 6750. Missing scopes trigger `Bearer error="insufficient_scope"`.
+|`Missing or malformed Authorization header`
+
+|403
+|Forbidden
+|Valid token but missing required roles for the matched route
+|`Insufficient roles: missing [admin]`
+
+|404
+|Not Found
+|No route configured for the requested path
+|`No route configured for path: /api/unknown`
+
+|405
+|Method Not Allowed
+|Route exists but the HTTP method is not in the allowed set. Includes `Allow` header listing permitted methods.
+|`Method POST is not allowed on route 'health'. Allowed methods: [GET]`
+
+|413
+|Payload Too Large
+|Request body exceeds the configured `rest.gateway.max.request.size` limit (default 1 MB) or per-route `restapi.<name>.max-request-size`
+|`Request body of 2097152 bytes exceeds maximum allowed size of 1048576 bytes`
+
+|422
+|Unprocessable Content
+|Request body fails JSON Schema validation (when a route specifies `schema`). Includes a `violations` array with JSON Pointer paths and messages.
+|`Request body failed JSON Schema validation`
+
+|500
+|Internal Server Error
+|Unexpected internal error during request processing. Full stack trace logged via `CuiLogger`.
+|`An unexpected error occurred`
+
+|503
+|Service Unavailable
+|Request queue is full (back-pressure). The NiFi flow cannot keep up with incoming requests.
+|`Server is at capacity, please retry later`
+|===
+
+== WWW-Authenticate Header (RFC 6750)
+
+Authentication failures include the `WWW-Authenticate` header per https://www.rfc-editor.org/rfc/rfc6750[RFC 6750]:
+
+[cols="1,2"]
+|===
+|Scenario |Header Value
+
+|Missing token |`WWW-Authenticate: Bearer`
+|Invalid token |`WWW-Authenticate: Bearer error="invalid_token"`
+|Insufficient scope |`WWW-Authenticate: Bearer error="insufficient_scope"`
+|===
+
+== 422 Validation Error Details
+
+When a route has JSON Schema validation enabled, the 422 response includes a `violations` array:
+
+[source,json]
+----
+{
+  "type": "...",
+  "title": "Unprocessable Content",
+  "status": 422,
+  "detail": "Request body failed JSON Schema validation",
+  "violations": [
+    {
+      "pointer": "/name",
+      "message": "required property 'name' not found"
+    },
+    {
+      "pointer": "/age",
+      "message": "Value is [string] but should be [integer]"
+    }
+  ]
+}
+----
+
+Each violation contains a https://www.rfc-editor.org/rfc/rfc6901[RFC 6901] JSON Pointer and a human-readable message.

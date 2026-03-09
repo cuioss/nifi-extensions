@@ -35,7 +35,7 @@ import java.util.Map;
  * Jakarta JSON Processing API ({@code jakarta.json}).
  * <p>
  * Each error type has a stable URI pointing to its documentation
- * under {@code doc/rest-errors/} in the project repository.
+ * under {@code doc/reference/error-reference.adoc} in the project repository.
  *
  * @param type       a URI reference identifying the problem type (links to error documentation)
  * @param title      a short human-readable summary
@@ -57,22 +57,23 @@ int status,
 
     /**
      * Base URL for error type documentation.
-     * Points to the project repository's {@code doc/rest-errors/} directory.
+     * Points to the consolidated error reference in the project repository.
      */
     static final String ERROR_DOC_BASE =
-            "https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/";
+            "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc";
 
     // --- Error type URIs (stable, documentation-linked) ---
+    // All error types now point to the consolidated error reference document.
 
-    static final String TYPE_BAD_REQUEST = ERROR_DOC_BASE + "bad-request.adoc";
-    static final String TYPE_UNAUTHORIZED = ERROR_DOC_BASE + "unauthorized.adoc";
-    static final String TYPE_FORBIDDEN = ERROR_DOC_BASE + "forbidden.adoc";
-    static final String TYPE_NOT_FOUND = ERROR_DOC_BASE + "not-found.adoc";
-    static final String TYPE_METHOD_NOT_ALLOWED = ERROR_DOC_BASE + "method-not-allowed.adoc";
-    static final String TYPE_PAYLOAD_TOO_LARGE = ERROR_DOC_BASE + "payload-too-large.adoc";
-    static final String TYPE_VALIDATION_ERROR = ERROR_DOC_BASE + "validation-error.adoc";
-    static final String TYPE_SERVICE_UNAVAILABLE = ERROR_DOC_BASE + "service-unavailable.adoc";
-    static final String TYPE_INTERNAL_ERROR = ERROR_DOC_BASE + "internal-error.adoc";
+    static final String TYPE_BAD_REQUEST = ERROR_DOC_BASE;
+    static final String TYPE_UNAUTHORIZED = ERROR_DOC_BASE;
+    static final String TYPE_FORBIDDEN = ERROR_DOC_BASE;
+    static final String TYPE_NOT_FOUND = ERROR_DOC_BASE;
+    static final String TYPE_METHOD_NOT_ALLOWED = ERROR_DOC_BASE;
+    static final String TYPE_PAYLOAD_TOO_LARGE = ERROR_DOC_BASE;
+    static final String TYPE_VALIDATION_ERROR = ERROR_DOC_BASE;
+    static final String TYPE_SERVICE_UNAVAILABLE = ERROR_DOC_BASE;
+    static final String TYPE_INTERNAL_ERROR = ERROR_DOC_BASE;
 
     // --- Title constants ---
 
@@ -122,7 +123,7 @@ int status,
     /**
      * Creates a 400 Bad Request problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/bad-request.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail badRequest(String detail) {
         return ProblemDetail.builder()
@@ -136,7 +137,7 @@ int status,
     /**
      * Creates a 401 Unauthorized problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/unauthorized.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail unauthorized(String detail) {
         return ProblemDetail.builder()
@@ -150,7 +151,7 @@ int status,
     /**
      * Creates a 403 Forbidden problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/forbidden.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail forbidden(String detail) {
         return ProblemDetail.builder()
@@ -164,7 +165,7 @@ int status,
     /**
      * Creates a 404 Not Found problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/not-found.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail notFound(String detail) {
         return ProblemDetail.builder()
@@ -178,7 +179,7 @@ int status,
     /**
      * Creates a 405 Method Not Allowed problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/method-not-allowed.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail methodNotAllowed(String detail) {
         return ProblemDetail.builder()
@@ -192,7 +193,7 @@ int status,
     /**
      * Creates a 413 Payload Too Large problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/payload-too-large.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail payloadTooLarge(String detail) {
         return ProblemDetail.builder()
@@ -206,7 +207,7 @@ int status,
     /**
      * Creates a 422 Unprocessable Content problem detail for validation errors.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/validation-error.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail validationError(String detail) {
         return ProblemDetail.builder()
@@ -225,7 +226,7 @@ int status,
      *
      * @param detail     human-readable summary of the validation failure
      * @param violations the list of schema violations
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/validation-error.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail validationError(String detail, List<SchemaViolation> violations) {
         JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
@@ -246,7 +247,7 @@ int status,
     /**
      * Creates a 503 Service Unavailable problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/service-unavailable.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail serviceUnavailable(String detail) {
         return ProblemDetail.builder()
@@ -260,7 +261,7 @@ int status,
     /**
      * Creates a 500 Internal Server Error problem detail.
      *
-     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/rest-errors/internal-error.adoc">Error Documentation</a>
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
      */
     public static ProblemDetail internalError() {
         return ProblemDetail.builder()

@@ -23,8 +23,8 @@ import lombok.experimental.UtilityClass;
  * Contains generic constants for token location, HTTP headers, and error codes
  * that are not specific to any particular NiFi processor.
  *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/configuration.adoc">Configuration Specification</a>
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/specification/technical-components.adoc">Technical Components Specification</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
+ * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 @UtilityClass
 public final class JwtConstants {
