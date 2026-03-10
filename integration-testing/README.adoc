@@ -165,7 +165,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Script |Description
 
 |`check-status.sh`
-|Fast health check of Docker containers and HTTP endpoints. Supports `--timeout`, `--quiet`, `--verbose` flags.
+|Fast health check of Docker containers and HTTP endpoints. Supports `--timeout`, `--interval`, `--quiet`, `--verbose`, and `--help` flags.
 
 |`debug-containers.sh`
 |Prints Docker system info, container status, logs, and resource usage
@@ -203,7 +203,8 @@ src/main/docker/
 ├── certificates/                  # Generated TLS certificates
 │   ├── keystore.p12              #   NiFi keystore
 │   ├── truststore.p12            #   NiFi truststore
-│   ├── localhost.crt             #   Keycloak certificate
+│   ├── localhost.cer             #   Keycloak certificate (DER)
+│   ├── localhost.crt             #   Keycloak certificate (PEM)
 │   └── localhost.key             #   Keycloak private key
 ├── nifi/conf/                     # NiFi configuration (copied into container)
 │   ├── nifi.properties           #   Main config (HTTPS on 8443)
@@ -211,6 +212,8 @@ src/main/docker/
 │   ├── authorizers.xml           #   SingleUser authorizer
 │   ├── keystore.p12 / truststore.p12 # TLS keystores
 │   ├── flow.json / flow.json.gz / flow.xml.gz  #   Pre-configured flow (JSON source + gzipped)
+│   ├── cui-nifi-extensions.properties  #   CUI extension static configuration
+│   ├── test-jwks.json             #   JWKS test data for validation tests
 │   └── bootstrap.conf / logback.xml / state-management.xml
 ├── keycloak/
 │   ├── oauth_integration_tests-realm.json  # Primary realm import

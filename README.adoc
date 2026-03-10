@@ -38,7 +38,7 @@ Key capabilities:
 * **Route-based dispatching** -- define routes via dynamic properties, each with its own HTTP methods and path patterns
 * **Per-route JWT authorization** -- require specific roles for individual routes
 * **RFC 9457 error responses** -- standardized problem details for authentication and authorization failures
-* **Management endpoints** -- `/metrics` (Prometheus-compatible), `/health`, and custom UI endpoints
+* **Management endpoints** -- `/metrics` (Prometheus-compatible) and `/health`
 
 == Installation
 

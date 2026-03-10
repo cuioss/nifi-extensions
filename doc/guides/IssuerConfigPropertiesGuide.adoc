@@ -40,7 +40,9 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 * Configure basic properties:
 ** JWT Issuer Config Service: reference to a configured JwtIssuerConfigService Controller Service
 ** Token Attribute: jwt.token (default)
-** Require Valid Token: true (default)
+** Require Valid Token: true (default) — controls missing-token behavior only; invalid tokens always route to `authentication-failed`
+** Required Roles: (optional) comma-separated list of roles the token must contain
+** Required Scopes: (optional) comma-separated list of scopes the token must contain
 
 === Configuring Issuer Properties
 
@@ -58,14 +60,13 @@ image::ui-configuration-tab.png[Issuer Configuration Tab]
 . To add a new issuer:
 * Click the "Add Issuer" button
 * Enter an issuer name (e.g., "keycloak")
-* Select the JWKS Type (URL, File, or In-Memory) — this controls which JWKS input field is shown
+* Select the JWKS Source Type (URL or File) — this controls which JWKS input field is shown. Note: the UI also shows a "Memory" option, but inline JWKS content is not yet supported by the backend and will cause the issuer to be skipped.
 * Fill in the fields:
-** Issuer URI (optional): The URI of the token issuer (must match the "iss" claim in the JWT). At least one of Issuer URI or Name is required.
+** Issuer URI (required): The URI of the token issuer (must match the "iss" claim in the JWT)
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests`
 ** JWKS URL (when type is URL): The URL of the JWKS endpoint
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
 ** JWKS File (when type is File): Path to a local JWKS key file
-** JWKS Content (when type is In-Memory): Inline JWKS JSON content
 ** Audience (optional): The expected audience claim value
 ** Client ID (optional): The client ID for token validation
 * Click "Save Issuer"

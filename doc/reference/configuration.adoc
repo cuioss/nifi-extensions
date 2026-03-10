@@ -83,11 +83,11 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |/opt/nifi/conf/jwks.json
 
 |issuer.<name>.jwks-content
-|Inline JWKS JSON content (alternative to `jwks-url` and `jwks-file`)
+|Inline JWKS JSON content. *Not yet supported* -- the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
 |`{"keys":[...]}`
 
 |issuer.<name>.jwks-type
-|Explicit JWKS source type: `url`, `file`, or `content` (auto-detected if omitted)
+|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The `content` type is recognized but not yet supported.
 |url
 
 |issuer.<name>.client-id
@@ -119,7 +119,7 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |Require Valid Token
 |`true`
 |Yes
-|When `true`, missing or invalid tokens route to `authentication-failed`
+|When `true`, missing tokens route to `authentication-failed`. When `false`, missing tokens route to `success` with `jwt.present=false`. Invalid tokens always route to `authentication-failed` regardless of this setting.
 
 |Required Roles
 |--
@@ -274,6 +274,8 @@ jwt.validation.issuer.2.audience=my-secondary-api
 
 === YAML Format
 
+NOTE: The YAML format uses `issuers` (plural, list syntax) while the properties format uses `issuer` (singular, flat key syntax). The `ConfigurationManager` handles both formats transparently.
+
 [source,yaml]
 ----
 jwt:
@@ -299,8 +301,7 @@ Configuration files are loaded once when the Controller Service is enabled (`@On
 |===
 |Variable |Type |Description
 
-|`JWT_JWKS_REFRESH_INTERVAL` |Integer |JWKS cache refresh interval in seconds (e.g. `3600`)
-|`JWT_REQUIRE_VALID_TOKEN` |Boolean |Require valid token for success routing
+|`JWT_JWKS_REFRESH_INTERVAL` |Integer |JWKS cache refresh interval in seconds (e.g. `3600`). Stored as `jwt.validation.jwks.refresh.interval` in the Controller Service's static properties.
 |`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer. Note: environment variable underscores are converted to dots internally (`JWKS_URL` becomes `jwks.url`), which does not match the expected property key `jwks-url`. Use static configuration files instead for issuer JWKS URLs.
 |===
 
@@ -317,7 +318,7 @@ spec:
     spec:
       containers:
       - name: nifi
-        image: apache/nifi:2.8.0
+        image: apache/nifi:2.4.0
         env:
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
@@ -389,4 +390,5 @@ The Custom UI backend provides REST endpoints shared by both processors:
 |`/nifi-api/processors/jwt/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
 |`/nifi-api/processors/jwt/gateway/token-fetch` |POST |Proxies an OAuth token request to the IDP
 |`/nifi-api/processors/jwt/gateway/discover-token-endpoint` |POST |Fetches OIDC discovery for the token endpoint
+|`/nifi-api/processors/jwt/gateway/health` |GET |Proxies to gateway `/health` endpoint
 |===

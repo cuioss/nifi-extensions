@@ -107,7 +107,7 @@ TIP: You can also configure routes via dynamic properties on the processor (usef
 
 == Step 5: Connect Relationships
 
-Each route creates a named relationship. Connect them to downstream processors:
+Each route with `Create FlowFile` enabled (the default) creates a named relationship. Connect them to downstream processors:
 
 * `users` -> your user-handling processor
 * `admin` -> your admin-handling processor
@@ -137,7 +137,7 @@ image::ui-gateway-endpoint-tester-response.png[Gateway Endpoint Tester with Resp
 TOKEN=$(curl -s -X POST https://your-idp/token -d 'grant_type=client_credentials' | jq -r '.access_token')
 
 # Send a request to the gateway
-curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9443/api/users
 ----
 
 A successful POST/PUT/PATCH request returns HTTP 202 (Accepted); GET and DELETE return HTTP 200 (OK). The request creates a FlowFile on the matching route relationship.

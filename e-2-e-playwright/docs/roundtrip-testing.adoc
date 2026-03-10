@@ -30,7 +30,9 @@ ls -la target/test-results/*/
 * UI components: `nifi-cuioss-ui/src/main/webapp/js/`
 * Styles: `nifi-cuioss-ui/src/main/webapp/css/`
 * HTML: `nifi-cuioss-ui/src/main/webapp/index.html`
-* Backend: `nifi-cuioss-processors/src/main/java/`
+* Backend (JWT processor): `nifi-cuioss-processors/src/main/java/`
+* Backend (REST gateway): `nifi-cuioss-rest-processors/src/main/java/`
+* Backend (UI servlets): `nifi-cuioss-ui/src/main/java/`
 
 === 2. Build and Deploy
 
@@ -149,13 +151,16 @@ Before committing, run full validation:
 
 [source,bash]
 ----
-# 1. Build entire project
+# 1. Pre-commit quality checks
+./mvnw -Ppre-commit clean install -DskipTests
+
+# 2. Build entire project with tests
 ./mvnw clean install
 
-# 2. Run all E2E tests
+# 3. Run all E2E tests
 ./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests -am
 
-# 3. If both pass → commit
+# 4. If all pass → commit
 ----
 
 Both commands must exit with code 0 before committing.

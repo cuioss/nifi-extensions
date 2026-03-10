@@ -9,7 +9,7 @@ The `MultiIssuerJWTTokenAuthenticator` validates JWT tokens from FlowFile attrib
 image::jwt-token-flow.png[JWT Token Processing Flow]
 
 1. Read raw JWT from a configurable FlowFile attribute (default: `jwt.token`)
-2. Validate token format and size (rejects tokens exceeding `maximumTokenSize`)
+2. Validate token format and size (rejects tokens exceeding `maxTokenSize`)
 3. Validate signature, expiry, issuer, and audience via OAuth-Sheriff
 4. Check required roles and scopes via `AuthorizationValidator` (only when roles or scopes are configured on the processor)
 5. Route to `success` (valid) or `authentication-failed` (invalid)
@@ -17,7 +17,7 @@ image::jwt-token-flow.png[JWT Token Processing Flow]
 
 == Controller Service Shared Architecture
 
-Both processors share JWT validation through the `JwtIssuerConfigService` Controller Service:
+Both processors (`MultiIssuerJWTTokenAuthenticator` and `RestApiGatewayProcessor`) share JWT validation through the `JwtIssuerConfigService` Controller Service:
 
 * **Interface**: `JwtIssuerConfigService` (in `nifi-cuioss-api` -- separate NAR for NiFi 2.x classloader separation)
 * **Implementation**: `StandardJwtIssuerConfigService` (in `nifi-cuioss-common`)
@@ -61,14 +61,14 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |`jwt.authorized` |`true`/`false` if scope/role authorization was checked (only present when roles or scopes are configured)
 |`jwt.content.<claim>` |Individual token claims (prefixed); standard claims (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`, `scopes`) are excluded to avoid duplication
 |`jwt.error.code` |Error code on validation failure
-|`jwt.error.reason` |Human-readable error description
+|`jwt.error.reason` |Human-readable error description (also set on `success` FlowFiles when token is missing and not required: "No token provided")
 |`jwt.error.category` |Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)
 |===
 
 == Error Routing
 
-* **`success`** -- token is valid and authorization passed
-* **`authentication-failed`** -- token is missing, invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes
+* **`success`** -- token is valid and authorization passed; also used for missing tokens when `Require Valid Token` is `false` (with `jwt.present=false` and `jwt.error.reason` set)
+* **`authentication-failed`** -- token is invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes; also used for missing tokens when `Require Valid Token` is `true`
 
 == Token Verification UI
 

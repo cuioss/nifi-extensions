@@ -155,7 +155,7 @@ Prefer selectors in this priority order:
 |Service |URL
 
 |NiFi UI
-|`https://localhost:9095/nifi/`
+|`https://localhost:9095/nifi`
 
 |NiFi API
 |`https://localhost:9095/nifi-api/`

@@ -125,7 +125,7 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Returns processor component metadata
 
 |`/nifi-api/processors/jwt/validate-jwks-*`
-|No
+|Yes (via `ProcessorIdValidationFilter`)
 |POST
 |Stateless JWKS validation (URL, file, content)
 |===
@@ -165,7 +165,7 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Resolved NiFi relationship (outcome) name for the route
 
 |`rest.route.path`
-|Matched route path pattern
+|Request URI path of the matched route
 
 |`http.method`
 |HTTP method (GET, POST, etc.)
@@ -182,11 +182,32 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |`http.query.<name>`
 |Query parameter values (one attribute per parameter)
 
-|`http.header.<name>`
-|Request header values (one attribute per header)
+|`jwt.present`
+|`true` if a JWT was validated for this request
+
+|`jwt.validatedAt`
+|ISO-8601 timestamp when the token was validated
+
+|`jwt.subject`
+|The `sub` claim
+
+|`jwt.issuer`
+|The `iss` claim
+
+|`jwt.expiration`
+|The `exp` claim
+
+|`jwt.roles`
+|Comma-separated roles from the token (omitted if empty)
+
+|`jwt.groups`
+|Comma-separated groups from the token (omitted if empty)
+
+|`jwt.scopes`
+|Comma-separated scopes from the token (omitted if empty)
 
 |`jwt.content.<claim>`
-|JWT token claims mapped by `TokenClaimMapper`
+|Individual token claims mapped by `TokenClaimMapper` (standard claims excluded to avoid duplication)
 |===
 
 == RFC 9457 Error Types

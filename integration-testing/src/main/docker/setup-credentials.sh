@@ -1,4 +1,4 @@
-But But #!/bin/bash
+#!/bin/bash
 
 # Exit on error
 set -e

@@ -7,7 +7,7 @@ Per-test artifact persistence with human-readable text logs and consistent scree
 
 == Per-Test Artifact Structure
 
-Every test produces exactly four files in its `testInfo.outputDir`:
+Every test typically produces four files in its `testInfo.outputDir`:
 
 [cols="1,2"]
 |===
@@ -84,7 +84,7 @@ test.beforeEach(async ({ page, processorManager }, testInfo) => {
 `browser.log`:
 [source]
 ----
-[22:37:17.172] [info] [JWT-UI] JWT UI initialising...
+[22:37:17.172] [info] [JWT-UI] Component UI initialising...
 [22:37:17.139] [warning] NiFi Common API not available. UI functionality may be limited.
 [22:37:17.134] [error] Refused to apply style from '...' because its MIME type...
 [22:37:06.180] [network-error] HTTP 401 - https://localhost:9095/nifi-api/flow/current-user
