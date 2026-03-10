@@ -107,7 +107,7 @@ module.exports = defineConfig({
       },
     },
 
-    /* ---- Phase 2a: Functional tests (numbered 01-06) ---- */
+    /* ---- Phase 2a: Functional tests (numbered 01-07) ---- */
     {
       name: 'functional',
       testMatch: /\d{2}-.*\.spec\.js$/,

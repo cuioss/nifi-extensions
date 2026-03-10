@@ -13,7 +13,7 @@ image::jwt-token-flow.png[JWT Token Processing Flow]
 3. Validate signature, expiry, issuer, and audience via OAuth-Sheriff
 4. Check required roles and scopes via `AuthorizationValidator` (only when roles or scopes are configured on the processor)
 5. Route to `success` (valid) or `authentication-failed` (invalid)
-6. Write token claims as `jwt.*` FlowFile attributes on success
+6. Write token claims as `jwt.*` FlowFile attributes when the token is valid (regardless of authorization outcome)
 
 == Controller Service Shared Architecture
 
@@ -50,7 +50,7 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |===
 |Attribute |Description
 
-|`jwt.present` |`true` if a JWT was successfully validated; `false` if missing (when token is not required). Not set when a token is present but fails validation.
+|`jwt.present` |`true` if a JWT was successfully validated (including when authorization fails); `false` if missing (when token is not required). Not set when a token is present but fails signature/format validation.
 |`jwt.validatedAt` |ISO-8601 timestamp when the token was validated
 |`jwt.subject` |The `sub` claim
 |`jwt.issuer` |The `iss` claim

@@ -10,7 +10,7 @@
 |https://www.rfc-editor.org/rfc/rfc9457[RFC 9457] -- Problem Details for HTTP APIs
 |All gateway error responses use `application/problem+json` format with `type` URI linking to error documentation
 
-|https://www.rfc-editor.org/rfc/rfc6750[RFC 6750] -- OAuth 2.0 Bearer Token Usage
+|https://www.rfc-editor.org/rfc/rfc6750[RFC 6750] -- The OAuth 2.0 Authorization Framework: Bearer Token Usage
 |Authentication failures include `WWW-Authenticate: Bearer` headers (missing token, `invalid_token`, `insufficient_scope`)
 
 |https://www.rfc-editor.org/rfc/rfc7519[RFC 7519] -- JSON Web Token (JWT)
@@ -22,7 +22,7 @@
 |https://www.rfc-editor.org/rfc/rfc7517[RFC 7517] -- JSON Web Key (JWK)
 |JWKS key retrieval with periodic refresh and caching
 
-|https://www.rfc-editor.org/rfc/rfc6749[RFC 6749] -- OAuth 2.0 Authorization Framework
+|https://www.rfc-editor.org/rfc/rfc6749[RFC 6749] -- The OAuth 2.0 Authorization Framework
 |Bearer token extraction, scope and role-based authorization
 
 |https://www.w3.org/TR/WCAG21/[WCAG 2.1 Level AA]

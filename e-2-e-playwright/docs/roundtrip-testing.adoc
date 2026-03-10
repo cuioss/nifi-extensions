@@ -163,4 +163,4 @@ Before committing, run full validation:
 # 4. If all pass → commit
 ----
 
-Both commands must exit with code 0 before committing.
+All commands must exit with code 0 before committing.

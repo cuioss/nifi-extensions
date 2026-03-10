@@ -221,7 +221,7 @@ src/main/docker/
 ├── maintenance/                   # Certificate and credential utilities
 ├── scripts/                       # Maven-invoked orchestration scripts
 │   ├── deploy-and-start.sh       #   Pre-integration-test: copy NAR + start containers + wait
-│   ├── wait-for-containers.sh    #   Health polling: containers → NiFi UI → flow pipeline
+│   ├── wait-for-containers.sh    #   Health polling: containers → NiFi API → flow pipeline
 │   └── stop-containers.sh        #   Post-integration-test: stop containers
 ├── run-and-deploy.sh             # Full build + start (always rebuilds NARs)
 ├── start-nifi.sh                 # Start Keycloak + NiFi

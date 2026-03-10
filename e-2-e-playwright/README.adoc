@@ -62,7 +62,7 @@ Tests are organized into three categories, executed in order:
 Framework validation tests that verify prerequisites before functional tests run.
 Covers login, navigation, browser logging, critical error detection, and processor interaction.
 
-=== Functional Tests (`0x-*.spec.js`)
+=== Functional Tests (`01-` through `07-*.spec.js`)
 
 Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, help content, gateway tabs, and context help.
 

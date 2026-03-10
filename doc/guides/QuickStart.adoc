@@ -74,7 +74,7 @@ The gateway provides a visual route editor in its custom UI. Right-click the pro
 
 The **Endpoint Configuration** tab shows three sections:
 
-* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Context Service, Listening Host)
+* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
 * **Management Endpoints** -- built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
 * **API Routes** -- user-defined routes with CRUD controls
 

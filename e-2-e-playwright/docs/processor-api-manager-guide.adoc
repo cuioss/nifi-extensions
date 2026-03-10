@@ -2,7 +2,7 @@
 
 == Overview
 
-The `ProcessorApiManager` utility provides reliable, API-based management of processors on the NiFi canvas via the NiFi REST API, replacing UI-based interactions. It supports both the `MultiIssuerJWTTokenAuthenticator` and `RestApiGatewayProcessor`, with process group navigation and result caching.
+The `ProcessorApiManager` utility provides reliable, API-based management of processors on the NiFi canvas via the NiFi REST API, replacing UI-based interactions. It provides full lifecycle management (add, remove, start, stop) for the `MultiIssuerJWTTokenAuthenticator` and discovery/navigation support for the `RestApiGatewayProcessor`, with process group navigation and result caching.
 
 == Key Components
 
@@ -19,7 +19,7 @@ Core methods (JWT processor):
 
 Gateway and process group methods:
 
-* *`ensureGatewayProcessorOnCanvas()`* — Ensures gateway processor is on canvas and navigates to its process group
+* *`ensureGatewayProcessorOnCanvas()`* — Verifies gateway processor exists and navigates to its process group (throws if not found)
 * *`getGatewayProcessorId()`* — Finds the RestApiGatewayProcessor and returns its ID
 * *`getGatewayProcessGroupId()`* — Finds the REST API Gateway process group ID
 * *`getJwtPipelineProcessGroupId()`* — Finds the JWT Auth Pipeline process group ID
@@ -38,7 +38,7 @@ NOTE: `ProcessorApiManager` caches process group and processor IDs after first l
 
 Simplified functions for test setup/teardown:
 
-* *`setupMultiIssuerJWTAuthenticator(page, options)`* — Returns `true`/`false` (does not throw). Options: `{ removeFirst: boolean, _position: {x, y} }`
+* *`setupMultiIssuerJWTAuthenticator(page, options)`* — Returns `true`/`false` (does not throw). Options: `{ removeFirst: boolean }`
 * *`cleanupMultiIssuerJWTAuthenticator(page)`* — Removes processor after tests
 * *`verifyProcessorStatus(page)`* — Gets detailed processor status
 

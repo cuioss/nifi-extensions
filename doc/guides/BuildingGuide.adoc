@@ -52,7 +52,7 @@ See link:../../integration-testing/README.adoc[Integration Testing] and link:../
 
 == PlantUML Diagrams
 
-To regenerate PlantUML PNG images from `.puml` sources (requires PlantUML installed locally):
+To regenerate PlantUML PNG images from `.puml` sources (downloads PlantUML JAR automatically if not installed locally):
 
 [source,bash]
 ----

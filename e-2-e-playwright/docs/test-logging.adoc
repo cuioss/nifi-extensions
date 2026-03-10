@@ -71,6 +71,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 // Extended pattern (self-tests that need processor management)
+// Requires additional import: import { AuthService } from "../utils/auth-service.js";
 test.beforeEach(async ({ page, processorManager }, testInfo) => {
     const authService = new AuthService(page);
     await authService.ensureReady();

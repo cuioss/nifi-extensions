@@ -182,9 +182,6 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |`http.query.<name>`
 |Query parameter values (one attribute per parameter)
 
-|`jwt.present`
-|`true` if a JWT was validated for this request
-
 |`jwt.validatedAt`
 |ISO-8601 timestamp when the token was validated
 

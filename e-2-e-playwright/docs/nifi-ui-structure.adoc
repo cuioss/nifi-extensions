@@ -11,7 +11,7 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 
 *Current Version*: Apache NiFi (Angular Material UI)
 
-*UI Sources*: https://github.com/apache/nifi/tree/main/nifi-web/nifi-web-frontend
+*UI Sources*: https://github.com/apache/nifi/tree/main/nifi-frontend
 
 == Authentication Flow
 
@@ -58,7 +58,7 @@ NiFi uses URL hash patterns for routing:
 
 == Canvas Structure
 
-From NiFi source (`flow-designer/ui/canvas/canvas.component.html`):
+From NiFi source (`apps/nifi/src/app/pages/flow-designer/ui/canvas/canvas.component.html`, simplified):
 
 [source,html]
 ----
@@ -113,6 +113,7 @@ Processor configuration uses Angular Material dialogs:
 <mat-dialog-container>
   <mat-tab-group>
     <mat-tab label="Settings">...</mat-tab>
+    <mat-tab label="Scheduling">...</mat-tab>
     <mat-tab label="Properties">...</mat-tab>
     <mat-tab label="Relationships">...</mat-tab>
     <mat-tab label="Comments">...</mat-tab>

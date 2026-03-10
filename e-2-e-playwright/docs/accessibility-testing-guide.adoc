@@ -60,7 +60,7 @@ The existing WCAG compliance spec imports the base `test` fixture (not `accessib
 ----
 import { test, expect, takeStartScreenshot } from '../fixtures/test-fixtures.js';
 
-test('Full page WCAG compliance', async ({ page }) => {
+test('Full page WCAG compliance check', async ({ page }) => {
   const accessibilityHelper = new AccessibilityHelper(page);
   const results = await accessibilityHelper.runWCAGCheck();
   expect(results.passed).toBe(true);
