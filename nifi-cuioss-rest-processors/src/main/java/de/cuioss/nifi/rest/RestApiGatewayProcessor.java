@@ -124,19 +124,25 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         if (!externalRelationshipsLoaded.compareAndSet(false, true)) {
             return;
         }
-        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
-        if (configManager.isConfigurationLoaded()) {
-            Map<String, String> routeProps = new HashMap<>();
-            configManager.getStaticProperties().forEach((key, value) -> {
-                if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
-                    routeProps.put(key, value);
-                }
-            });
-            if (!routeProps.isEmpty()) {
-                List<RouteConfiguration> routes = RouteConfigurationParser.parse(routeProps);
-                updateDynamicRelationships(routes);
-            }
+        Map<String, String> routeProps = getExternalRouteProperties();
+        if (!routeProps.isEmpty()) {
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(routeProps);
+            updateDynamicRelationships(routes);
         }
+    }
+
+    private Map<String, String> getExternalRouteProperties() {
+        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
+        if (!configManager.isConfigurationLoaded()) {
+            return Map.of();
+        }
+        Map<String, String> routeProps = new HashMap<>();
+        configManager.getStaticProperties().forEach((key, value) -> {
+            if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
+                routeProps.put(key, value);
+            }
+        });
+        return routeProps;
     }
 
     @OnScheduled
@@ -145,17 +151,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         requestQueue = new LinkedBlockingQueue<>(queueSize);
 
         // Load external config file routes first (lower priority)
-        Map<String, String> allProperties = new HashMap<>();
-        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
-        if (configManager.isConfigurationLoaded()) {
-            configManager.getStaticProperties().forEach((key, value) -> {
-                if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
-                    allProperties.put(key, value);
-                }
-            });
-            if (!allProperties.isEmpty()) {
-                LOGGER.info(RestApiLogMessages.INFO.EXTERNAL_ROUTES_LOADED, allProperties.size());
-            }
+        Map<String, String> allProperties = new HashMap<>(getExternalRouteProperties());
+        if (!allProperties.isEmpty()) {
+            LOGGER.info(RestApiLogMessages.INFO.EXTERNAL_ROUTES_LOADED, allProperties.size());
         }
         // NiFi dynamic properties override (higher priority)
         context.getProperties().forEach((key, value) -> allProperties.put(key.getName(), value));
