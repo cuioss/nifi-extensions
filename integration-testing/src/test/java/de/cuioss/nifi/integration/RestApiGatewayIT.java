@@ -17,6 +17,8 @@
 package de.cuioss.nifi.integration;
 
 import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
@@ -35,10 +37,10 @@ import static org.hamcrest.Matchers.*;
 /**
  * Integration tests for the RestApiGateway processor with embedded Jetty.
  *
- * <p>Tests send HTTP requests directly to the RestApiGateway on port 9443,
+ * <p>Tests send HTTPS requests directly to the RestApiGateway on port 9443,
  * which handles JWT authentication internally via the shared
  * {@code JwtIssuerConfigService} controller service. Unlike the NiFi flow
- * pipeline (port 7777), the gateway sends HTTP responses directly — no
+ * pipeline (port 7777), the gateway sends HTTPS responses directly — no
  * HandleHttpResponse processor involved.
  *
  * <p>Routes configured in flow.json:
@@ -51,7 +53,7 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /health} — GET only (management, loopback or JWT auth)</li>
  * </ul>
  *
- * <p>Requires Docker containers to be running (NiFi on port 9443, Keycloak on 9080).
+ * <p>Requires Docker containers to be running (NiFi HTTPS on port 9443, Keycloak on 9080).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
@@ -73,14 +75,21 @@ class RestApiGatewayIT {
         String token = fetchKeycloakToken(httpClient,
                 KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
 
+        var sslConfig = RestAssuredConfig.config()
+                .sslConfig(SSLConfig.sslConfig().trustStore(
+                        "src/main/docker/certificates/truststore.p12",
+                        "password"));
+
         authSpec = new RequestSpecBuilder()
                 .setBaseUri(GATEWAY_BASE)
+                .setConfig(sslConfig)
                 .addHeader("Authorization", "Bearer " + token)
                 .setContentType(ContentType.JSON)
                 .build();
 
         noAuthSpec = new RequestSpecBuilder()
                 .setBaseUri(GATEWAY_BASE)
+                .setConfig(sslConfig)
                 .build();
     }
 
