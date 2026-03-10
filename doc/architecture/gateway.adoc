@@ -221,15 +221,15 @@ The `/metrics` endpoint aggregates three metric sources:
 [source]
 ----
 # Token validation metrics
-nifi_jwt_validations_total{result="validTokens"} 15126
-nifi_jwt_validations_total{result="invalidTokens"} 297
+nifi_jwt_validations_total{result="valid_tokens"} 15126
+nifi_jwt_validations_total{result="invalid_tokens"} 297
 
 # Transport security metrics (cui-http)
 nifi_gateway_http_security_events_total{type="sanitized_path"} 42
 
 # Gateway application metrics
-nifi_gateway_events_total{type="MISSING_BEARER_TOKEN"} 12
-nifi_gateway_events_total{type="AUTH_FAILED"} 85
+nifi_gateway_events_total{type="missing_bearer_token"} 12
+nifi_gateway_events_total{type="auth_failed"} 85
 ----
 
 === JSON Format
@@ -239,7 +239,7 @@ Requested with `Accept: application/json`:
 [source,json]
 ----
 {
-  "tokenValidation": { "validTokens": 15126, "invalidTokens": 297 },
+  "tokenValidation": { "valid_tokens": 15126, "invalid_tokens": 297 },
   "httpSecurity": { "sanitized_path": 42 },
   "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
 }

@@ -1,5 +1,5 @@
 = nifi-cuioss-api
 
-Controller Service API interfaces (`JwtIssuerConfigService`, `JwtAuthenticationConfig`). Packaged as a separate NAR for NiFi 2.x classloader separation.
+Controller Service API types (`JwtIssuerConfigService` interface, `JwtAuthenticationConfig` record). Packaged as a separate NAR for NiFi 2.x classloader separation.
 
 See link:../doc/architecture/README.adoc[Architecture Overview] for module relationships and link:../doc/reference/configuration.adoc[Configuration Reference] for property details.

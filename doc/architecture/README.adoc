@@ -13,7 +13,7 @@ image::architecture.png[NiFi Extensions Architecture]
 |Module |Purpose
 
 |nifi-cuioss-api
-|Controller Service API interfaces (`JwtIssuerConfigService`, `JwtAuthenticationConfig`) -- packaged as separate NAR for NiFi 2.x classloader separation
+|Controller Service API types (`JwtIssuerConfigService` interface, `JwtAuthenticationConfig` record) -- packaged as separate NAR for NiFi 2.x classloader separation
 
 |nifi-cuioss-common
 |Shared JWT infrastructure: Controller Service implementation, configuration management, utilities
@@ -31,7 +31,7 @@ image::architecture.png[NiFi Extensions Architecture]
 |NAR packaging for the API module (NiFi 2.x classloader separation)
 
 |nifi-cuioss-nar
-|NAR packaging bundle for deployment (contains processors, common, UI)
+|NAR packaging bundle for deployment (contains processors, rest-processors, common, UI)
 |===
 
 Both processors share JWT validation through a common `JwtIssuerConfigService` Controller Service, which supports multiple identity providers with automatic JWKS key rotation and caching.
@@ -51,7 +51,7 @@ Both processors share JWT validation through a common `JwtIssuerConfigService` C
 |Built-in `/metrics` (Prometheus), `/health`, RFC 9457 error responses, back-pressure (503)
 |Routes to `success` or `authentication-failed`; writes `jwt.*` attributes
 
-|Routes configured via dynamic properties with per-route roles/scopes
+|Routes configured via dynamic properties or static config file, with per-route roles/scopes
 |Authorization via required roles/scopes on the processor
 |===
 

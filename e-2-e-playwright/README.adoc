@@ -102,15 +102,11 @@ Tests are *skipped by default*. The `integration-tests` profile enables them and
 
 [source,bash]
 ----
-# Full integration test suite: starts containers → self-tests → functional → accessibility → stops containers
-./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+# Full integration test suite: starts containers → runs all tests → stops containers
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
-Maven separates results into distinct directories:
-
-* `target/results-selftests/` — self-test artifacts
-* `target/results-functional-tests/` — functional test artifacts
-* `target/results-accessibility-tests/` — accessibility test artifacts
+Test results are stored under `target/test-results/`. Reports are in `target/playwright-report/`.
 
 === Via npm (for development)
 
@@ -191,14 +187,8 @@ All artifacts are stored under `target/`:
 |`target/junit-results.xml`
 |JUnit XML results for CI
 
-|`target/results-selftests/`
-|Self-test artifacts (Maven integration-tests profile)
-
-|`target/results-functional-tests/`
-|Functional test artifacts (Maven integration-tests profile)
-
-|`target/results-accessibility-tests/`
-|Accessibility test artifacts (Maven integration-tests profile)
+|`target/playwright-report/`
+|HTML report
 |===
 
 All artifacts are cleaned by `mvn clean`.

@@ -29,7 +29,7 @@ How to build, test, and verify the NiFi Extensions project.
 ./mvnw clean verify -Psonar                      # SonarQube analysis
 ----
 
-This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules] covering https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java], https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript], https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[testing], and https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[documentation].
+This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules].
 
 == Integration & E2E Tests
 

@@ -58,7 +58,7 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |`jwt.groups` |Comma-separated groups from the token (omitted if empty)
 |`jwt.scopes` |Comma-separated scopes from the token (omitted if no `scope` claim)
 |`jwt.authorized` |`true`/`false` if scope/role authorization was checked (only present when roles or scopes are configured)
-|`jwt.content.<claim>` |Individual token claims (prefixed); standard claims (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
+|`jwt.content.<claim>` |Individual token claims (prefixed); standard claims (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`, `scopes`) are excluded to avoid duplication
 |`jwt.error.code` |Error code on validation failure
 |`jwt.error.reason` |Human-readable error description
 |`jwt.error.category` |Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)

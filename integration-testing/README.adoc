@@ -94,8 +94,8 @@ Custom configuration files are copied from `src/main/docker/nifi/conf/` into the
 |Test client ID
 |`test_client`
 
-|Client secret
-|`yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+|Client type
+|Public client (no secret required)
 
 |JWKS endpoint (from host)
 |`https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
@@ -210,7 +210,7 @@ src/main/docker/
 │   ├── login-identity-providers.xml  # SingleUser: testUser/drowssap
 │   ├── authorizers.xml           #   SingleUser authorizer
 │   ├── keystore.p12 / truststore.p12 # TLS keystores
-│   ├── flow.json / flow.xml.gz    #   Pre-configured flow (JSON source + gzipped)
+│   ├── flow.json / flow.json.gz / flow.xml.gz  #   Pre-configured flow (JSON source + gzipped)
 │   └── bootstrap.conf / logback.xml / state-management.xml
 ├── keycloak/
 │   ├── oauth_integration_tests-realm.json  # Primary realm import
@@ -262,7 +262,7 @@ This rebuilds the NAR, copies it to the deploy directory, and restarts the NiFi 
 ----
 curl -sk -X POST https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
+  -d 'grant_type=password&client_id=test_client&username=testUser&password=drowssap'
 ----
 
 == Test Execution

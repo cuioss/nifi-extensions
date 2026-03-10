@@ -140,7 +140,7 @@ TOKEN=$(curl -s -X POST https://your-idp/token -d 'grant_type=client_credentials
 curl -H "Authorization: Bearer $TOKEN" https://localhost:9443/api/users
 ----
 
-A successful request returns HTTP 202 (Accepted) and creates a FlowFile on the matching route relationship.
+A successful POST/PUT/PATCH request returns HTTP 202 (Accepted); GET and DELETE return HTTP 200 (OK). The request creates a FlowFile on the matching route relationship.
 
 == Issuer Configuration
 

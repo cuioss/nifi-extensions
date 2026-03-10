@@ -36,7 +36,7 @@ The `JwtIssuerConfigService` manages issuer configuration and token validation s
 
 |jwt.validation.allowed.algorithms
 |Secure defaults
-|Comma-separated list of permitted signing algorithms (RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512). The `none` algorithm and weak HMAC algorithms are always blocked.
+|Comma-separated list of permitted signing algorithms (RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512). The `none` algorithm is never allowed regardless of this setting.
 |No
 
 |jwt.validation.require.https.for.jwks
@@ -52,29 +52,41 @@ The `JwtIssuerConfigService` manages issuer configuration and token validation s
 
 === Dynamic Properties (Issuers)
 
-The Controller Service supports multiple issuers through NiFi dynamic properties. Issuer properties use the prefix `issuer.<N>.<property>`:
+The Controller Service supports multiple issuers through NiFi dynamic properties. Issuer properties use the prefix `issuer.<name>.<property>` (where `<name>` is any identifier string, e.g., `keycloak`, `auth0`, or numeric like `1`, `2`):
 
 [cols="1,3,1"]
 |===
 |Property |Description |Example
 
-|issuer.<N>.jwks-url
-|JWKS endpoint URL, file path, or inline key content
+|issuer.<name>.jwks-url
+|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
 |https://auth.example.com/.well-known/jwks.json
 
-|issuer.<N>.enabled
+|issuer.<name>.enabled
 |Enable or disable this issuer without removing the configuration
 |true
 
-|issuer.<N>.audience
+|issuer.<name>.audience
 |Required `aud` claim for tokens from this issuer
 |api://my-service
+
+|issuer.<name>.name
+|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required
+|Primary Auth Server
+
+|issuer.<name>.issuer
+|Issuer URI (must match the `iss` claim in the JWT)
+|https://auth.example.com/
+
+|issuer.<name>.jwks-file
+|File path to a local JWKS key file (alternative to `jwks-url`)
+|/opt/nifi/conf/jwks.json
 
 |===
 
 NOTE: Roles and scopes are configured at the **processor level** (via `Required Roles` / `Required Scopes` on the `MultiIssuerJWTTokenAuthenticator`, or via `restapi.<name>.required-roles` / `restapi.<name>.required-scopes` on the `RestApiGatewayProcessor`), not as per-issuer dynamic properties.
 
-NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<property>` (see <<Static Configuration Files>>).
+NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>.<property>` (see <<Static Configuration Files>>).
 
 == MultiIssuerJWTTokenAuthenticator Properties
 
@@ -237,17 +249,17 @@ jwt:
     issuers:
       - name: "Primary Auth Server"
         enabled: true
-        jwksUri: "https://auth.example.org/.well-known/jwks.json"
+        jwks-url: "https://auth.example.org/.well-known/jwks.json"
         audience: "my-api"
       - name: "Secondary Auth Server"
         enabled: false
-        jwksUri: "https://auth2.example.org/.well-known/jwks.json"
+        jwks-url: "https://auth2.example.org/.well-known/jwks.json"
         audience: "my-secondary-api"
 ----
 
-=== Dynamic Reload
+=== Reload Behavior
 
-The processor monitors configuration files for changes and reloads automatically. On reload failure, the processor falls back to the previous valid configuration.
+Configuration files are loaded once when the Controller Service is enabled (`@OnEnabled`). The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked automatically by either processor. To apply configuration file changes, disable and re-enable the Controller Service.
 
 == Environment Variables
 

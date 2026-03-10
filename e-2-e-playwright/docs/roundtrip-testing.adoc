@@ -61,8 +61,7 @@ See `CLAUDE.md` "Docker E2E Deployment" section or the `/deploy` skill for the f
 ./mvnw -pl e-2-e-playwright -Pintegration-tests clean verify
 ----
 
-Maven starts containers, runs tests in order (self-tests → functional → accessibility) with fail-fast behavior, and stops containers afterward.
-Test results are stored in separate directories per phase under `target/`.
+Maven starts containers, runs all Playwright tests in a single invocation (auth-setup → self-tests → functional + accessibility in parallel), and stops containers afterward. Test results are stored under `target/test-results/`.
 
 ==== Direct Test Execution (for development)
 
@@ -83,27 +82,21 @@ npm run test:self
 
 === 4. Analyze Failures
 
-Test artifacts are stored in separate directories per test phase:
+Test artifacts are stored under `target/`:
 
-* `target/results-selftests/` - Self-test artifacts
-* `target/results-functional-tests/` - Functional test artifacts
-* `target/results-accessibility-tests/` - Accessibility test artifacts
-
-Each directory contains:
-
-* `test-results/` - Execution artifacts (browser.log, test-run.log, screenshots, video, trace.zip)
-* `playwright-report/` - HTML report
+* `target/test-results/` — Per-test execution artifacts (browser.log, test-run.log, screenshots, video, trace.zip)
+* `target/playwright-report/` — HTML report
 
 [source,bash]
 ----
-# Find errors in specific test phase
-grep -n "ERROR" target/results-functional-tests/test-results/*/browser.log
+# Find errors in test logs
+grep -n "ERROR" target/test-results/*/browser.log
 
-# View screenshot from failed test
-open target/results-functional-tests/test-results/*/test-failed-*.png
+# View screenshots from failed tests
+open target/test-results/*/*.png
 
 # Analyze trace
-npx playwright show-trace target/results-accessibility-tests/test-results/*/trace.zip
+npx playwright show-trace target/test-results/*/trace.zip
 ----
 
 === 5. Fix and Repeat

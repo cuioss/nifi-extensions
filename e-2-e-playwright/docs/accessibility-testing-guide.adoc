@@ -108,7 +108,7 @@ These rules are disabled because the custom UI runs inside NiFi's iframe and can
 
 == Maven Integration
 
-Accessibility tests run via `exec-maven-plugin` in the `integration-test` phase when the `integration-tests` profile is active. They execute after self-tests and functional tests, with fail-fast behavior.
+Accessibility tests run via `exec-maven-plugin` in the `integration-test` phase when the `integration-tests` profile is active. They execute in parallel with functional tests after self-tests pass (both depend on `self-tests` in the Playwright config).
 
 [source,bash]
 ----

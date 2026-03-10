@@ -20,7 +20,8 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 [source,text]
 ----
 POST /nifi-api/access/token
-Content-Type: application/x-www-form-urlencoded
+Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+Request-Token: [CSRF token from __Secure-Request-Token cookie]
 Body: username=testUser&password=drowssap
 
 → HTTP 201 Created

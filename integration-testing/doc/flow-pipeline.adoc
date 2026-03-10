@@ -19,7 +19,7 @@ MultiIssuerJWTTokenAuthenticator
         │
    ┌────┴─────┐
    │          │
-success   auth-failed
+success   authentication-failed
    │          │
    ▼          ▼
 LogAttribute LogAttribute
@@ -91,7 +91,7 @@ Two realms are pre-configured and auto-imported on startup.
 |limitedUser |drowssap |user
 |===
 
-Client: `test_client` / `yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+Client: `test_client` (public client -- no secret required)
 
 === `other_realm` (for signature testing)
 
@@ -119,7 +119,7 @@ Client: `other_client` / `otherClientSecretValue123456789`
 |testUser token (has `read` role) |200 |`jwt.present=true`, `jwt.authorized=true`, `jwt.subject` present, `jwt.issuer` matches Keycloak, `jwt.roles` contains `read`, `jwt.validatedAt` present
 |limitedUser token (no `read` role) |401 |`jwt.present=true`, `jwt.authorized=false`, `jwt.subject` present, `jwt.roles` does NOT contain `read`
 |Token from `other_realm` |401 |`jwt.error.code` present, `jwt.error.category` present
-|No Authorization header |401 |`jwt.present=false`
+|No Authorization header |401 |`jwt.error.category=EXTRACTION_ERROR`, `jwt.error.code=AUTH-001`
 |`Bearer not-a-valid-jwt` |401 |`jwt.error.code` present, `jwt.error.category` present
 |===
 
@@ -133,7 +133,7 @@ Client: `other_client` / `otherClientSecretValue123456789`
 - Queries process group status with `GET /flow/process-groups/root/status?recursive=true`
 - Verifies the JWT authenticator processor has `flowFilesIn > 0` and `flowFilesOut > 0`
 - Verifies both HandleHttpResponse processors received FlowFiles (success and failure paths)
-- Uses a trust-all SSL context for Docker's self-signed certificates
+- Uses a truststore-based SSL context for Docker's self-signed certificates (validates certificates against the known CA)
 
 == Running
 
@@ -146,7 +146,7 @@ Client: `other_client` / `otherClientSecretValue123456789`
 
 # Quick smoke test — should return JSON body with jwt.* attributes
 TOKEN=$(curl -sk -X POST https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
-  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap' \
+  -d 'grant_type=password&client_id=test_client&username=testUser&password=drowssap' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
 curl -s http://localhost:7777 -H "Authorization: Bearer $TOKEN" | python3 -m json.tool   # 200 + JSON

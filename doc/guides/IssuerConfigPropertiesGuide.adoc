@@ -92,7 +92,7 @@ If the custom tab is not visible or not functioning properly, you can configure 
 curl -k -X POST \
   https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
+  -d 'grant_type=password&client_id=test_client&username=testUser&password=drowssap'
 ----
 . Create a test flow to send the token to the processor:
 * Add a GenerateFlowFile processor
@@ -106,12 +106,12 @@ curl -k -X POST \
 
 === Custom UI Tab Not Visible
 
-If the "Issuer Configuration" tab is not visible:
+If the "Configuration" tab is not visible:
 
-. Check browser console for errors (F12 &gt; Console)
+. Check browser console for errors (F12 > Console)
 . Verify that the custom UI components are loaded:
-* Look for messages like "[DEBUG_LOG] Loading CSS for custom UI components"
-* Check for errors related to loading JavaScript or CSS files
+* Check for JavaScript or CSS loading errors in the browser console
+* Ensure the NiFi extensions NAR is properly deployed
 . Try refreshing the page or using a different browser
 . Fall back to using dynamic properties (Method 2) for configuration
 

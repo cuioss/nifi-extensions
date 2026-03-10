@@ -4,7 +4,8 @@
 # This script replaces the Maven build process for PlantUML diagrams
 
 # Set the directory containing the PlantUML files
-PLANTUML_DIR="../../doc/plantuml"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLANTUML_DIR="$SCRIPT_DIR"
 
 # Check if PlantUML is installed
 if ! command -v plantuml &> /dev/null; then

@@ -141,7 +141,7 @@ The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, 
 |Allowed Algorithms
 |Secure defaults
 |No
-|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm and weak HMAC algorithms are always blocked.
+|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm is never allowed regardless of this setting.
 
 |Require HTTPS for JWKS URLs
 |`true`
@@ -151,21 +151,21 @@ The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, 
 
 == Issuer Configuration (CS Dynamic Properties)
 
-Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<N>.`:
+Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<name>.` (where `<name>` is any identifier string, e.g., `keycloak`, `auth0`, or numeric like `1`, `2`):
 
 [cols="2,3,1"]
 |===
 |Dynamic Property |Description |Example
 
-|`issuer.<N>.jwks-url`
-|JWKS endpoint URL, file path, or inline key content (depends on JWKS Source Type)
+|`issuer.<name>.jwks-url`
+|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
 |`\https://auth.example.com/.well-known/jwks.json`
 
-|`issuer.<N>.enabled`
+|`issuer.<name>.enabled`
 |Enable or disable this issuer without removing the configuration
 |`true`
 
-|`issuer.<N>.audience`
+|`issuer.<name>.audience`
 |Required `aud` claim for tokens from this issuer
 |`api://my-service`
 |===
@@ -188,7 +188,7 @@ issuer.3.jwks-url  = https://your-domain.auth0.com/.well-known/jwks.json
 issuer.3.audience  = https://api.example.com
 ----
 
-Each issuer can have its own audience. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`. Roles and scopes are configured at the processor level and apply globally across all issuers.
+Each issuer can have its own audience. Issuers can be individually enabled/disabled with `issuer.<name>.enabled`. Roles and scopes are configured at the processor level and apply globally across all issuers.
 
 == Output FlowFile Attributes
 

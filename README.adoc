@@ -70,7 +70,7 @@ The processor can be configured through three methods (highest precedence first)
 . **Environment variables** -- for container orchestration (Kubernetes, Docker)
 . **Static configuration files** -- for automated / container deployments
 
-See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, relationships, output attributes, static files, and environment variables.
+See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, routes, relationships, and the custom UI. For static configuration files and environment variables, see the link:doc/reference/configuration.adoc[Configuration Reference].
 
 === Sandbox
 
