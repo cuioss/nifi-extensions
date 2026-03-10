@@ -5,7 +5,7 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 == Prerequisites
 
 * Docker and Docker Compose installed
-* NiFi test environment set up (see <<test-environment-setup,Test Environment Setup>>)
+* NiFi test environment set up (see <<_test_environment_setup,Test Environment Setup>>)
 
 == Test Environment Setup
 
@@ -58,11 +58,14 @@ image::ui-configuration-tab.png[Issuer Configuration Tab]
 . To add a new issuer:
 * Click the "Add Issuer" button
 * Enter an issuer name (e.g., "keycloak")
-* Fill in the required fields:
-** Issuer URI: The URI of the token issuer (must match the "iss" claim in the JWT)
+* Select the JWKS Type (URL, File, or In-Memory) — this controls which JWKS input field is shown
+* Fill in the fields:
+** Issuer URI (optional): The URI of the token issuer (must match the "iss" claim in the JWT). At least one of Issuer URI or Name is required.
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests`
-** JWKS URL: The URL of the JWKS endpoint
+** JWKS URL (when type is URL): The URL of the JWKS endpoint
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
+** JWKS File (when type is File): Path to a local JWKS key file
+** JWKS Content (when type is In-Memory): Inline JWKS JSON content
 ** Audience (optional): The expected audience claim value
 ** Client ID (optional): The client ID for token validation
 * Click "Save Issuer"

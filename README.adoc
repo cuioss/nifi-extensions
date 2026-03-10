@@ -64,7 +64,7 @@ cp nifi-cuioss-api-nar-*.nar nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 
 == Configuration
 
-The processor can be configured through three methods (highest precedence first):
+Both processors can be configured through three methods (highest precedence first):
 
 . **NiFi UI** -- interactive configuration with built-in JWKS validation and token testing
 . **Environment variables** -- for container orchestration (Kubernetes, Docker)
@@ -112,7 +112,7 @@ cd integration-testing/src/main/docker && docker compose down -v
 ----
 
 The sandbox includes a pre-configured NiFi flow (link:integration-testing/src/main/docker/nifi/conf/flow.json[flow.json]) with a `RestApiGatewayProcessor` on port 9443 featuring multi-route JWT authorization via Keycloak, RFC 9457 error responses, and a `/metrics` management endpoint.
-The flow also contains a `MultiIssuerJWTTokenAuthenticator` gateway on port 7777 (see link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]).
+The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on port 7777 (see link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]).
 
 == Components
 

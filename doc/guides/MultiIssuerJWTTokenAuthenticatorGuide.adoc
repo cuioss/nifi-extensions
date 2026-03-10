@@ -147,6 +147,11 @@ The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, 
 |`true`
 |Yes
 |Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
+
+|Allow Private Network Addresses
+|`false`
+|Yes
+|Whether to allow JWKS URLs pointing to private network addresses. Enable for Docker/Kubernetes deployments where the IdP runs on an internal network.
 |===
 
 == Issuer Configuration (CS Dynamic Properties)
@@ -168,6 +173,26 @@ Each identity provider is configured as dynamic properties on the `JwtIssuerConf
 |`issuer.<name>.audience`
 |Required `aud` claim for tokens from this issuer
 |`api://my-service`
+
+|`issuer.<name>.issuer`
+|Issuer URI (must match the `iss` claim in the JWT)
+|`\https://auth.example.com/`
+
+|`issuer.<name>.client-id`
+|Expected client ID claim for tokens from this issuer
+|`my-client-app`
+
+|`issuer.<name>.jwks-file`
+|File path to a local JWKS key file (alternative to `jwks-url`)
+|`/opt/nifi/conf/jwks.json`
+
+|`issuer.<name>.jwks-content`
+|Inline JWKS JSON content (alternative to `jwks-url` and `jwks-file`)
+|`{"keys":[...]}`
+
+|`issuer.<name>.jwks-type`
+|Explicit JWKS source type: `url`, `file`, or `content` (auto-detected if omitted)
+|`url`
 |===
 
 NOTE: Roles and scopes are configured at the **processor level** via the `Required Roles` and `Required Scopes` properties, not as per-issuer CS dynamic properties.
@@ -199,7 +224,10 @@ On successful validation the processor sets these attributes on the FlowFile:
 |Attribute |Description
 
 |`jwt.present`
-|`true` if a JWT was found in the request
+|`true` if a JWT was successfully validated; `false` if missing (when token is not required)
+
+|`jwt.validatedAt`
+|ISO-8601 timestamp when the token was validated
 
 |`jwt.subject`
 |The `sub` claim
@@ -216,6 +244,9 @@ On successful validation the processor sets these attributes on the FlowFile:
 |`jwt.scopes`
 |Comma-separated scopes from the token
 
+|`jwt.groups`
+|Comma-separated groups from the token (omitted if empty)
+
 |`jwt.authorized`
 |`true` if scope/role authorization passed
 
@@ -227,6 +258,9 @@ On successful validation the processor sets these attributes on the FlowFile:
 
 |`jwt.error.reason`
 |Human-readable error description
+
+|`jwt.error.category`
+|Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
 |===
 
 == Static Configuration Files
@@ -274,7 +308,7 @@ See link:../../integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] 
 
 [source,bash]
 ----
-./mvnw verify -Pintegration-tests
+./mvnw verify -Pintegration-tests -pl integration-testing -am
 ----
 
 Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interactively.

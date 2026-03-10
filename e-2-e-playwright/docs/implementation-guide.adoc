@@ -39,7 +39,7 @@ e-2-e-playwright/
 
 === Using Consolidated Fixtures (recommended)
 
-The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection:
+The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection. Key exports: `test`, `accessibilityTest`, `serialTest`, `gatewayTest`, `serialGatewayTest`, `expect`, and `takeStartScreenshot`.
 
 [source,javascript]
 ----
@@ -115,11 +115,10 @@ test('Processor management via API', async ({ page }) => {
 
 === Execution Order
 
-When run via Maven (`-Pintegration-tests`), tests execute in order:
+When run via Maven (`-Pintegration-tests`), tests execute in phases:
 
 1. Self-tests — if these fail, subsequent phases are skipped
-2. Functional tests
-3. Accessibility tests
+2. Functional tests and accessibility tests (both depend on self-tests; they are independent of each other)
 
 When using `npm test`, the `run-tests-with-precheck.js` script gates functional tests behind self-test success.
 

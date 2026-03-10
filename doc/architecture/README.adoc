@@ -32,9 +32,15 @@ image::architecture.png[NiFi Extensions Architecture]
 
 |nifi-cuioss-nar
 |NAR packaging bundle for deployment (contains processors, rest-processors, common, UI)
+
+|integration-testing
+|Docker-based integration tests (NiFi + Keycloak) with flow pipeline verification
+
+|e-2-e-playwright
+|Playwright E2E and WCAG accessibility tests for the custom UI
 |===
 
-Both processors share JWT validation through a common `JwtIssuerConfigService` Controller Service, which supports multiple identity providers with automatic JWKS key rotation and caching.
+Both processors share JWT validation through a common `JwtIssuerConfigService` Controller Service, which supports multiple identity providers with automatic JWKS key refresh and caching.
 
 == Which Processor to Use
 

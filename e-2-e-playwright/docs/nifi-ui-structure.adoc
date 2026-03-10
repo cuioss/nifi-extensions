@@ -25,11 +25,10 @@ Request-Token: [CSRF token from __Secure-Request-Token cookie]
 Body: username=testUser&password=drowssap
 
 → HTTP 201 Created
-→ Set-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
-→ Response: [JWT Token Body]
+→ Response Body: [JWT Token]
 
 GET /nifi-api/flow/current-user
-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+Authorization: Bearer [JWT Token]
 ----
 
 === CSRF Token

@@ -41,6 +41,8 @@ Requests flow through up to three authentication layers depending on the entry p
                          |  |                 |  /config: local        |          | |
                          |  |                 |  /metrics: proxy -+    |          | |
                          |  |                 |  /test: proxy     |    |          | |
+                         |  |                 |  /token-fetch     |    |          | |
+                         |  |                 |  /discover-*      |    |          | |
                          |  +-------------------------------------|----+----------+ |
                          +-------------------------------------|----+--------------+
                                                                |    |
@@ -106,6 +108,21 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Yes
 |POST
 |Proxies test requests to gateway + SSRF protection
+
+|`/nifi-api/processors/jwt/gateway/token-fetch`
+|Yes
+|POST
+|Proxies OAuth token requests to the IDP
+
+|`/nifi-api/processors/jwt/gateway/discover-token-endpoint`
+|Yes
+|POST
+|Fetches OIDC discovery for the token endpoint
+
+|`/nifi-api/processors/jwt/component-info`
+|Yes
+|GET
+|Returns processor component metadata
 
 |`/nifi-api/processors/jwt/validate-jwks-*`
 |No

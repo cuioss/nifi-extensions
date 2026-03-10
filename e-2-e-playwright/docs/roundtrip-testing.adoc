@@ -58,7 +58,7 @@ See `CLAUDE.md` "Docker E2E Deployment" section or the `/deploy` skill for the f
 [source,bash]
 ----
 # Run full integration test suite (self-tests → functional → accessibility)
-./mvnw -pl e-2-e-playwright -Pintegration-tests clean verify
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
 Maven starts containers, runs all Playwright tests in a single invocation (auth-setup → self-tests → functional + accessibility in parallel), and stops containers afterward. Test results are stored under `target/test-results/`.
@@ -85,7 +85,8 @@ npm run test:self
 Test artifacts are stored under `target/`:
 
 * `target/test-results/` — Per-test execution artifacts (browser.log, test-run.log, screenshots, video, trace.zip)
-* `target/playwright-report/` — HTML report
+* `target/test-results.json` — JSON test results
+* `target/junit-results.xml` — JUnit XML results
 
 [source,bash]
 ----
@@ -152,7 +153,7 @@ Before committing, run full validation:
 ./mvnw clean install
 
 # 2. Run all E2E tests
-./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests
+./mvnw -B --no-transfer-progress clean verify -pl e-2-e-playwright -Pintegration-tests -am
 
 # 3. If both pass → commit
 ----

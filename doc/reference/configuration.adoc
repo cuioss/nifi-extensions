@@ -82,6 +82,18 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |File path to a local JWKS key file (alternative to `jwks-url`)
 |/opt/nifi/conf/jwks.json
 
+|issuer.<name>.jwks-content
+|Inline JWKS JSON content (alternative to `jwks-url` and `jwks-file`)
+|`{"keys":[...]}`
+
+|issuer.<name>.jwks-type
+|Explicit JWKS source type: `url`, `file`, or `content` (auto-detected if omitted)
+|url
+
+|issuer.<name>.client-id
+|Expected client ID claim for tokens from this issuer
+|my-client-app
+
 |===
 
 NOTE: Roles and scopes are configured at the **processor level** (via `Required Roles` / `Required Scopes` on the `MultiIssuerJWTTokenAuthenticator`, or via `restapi.<name>.required-roles` / `restapi.<name>.required-scopes` on the `RestApiGatewayProcessor`), not as per-issuer dynamic properties.
@@ -174,6 +186,26 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |rest.gateway.management.metrics.auth-mode
 |local-only,bearer
 |Authentication mode for `/metrics`: `bearer`, `none`, or `local-only` (comma-separated to combine)
+|No
+
+|rest.gateway.management.health.required-roles
+|--
+|Comma-separated roles required for `/health` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.health.required-scopes
+|--
+|Comma-separated scopes required for `/health` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.metrics.required-roles
+|--
+|Comma-separated roles required for `/metrics` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.metrics.required-scopes
+|--
+|Comma-separated scopes required for `/metrics` access (only checked when auth-mode includes `bearer`)
 |No
 |===
 
@@ -355,4 +387,6 @@ The Custom UI backend provides REST endpoints shared by both processors:
 |`/nifi-api/processors/jwt/gateway/config` |GET |Retrieves current route configuration
 |`/nifi-api/processors/jwt/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint
 |`/nifi-api/processors/jwt/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
+|`/nifi-api/processors/jwt/gateway/token-fetch` |POST |Proxies an OAuth token request to the IDP
+|`/nifi-api/processors/jwt/gateway/discover-token-endpoint` |POST |Fetches OIDC discovery for the token endpoint
 |===

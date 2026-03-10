@@ -38,8 +38,11 @@ This project follows centralized coding standards from https://github.com/cuioss
 # Start Docker test environment (NiFi + Keycloak)
 ./integration-testing/src/main/docker/run-and-deploy.sh
 
-# Run integration tests via Maven
-./mvnw verify -Pintegration-tests
+# Run Java integration tests via Maven
+./mvnw verify -Pintegration-tests -pl integration-testing -am
+
+# Run E2E Playwright tests via Maven
+./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am
 
 # Run Playwright E2E tests directly
 cd e-2-e-playwright && npm run playwright:test

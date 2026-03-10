@@ -46,7 +46,9 @@ e-2-e-playwright/
 │   ├── test-assertions.js        # Custom test assertion helpers
 │   └── run-tests-with-precheck.js# Self-test gating before functional tests
 ├── docs/                         # Detailed documentation (6 guides)
+├── global-setup.js              # Playwright global setup (API token auth)
 ├── playwright.config.cjs        # Playwright configuration
+├── eslint.config.js             # ESLint configuration
 ├── package.json                  # npm configuration
 └── pom.xml                       # Maven integration
 ----
@@ -62,7 +64,7 @@ Covers login, navigation, browser logging, critical error detection, and process
 
 === Functional Tests (`0x-*.spec.js`)
 
-Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, and help content.
+Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, help content, gateway tabs, and context help.
 
 === Accessibility Tests (`accessibility-*.spec.js`)
 
@@ -106,7 +108,7 @@ Tests are *skipped by default*. The `integration-tests` profile enables them and
 ./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
-Test results are stored under `target/test-results/`. Reports are in `target/playwright-report/`.
+Test results are stored under `target/test-results/`. Reports are in `target/test-results.json` (JSON) and `target/junit-results.xml` (JUnit).
 
 === Via npm (for development)
 
@@ -188,7 +190,7 @@ All artifacts are stored under `target/`:
 |JUnit XML results for CI
 
 |`target/playwright-report/`
-|HTML report
+|HTML report (only generated when using `--reporter=html`, e.g. `npm run test:a11y:full`)
 |===
 
 All artifacts are cleaned by `mvn clean`.
@@ -236,7 +238,7 @@ All artifacts are cleaned by `mvn clean`.
 |`target/test-results`
 
 |`CI`
-|CI environment flag (affects workers, `forbidOnly`)
+|CI environment flag (affects `forbidOnly`)
 |(unset)
 |===
 
@@ -289,6 +291,7 @@ Due to NiFi's Angular Material UI complexity:
 * xref:docs/roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow: modify, deploy, test, analyze
 * xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] — NiFi UI selectors and authentication flow
 * xref:docs/implementation-guide.adoc[Implementation Guide] — Test architecture and patterns
+* xref:docs/test-logging.adoc[Test Logging Architecture] — Per-test artifact persistence and log formats
 
 === External Resources
 

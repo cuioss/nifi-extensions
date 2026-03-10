@@ -52,6 +52,7 @@ test('My test that needs the processor', async ({ page }) => {
 ----
 import { test } from '@playwright/test';
 import { setupMultiIssuerJWTAuthenticator } from '../utils/processor-setup-helper.js';
+import { AuthService } from '../utils/auth-service.js';
 
 test.beforeEach(async ({ page }) => {
   const authService = new AuthService(page);
@@ -94,5 +95,5 @@ If `verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()` returns false:
 
 [source,bash]
 ----
-npm test -- self-processor-api-manager.spec.js
+npx playwright test tests/self-processor-api-manager.spec.js
 ----
