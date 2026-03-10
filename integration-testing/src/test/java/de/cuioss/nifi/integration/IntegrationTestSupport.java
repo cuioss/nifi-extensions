@@ -75,7 +75,7 @@ class IntegrationTestSupport {
     static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
     static final String NIFI_BASE = "https://localhost:9095";
     static final String FLOW_ENDPOINT = "http://localhost:7777";
-    static final String GATEWAY_BASE = "http://localhost:9443";
+    static final String GATEWAY_BASE = "https://localhost:9443";
 
     // Expected issuer value (as seen by NiFi inside Docker network)
     static final String EXPECTED_ISSUER = "https://keycloak:8443/realms/oauth_integration_tests";

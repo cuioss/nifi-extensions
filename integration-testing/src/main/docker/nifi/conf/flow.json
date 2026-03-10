@@ -960,7 +960,8 @@
               "rest.gateway.management.health.enabled": "true",
               "rest.gateway.management.health.auth-mode": "local-only,bearer",
               "rest.gateway.management.metrics.enabled": "true",
-              "rest.gateway.management.metrics.auth-mode": "local-only,bearer"
+              "rest.gateway.management.metrics.auth-mode": "local-only,bearer",
+              "rest.gateway.ssl.context.service": "a9340a05-d065-4ee9-92ae-0c10e9f462df"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -970,6 +971,11 @@
               },
               "rest.gateway.jwt.config.service": {
                 "name": "rest.gateway.jwt.config.service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              },
+              "rest.gateway.ssl.context.service": {
+                "name": "rest.gateway.ssl.context.service",
                 "identifiesControllerService": true,
                 "sensitive": false
               },
@@ -1340,6 +1346,70 @@
     "labels": [],
     "funnels": [],
     "controllerServices": [
+      {
+        "identifier": "a9340a05-d065-4ee9-92ae-0c10e9f462df",
+        "instanceIdentifier": "b3e5ccd6-9c19-4a1d-b6d6-1154060b32ee",
+        "name": "StandardRestrictedSSLContextService",
+        "type": "org.apache.nifi.ssl.StandardRestrictedSSLContextService",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-ssl-context-service-nar",
+          "version": "2.4.0"
+        },
+        "properties": {
+          "Keystore Filename": "./conf/keystore.p12",
+          "Keystore Password": "password",
+          "Keystore Type": "PKCS12",
+          "Truststore Filename": "./conf/truststore.p12",
+          "Truststore Password": "password",
+          "Truststore Type": "PKCS12"
+        },
+        "propertyDescriptors": {
+          "Keystore Filename": {
+            "name": "Keystore Filename",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Keystore Password": {
+            "name": "Keystore Password",
+            "identifiesControllerService": false,
+            "sensitive": true
+          },
+          "Keystore Type": {
+            "name": "Keystore Type",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Truststore Filename": {
+            "name": "Truststore Filename",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Truststore Password": {
+            "name": "Truststore Password",
+            "identifiesControllerService": false,
+            "sensitive": true
+          },
+          "Truststore Type": {
+            "name": "Truststore Type",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "controllerServiceApis": [
+          {
+            "type": "org.apache.nifi.ssl.SSLContextProvider",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-services-api-nar",
+              "version": "2.4.0"
+            }
+          }
+        ],
+        "scheduledState": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
+      },
       {
         "identifier": "b731b475-3078-5b65-b962-1e7a286a8f2b",
         "instanceIdentifier": "0770d065-7216-59d8-8f41-560c9e022981",
