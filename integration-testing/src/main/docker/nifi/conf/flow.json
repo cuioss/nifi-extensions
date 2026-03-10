@@ -993,11 +993,6 @@
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
             "autoTerminatedRelationships": [
-              "failure",
-              "data",
-              "admin",
-              "validated",
-              "inline-validated",
               "disabled-test"
             ],
             "componentType": "PROCESSOR",
@@ -1012,11 +1007,320 @@
             "executionNode": "ALL",
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
+            "instanceIdentifier": "109b5c85-dd1d-5277-9e25-4843ded7b5be",
+            "name": "LogAttribute (gateway-data)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log prefix": "gateway-data"
+            },
+            "propertyDescriptors": {
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": ["success"],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1000,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "f3a1b2c3-d4e5-5678-90ab-cdef01234567",
+            "instanceIdentifier": "a1b2c3d4-e5f6-5789-0abc-def012345678",
+            "name": "LogAttribute (gateway-validated)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log prefix": "gateway-validated"
+            },
+            "propertyDescriptors": {
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": ["success"],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1200,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
+            "instanceIdentifier": "c5d6e7f8-a9b0-5123-4567-89abcdef4567",
+            "name": "LogAttribute (gateway-inline-validated)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log prefix": "gateway-inline-validated"
+            },
+            "propertyDescriptors": {
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": ["success"],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1200,
+              "y": 600
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
+          },
+          {
+            "identifier": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+            "instanceIdentifier": "c969f24d-aff9-5e4b-9d66-5f34527e4efb",
+            "name": "LogAttribute (gateway-admin)",
+            "type": "org.apache.nifi.processors.standard.LogAttribute",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Log prefix": "gateway-admin"
+            },
+            "propertyDescriptors": {
+              "Log prefix": {
+                "name": "Log prefix",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "scheduledState": "RUNNING",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": ["success"],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 800,
+              "y": 400
+            },
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins"
           }
         ],
         "inputPorts": [],
         "outputPorts": [],
-        "connections": [],
+        "connections": [
+          {
+            "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
+            "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
+            "name": "RestApiGateway → LogAttribute (gateway-data)",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-data)"
+            },
+            "selectedRelationships": ["data"],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "a1b2c3d4-5678-5901-abcd-ef0123456789",
+            "instanceIdentifier": "b2c3d4e5-6789-5012-bcde-f01234567890",
+            "name": "RestApiGateway → LogAttribute (gateway-admin)",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-admin)"
+            },
+            "selectedRelationships": ["admin"],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "d4e5f6a7-b8c9-5012-3456-789abcdef012",
+            "instanceIdentifier": "e5f6a7b8-c9d0-5123-4567-89abcdef0123",
+            "name": "RestApiGateway → LogAttribute (gateway-validated)",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "f3a1b2c3-d4e5-5678-90ab-cdef01234567",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-validated)"
+            },
+            "selectedRelationships": ["validated"],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "e5f6a7b8-c9d0-5012-3456-789abcdef678",
+            "instanceIdentifier": "f6a7b8c9-d0e1-5123-4567-89abcdef7890",
+            "name": "RestApiGateway → LogAttribute (gateway-inline-validated)",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-inline-validated)"
+            },
+            "selectedRelationships": ["inline-validated"],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "c5a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c",
+            "instanceIdentifier": "c5a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5d",
+            "name": "RestApiGateway → LogAttribute (gateway-admin) [failure]",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "RestApiGateway"
+            },
+            "destination": {
+              "id": "e5842c02-def4-500d-94b6-72cd1bcd693c",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": "LogAttribute (gateway-admin)"
+            },
+            "selectedRelationships": ["failure"],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          }
+        ],
         "labels": [],
         "funnels": [],
         "controllerServices": [],

@@ -657,6 +657,18 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(mapTable).toContainText("failure");
         await expect(mapTable).toContainText("(always present)");
 
+        // Verify all route relationships are listed (not just failure)
+        const mapRows = mapTable.locator("tbody tr");
+        const mapRowCount = await mapRows.count();
+        // Expect at least 5 relationships: validated, data, inline-validated, admin, failure
+        expect(mapRowCount).toBeGreaterThanOrEqual(5);
+
+        // Verify specific route relationships are present
+        await expect(mapTable).toContainText("validated");
+        await expect(mapTable).toContainText("data");
+        await expect(mapTable).toContainText("inline-validated");
+        await expect(mapTable).toContainText("admin");
+
         // Collapse back to clean up for next test
         await summary.click();
     });

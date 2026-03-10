@@ -16,6 +16,9 @@
  */
 package de.cuioss.nifi.integration;
 
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
@@ -58,6 +61,8 @@ class CustomUIEndpointsIT {
     private static RequestSpecification authSpec;
     private static RequestSpecification sessionOnlySpec;
     private static RequestSpecification gatewayAuthSpec;
+    private static RequestSpecification nifiApiSpec;
+    private static String gatewayProcessorId;
     private static String keycloakToken;
     private static String keycloakJwks;
 
@@ -87,10 +92,21 @@ class CustomUIEndpointsIT {
                 customUIBase, bearerToken);
 
         // Discover REST API Gateway processor for gateway endpoint tests
-        String gatewayProcessorId = CustomUITestSupport.discoverProcessorId(
+        gatewayProcessorId = CustomUITestSupport.discoverProcessorId(
                 httpClient, bearerToken, "RestApiGateway");
         gatewayAuthSpec = CustomUITestSupport.buildAuthSpec(
                 customUIBase, bearerToken, gatewayProcessorId);
+
+        // Build a spec for querying NiFi's native REST API directly
+        nifiApiSpec = new RequestSpecBuilder()
+                .setBaseUri(NIFI_BASE)
+                .setConfig(RestAssuredConfig.config()
+                        .sslConfig(SSLConfig.sslConfig().trustStore(
+                                "src/main/docker/certificates/truststore.p12",
+                                "password")))
+                .addHeader("Authorization", "Bearer " + bearerToken)
+                .setAccept(ContentType.JSON)
+                .build();
 
         // Wait for the REST API Gateway's embedded Jetty to be ready
         waitForEndpoint(httpClient, GATEWAY_BASE + "/metrics", Duration.ofSeconds(120));
@@ -569,6 +585,29 @@ class CustomUIEndpointsIT {
                     .statusCode(200)
                     .contentType(ContentType.JSON)
                     .body("routes.find { it.name == 'data' }.source", equalTo("external"));
+        }
+    }
+
+    // ── NiFi Framework Relationship Tests ────────────────────────────
+
+    @Nested
+    @DisplayName("NiFi Framework Processor Relationships")
+    class NifiProcessorRelationships {
+
+        @Test
+        @DisplayName("should register external config route relationships in NiFi framework")
+        void shouldExposeRouteRelationshipsViaNifiApi() {
+            // Query NiFi's native REST API for the gateway processor's relationships.
+            // This verifies the fix: getRelationships() eagerly loads external config
+            // routes BEFORE @OnScheduled, so NiFi's framework knows about them.
+            given().spec(nifiApiSpec)
+                    .when()
+                    .get("/nifi-api/processors/" + gatewayProcessorId)
+                    .then()
+                    .statusCode(200)
+                    .contentType(ContentType.JSON)
+                    .body("component.relationships.name",
+                            hasItems("failure", "data", "admin", "validated", "inline-validated"));
         }
     }
 }
