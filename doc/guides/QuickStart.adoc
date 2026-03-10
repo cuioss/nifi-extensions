@@ -64,8 +64,8 @@ In the processor properties tab:
 |Request Queue Size
 |`50` (default)
 
-|SSL Enabled
-|`false` (default; enable for HTTPS)
+|SSL Context Service
+|_(none)_ (optional; configure an `SSLContextProvider` to enable HTTPS)
 |===
 
 == Step 4: Configure Routes via the Custom UI
@@ -74,7 +74,7 @@ The gateway provides a visual route editor in its custom UI. Right-click the pro
 
 The **Endpoint Configuration** tab shows three sections:
 
-* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
+* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Context Service, Listening Host)
 * **Management Endpoints** -- built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
 * **API Routes** -- user-defined routes with CRUD controls
 

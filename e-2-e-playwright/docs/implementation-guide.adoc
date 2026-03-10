@@ -30,6 +30,7 @@ e-2-e-playwright/
 │   ├── accessibility-helper.js  # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
 │   ├── test-logger.js           # Unified per-test logging via testInfo.attach()
+│   ├── test-assertions.js       # Custom test assertion helpers
 │   └── run-tests-with-precheck.js# Self-test gating before functional tests
 └── docs/                         # Detailed documentation
 ----
@@ -101,7 +102,7 @@ test('Processor management via API', async ({ page }) => {
 
 |Self-tests
 |Validate testing infrastructure
-|`self-login.spec.js`, `self-navigation.spec.js`
+|`self-login.spec.js`, `self-critical-errors.spec.js`
 
 |Functional
 |Test processor features
@@ -188,7 +189,7 @@ After test runs, inspect:
 * *Traces*: `npx playwright show-trace target/test-results/*/trace.zip`
 * *Screenshots*: `target/test-results/screenshots/`
 * *Videos*: `target/test-results/videos/`
-* *Console logs*: Saved automatically by test fixtures to `target/logs/`
+* *Console logs*: Saved automatically by test fixtures as `browser.log` and `test-run.log` in each test's output directory
 
 === Container Logs
 

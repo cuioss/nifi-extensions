@@ -95,16 +95,16 @@ The framework checks these categories via axe-core (`wcag2aa`, `wcag21aa`, `best
 * **Understandable** — Form labels, error identification, consistent navigation
 * **Robust** — Valid markup, proper ARIA usage, screen reader compatibility
 
-== Known Issues Management
+== Disabled Rules
+
+Rules that cannot be satisfied in the NiFi custom UI context are disabled globally in `accessibility-helper.js`:
 
 [source,javascript]
 ----
-export const KNOWN_ISSUES = {
-  skipRules: [],          // Rule IDs to skip temporarily
-  skipElements: [],       // CSS selectors to exclude
-  expectedViolations: []  // Documented acceptable violations with reasons
-};
+const DISABLED_RULES = ["bypass", "landmark-one-main", "region"];
 ----
+
+These rules are disabled because the custom UI runs inside NiFi's iframe and cannot control page-level landmarks.
 
 == Maven Integration
 

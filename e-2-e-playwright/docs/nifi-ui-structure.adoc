@@ -161,7 +161,7 @@ Prefer selectors in this priority order:
 |`https://localhost:9095/nifi-api/`
 
 |Keycloak
-|`http://localhost:9080`
+|`https://localhost:9085`
 |===
 
 == Related Documentation

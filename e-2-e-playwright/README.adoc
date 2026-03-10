@@ -32,7 +32,7 @@ e-2-e-playwright/
 ├── fixtures/                     # Playwright test fixtures
 │   ├── auth-fixtures.js          # Authentication fixtures
 │   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
-├── utils/                        # Utility services and scripts (11 files)
+├── utils/                        # Utility services and scripts (12 files)
 │   ├── auth-service.js           # API token-based authentication
 │   ├── processor.js              # Processor discovery and verification
 │   ├── processor-api-manager.js  # REST API-based processor management
@@ -43,6 +43,7 @@ e-2-e-playwright/
 │   ├── accessibility-helper.js   # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
 │   ├── test-logger.js            # Unified per-test logging via testInfo.attach()
+│   ├── test-assertions.js        # Custom test assertion helpers
 │   └── run-tests-with-precheck.js# Self-test gating before functional tests
 ├── docs/                         # Detailed documentation (6 guides)
 ├── playwright.config.cjs        # Playwright configuration
@@ -73,7 +74,7 @@ See xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] for 
 Tests require a running NiFi + Keycloak environment:
 
 1. *NiFi* accessible at `PLAYWRIGHT_BASE_URL` (default: `https://localhost:9095/nifi`)
-2. *Keycloak* accessible at `PLAYWRIGHT_KEYCLOAK_URL` (default: `http://localhost:9080`)
+2. *Keycloak* accessible at `PLAYWRIGHT_KEYCLOAK_URL` (default: `https://localhost:9085`)
 3. *Test credentials* configured in `utils/constants.js` must be valid
 
 === Starting the Test Environment
@@ -91,7 +92,7 @@ Tests require a running NiFi + Keycloak environment:
 ----
 
 The `run-and-deploy.sh` script builds the NAR file, starts Keycloak (with health check), then starts NiFi.
-Once running, NiFi is available at `https://localhost:9095/nifi` and Keycloak at `http://localhost:9080`.
+Once running, NiFi is available at `https://localhost:9095/nifi` and Keycloak at `https://localhost:9085`.
 
 == Running Tests
 
@@ -169,8 +170,8 @@ npm run format                 # Auto-format
 
 * *Browser*: Chromium only (enterprise standard, best Playwright support)
 * *Reporters*: JSON (`target/test-results.json`), JUnit (`target/junit-results.xml`), list
-* *Artifacts*: Trace, screenshots, and video are all `on` by default
-* *Parallel*: `fullyParallel: true`, 1 worker locally, 2 in CI
+* *Artifacts*: Trace `retain-on-failure`, screenshots `only-on-failure`, video `retain-on-failure`
+* *Parallel*: `fullyParallel: false`, 1 worker (sequential execution)
 * *Timeouts*: 60s test, 15s expect, 10s action, 30s navigation
 
 === Test Artifacts
@@ -214,7 +215,7 @@ All artifacts are cleaned by `mvn clean`.
 
 |`PLAYWRIGHT_KEYCLOAK_URL`
 |Keycloak URL
-|`http://localhost:9080`
+|`https://localhost:9085`
 
 |`E2E_TIMEOUT`
 |Test timeout in seconds
@@ -226,15 +227,15 @@ All artifacts are cleaned by `mvn clean`.
 
 |`PLAYWRIGHT_TRACE`
 |Trace recording (`off`, `on`, `retain-on-failure`)
-|`on`
+|`retain-on-failure`
 
 |`PLAYWRIGHT_SCREENSHOT`
 |Screenshot capture (`off`, `on`, `only-on-failure`)
-|`on`
+|`only-on-failure`
 
 |`PLAYWRIGHT_VIDEO`
 |Video recording (`off`, `on`, `retain-on-failure`)
-|`on`
+|`retain-on-failure`
 
 |`PLAYWRIGHT_OUTPUT_DIR`
 |Base output directory
@@ -243,10 +244,6 @@ All artifacts are cleaned by `mvn clean`.
 |`TEST_RESULTS_DIR`
 |Test results directory
 |`target/test-results`
-
-|`PLAYWRIGHT_REPORT_DIR`
-|Report output directory
-|`target/playwright-report`
 
 |`CI`
 |CI environment flag (affects workers, `forbidOnly`)

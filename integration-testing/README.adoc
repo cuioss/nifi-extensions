@@ -22,7 +22,6 @@ Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real
 
 # 2. Access services
 #    NiFi UI:       https://localhost:9095/nifi/  (testUser / drowssap)
-#    Keycloak HTTP:  http://localhost:9080/admin/  (admin / admin)
 #    Keycloak HTTPS: https://localhost:9085/admin/ (admin / admin)
 
 # 3. Stop containers
@@ -53,7 +52,7 @@ Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real
 |`testUser` / `drowssap`
 
 |Base image
-|`apache/nifi:2.7.2`
+|`apache/nifi:2.4.0`
 
 |NAR mount
 |`target/nifi-deploy/` -> `/opt/nifi/nifi-current/nar_extensions`
@@ -67,14 +66,11 @@ Custom configuration files are copied from `src/main/docker/nifi/conf/` into the
 |===
 |Setting |Value
 
-|HTTP Admin
-|`http://localhost:9080` (port 8080 internal)
-
-|HTTPS
+|HTTPS Admin
 |`https://localhost:9085` (port 8443 internal)
 
 |Health endpoint
-|`http://localhost:9086/health/ready` (port 9000 internal)
+|`https://localhost:9086/health/ready` (port 9000 internal)
 
 |Admin credentials
 |`admin` / `admin`
@@ -102,10 +98,10 @@ Custom configuration files are copied from `src/main/docker/nifi/conf/` into the
 |`yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
 
 |JWKS endpoint (from host)
-|`http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+|`https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs`
 
 |JWKS endpoint (container-to-container)
-|`http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+|`https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
 |===
 
 The realm is imported automatically from `src/main/docker/keycloak/oauth_integration_tests-realm.json`.
@@ -128,7 +124,7 @@ Separate realm with its own RSA key pair, used for invalid-signature testing.
 |`otherClientSecretValue123456789`
 
 |JWKS endpoint (from host)
-|`http://localhost:9080/realms/other_realm/protocol/openid-connect/certs`
+|`https://localhost:9085/realms/other_realm/protocol/openid-connect/certs`
 |===
 
 The realm is imported automatically from `src/main/docker/keycloak/other_realm-realm.json`.
@@ -150,7 +146,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Starts Keycloak first, then NiFi. Waits for both to be healthy (2-minute timeout). Does NOT build/deploy the NAR.
 
 |`start-keycloak.sh`
-|Starts Keycloak only and waits for health check via `http://localhost:9086/health/ready` (60-second timeout)
+|Starts Keycloak only and waits for health check via `https://localhost:9086/health/ready` (60-second timeout)
 
 |`stop-test-container.sh`
 |Runs `docker compose down` to stop and remove all containers
@@ -202,7 +198,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 [source]
 ----
 src/main/docker/
-├── Dockerfile                     # NiFi container (based on apache/nifi:2.7.2)
+├── Dockerfile                     # NiFi container (based on apache/nifi:2.4.0)
 ├── docker-compose.yml             # NiFi + Keycloak orchestration
 ├── certificates/                  # Generated TLS certificates
 │   ├── keystore.p12              #   NiFi keystore
@@ -214,7 +210,7 @@ src/main/docker/
 │   ├── login-identity-providers.xml  # SingleUser: testUser/drowssap
 │   ├── authorizers.xml           #   SingleUser authorizer
 │   ├── keystore.p12 / truststore.p12 # TLS keystores
-│   ├── flow.xml.gz               #   Pre-configured flow
+│   ├── flow.json / flow.xml.gz    #   Pre-configured flow (JSON source + gzipped)
 │   └── bootstrap.conf / logback.xml / state-management.xml
 ├── keycloak/
 │   ├── oauth_integration_tests-realm.json  # Primary realm import
@@ -222,7 +218,8 @@ src/main/docker/
 ├── maintenance/                   # Certificate and credential utilities
 ├── scripts/                       # Maven-invoked orchestration scripts
 │   ├── deploy-and-start.sh       #   Pre-integration-test: copy NAR + start containers + wait
-│   └── wait-for-containers.sh    #   Health polling: containers → NiFi UI → flow pipeline
+│   ├── wait-for-containers.sh    #   Health polling: containers → NiFi UI → flow pipeline
+│   └── stop-containers.sh        #   Post-integration-test: stop containers
 ├── run-and-deploy.sh             # Full build + start (always rebuilds NARs)
 ├── start-nifi.sh                 # Start Keycloak + NiFi
 ├── start-keycloak.sh             # Start Keycloak only
@@ -258,12 +255,12 @@ This rebuilds the NAR, copies it to the deploy directory, and restarts the NiFi 
 
 1. Open NiFi at https://localhost:9095/nifi/ and log in with `testUser` / `drowssap`
 2. Drag a processor onto the canvas, search for `MultiIssuerJWTTokenAuthenticator`
-3. Configure the JWKS URL: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+3. Configure the JWKS URL: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
 4. Obtain a test token from Keycloak:
 +
 [source,bash]
 ----
-curl -s -X POST http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
+curl -sk -X POST https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
 ----
@@ -342,14 +339,14 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 |===
 |Issue |Resolution
 
-|Port conflict on 9080, 9085, 9086, or 9095
+|Port conflict on 9085, 9086, or 9095
 |Stop other services using those ports, or check with `lsof -i :9095`
 
 |NiFi fails to start
 |Check logs; ensure certificates exist in `nifi/conf/`; run `debug-containers.sh`
 
 |Keycloak health check fails
-|Verify port 9086 is reachable: `curl http://localhost:9086/health/ready`
+|Verify port 9086 is reachable: `curl -k https://localhost:9086/health/ready`
 
 |NAR not loaded
 |Run `debug-nar-deployment.sh`; verify `target/nifi-deploy/` contains both NAR files (`nifi-cuioss-api-nar` and `nifi-cuioss-nar`)

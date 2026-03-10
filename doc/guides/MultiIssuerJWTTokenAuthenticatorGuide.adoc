@@ -40,7 +40,7 @@ On success, token claims are written as `jwt.*` FlowFile attributes (subject, is
 
 image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
 
-. Alternatively, add a dynamic property for your identity provider by clicking the **+** button:
+. Alternatively, add a dynamic property on the **Controller Service** (not the processor) by clicking the **+** button:
 +
 [cols="1,2"]
 |===
@@ -168,15 +168,9 @@ Each identity provider is configured as dynamic properties on the `JwtIssuerConf
 |`issuer.<N>.audience`
 |Required `aud` claim for tokens from this issuer
 |`api://my-service`
-
-|`issuer.<N>.scopes`
-|Comma-separated scopes required for authorization
-|`read,write`
-
-|`issuer.<N>.roles`
-|Comma-separated roles required for authorization
-|`admin,user`
 |===
+
+NOTE: Roles and scopes are configured at the **processor level** via the `Required Roles` and `Required Scopes` properties, not as per-issuer CS dynamic properties.
 
 === Adding Multiple Issuers
 
@@ -194,7 +188,7 @@ issuer.3.jwks-url  = https://your-domain.auth0.com/.well-known/jwks.json
 issuer.3.audience  = https://api.example.com
 ----
 
-Each issuer can have its own audience, scopes, and roles. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`.
+Each issuer can have its own audience. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`. Roles and scopes are configured at the processor level and apply globally across all issuers.
 
 == Output FlowFile Attributes
 
@@ -268,10 +262,11 @@ The authenticator is configured with one Keycloak issuer:
 
 [source]
 ----
-issuer.keycloak.jwks-url = http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs
-issuer.keycloak.issuer    = http://keycloak:8080/realms/oauth_integration_tests
-issuer.keycloak.required-roles = read
+issuer.keycloak.jwks-url = https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs
+issuer.keycloak.issuer   = https://keycloak:8443/realms/oauth_integration_tests
 ----
+
+The processor-level property `jwt.authorization.required.roles = read` enforces role-based authorization across all issuers.
 
 See link:../../integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
 

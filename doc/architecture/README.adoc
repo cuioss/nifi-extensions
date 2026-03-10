@@ -26,6 +26,12 @@ image::architecture.png[NiFi Extensions Architecture]
 
 |nifi-cuioss-ui
 |Unified Custom UI serving both processors -- issuer configuration, token verification, endpoint configuration, metrics
+
+|nifi-cuioss-api-nar
+|NAR packaging for the API module (NiFi 2.x classloader separation)
+
+|nifi-cuioss-nar
+|NAR packaging bundle for deployment (contains processors, common, UI)
 |===
 
 Both processors share JWT validation through a common `JwtIssuerConfigService` Controller Service, which supports multiple identity providers with automatic JWKS key rotation and caching.

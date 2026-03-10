@@ -10,7 +10,7 @@ image::jwt-token-flow.png[JWT Token Processing Flow]
 
 1. Read raw JWT from a configurable FlowFile attribute (default: `jwt.token`)
 2. Validate signature, expiry, issuer, and audience via OAuth-Sheriff
-3. Check required roles and scopes via `AuthorizationValidator`
+3. Check required roles and scopes via `AuthorizationValidator` (only when roles or scopes are configured on the processor)
 4. Route to `success` (valid) or `authentication-failed` (invalid)
 5. Write token claims as `jwt.*` FlowFile attributes on success
 
@@ -24,17 +24,22 @@ Both processors share JWT validation through the `JwtIssuerConfigService` Contro
 
 The CS provides:
 
-* `validateToken(String rawToken)` -- validates a raw JWT string, returns `AccessTokenContent`
+* `validateToken(String rawToken)` -- validates a raw JWT string, returns `AccessTokenContent` (throws `TokenValidationException` on failure)
 * `getAuthenticationConfig()` -- returns immutable configuration snapshot
-* `getSecurityEventCounter()` -- returns the OAuth-Sheriff `SecurityEventCounter` for metrics
+* `getSecurityEventCounter()` -- returns `Optional<SecurityEventCounter>` (empty if the service is not enabled)
 
 == OAuth-Sheriff Lifecycle in NiFi
 
-The `TokenValidator` is stateful -- it maintains JWKS key caches and background refresh tasks. The processor preserves a single instance between invocations:
+The `TokenValidator` is stateful -- it maintains JWKS key caches and background refresh tasks. It is managed by the `StandardJwtIssuerConfigService` Controller Service, not by the processors directly:
 
-* **`@OnScheduled`**: Initialize `TokenValidator` with configured issuers. Use `AtomicReference` or `AtomicBoolean` for thread-safe lazy initialization.
-* **`onTrigger`**: Detect configuration changes (hash comparison). If changed, recreate the `TokenValidator`. Validate tokens using the cached instance.
-* **`@OnStopped`**: Clean up resources (HTTP connections, background threads, caches).
+* **`@OnEnabled`** (CS): Creates and configures the `TokenValidator` with all issuer configurations. Parses JWKS endpoints, initializes dsl-json under the NAR classloader.
+* **`@OnDisabled`** (CS): Nulls the `TokenValidator` reference, releasing HTTP connections and caches.
+
+The processor lifecycle is simpler:
+
+* **`@OnScheduled`** (Processor): Retrieves the `JwtIssuerConfigService` reference and caches authorization requirements.
+* **`onTrigger`** (Processor): Calls `jwtConfigService.validateToken()` -- all validation is delegated to the CS.
+* **`@OnStopped`** (Processor): Resets internal counters.
 
 Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint traffic, higher latency, and potential rate limiting.
 
@@ -44,16 +49,19 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |===
 |Attribute |Description
 
-|`jwt.present` |`true` if a JWT was found
+|`jwt.present` |`true` if a JWT was found; `false` if missing (when token is not required)
+|`jwt.validatedAt` |ISO-8601 timestamp when the token was validated
 |`jwt.subject` |The `sub` claim
 |`jwt.issuer` |The `iss` claim
 |`jwt.expiration` |The `exp` claim
-|`jwt.roles` |Comma-separated roles from the token
-|`jwt.scopes` |Comma-separated scopes from the token
-|`jwt.authorized` |`true` if scope/role authorization passed
-|`jwt.content.<claim>` |Individual token claims (prefixed)
+|`jwt.roles` |Comma-separated roles from the token (omitted if empty)
+|`jwt.groups` |Comma-separated groups from the token (omitted if empty)
+|`jwt.scopes` |Comma-separated scopes from the token (omitted if no `scope` claim)
+|`jwt.authorized` |`true`/`false` if scope/role authorization was checked (only present when roles or scopes are configured)
+|`jwt.content.<claim>` |Individual token claims (prefixed); standard claims (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
 |`jwt.error.code` |Error code on validation failure
 |`jwt.error.reason` |Human-readable error description
+|`jwt.error.category` |Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)
 |===
 
 == Error Routing
@@ -63,6 +71,6 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 
 == Token Verification UI
 
-The Custom UI provides a Token Verification tab for testing JWT tokens against the current configuration. Each UI verification request creates an isolated `TokenValidator` and `SecurityEventCounter` to avoid polluting the main processor's security metrics.
+The Custom UI provides a Token Verification tab for testing JWT tokens against the current configuration. The `JwtValidationService` maintains a cached `TokenValidator` that is reused across verification requests as long as the issuer configuration has not changed. This avoids redundant JWKS fetching while keeping UI metrics separate from the main processor's security counters.
 
 See link:../guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] for usage instructions.

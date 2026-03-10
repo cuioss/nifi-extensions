@@ -49,12 +49,12 @@ The `type` field links to this documentation page. Error responses are produced 
 |405
 |Method Not Allowed
 |Route exists but the HTTP method is not in the allowed set. Includes `Allow` header listing permitted methods.
-|`Method POST is not allowed on route 'health'. Allowed methods: [GET]`
+|`Method POST not allowed on /health. Allowed: [GET]`
 
 |413
 |Payload Too Large
 |Request body exceeds the configured `rest.gateway.max.request.size` limit (default 1 MB) or per-route `restapi.<name>.max-request-size`
-|`Request body of 2097152 bytes exceeds maximum allowed size of 1048576 bytes`
+|`Request body size 2097152 exceeds maximum 1048576 bytes`
 
 |422
 |Unprocessable Content
@@ -82,7 +82,7 @@ Authentication failures include the `WWW-Authenticate` header per https://www.rf
 
 |Missing token |`WWW-Authenticate: Bearer`
 |Invalid token |`WWW-Authenticate: Bearer error="invalid_token"`
-|Insufficient scope |`WWW-Authenticate: Bearer error="insufficient_scope"`
+|Insufficient scope |`WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`
 |===
 
 == 422 Validation Error Details

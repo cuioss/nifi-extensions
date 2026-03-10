@@ -70,14 +70,9 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |Required `aud` claim for tokens from this issuer
 |api://my-service
 
-|issuer.<N>.scopes
-|Comma-separated scopes required for authorization
-|read,write
-
-|issuer.<N>.roles
-|Comma-separated roles required for authorization
-|admin,user
 |===
+
+NOTE: Roles and scopes are configured at the **processor level** (via `Required Roles` / `Required Scopes` on the `MultiIssuerJWTTokenAuthenticator`, or via `restapi.<name>.required-roles` / `restapi.<name>.required-scopes` on the `RestApiGatewayProcessor`), not as per-issuer dynamic properties.
 
 NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<property>` (see <<Static Configuration Files>>).
 
@@ -155,8 +150,8 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<p
 |No
 
 |rest.gateway.management.health.auth-mode
-|local-only
-|Authentication mode for `/health`: `bearer`, `none`, or `local-only`
+|local-only,bearer
+|Authentication mode for `/health`: `bearer`, `none`, or `local-only` (comma-separated to combine)
 |No
 
 |rest.gateway.management.metrics.enabled
@@ -165,8 +160,8 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<N>.<p
 |No
 
 |rest.gateway.management.metrics.auth-mode
-|local-only
-|Authentication mode for `/metrics`: `bearer`, `none`, or `local-only`
+|local-only,bearer
+|Authentication mode for `/metrics`: `bearer`, `none`, or `local-only` (comma-separated to combine)
 |No
 |===
 
@@ -214,7 +209,7 @@ restapi.public.create-flowfile = false
 
 == Static Configuration Files
 
-For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. The properties file is checked first. Static configuration takes precedence over UI settings and is displayed as read-only in the UI.
+For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. The properties file is checked first. NiFi UI settings take precedence over static configuration, allowing runtime overrides of file-based defaults.
 
 image::configuration-properties.png[Configuration Properties Hierarchy, align="center"]
 
@@ -222,18 +217,14 @@ image::configuration-properties.png[Configuration Properties Hierarchy, align="c
 
 [source,properties]
 ----
-jwt.validation.issuer.count=2
-
 jwt.validation.issuer.1.name=Primary Auth Server
 jwt.validation.issuer.1.enabled=true
-jwt.validation.issuer.1.jwksUrl=https://auth.example.org/.well-known/jwks.json
+jwt.validation.issuer.1.jwks-url=https://auth.example.org/.well-known/jwks.json
 jwt.validation.issuer.1.audience=my-api
-jwt.validation.issuer.1.scopes=read,write
-jwt.validation.issuer.1.roles=admin,user
 
 jwt.validation.issuer.2.name=Secondary Auth Server
 jwt.validation.issuer.2.enabled=false
-jwt.validation.issuer.2.jwksUrl=https://auth2.example.org/.well-known/jwks.json
+jwt.validation.issuer.2.jwks-url=https://auth2.example.org/.well-known/jwks.json
 jwt.validation.issuer.2.audience=my-secondary-api
 ----
 
@@ -246,13 +237,11 @@ jwt:
     issuers:
       - name: "Primary Auth Server"
         enabled: true
-        jwksUrl: "https://auth.example.org/.well-known/jwks.json"
+        jwksUri: "https://auth.example.org/.well-known/jwks.json"
         audience: "my-api"
-        scopes: "read,write"
-        roles: "admin,user"
       - name: "Secondary Auth Server"
         enabled: false
-        jwksUrl: "https://auth2.example.org/.well-known/jwks.json"
+        jwksUri: "https://auth2.example.org/.well-known/jwks.json"
         audience: "my-secondary-api"
 ----
 
@@ -266,10 +255,9 @@ The processor monitors configuration files for changes and reloads automatically
 |===
 |Variable |Type |Description
 
-|`JWT_JWKS_REFRESH_INTERVAL` |Duration |JWKS cache refresh (e.g. `30 minutes`, `1 hour`)
+|`JWT_JWKS_REFRESH_INTERVAL` |Integer |JWKS cache refresh interval in seconds (e.g. `3600`)
 |`JWT_REQUIRE_VALID_TOKEN` |Boolean |Require valid token for success routing
-|`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer
-|`JWT_ISSUER_{NAME}_PUBLIC_KEY` |String |PEM-encoded public key for an issuer
+|`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer. Note: environment variable underscores are converted to dots internally (`JWKS_URL` becomes `jwks.url`), which does not match the expected property key `jwks-url`. Use static configuration files instead for issuer JWKS URLs.
 |===
 
 === Kubernetes Deployment Example
@@ -285,7 +273,7 @@ spec:
     spec:
       containers:
       - name: nifi
-        image: apache/nifi:2.7.2
+        image: apache/nifi:2.8.0
         env:
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
@@ -352,7 +340,7 @@ The Custom UI backend provides REST endpoints shared by both processors:
 |===
 |UI Endpoint |Method |Description
 
-|`/api/gateway/config` |GET |Retrieves current route configuration
-|`/api/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint
-|`/api/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
+|`/nifi-api/processors/jwt/gateway/config` |GET |Retrieves current route configuration
+|`/nifi-api/processors/jwt/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint
+|`/nifi-api/processors/jwt/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
 |===

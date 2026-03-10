@@ -91,13 +91,13 @@ Test artifacts are stored in separate directories per test phase:
 
 Each directory contains:
 
-* `test-results/` - Execution artifacts (console-logs.log, screenshots, video, trace.zip)
+* `test-results/` - Execution artifacts (browser.log, test-run.log, screenshots, video, trace.zip)
 * `playwright-report/` - HTML report
 
 [source,bash]
 ----
 # Find errors in specific test phase
-grep -n "ERROR" target/results-functional-tests/test-results/*/console-logs.log
+grep -n "ERROR" target/results-functional-tests/test-results/*/browser.log
 
 # View screenshot from failed test
 open target/results-functional-tests/test-results/*/test-failed-*.png
