@@ -13,10 +13,11 @@ package "RestApiGatewayProcessor" {
   component "Request Pipeline" as pipeline {
     component "1. Input Sanitization\n(cui-http)" as sanitize
     component "2. Route Matching" as route
-    component "3. JWT Authentication\n(Bearer token)" as authn
-    component "4. Role/Scope\nAuthorization" as authz
-    component "5. Body Validation\n(size limit)" as body
-    component "6. Enqueue Request" as enqueue
+    component "3. Method Check" as methodchk
+    component "4. Body Validation\n(size limit)" as body
+    component "5. JWT Authentication\n(Bearer token)" as authn
+    component "6. Role/Scope\nAuthorization" as authz
+    component "7. Enqueue Request" as enqueue
   }
 
   component "ManagementEndpoint\nHandler (/metrics)" as mgmt
@@ -31,10 +32,11 @@ client --> jetty : HTTPS request
 jetty --> handler
 handler --> sanitize
 sanitize --> route
-route --> authn
+route --> methodchk
+methodchk --> body
+body --> authn
 authn --> authz
-authz --> body
-body --> enqueue
+authz --> enqueue
 enqueue --> flowfile : FlowFile per route
 
 handler --> mgmt : GET /metrics
