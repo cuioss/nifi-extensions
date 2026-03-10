@@ -582,7 +582,7 @@
           {
             "identifier": "ef96fc35-f2e5-53ac-bc2b-3c794fb41102",
             "instanceIdentifier": "63164e33-f621-5cc3-b421-da8aa896adee",
-            "name": "HandleHttpRequest \u2192 Extract Token",
+            "name": "HandleHttpRequest → Extract Token",
             "source": {
               "id": "a5155653-5257-5972-b192-df42647b5cc5",
               "type": "PROCESSOR",
@@ -612,7 +612,7 @@
           {
             "identifier": "1fd53156-fa4d-5acb-b968-5a51fa82074e",
             "instanceIdentifier": "5e0adb41-5871-5779-96f8-2f96b03ecacc",
-            "name": "Extract Token \u2192 JWT Auth",
+            "name": "Extract Token → JWT Auth",
             "source": {
               "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
               "type": "PROCESSOR",
@@ -642,7 +642,7 @@
           {
             "identifier": "b04f86fd-d3b5-5735-b00d-3de8b3f53412",
             "instanceIdentifier": "8cd0051f-c576-5aec-892b-01567da8341f",
-            "name": "JWT Auth success \u2192 LogAttribute",
+            "name": "JWT Auth success → LogAttribute",
             "source": {
               "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
               "type": "PROCESSOR",
@@ -672,7 +672,7 @@
           {
             "identifier": "21166bda-2e14-5efd-b823-62de1a4ad36a",
             "instanceIdentifier": "66f5e314-af70-542b-9614-d3823367d728",
-            "name": "JWT Auth failed \u2192 LogAttribute",
+            "name": "JWT Auth failed → LogAttribute",
             "source": {
               "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
               "type": "PROCESSOR",
@@ -702,7 +702,7 @@
           {
             "identifier": "4c722c8c-4b25-5233-a991-092c4795e291",
             "instanceIdentifier": "19cbe385-7057-5c81-ada1-fbcd486ee768",
-            "name": "LogAttribute success \u2192 UpdateAttribute 200",
+            "name": "LogAttribute success → UpdateAttribute 200",
             "source": {
               "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
               "type": "PROCESSOR",
@@ -732,7 +732,7 @@
           {
             "identifier": "b8c43877-4fcd-5920-abf3-c3958098bf22",
             "instanceIdentifier": "4e0f0848-1d23-565d-a2eb-76d8bf9f5d21",
-            "name": "LogAttribute failed \u2192 UpdateAttribute 401",
+            "name": "LogAttribute failed → UpdateAttribute 401",
             "source": {
               "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
               "type": "PROCESSOR",
@@ -762,7 +762,7 @@
           {
             "identifier": "5fb30869-9720-581e-898c-fe4d75c2065b",
             "instanceIdentifier": "5b4e157d-5ee1-5b74-8283-28be29cbd84d",
-            "name": "UpdateAttribute 200 \u2192 AttributesToJSON (success)",
+            "name": "UpdateAttribute 200 → AttributesToJSON (success)",
             "source": {
               "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
               "type": "PROCESSOR",
@@ -792,7 +792,7 @@
           {
             "identifier": "82b3631c-6dfe-5fec-a169-bb527ccc77b8",
             "instanceIdentifier": "1b5cc725-9d77-5bab-bd89-d247bc49d860",
-            "name": "AttributesToJSON (success) \u2192 HandleHttpResponse (200)",
+            "name": "AttributesToJSON (success) → HandleHttpResponse (200)",
             "source": {
               "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
               "type": "PROCESSOR",
@@ -822,7 +822,7 @@
           {
             "identifier": "9443abb1-bc95-515a-9475-7824d25433a1",
             "instanceIdentifier": "a20cbfac-2c22-5c55-b2d8-1f340842216f",
-            "name": "UpdateAttribute 401 \u2192 AttributesToJSON (failure)",
+            "name": "UpdateAttribute 401 → AttributesToJSON (failure)",
             "source": {
               "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
               "type": "PROCESSOR",
@@ -852,7 +852,7 @@
           {
             "identifier": "196a796c-29b2-5a50-9f8e-07d6955f6bd7",
             "instanceIdentifier": "4c76d5de-9dec-5369-89cb-b252c5f46960",
-            "name": "AttributesToJSON (failure) \u2192 HandleHttpResponse (401)",
+            "name": "AttributesToJSON (failure) → HandleHttpResponse (401)",
             "source": {
               "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
               "type": "PROCESSOR",
@@ -960,26 +960,7 @@
               "rest.gateway.management.health.enabled": "true",
               "rest.gateway.management.health.auth-mode": "local-only,bearer",
               "rest.gateway.management.metrics.enabled": "true",
-              "rest.gateway.management.metrics.auth-mode": "local-only,bearer",
-              "restapi.data.path": "/api/data",
-              "restapi.data.methods": "GET,POST",
-              "restapi.admin.path": "/api/admin",
-              "restapi.admin.methods": "GET",
-              "restapi.admin.required-roles": "ADMIN",
-              "restapi.disabled-test.path": "/api/disabled",
-              "restapi.disabled-test.methods": "GET",
-              "restapi.disabled-test.enabled": "false",
-              "restapi.validated.path": "/api/validated",
-              "restapi.validated.methods": "POST",
-              "restapi.validated.schema": "./conf/schemas/user-request-schema.json",
-              "restapi.inline-validated.path": "/api/inline-validated",
-              "restapi.inline-validated.methods": "POST",
-              "restapi.inline-validated.schema": "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}",
-              "restapi.admin.success-outcome": "admin",
-              "restapi.data.success-outcome": "data",
-              "restapi.disabled-test.success-outcome": "disabled-test",
-              "restapi.inline-validated.success-outcome": "inline-validated",
-              "restapi.validated.success-outcome": "validated"
+              "rest.gateway.management.metrics.auth-mode": "local-only,bearer"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -999,101 +980,6 @@
               },
               "rest.gateway.request.queue.size": {
                 "name": "rest.gateway.request.queue.size",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.data.path": {
-                "name": "restapi.data.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.data.methods": {
-                "name": "restapi.data.methods",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.admin.path": {
-                "name": "restapi.admin.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.admin.methods": {
-                "name": "restapi.admin.methods",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.admin.required-roles": {
-                "name": "restapi.admin.required-roles",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.disabled-test.path": {
-                "name": "restapi.disabled-test.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.disabled-test.methods": {
-                "name": "restapi.disabled-test.methods",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.disabled-test.enabled": {
-                "name": "restapi.disabled-test.enabled",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.validated.path": {
-                "name": "restapi.validated.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.validated.methods": {
-                "name": "restapi.validated.methods",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.validated.schema": {
-                "name": "restapi.validated.schema",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.inline-validated.path": {
-                "name": "restapi.inline-validated.path",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.inline-validated.methods": {
-                "name": "restapi.inline-validated.methods",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.inline-validated.schema": {
-                "name": "restapi.inline-validated.schema",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.admin.success-outcome": {
-                "name": "restapi.admin.success-outcome",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.data.success-outcome": {
-                "name": "restapi.data.success-outcome",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.disabled-test.success-outcome": {
-                "name": "restapi.disabled-test.success-outcome",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.inline-validated.success-outcome": {
-                "name": "restapi.inline-validated.success-outcome",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "restapi.validated.success-outcome": {
-                "name": "restapi.validated.success-outcome",
                 "identifiesControllerService": false,
                 "sensitive": false
               }
@@ -1121,282 +1007,11 @@
             "executionNode": "ALL",
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins"
-          },
-          {
-            "identifier": "f3a1b2c3-d4e5-5678-90ab-cdef01234567",
-            "instanceIdentifier": "a1b2c3d4-e5f6-5789-0abc-def012345678",
-            "name": "LogAttribute (gateway-validated)",
-            "type": "org.apache.nifi.processors.standard.LogAttribute",
-            "bundle": {
-              "group": "org.apache.nifi",
-              "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
-            },
-            "properties": {
-              "Log Level": "info",
-              "Log prefix": "gateway-validated"
-            },
-            "propertyDescriptors": {
-              "Log Level": {
-                "name": "Log Level",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "Log prefix": {
-                "name": "Log prefix",
-                "identifiesControllerService": false,
-                "sensitive": false
-              }
-            },
-            "scheduledState": "RUNNING",
-            "schedulingPeriod": "0 sec",
-            "schedulingStrategy": "TIMER_DRIVEN",
-            "penaltyDuration": "30 sec",
-            "yieldDuration": "1 sec",
-            "bulletinLevel": "WARN",
-            "runDurationMillis": 0,
-            "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "success"
-            ],
-            "componentType": "PROCESSOR",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1200,
-              "y": 400
-            },
-            "style": {},
-            "retriedRelationships": [],
-            "retryCount": 0,
-            "executionNode": "ALL",
-            "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
-            "identifier": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
-            "instanceIdentifier": "c5d6e7f8-a9b0-5123-4567-89abcdef4567",
-            "name": "LogAttribute (gateway-inline-validated)",
-            "type": "org.apache.nifi.processors.standard.LogAttribute",
-            "bundle": {
-              "group": "org.apache.nifi",
-              "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
-            },
-            "properties": {
-              "Log Level": "info",
-              "Log prefix": "gateway-inline-validated"
-            },
-            "propertyDescriptors": {
-              "Log Level": {
-                "name": "Log Level",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "Log prefix": {
-                "name": "Log prefix",
-                "identifiesControllerService": false,
-                "sensitive": false
-              }
-            },
-            "scheduledState": "RUNNING",
-            "schedulingPeriod": "0 sec",
-            "schedulingStrategy": "TIMER_DRIVEN",
-            "penaltyDuration": "30 sec",
-            "yieldDuration": "1 sec",
-            "bulletinLevel": "WARN",
-            "runDurationMillis": 0,
-            "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "success"
-            ],
-            "componentType": "PROCESSOR",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1200,
-              "y": 600
-            },
-            "style": {},
-            "retriedRelationships": [],
-            "retryCount": 0,
-            "executionNode": "ALL",
-            "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
-            "identifier": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
-            "instanceIdentifier": "109b5c85-dd1d-5277-9e25-4843ded7b5be",
-            "name": "LogAttribute (gateway-data)",
-            "type": "org.apache.nifi.processors.standard.LogAttribute",
-            "bundle": {
-              "group": "org.apache.nifi",
-              "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
-            },
-            "properties": {
-              "Log Level": "info",
-              "Log prefix": "gateway-data"
-            },
-            "propertyDescriptors": {
-              "Log Level": {
-                "name": "Log Level",
-                "identifiesControllerService": false,
-                "sensitive": false
-              },
-              "Log prefix": {
-                "name": "Log prefix",
-                "identifiesControllerService": false,
-                "sensitive": false
-              }
-            },
-            "scheduledState": "RUNNING",
-            "schedulingPeriod": "0 sec",
-            "schedulingStrategy": "TIMER_DRIVEN",
-            "penaltyDuration": "30 sec",
-            "yieldDuration": "1 sec",
-            "bulletinLevel": "WARN",
-            "runDurationMillis": 0,
-            "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "success"
-            ],
-            "componentType": "PROCESSOR",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1000,
-              "y": 400
-            },
-            "style": {},
-            "retriedRelationships": [],
-            "retryCount": 0,
-            "executionNode": "ALL",
-            "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
           }
         ],
         "inputPorts": [],
         "outputPorts": [],
-        "connections": [
-          {
-            "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
-            "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
-            "name": "RestApiGateway data \u2192 LogAttribute",
-            "source": {
-              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "RestApiGateway"
-            },
-            "destination": {
-              "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-data)"
-            },
-            "selectedRelationships": [
-              "data"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
-            "identifier": "d4e5f6a7-b8c9-5012-3456-789abcdef012",
-            "instanceIdentifier": "e5f6a7b8-c9d0-5123-4567-89abcdef0123",
-            "name": "RestApiGateway validated \u2192 LogAttribute",
-            "source": {
-              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "RestApiGateway"
-            },
-            "destination": {
-              "id": "f3a1b2c3-d4e5-5678-90ab-cdef01234567",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-validated)"
-            },
-            "selectedRelationships": [
-              "validated"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
-            "identifier": "e5f6a7b8-c9d0-5012-3456-789abcdef678",
-            "instanceIdentifier": "f6a7b8c9-d0e1-5123-4567-89abcdef7890",
-            "name": "RestApiGateway inline-validated \u2192 LogAttribute",
-            "source": {
-              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "RestApiGateway"
-            },
-            "destination": {
-              "id": "b4c5d6e7-f8a9-5012-3456-789abcdef345",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-inline-validated)"
-            },
-            "selectedRelationships": [
-              "inline-validated"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
-            "identifier": "a1b2c3d4-5678-5901-abcd-ef0123456789",
-            "instanceIdentifier": "b2c3d4e5-6789-5012-bcde-f01234567890",
-            "name": "RestApiGateway admin \u2192 LogAttribute",
-            "source": {
-              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "RestApiGateway"
-            },
-            "destination": {
-              "id": "adc6e973-7cb3-5d42-80af-74ea74eaae97",
-              "type": "PROCESSOR",
-              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
-              "name": "LogAttribute (gateway-data)"
-            },
-            "selectedRelationships": [
-              "admin"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
-          }
-        ],
+        "connections": [],
         "labels": [],
         "funnels": [],
         "controllerServices": [],
