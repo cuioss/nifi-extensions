@@ -49,6 +49,10 @@ export const TRANSLATIONS = {
         'origin.badge.new.title': 'Created in this session (not yet persisted)',
         'origin.badge.modified': 'Modified',
         'origin.badge.new': 'New',
+        'origin.badge.external': 'External',
+        'origin.badge.external.title': 'Loaded from external configuration file',
+        'route.source.external.tooltip': 'This route is defined in the external configuration file. It cannot be deleted, but can be overridden via NiFi properties.',
+        'route.source.external.edit.tooltip': 'Edit to override external route via NiFi properties',
 
         // -- validation --
         'validation.required': 'This field is required.',
@@ -434,6 +438,10 @@ export const TRANSLATIONS = {
         'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
         'origin.badge.modified': 'Ge\u00e4ndert',
         'origin.badge.new': 'Neu',
+        'origin.badge.external': 'Extern',
+        'origin.badge.external.title': 'Aus externer Konfigurationsdatei geladen',
+        'route.source.external.tooltip': 'Diese Route ist in der externen Konfigurationsdatei definiert. Sie kann nicht gel\u00f6scht, aber \u00fcber NiFi-Eigenschaften \u00fcberschrieben werden.',
+        'route.source.external.edit.tooltip': 'Bearbeiten, um externe Route \u00fcber NiFi-Eigenschaften zu \u00fcberschreiben',
 
         // -- validation --
         'validation.required': 'Dieses Feld ist erforderlich.',

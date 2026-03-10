@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
@@ -747,7 +748,8 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
-     * Builds and writes the /config JSON response from processor properties.
+     * Builds and writes the /config JSON response from processor properties,
+     * merging in any routes from the external configuration file.
      */
     private void writeConfigResponse(HttpServletResponse resp, Map<String, String> props,
             String componentClass) throws IOException {
@@ -766,7 +768,11 @@ public class GatewayProxyServlet extends HttpServlet {
         }
 
         root.add("managementEndpoints", buildManagementEndpointsArray(props));
-        root.add("routes", buildRoutesArray(props));
+
+        // Merge external config routes with NiFi processor routes
+        Map<String, String> externalRouteProps = loadExternalRouteProperties();
+        root.add("externalConfigLoaded", !externalRouteProps.isEmpty());
+        root.add("routes", buildMergedRoutesArray(externalRouteProps, props));
 
         resp.setContentType(CONTENT_TYPE_JSON);
         resp.setCharacterEncoding("UTF-8");
@@ -776,8 +782,88 @@ public class GatewayProxyServlet extends HttpServlet {
         }
     }
 
-    private static JsonArrayBuilder buildRoutesArray(Map<String, String> props) {
+    /**
+     * Loads route properties ({@code restapi.*}) from the external configuration file.
+     */
+    protected Map<String, String> loadExternalRouteProperties() {
+        var configManager = createConfigurationManager();
+        if (!configManager.isConfigurationLoaded()) {
+            return Map.of();
+        }
+        Map<String, String> routeProps = new HashMap<>();
+        for (Map.Entry<String, String> entry : configManager.getStaticProperties().entrySet()) {
+            if (entry.getKey().startsWith(ROUTE_PREFIX)) {
+                routeProps.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return routeProps;
+    }
+
+    /**
+     * Creates a ConfigurationManager instance. Overridable for testing.
+     */
+    protected ConfigurationManager createConfigurationManager() {
+        return new ConfigurationManager();
+    }
+
+    /**
+     * Builds a merged routes array from external config and NiFi processor properties.
+     * Routes present in both sources get source "both"; NiFi properties override external values.
+     */
+    static JsonArrayBuilder buildMergedRoutesArray(Map<String, String> externalProps,
+            Map<String, String> nifiProps) {
+        Set<String> externalRouteNames = extractRouteNames(externalProps);
+        Set<String> nifiRouteNames = extractRouteNames(nifiProps);
+
+        // Merge: NiFi props override external props for the same key
+        Map<String, String> mergedProps = new HashMap<>(externalProps);
+        mergedProps.putAll(nifiProps);
+
         JsonArrayBuilder routesArray = Json.createArrayBuilder();
+        Map<String, Map<String, String>> routeGroups = groupRouteProperties(mergedProps);
+
+        for (Map.Entry<String, Map<String, String>> routeEntry : routeGroups.entrySet()) {
+            String routeName = routeEntry.getKey();
+            Map<String, String> routeProps = routeEntry.getValue();
+            String path = routeProps.get("path");
+            if (path == null || path.isBlank()) {
+                continue;
+            }
+
+            // Determine source
+            boolean inExternal = externalRouteNames.contains(routeName);
+            boolean inNifi = nifiRouteNames.contains(routeName);
+            String source;
+            if (inExternal && inNifi) {
+                source = "both";
+            } else if (inExternal) {
+                source = "external";
+            } else {
+                source = "nifi";
+            }
+
+            JsonObjectBuilder routeObj = buildRouteObject(routeName, routeProps);
+            routeObj.add("source", source);
+            routesArray.add(routeObj);
+        }
+        return routesArray;
+    }
+
+    private static Set<String> extractRouteNames(Map<String, String> props) {
+        Set<String> names = new HashSet<>();
+        for (String key : props.keySet()) {
+            if (key.startsWith(ROUTE_PREFIX)) {
+                String remainder = key.substring(ROUTE_PREFIX.length());
+                int dot = remainder.indexOf('.');
+                if (dot > 0) {
+                    names.add(remainder.substring(0, dot));
+                }
+            }
+        }
+        return names;
+    }
+
+    private static Map<String, Map<String, String>> groupRouteProperties(Map<String, String> props) {
         Map<String, Map<String, String>> routeGroups = new HashMap<>();
         for (Map.Entry<String, String> entry : props.entrySet()) {
             if (entry.getKey().startsWith(ROUTE_PREFIX)) {
@@ -791,45 +877,41 @@ public class GatewayProxyServlet extends HttpServlet {
                 }
             }
         }
-        for (Map.Entry<String, Map<String, String>> routeEntry : routeGroups.entrySet()) {
-            Map<String, String> routeProps = routeEntry.getValue();
-            String path = routeProps.get("path");
-            if (path == null || path.isBlank()) {
-                continue;
-            }
-            JsonObjectBuilder routeObj = Json.createObjectBuilder();
-            routeObj.add("name", routeEntry.getKey());
-            routeObj.add("path", path);
-            routeObj.add("enabled", !FALSE_STRING.equalsIgnoreCase(
-                    routeProps.getOrDefault("enabled", "true")));
-            routeObj.add("methods", buildStringArray(routeProps.get("methods")));
-            routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
-            routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
-            String schema = routeProps.get("schema");
-            if (schema != null && !schema.isBlank()) {
-                routeObj.add("schema", schema);
-            }
-            String successOutcome = routeProps.get("success-outcome");
-            if (successOutcome != null && !successOutcome.isBlank()) {
-                routeObj.add("successOutcome", successOutcome);
-            } else if (!FALSE_STRING.equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
-                routeObj.add("successOutcome", routeEntry.getKey());
-            }
-            routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
-                    routeProps.getOrDefault("create-flowfile", "true")));
-            String authMode = routeProps.getOrDefault("auth-mode", "bearer");
-            routeObj.add("authMode", authMode);
-            String maxReqSize = routeProps.get("max-request-size");
-            if (maxReqSize != null && !maxReqSize.isBlank()) {
-                try {
-                    routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize.strip()));
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
-                }
-            }
-            routesArray.add(routeObj);
+        return routeGroups;
+    }
+
+    private static JsonObjectBuilder buildRouteObject(String routeName, Map<String, String> routeProps) {
+        JsonObjectBuilder routeObj = Json.createObjectBuilder();
+        routeObj.add("name", routeName);
+        routeObj.add("path", routeProps.get("path"));
+        routeObj.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+                routeProps.getOrDefault("enabled", "true")));
+        routeObj.add("methods", buildStringArray(routeProps.get("methods")));
+        routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
+        routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
+        String schema = routeProps.get("schema");
+        if (schema != null && !schema.isBlank()) {
+            routeObj.add("schema", schema);
         }
-        return routesArray;
+        String successOutcome = routeProps.get("success-outcome");
+        if (successOutcome != null && !successOutcome.isBlank()) {
+            routeObj.add("successOutcome", successOutcome);
+        } else if (!FALSE_STRING.equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
+            routeObj.add("successOutcome", routeName);
+        }
+        routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
+                routeProps.getOrDefault("create-flowfile", "true")));
+        String authMode = routeProps.getOrDefault("auth-mode", "bearer");
+        routeObj.add("authMode", authMode);
+        String maxReqSize = routeProps.get("max-request-size");
+        if (maxReqSize != null && !maxReqSize.isBlank()) {
+            try {
+                routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize.strip()));
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
+            }
+        }
+        return routeObj;
     }
 
     /**

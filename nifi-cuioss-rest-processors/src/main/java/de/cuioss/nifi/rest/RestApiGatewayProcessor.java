@@ -17,6 +17,7 @@
 package de.cuioss.nifi.rest;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.nifi.rest.config.AuthMode;
@@ -44,6 +45,7 @@ import javax.net.ssl.SSLContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -80,12 +82,16 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES);
 
     final JettyServerManager serverManager = new JettyServerManager();
+    /** Injectable for testing — when null, a new instance is created in onScheduled. */
+    ConfigurationManager configurationManager;
     /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
     private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
     /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
     private final ConcurrentHashMap<String, String> routeToOutcome = new ConcurrentHashMap<>();
+    /** Guards lazy loading of external config relationships before @OnScheduled. */
+    private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -106,9 +112,37 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public Set<Relationship> getRelationships() {
+        if (!externalRelationshipsLoaded.get() && dynamicRelationships.isEmpty()) {
+            loadExternalConfigRelationships();
+        }
         Set<Relationship> relationships = new HashSet<>(dynamicRelationships.values());
         relationships.add(RestApiGatewayConstants.Relationships.FAILURE);
         return relationships;
+    }
+
+    private void loadExternalConfigRelationships() {
+        if (!externalRelationshipsLoaded.compareAndSet(false, true)) {
+            return;
+        }
+        Map<String, String> routeProps = getExternalRouteProperties();
+        if (!routeProps.isEmpty()) {
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(routeProps);
+            updateDynamicRelationships(routes);
+        }
+    }
+
+    private Map<String, String> getExternalRouteProperties() {
+        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
+        if (!configManager.isConfigurationLoaded()) {
+            return Map.of();
+        }
+        Map<String, String> routeProps = new HashMap<>();
+        configManager.getStaticProperties().forEach((key, value) -> {
+            if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
+                routeProps.put(key, value);
+            }
+        });
+        return routeProps;
     }
 
     @OnScheduled
@@ -116,8 +150,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int queueSize = context.getProperty(RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE).asInteger();
         requestQueue = new LinkedBlockingQueue<>(queueSize);
 
-        // Parse routes from dynamic properties
-        Map<String, String> allProperties = new HashMap<>();
+        // Load external config file routes first (lower priority)
+        Map<String, String> allProperties = new HashMap<>(getExternalRouteProperties());
+        if (!allProperties.isEmpty()) {
+            LOGGER.info(RestApiLogMessages.INFO.EXTERNAL_ROUTES_LOADED, allProperties.size());
+        }
+        // NiFi dynamic properties override (higher priority)
         context.getProperties().forEach((key, value) -> allProperties.put(key.getName(), value));
         List<RouteConfiguration> routes = RouteConfigurationParser.parse(allProperties);
 
@@ -133,6 +171,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         // Update dynamic relationships
         updateDynamicRelationships(routes);
+        externalRelationshipsLoaded.set(true);
 
         // Resolve services
         JwtIssuerConfigService configService = context.getProperty(

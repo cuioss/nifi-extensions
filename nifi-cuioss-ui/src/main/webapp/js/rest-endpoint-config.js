@@ -551,29 +551,77 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         const props = res.properties || {};
         renderGlobalSettings(container, props);
 
-        // Fetch gateway config for management endpoints (retry once after delay)
-        const loadManagement = async (retries = 1) => {
+        let gwRoutes = null;
+
+        // Fetch gateway config for management endpoints and merged routes (retry once after delay)
+        const loadGatewayConfig = async (retries = 1) => {
             try {
                 const gwConfig = await api.fetchGatewayApi('/config');
                 if (gwConfig && gwConfig.managementEndpoints) {
                     renderManagementEndpoints(container, gwConfig.managementEndpoints, componentId);
                 }
+                // Use /config routes as authoritative source (includes external + NiFi routes)
+                if (gwConfig && gwConfig.routes) {
+                    gwRoutes = gwConfig.routes;
+                }
             } catch {
                 if (retries > 0) {
                     await new Promise((r) => setTimeout(r, 2000));
-                    return loadManagement(retries - 1);
+                    return loadGatewayConfig(retries - 1);
                 }
-                /* gateway may not be running yet — ignore */
+                /* gateway may not be running yet — fall back to NiFi properties only */
             }
         };
-        await loadManagement();
+        await loadGatewayConfig();
 
-        const routes = parseRouteProperties(props);
         const connectedRels = await api.getConnectedRelationships(componentId);
-        renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
+
+        if (gwRoutes) {
+            // Convert /config route array to route map with source info
+            const routes = convertGatewayRoutesToMap(gwRoutes);
+            renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
+        } else {
+            // Fallback: parse routes from NiFi processor properties only
+            const routes = parseRouteProperties(props);
+            renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
+        }
     } catch {
         renderRouteSummaryTable(routesContainer, {}, componentId);
     }
+};
+
+/**
+ * Convert gateway /config route array to the route map format used by the UI.
+ * Each route includes a _source field indicating its origin.
+ * @param {Array} gwRoutes  routes array from /config response
+ * @returns {Object} route map {name: {path, methods, enabled, ..., _source}}
+ */
+const convertGatewayRoutesToMap = (gwRoutes) => {
+    const routes = {};
+    for (const route of gwRoutes) {
+        if (!route.name || !route.enabled) continue;
+        const name = route.name;
+        routes[name] = {
+            path: route.path || '',
+            methods: Array.isArray(route.methods) ? route.methods.join(',') : (route.methods || ''),
+            enabled: route.enabled === false ? 'false' : 'true',
+            'required-roles': Array.isArray(route.requiredRoles) ? route.requiredRoles.join(',') : (route.requiredRoles || ''),
+            'required-scopes': Array.isArray(route.requiredScopes) ? route.requiredScopes.join(',') : (route.requiredScopes || ''),
+            'auth-mode': route.authMode || 'bearer',
+            'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
+            _source: route.source || 'nifi'
+        };
+        if (route.schema) {
+            routes[name].schema = route.schema;
+        }
+        if (route.successOutcome) {
+            routes[name]['success-outcome'] = route.successOutcome;
+        }
+        if (route.maxRequestSize != null) {
+            routes[name]['max-request-size'] = String(route.maxRequestSize);
+        }
+    }
+    return routes;
 };
 
 // ---------------------------------------------------------------------------
@@ -617,9 +665,12 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
         tbody.appendChild(emptyRow);
     } else {
         for (const name of routeNames) {
-            const outcome = routes[name]?.['success-outcome']?.trim() || name;
+            const routeProps = routes[name];
+            const outcome = routeProps?.['success-outcome']?.trim() || name;
             const connected = !connectedRels || connectedRels.has(outcome);
-            const row = createTableRow(name, routes[name], componentId, container, 'persisted', connected);
+            const source = routeProps?._source;
+            const origin = (source === 'external') ? 'external' : 'persisted';
+            const row = createTableRow(name, routeProps, componentId, container, origin, connected);
             tbody.appendChild(row);
         }
     }
@@ -629,11 +680,14 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
 
 /**
  * Build an origin badge HTML snippet for a route row.
- * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
  * @param {boolean} connected  whether the route's relationship is wired on the NiFi canvas
  * @returns {string} HTML string for the badge
  */
 const buildOriginBadge = (origin, connected) => {
+    if (origin === 'external') {
+        return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}">${sanitizeHtml(t('origin.badge.external'))}</span>`;
+    }
     if (origin === 'new') {
         return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
     }
@@ -652,7 +706,7 @@ const buildOriginBadge = (origin, connected) => {
  * @param {Object} props  route properties
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
- * @param {'persisted'|'modified'|'new'} origin  the route origin state
+ * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
  * @param {boolean} [connected=true]  whether the route's relationship is wired on the NiFi canvas
  * @returns {HTMLTableRowElement}
  */
@@ -690,6 +744,13 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     row.dataset.authMode = authMode;
     const authModeBadge = formatAuthModeBadges(authMode);
 
+    const isExternalOnly = origin === 'external';
+    // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
+    const actionsHtml = isExternalOnly
+        ? `<button class="edit-route-button" title="${sanitizeHtml(t('route.source.external.edit.tooltip'))}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>`
+        : `<button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
+            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
+
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
         <td>${outcomeCell}</td>
@@ -697,10 +758,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
-        <td>
-            <button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
-            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
-        </td>`;
+        <td>${actionsHtml}</td>`;
 
     // Store props reference on the row so it can be updated after save
     row._routeProps = props;
@@ -712,9 +770,11 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         openInlineEditor(routesContainer, row.dataset.routeName, row._routeProps, componentId, row);
     });
 
-    row.querySelector('.remove-route-button').addEventListener('click', async () => {
-        await confirmRemoveRoute(name, () => removeRoute(row, name, routesContainer, componentId));
-    });
+    if (!isExternalOnly) {
+        row.querySelector('.remove-route-button').addEventListener('click', async () => {
+            await confirmRemoveRoute(name, () => removeRoute(row, name, routesContainer, componentId));
+        });
+    }
 
     return row;
 };

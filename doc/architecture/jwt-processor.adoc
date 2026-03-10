@@ -32,7 +32,7 @@ The CS provides:
 
 The `TokenValidator` is stateful -- it maintains JWKS key caches and background refresh tasks. The processor preserves a single instance between invocations:
 
-* **`@OnScheduled`**: Initialize `TokenValidator` with configured issuers. Use `volatile` reference with double-checked locking for thread safety.
+* **`@OnScheduled`**: Initialize `TokenValidator` with configured issuers. Use `AtomicReference` or `AtomicBoolean` for thread-safe lazy initialization.
 * **`onTrigger`**: Detect configuration changes (hash comparison). If changed, recreate the `TokenValidator`. Validate tokens using the cached instance.
 * **`@OnStopped`**: Clean up resources (HTTP connections, background threads, caches).
 

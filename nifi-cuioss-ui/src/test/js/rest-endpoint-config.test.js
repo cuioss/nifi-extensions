@@ -2336,4 +2336,113 @@ describe('rest-endpoint-config', () => {
             );
         });
     });
+
+    // -----------------------------------------------------------------------
+    // External routes from /config
+    // -----------------------------------------------------------------------
+
+    describe('external routes from /config', () => {
+        const GATEWAY_CONFIG_WITH_EXTERNAL = {
+            managementEndpoints: [
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer',
+                    methods: ['GET'], requiredRoles: '', requiredScopes: '', builtIn: true }
+            ],
+            routes: [
+                { name: 'data', path: '/api/data', enabled: true, methods: ['GET', 'POST'],
+                    requiredRoles: [], requiredScopes: [], authMode: 'bearer',
+                    createFlowFile: true, successOutcome: 'data', source: 'external' },
+                { name: 'users', path: '/api/users', enabled: true, methods: ['GET'],
+                    requiredRoles: ['ADMIN'], requiredScopes: [], authMode: 'bearer',
+                    createFlowFile: true, successOutcome: 'users', source: 'nifi' }
+            ],
+            externalConfigLoaded: true
+        };
+
+        it('should render external routes with external origin badge', async () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: SAMPLE_PROPERTIES,
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockResolvedValue(GATEWAY_CONFIG_WITH_EXTERNAL);
+
+            await init(container);
+            await tick();
+
+            const dataRow = container.querySelector('tr[data-route-name="data"]');
+            expect(dataRow).not.toBeNull();
+            expect(dataRow.dataset.origin).toBe('external');
+            const badge = dataRow.querySelector('.origin-external');
+            expect(badge).not.toBeNull();
+        });
+
+        it('should show edit button but no delete button for external routes', async () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: SAMPLE_PROPERTIES,
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockResolvedValue(GATEWAY_CONFIG_WITH_EXTERNAL);
+
+            await init(container);
+            await tick();
+
+            const dataRow = container.querySelector('tr[data-route-name="data"]');
+            expect(dataRow.querySelector('.edit-route-button')).not.toBeNull();
+            expect(dataRow.querySelector('.remove-route-button')).toBeNull();
+        });
+
+        it('should show edit/delete buttons for NiFi routes even when external routes exist', async () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: SAMPLE_PROPERTIES,
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockResolvedValue(GATEWAY_CONFIG_WITH_EXTERNAL);
+
+            await init(container);
+            await tick();
+
+            const usersRow = container.querySelector('tr[data-route-name="users"]');
+            expect(usersRow).not.toBeNull();
+            expect(usersRow.dataset.origin).toBe('persisted');
+            expect(usersRow.querySelector('.edit-route-button')).not.toBeNull();
+            expect(usersRow.querySelector('.remove-route-button')).not.toBeNull();
+        });
+
+        it('should fall back to NiFi-only routes when /config unavailable', async () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: SAMPLE_PROPERTIES,
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockRejectedValue(new Error('Gateway unavailable'));
+
+            await init(container);
+            await tick();
+
+            // Should still render routes from NiFi properties
+            const rows = container.querySelectorAll('.route-summary-table tbody tr[data-route-name]');
+            expect(rows.length).toBe(2); // health and data from SAMPLE_PROPERTIES
+        });
+
+        it('should not display disabled external routes', async () => {
+            api.getComponentProperties.mockResolvedValue({
+                properties: SAMPLE_PROPERTIES,
+                revision: { version: 1 }
+            });
+            api.fetchGatewayApi.mockResolvedValue({
+                managementEndpoints: [],
+                routes: [
+                    { name: 'data', path: '/api/data', enabled: false, methods: ['GET'],
+                        requiredRoles: [], requiredScopes: [], authMode: 'bearer',
+                        createFlowFile: true, source: 'external' }
+                ],
+                externalConfigLoaded: true
+            });
+
+            await init(container);
+            await tick();
+
+            // Disabled routes are filtered out by convertGatewayRoutesToMap
+            const dataRow = container.querySelector('tr[data-route-name="data"]');
+            expect(dataRow).toBeNull();
+        });
+    });
 });
