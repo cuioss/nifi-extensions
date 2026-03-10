@@ -816,9 +816,10 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Open editor for first route
-        const firstEditBtn = summaryTable.locator(".edit-route-button").first();
-        await firstEditBtn.click();
+        // Open editor for a route WITHOUT schema (e.g. 'data') to test toggle behavior
+        const dataRouteRow = summaryTable.locator('tr[data-route-name="data"]');
+        const dataEditBtn = dataRouteRow.locator(".edit-route-button");
+        await dataEditBtn.click();
 
         const routeForm = endpointConfigPanel.locator(".route-form");
         await expect(routeForm).toBeVisible({ timeout: 5000 });
@@ -827,7 +828,7 @@ test.describe("REST API Gateway Tabs", () => {
         const schemaCheckbox = routeForm.locator(".schema-validation-checkbox");
         await expect(schemaCheckbox).toBeVisible({ timeout: 5000 });
 
-        // Schema container should be hidden by default (route likely has no schema)
+        // Schema container should be hidden by default (data route has no schema)
         const schemaContainer = routeForm.locator(".field-container-schema");
         await expect(schemaContainer).toBeHidden();
 
@@ -838,6 +839,10 @@ test.describe("REST API Gateway Tabs", () => {
         // Uncheck — hidden again
         await schemaCheckbox.uncheck();
         await expect(schemaContainer).toBeHidden();
+
+        // Close editor to restore table for subsequent tests
+        const cancelBtn = routeForm.locator("button", { hasText: "Cancel" });
+        await cancelBtn.click();
     });
 
     test("should show persisted badge for loaded routes", async ({
@@ -857,19 +862,19 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // All loaded rows should have data-origin="persisted"
-        // Lock icon badge only appears for routes with connected relationships on the canvas
+        // All loaded rows should have a known origin (persisted or external)
         const dataRows = summaryTable.locator("tbody tr[data-route-name]");
         const rowCount = await dataRows.count();
         expect(rowCount).toBeGreaterThanOrEqual(1);
 
         for (let i = 0; i < rowCount; i++) {
             const row = dataRows.nth(i);
-            await expect(row).toHaveAttribute("data-origin", "persisted");
+            const origin = await row.getAttribute("data-origin");
+            expect(["persisted", "external"]).toContain(origin);
         }
-        // At least one route should have the lock icon (connected on canvas)
-        const connectedBadges = summaryTable.locator(".origin-persisted");
-        expect(await connectedBadges.count()).toBeGreaterThanOrEqual(1);
+        // At least one route should have an origin badge (external or persisted)
+        const originBadges = summaryTable.locator(".origin-external, .origin-persisted");
+        expect(await originBadges.count()).toBeGreaterThanOrEqual(1);
     });
 
     test("should show new badge after adding a route", async ({

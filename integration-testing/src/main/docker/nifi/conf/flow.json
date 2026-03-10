@@ -993,7 +993,12 @@
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
             "autoTerminatedRelationships": [
-              "failure"
+              "failure",
+              "data",
+              "admin",
+              "validated",
+              "inline-validated",
+              "disabled-test"
             ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",

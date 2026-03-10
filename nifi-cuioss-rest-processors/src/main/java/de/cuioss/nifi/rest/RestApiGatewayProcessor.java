@@ -45,6 +45,7 @@ import javax.net.ssl.SSLContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -89,6 +90,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
     /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
     private final ConcurrentHashMap<String, String> routeToOutcome = new ConcurrentHashMap<>();
+    /** Guards lazy loading of external config relationships before @OnScheduled. */
+    private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -109,9 +112,31 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public Set<Relationship> getRelationships() {
+        if (!externalRelationshipsLoaded.get() && dynamicRelationships.isEmpty()) {
+            loadExternalConfigRelationships();
+        }
         Set<Relationship> relationships = new HashSet<>(dynamicRelationships.values());
         relationships.add(RestApiGatewayConstants.Relationships.FAILURE);
         return relationships;
+    }
+
+    private void loadExternalConfigRelationships() {
+        if (!externalRelationshipsLoaded.compareAndSet(false, true)) {
+            return;
+        }
+        var configManager = (configurationManager != null) ? configurationManager : new ConfigurationManager();
+        if (configManager.isConfigurationLoaded()) {
+            Map<String, String> routeProps = new HashMap<>();
+            configManager.getStaticProperties().forEach((key, value) -> {
+                if (key.startsWith(RouteConfigurationParser.ROUTE_PREFIX)) {
+                    routeProps.put(key, value);
+                }
+            });
+            if (!routeProps.isEmpty()) {
+                List<RouteConfiguration> routes = RouteConfigurationParser.parse(routeProps);
+                updateDynamicRelationships(routes);
+            }
+        }
     }
 
     @OnScheduled
@@ -148,6 +173,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         // Update dynamic relationships
         updateDynamicRelationships(routes);
+        externalRelationshipsLoaded.set(true);
 
         // Resolve services
         JwtIssuerConfigService configService = context.getProperty(

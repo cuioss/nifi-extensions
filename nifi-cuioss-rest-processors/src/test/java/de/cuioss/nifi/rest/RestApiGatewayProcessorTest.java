@@ -36,6 +36,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -463,6 +464,66 @@ class RestApiGatewayProcessorTest {
 
                 runner.run(1, false, false);
                 assertEquals(1, runner.getFlowFilesForRelationship("nifionly").size());
+            } finally {
+                runner.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should expose external config relationships before scheduling")
+        void shouldExposeExternalConfigRelationshipsBeforeScheduling(@TempDir Path tempDir) throws Exception {
+            writeConfigFile(tempDir, """
+                    restapi.data.path=/api/data
+                    restapi.data.methods=GET
+                    restapi.data.success-outcome=data
+                    restapi.admin.path=/api/admin
+                    restapi.admin.methods=GET
+                    restapi.admin.success-outcome=admin
+                    """);
+
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // Call getRelationships() WITHOUT scheduling — simulates NiFi framework calling before @OnScheduled
+            var relationships = processor.getRelationships();
+            var relationshipNames = relationships.stream()
+                    .map(org.apache.nifi.processor.Relationship::getName)
+                    .collect(Collectors.toSet());
+
+            assertTrue(relationshipNames.contains("failure"), "Should always contain failure");
+            assertTrue(relationshipNames.contains("data"), "Should contain 'data' from external config");
+            assertTrue(relationshipNames.contains("admin"), "Should contain 'admin' from external config");
+        }
+
+        @Test
+        @DisplayName("Should merge external and NiFi relationships on schedule")
+        void shouldMergeExternalAndNifiRelationshipsOnSchedule(@TempDir Path tempDir) throws Exception {
+            writeConfigFile(tempDir, """
+                    restapi.ext-route.path=/api/ext
+                    restapi.ext-route.methods=GET
+                    restapi.ext-route.success-outcome=ext-route
+                    """);
+
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // Add NiFi dynamic property route
+            runner.setProperty("restapi.nifi-route.path", "/api/nifi");
+            runner.setProperty("restapi.nifi-route.methods", "GET");
+            runner.setProperty("restapi.nifi-route.success-outcome", "nifi-route");
+
+            runner.run(1, false, true);
+            try {
+                var relationships = processor.getRelationships();
+                var relationshipNames = relationships.stream()
+                        .map(org.apache.nifi.processor.Relationship::getName)
+                        .collect(Collectors.toSet());
+
+                assertTrue(relationshipNames.contains("failure"), "Should always contain failure");
+                assertTrue(relationshipNames.contains("ext-route"), "Should contain 'ext-route' from external config");
+                assertTrue(relationshipNames.contains("nifi-route"), "Should contain 'nifi-route' from NiFi properties");
             } finally {
                 runner.stop();
             }
