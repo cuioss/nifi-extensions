@@ -151,7 +151,7 @@ The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, 
 |Allow Private Network Addresses for JWKS
 |`false`
 |Yes
-|Whether to allow JWKS URLs pointing to private network addresses. Enable for Docker/Kubernetes deployments where the IdP runs on an internal network.
+|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development or trusted environments (e.g., Docker/Kubernetes deployments where the IdP runs on an internal network).
 |===
 
 == Issuer Configuration (CS Dynamic Properties)
