@@ -195,23 +195,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
 
-        // 4. Auth-mode dispatch
-        AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
-                method, path, remoteHost);
-        if (authResult instanceof AuthResult.ErrorSent) {
-            return;
-        }
-        AccessTokenContent token = ((AuthResult.Success) authResult).token();
-
-        // 5. Authorization (shared — skipped when roles+scopes are empty)
-        if (token != null && hasAuthorizationRequirements(handler)) {
-            if (!authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
-                return;
-            }
-        }
-        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
-
-        // 6. Body read + size check
+        // 4. Body read + size check (before auth to avoid wasting CPU on oversized payloads)
         byte[] body = EMPTY_BODY;
         int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
         if (effectiveMaxSize > 0) {
@@ -225,6 +209,22 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 return;
             }
         }
+
+        // 5. Auth-mode dispatch
+        AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
+                method, path, remoteHost);
+        if (authResult instanceof AuthResult.ErrorSent) {
+            return;
+        }
+        AccessTokenContent token = ((AuthResult.Success) authResult).token();
+
+        // 6. Authorization (shared — skipped when roles+scopes are empty)
+        if (token != null && hasAuthorizationRequirements(handler)) {
+            if (!authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
+                return;
+            }
+        }
+        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
 
         // 7. Delegate to handler
         handler.process(sanitized.get(), token, body, request, response, callback);

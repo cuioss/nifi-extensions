@@ -206,6 +206,45 @@ class GatewayRequestHandlerTest {
     }
 
     @Nested
+    @DisplayName("Body Size Limit")
+    class BodySizeLimit {
+
+        @Test
+        @DisplayName("Should return 413 for oversized body")
+        void shouldReturn413ForOversizedBody() throws Exception {
+            // Create handler with tiny max body size
+            var smallHandler = new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
+                            .method("POST").build()), queue, 10),
+                    mockConfigService, 10); // 10 bytes max
+
+            Server smallServer = new Server();
+            ServerConnector connector = new ServerConnector(smallServer);
+            connector.setPort(0);
+            smallServer.addConnector(connector);
+            smallServer.setHandler(smallHandler);
+            smallServer.start();
+
+            int smallPort = connector.getLocalPort();
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://localhost:" + smallPort + "/api/data"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(413, response.statusCode());
+                assertTrue(response.body().contains("Payload Too Large"));
+                assertEquals(1L, smallHandler.getGatewaySecurityEvents().getCount(EventType.BODY_TOO_LARGE));
+            } finally {
+                smallServer.stop();
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("Authentication")
     class Authentication {
 
@@ -470,46 +509,6 @@ class GatewayRequestHandlerTest {
             assertEquals(ProblemDetail.CONTENT_TYPE,
                     response.headers().firstValue("Content-Type").orElse(""));
             assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTH_FAILED));
-        }
-    }
-
-
-    @Nested
-    @DisplayName("Body Size Limit")
-    class BodySizeLimit {
-
-        @Test
-        @DisplayName("Should return 413 for oversized body")
-        void shouldReturn413ForOversizedBody() throws Exception {
-            // Create handler with tiny max body size
-            var smallHandler = new GatewayRequestHandler(
-                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
-                            .method("POST").build()), queue, 10),
-                    mockConfigService, 10); // 10 bytes max
-
-            Server smallServer = new Server();
-            ServerConnector connector = new ServerConnector(smallServer);
-            connector.setPort(0);
-            smallServer.addConnector(connector);
-            smallServer.setHandler(smallHandler);
-            smallServer.start();
-
-            int smallPort = connector.getLocalPort();
-            try {
-                var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + smallPort + "/api/data"))
-                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
-                                .header("Content-Type", "application/json")
-                                .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
-                                .build(),
-                        HttpResponse.BodyHandlers.ofString());
-
-                assertEquals(413, response.statusCode());
-                assertTrue(response.body().contains("Payload Too Large"));
-                assertEquals(1L, smallHandler.getGatewaySecurityEvents().getCount(EventType.BODY_TOO_LARGE));
-            } finally {
-                smallServer.stop();
-            }
         }
     }
 
