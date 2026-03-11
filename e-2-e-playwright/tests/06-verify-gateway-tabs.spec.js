@@ -1333,7 +1333,6 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should export gateway metrics in JSON format", async ({
-        page,
         customUIFrame,
         processorService,
     }) => {
@@ -1350,10 +1349,10 @@ test.describe("REST API Gateway Tabs", () => {
         });
         await expect(exportButton).toBeVisible({ timeout: 5000 });
 
-        // Click export button
+        // Click export button to show export options
         await exportButton.click();
 
-        // Wait for export options to appear
+        // Wait for export options to appear (toggled via CSS class 'visible')
         const exportOptions = customUIFrame.locator(
             '[data-testid="export-options"]',
         );
@@ -1370,13 +1369,51 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(jsonButton).toBeVisible();
         await expect(prometheusButton).toBeVisible();
 
-        // Click JSON export and verify a download is triggered
-        const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
-        await jsonButton.click();
-        const download = await downloadPromise;
+        // Intercept the Blob download inside the iframe by overriding
+        // URL.createObjectURL and the click-triggered anchor download.
+        // The export creates a Blob URL and programmatically clicks an <a>,
+        // which does not emit a "download" event on the parent page.
+        const iframePage = customUIFrame.page();
+        const frame = iframePage
+            .frames()
+            .find((f) => f.url().includes("nifi-cuioss-ui"));
+        const downloadInfo = await frame.evaluate(() => {
+            return new Promise((resolve) => {
+                const origCreateObjectURL =
+                    globalThis.URL.createObjectURL.bind(globalThis.URL);
+                globalThis.URL.createObjectURL = (blob) => {
+                    const url = origCreateObjectURL(blob);
+                    blob.text().then((text) => {
+                        resolve({ url, filename: null, content: text });
+                    });
+                    return url;
+                };
+                const origCreateElement =
+                    document.createElement.bind(document);
+                document.createElement = (tag, opts) => {
+                    const el = origCreateElement(tag, opts);
+                    if (tag === "a") {
+                        const origClick = el.click.bind(el);
+                        el.click = () => {
+                            resolve({
+                                url: el.href,
+                                filename: el.download,
+                                content: null,
+                            });
+                            origClick();
+                        };
+                    }
+                    return el;
+                };
+                // Click the JSON export button from inside the frame
+                document
+                    .querySelector('[data-testid="export-json"]')
+                    ?.click();
+            });
+        });
 
-        // Verify the download has a meaningful filename
-        expect(download.suggestedFilename()).toMatch(/\.json$/i);
+        // Verify the download has a meaningful JSON filename
+        expect(downloadInfo.filename).toMatch(/\.json$/i);
     });
 
     test("should display gateway-specific help content", async ({
