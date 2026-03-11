@@ -14,7 +14,7 @@ How to write, organize, and debug Playwright tests for this module.
 e-2-e-playwright/
 ├── tests/                        # Test specifications
 │   ├── self-*.spec.js           # Self-tests (framework validation)
-│   ├── 0x-*.spec.js             # Functional tests (processor features)
+│   ├── NN-*.spec.js             # Functional tests (01-07, numbered for execution order)
 │   └── accessibility-*.spec.js  # WCAG compliance tests
 ├── fixtures/                     # Playwright test fixtures (setup/teardown)
 │   ├── auth-fixtures.js         # Authentication fixture
@@ -30,6 +30,7 @@ e-2-e-playwright/
 │   ├── accessibility-helper.js  # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
 │   ├── test-logger.js           # Unified per-test logging via testInfo.attach()
+│   ├── test-assertions.js       # Custom test assertion helpers
 │   └── run-tests-with-precheck.js# Self-test gating before functional tests
 └── docs/                         # Detailed documentation
 ----
@@ -38,7 +39,7 @@ e-2-e-playwright/
 
 === Using Consolidated Fixtures (recommended)
 
-The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection:
+The `test-fixtures.js` provides extended fixtures with automatic console logging and error detection. Key exports: `test`, `accessibilityTest`, `serialTest`, `gatewayTest`, `serialGatewayTest`, `expect`, and `takeStartScreenshot`.
 
 [source,javascript]
 ----
@@ -101,7 +102,7 @@ test('Processor management via API', async ({ page }) => {
 
 |Self-tests
 |Validate testing infrastructure
-|`self-login.spec.js`, `self-navigation.spec.js`
+|`self-login.spec.js`, `self-critical-errors.spec.js`
 
 |Functional
 |Test processor features
@@ -114,11 +115,11 @@ test('Processor management via API', async ({ page }) => {
 
 === Execution Order
 
-When run via Maven (`-Pintegration-tests`), tests execute in order:
+When run via Maven (`-Pintegration-tests`), tests execute in phases:
 
-1. Self-tests — if these fail, subsequent phases are skipped
-2. Functional tests
-3. Accessibility tests
+1. Auth-setup — one-time authentication via `global-setup.js`, saves storage state
+2. Self-tests — if these fail, subsequent phases are skipped (depends on auth-setup)
+3. Functional tests and accessibility tests (both depend on self-tests; they are independent of each other)
 
 When using `npm test`, the `run-tests-with-precheck.js` script gates functional tests behind self-test success.
 
@@ -151,7 +152,10 @@ The authentication flow:
 Chromium only, with these launch arguments:
 
 * `--disable-web-security` — cross-origin for testing
+* `--disable-features=VizDisplayCompositor` — rendering stability
+* `--enable-automation` — automation support
 * `--no-sandbox` — CI compatibility
+* `--disable-dev-shm-usage` — prevents shared memory issues in Docker
 * `--ignore-certificate-errors` — self-signed certs in dev
 
 == Debugging
@@ -188,7 +192,7 @@ After test runs, inspect:
 * *Traces*: `npx playwright show-trace target/test-results/*/trace.zip`
 * *Screenshots*: `target/test-results/screenshots/`
 * *Videos*: `target/test-results/videos/`
-* *Console logs*: Saved automatically by test fixtures to `target/logs/`
+* *Console logs*: Saved automatically by test fixtures as `browser.log` and `test-run.log` in each test's output directory
 
 === Container Logs
 

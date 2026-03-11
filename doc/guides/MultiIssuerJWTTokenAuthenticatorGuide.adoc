@@ -40,7 +40,7 @@ On success, token claims are written as `jwt.*` FlowFile attributes (subject, is
 
 image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
 
-. Alternatively, add a dynamic property for your identity provider by clicking the **+** button:
+. Alternatively, add a dynamic property on the **Controller Service** (not the processor) by clicking the **+** button:
 +
 [cols="1,2"]
 |===
@@ -102,7 +102,7 @@ Connect both relationships to downstream processors:
 |Require Valid Token
 |`true`
 |Yes
-|When `true`, missing or invalid tokens route to `authentication-failed`
+|When `true`, missing tokens route to `authentication-failed`. When `false`, missing tokens route to `success` with `jwt.present=false`. Invalid tokens (expired, bad signature, wrong issuer) always route to `authentication-failed` regardless of this setting.
 
 |Required Roles
 |--
@@ -141,42 +141,65 @@ The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, 
 |Allowed Algorithms
 |Secure defaults
 |No
-|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm and weak HMAC algorithms are always blocked.
+|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm is never allowed regardless of this setting.
 
 |Require HTTPS for JWKS URLs
 |`true`
 |Yes
 |Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
+
+|Allow Private Network Addresses for JWKS
+|`false`
+|Yes
+|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development or trusted environments (e.g., Docker/Kubernetes deployments where the IdP runs on an internal network).
 |===
 
 == Issuer Configuration (CS Dynamic Properties)
 
-Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<N>.`:
+Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<name>.` (where `<name>` is any identifier string, e.g., `keycloak`, `auth0`, or numeric like `1`, `2`):
 
 [cols="2,3,1"]
 |===
 |Dynamic Property |Description |Example
 
-|`issuer.<N>.jwks-url`
-|JWKS endpoint URL, file path, or inline key content (depends on JWKS Source Type)
+|`issuer.<name>.jwks-url`
+|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
 |`\https://auth.example.com/.well-known/jwks.json`
 
-|`issuer.<N>.enabled`
+|`issuer.<name>.enabled`
 |Enable or disable this issuer without removing the configuration
 |`true`
 
-|`issuer.<N>.audience`
+|`issuer.<name>.audience`
 |Required `aud` claim for tokens from this issuer
 |`api://my-service`
 
-|`issuer.<N>.scopes`
-|Comma-separated scopes required for authorization
-|`read,write`
+|`issuer.<name>.name`
+|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required
+|`Primary Auth Server`
 
-|`issuer.<N>.roles`
-|Comma-separated roles required for authorization
-|`admin,user`
+|`issuer.<name>.issuer`
+|Issuer URI (must match the `iss` claim in the JWT)
+|`\https://auth.example.com/`
+
+|`issuer.<name>.client-id`
+|Expected client ID claim for tokens from this issuer
+|`my-client-app`
+
+|`issuer.<name>.jwks-file`
+|File path to a local JWKS key file (alternative to `jwks-url`)
+|`/opt/nifi/conf/jwks.json`
+
+|`issuer.<name>.jwks-content`
+|Inline JWKS JSON content. *Not yet supported* -- the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
+|`{"keys":[...]}`
+
+|`issuer.<name>.jwks-type`
+|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The `content` type is recognized but not yet supported.
+|`url`
 |===
+
+NOTE: Roles and scopes are configured at the **processor level** via the `Required Roles` and `Required Scopes` properties, not as per-issuer CS dynamic properties.
 
 === Adding Multiple Issuers
 
@@ -194,7 +217,7 @@ issuer.3.jwks-url  = https://your-domain.auth0.com/.well-known/jwks.json
 issuer.3.audience  = https://api.example.com
 ----
 
-Each issuer can have its own audience, scopes, and roles. Issuers can be individually enabled/disabled with `issuer.<N>.enabled`.
+Each issuer can have its own audience. Issuers can be individually enabled/disabled with `issuer.<name>.enabled`. Roles and scopes are configured at the processor level and apply globally across all issuers.
 
 == Output FlowFile Attributes
 
@@ -205,7 +228,10 @@ On successful validation the processor sets these attributes on the FlowFile:
 |Attribute |Description
 
 |`jwt.present`
-|`true` if a JWT was found in the request
+|`true` if a JWT was successfully validated; `false` if missing (when token is not required)
+
+|`jwt.validatedAt`
+|ISO-8601 timestamp when the token was validated
 
 |`jwt.subject`
 |The `sub` claim
@@ -222,6 +248,9 @@ On successful validation the processor sets these attributes on the FlowFile:
 |`jwt.scopes`
 |Comma-separated scopes from the token
 
+|`jwt.groups`
+|Comma-separated groups from the token (omitted if empty)
+
 |`jwt.authorized`
 |`true` if scope/role authorization passed
 
@@ -233,6 +262,9 @@ On successful validation the processor sets these attributes on the FlowFile:
 
 |`jwt.error.reason`
 |Human-readable error description
+
+|`jwt.error.category`
+|Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
 |===
 
 == Static Configuration Files
@@ -268,10 +300,11 @@ The authenticator is configured with one Keycloak issuer:
 
 [source]
 ----
-issuer.keycloak.jwks-url = http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs
-issuer.keycloak.issuer    = http://keycloak:8080/realms/oauth_integration_tests
-issuer.keycloak.required-roles = read
+issuer.keycloak.jwks-url = https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs
+issuer.keycloak.issuer   = https://keycloak:8443/realms/oauth_integration_tests
 ----
+
+The processor-level property `jwt.authorization.required.roles = read` enforces role-based authorization across all issuers.
 
 See link:../../integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] for the complete pipeline architecture and test scenarios.
 
@@ -279,7 +312,7 @@ See link:../../integration-testing/doc/flow-pipeline.adoc[Flow Pipeline Design] 
 
 [source,bash]
 ----
-./mvnw verify -Pintegration-tests
+./mvnw verify -Pintegration-tests -pl integration-testing -am
 ----
 
 Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interactively.

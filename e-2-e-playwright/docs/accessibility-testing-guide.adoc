@@ -33,41 +33,35 @@ Tests use a fail-fast approach — they terminate with clear error messages if N
 
 == Tested Components
 
+The accessibility test suite validates the full custom UI page via axe-core and additionally runs targeted checks on specific components:
+
 [cols="1,2,3"]
 |===
-|Component |Selector |Requirements
+|Component |Selector |Test Coverage
+
+|Full Page
+|_(entire custom UI frame)_
+|axe-core WCAG 2.1 AA scan, custom checks (form labels, keyboard access, focus indicators, ARIA attributes)
 
 |Tab Navigation
 |`.jwt-tabs-header`
-|Keyboard navigation, focus indicators, ARIA labels
+|Existence verification
 
 |Configuration Form
 |`#issuer-config`
-|Form labels, required indicators, error messages
-
-|Token Verifier
-|`#token-verification`
-|Textarea labels, result display, error handling
-
-|Metrics Display
-|`#metrics`
-|Table headers, data labels, chart alternatives
-
-|Help Content
-|`.help-tab`
-|Heading structure, link text, content structure
+|Component-scoped axe-core scan + all custom checks (known pre-existing violation marked as expected failure)
 |===
 
 == Writing Accessibility Tests
 
+The existing WCAG compliance spec imports the base `test` fixture (not `accessibilityTest`):
+
 [source,javascript]
 ----
-import { accessibilityTest, expect } from '../fixtures/test-fixtures.js';
+import { test, expect, takeStartScreenshot } from '../fixtures/test-fixtures.js';
 
-accessibilityTest('Component accessibility', async ({ page, accessibilityHelper }) => {
-  await page.goto('/nifi');
-  await page.waitForLoadState('networkidle');
-
+test('Full page WCAG compliance check', async ({ page }) => {
+  const accessibilityHelper = new AccessibilityHelper(page);
   const results = await accessibilityHelper.runWCAGCheck();
   expect(results.passed).toBe(true);
 });
@@ -77,7 +71,8 @@ For component-specific checks:
 
 [source,javascript]
 ----
-accessibilityTest('Form accessibility', async ({ page, accessibilityHelper }) => {
+test('Form accessibility', async ({ page }) => {
+  const accessibilityHelper = new AccessibilityHelper(page);
   const result = await accessibilityHelper.checkComponent(
     '#issuer-config',
     'Configuration Form'
@@ -85,6 +80,8 @@ accessibilityTest('Form accessibility', async ({ page, accessibilityHelper }) =>
   expect(result.passed).toBe(true);
 });
 ----
+
+NOTE: The `accessibilityTest` export from `test-fixtures.js` adds an automatic post-test axe-core scan. The current WCAG spec file uses the base `test` fixture with explicit `AccessibilityHelper` calls for more granular control.
 
 == WCAG 2.1 Level AA Requirements
 
@@ -95,25 +92,25 @@ The framework checks these categories via axe-core (`wcag2aa`, `wcag21aa`, `best
 * **Understandable** — Form labels, error identification, consistent navigation
 * **Robust** — Valid markup, proper ARIA usage, screen reader compatibility
 
-== Known Issues Management
+== Disabled Rules
+
+Rules that cannot be satisfied in the NiFi custom UI context are disabled globally in `accessibility-helper.js`:
 
 [source,javascript]
 ----
-export const KNOWN_ISSUES = {
-  skipRules: [],          // Rule IDs to skip temporarily
-  skipElements: [],       // CSS selectors to exclude
-  expectedViolations: []  // Documented acceptable violations with reasons
-};
+const DISABLED_RULES = ["bypass", "landmark-one-main", "region"];
 ----
+
+These rules are disabled because the custom UI runs inside NiFi's iframe and cannot control page-level landmarks.
 
 == Maven Integration
 
-Accessibility tests run via `exec-maven-plugin` in the `integration-test` phase when the `integration-tests` profile is active. They execute after self-tests and functional tests, with fail-fast behavior.
+Accessibility tests run via `exec-maven-plugin` in the `integration-test` phase when the `integration-tests` profile is active. Both accessibility and functional tests depend on `self-tests` in the Playwright config. With `workers: 1`, they execute sequentially (not in parallel).
 
 [source,bash]
 ----
 # Full suite via Maven (starts containers, runs all phases, stops containers)
-./mvnw -pl e-2-e-playwright -Pintegration-tests clean verify
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
 == Troubleshooting

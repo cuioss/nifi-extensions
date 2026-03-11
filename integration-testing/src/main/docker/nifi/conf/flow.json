@@ -39,7 +39,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Listening Port": "7777",
@@ -87,7 +87,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-update-attribute-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "jwt.token": "${http.headers.Authorization:replaceFirst('Bearer ', '')}"
@@ -189,7 +189,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log Level": "info",
@@ -237,7 +237,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log Level": "info",
@@ -285,7 +285,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-update-attribute-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "http.status.code": "200"
@@ -327,7 +327,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-update-attribute-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "http.status.code": "401"
@@ -369,7 +369,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "attributes-to-json-regex": "jwt\\..*",
@@ -425,7 +425,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "attributes-to-json-regex": "jwt\\..*",
@@ -481,7 +481,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "HTTP Status Code": "${http.status.code}",
@@ -532,7 +532,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "HTTP Status Code": "${http.status.code}",
@@ -891,7 +891,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-http-context-map-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Maximum Outstanding Requests": "1000",
@@ -915,7 +915,7 @@
                 "bundle": {
                   "group": "org.apache.nifi",
                   "artifact": "nifi-http-context-map-api",
-                  "version": "2.4.0"
+                  "version": "2.8.0"
                 }
               }
             ],
@@ -1022,7 +1022,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-data"
@@ -1064,7 +1064,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-validated"
@@ -1106,7 +1106,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-inline-validated"
@@ -1148,7 +1148,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-admin"
@@ -1354,7 +1354,7 @@
         "bundle": {
           "group": "org.apache.nifi",
           "artifact": "nifi-ssl-context-service-nar",
-          "version": "2.4.0"
+          "version": "2.8.0"
         },
         "properties": {
           "Keystore Filename": "./conf/keystore.p12",
@@ -1402,7 +1402,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-services-api-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             }
           }
         ],

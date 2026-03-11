@@ -29,17 +29,22 @@ The `type` field links to this documentation page. Error responses are produced 
 |400
 |Bad Request
 |Input sanitization failed -- malformed path, query parameters, or headers detected by cui-http security pipelines
-|`Request rejected: POTENTIAL_ATTACK_DETECTED`
+|`Request rejected: Known attack signature detected`
 
 |401
 |Unauthorized
-|Missing or invalid Bearer token. Includes `WWW-Authenticate: Bearer` header per RFC 6750. Missing scopes trigger `Bearer error="insufficient_scope"`.
+|Missing or invalid Bearer token. Includes `WWW-Authenticate: Bearer` header per RFC 6750.
 |`Missing or malformed Authorization header`
+
+|401
+|Unauthorized
+|Valid token but missing required scopes. Includes `WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`.
+|`Insufficient scopes: Missing scopes: [read]`
 
 |403
 |Forbidden
 |Valid token but missing required roles for the matched route
-|`Insufficient roles: missing [admin]`
+|`Insufficient roles: Missing roles: [admin]`
 
 |404
 |Not Found
@@ -49,12 +54,12 @@ The `type` field links to this documentation page. Error responses are produced 
 |405
 |Method Not Allowed
 |Route exists but the HTTP method is not in the allowed set. Includes `Allow` header listing permitted methods.
-|`Method POST is not allowed on route 'health'. Allowed methods: [GET]`
+|`Method POST not allowed on /health. Allowed: [GET]`
 
 |413
 |Payload Too Large
 |Request body exceeds the configured `rest.gateway.max.request.size` limit (default 1 MB) or per-route `restapi.<name>.max-request-size`
-|`Request body of 2097152 bytes exceeds maximum allowed size of 1048576 bytes`
+|`Request body size 2097152 exceeds maximum 1048576 bytes`
 
 |422
 |Unprocessable Content
@@ -82,7 +87,7 @@ Authentication failures include the `WWW-Authenticate` header per https://www.rf
 
 |Missing token |`WWW-Authenticate: Bearer`
 |Invalid token |`WWW-Authenticate: Bearer error="invalid_token"`
-|Insufficient scope |`WWW-Authenticate: Bearer error="insufficient_scope"`
+|Insufficient scope |`WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`
 |===
 
 == 422 Validation Error Details

@@ -5,18 +5,21 @@ HTTP requests go in, JWT validation happens, HTTP responses come back — with f
 
 == How It Works
 
-NiFi loads a pre-configured flow on startup (`flow.json`, gzipped as `flow.xml.gz`).
+NiFi loads a pre-configured flow on startup (`flow.json`, gzipped as `flow.json.gz`).
 The flow listens on port 7777 and acts as a JWT authentication gateway:
 
 ----
 HTTP Request (port 7777)
         │
         ▼
+UpdateAttr (Extract Token)
+        │
+        ▼
 MultiIssuerJWTTokenAuthenticator
         │
    ┌────┴─────┐
    │          │
-success   auth-failed
+success   authentication-failed
    │          │
    ▼          ▼
 LogAttribute LogAttribute
@@ -33,9 +36,10 @@ HTTP 200     HTTP 401
 (with JSON)  (with JSON)
 ----
 
-The full flow has 10 processors. The extra steps exist so NiFi can set the response status code, log what happened, and return jwt attributes as JSON:
+The full flow has 11 processors. The extra steps exist so NiFi can extract the bearer token, set the response status code, log what happened, and return jwt attributes as JSON:
 
 . **HandleHttpRequest** -- accepts HTTP on port 7777
+. **UpdateAttribute** (Extract Token) -- extracts the bearer token from the `Authorization` header into the `jwt.token` attribute
 . **MultiIssuerJWTTokenAuthenticator** -- validates the JWT and checks roles
 . **LogAttribute** (x2) -- logs attributes for debugging (one per path)
 . **UpdateAttribute** (x2) -- sets `http.status.code` to 200 or 401
@@ -56,7 +60,7 @@ Example response body for a valid, authorized token:
   "jwt.present": "true",
   "jwt.authorized": "true",
   "jwt.subject": "d1234-abcd-...",
-  "jwt.issuer": "http://keycloak:8080/realms/oauth_integration_tests",
+  "jwt.issuer": "https://keycloak:8443/realms/oauth_integration_tests",
   "jwt.roles": "read,user",
   "jwt.validatedAt": "2025-01-15T10:30:00Z"
 }
@@ -66,10 +70,10 @@ Example response body for a valid, authorized token:
 
 The authenticator is configured with one issuer pointing at Keycloak inside the Docker network:
 
-- JWKS URL: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
-- Issuer: `http://keycloak:8080/realms/oauth_integration_tests`
+- JWKS URL: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
+- Issuer: `https://keycloak:8443/realms/oauth_integration_tests`
 - Required role: `read`
-- HTTPS for JWKS: disabled (Keycloak runs plain HTTP in Docker)
+- HTTPS for JWKS: required (`jwt.validation.require.https.for.jwks=true`); private-network addresses are allowed
 
 Only tokens with the `read` realm role get through. Everything else returns 401.
 
@@ -87,7 +91,7 @@ Two realms are pre-configured and auto-imported on startup.
 |limitedUser |drowssap |user
 |===
 
-Client: `test_client` / `yTKslWLtf4giJcWCaoVJ20H8sy6STexM`
+Client: `test_client` (public client -- no secret required)
 
 === `other_realm` (for signature testing)
 
@@ -115,7 +119,7 @@ Client: `other_client` / `otherClientSecretValue123456789`
 |testUser token (has `read` role) |200 |`jwt.present=true`, `jwt.authorized=true`, `jwt.subject` present, `jwt.issuer` matches Keycloak, `jwt.roles` contains `read`, `jwt.validatedAt` present
 |limitedUser token (no `read` role) |401 |`jwt.present=true`, `jwt.authorized=false`, `jwt.subject` present, `jwt.roles` does NOT contain `read`
 |Token from `other_realm` |401 |`jwt.error.code` present, `jwt.error.category` present
-|No Authorization header |401 |`jwt.present=false`
+|No Authorization header |401 |`jwt.error.category=EXTRACTION_ERROR`, `jwt.error.code=AUTH-001`
 |`Bearer not-a-valid-jwt` |401 |`jwt.error.code` present, `jwt.error.category` present
 |===
 
@@ -129,7 +133,7 @@ Client: `other_client` / `otherClientSecretValue123456789`
 - Queries process group status with `GET /flow/process-groups/root/status?recursive=true`
 - Verifies the JWT authenticator processor has `flowFilesIn > 0` and `flowFilesOut > 0`
 - Verifies both HandleHttpResponse processors received FlowFiles (success and failure paths)
-- Uses a trust-all SSL context for Docker's self-signed certificates
+- Uses a truststore-based SSL context for Docker's self-signed certificates (validates certificates against the known CA)
 
 == Running
 
@@ -141,8 +145,8 @@ Client: `other_client` / `otherClientSecretValue123456789`
 ./mvnw verify -Pintegration-tests -pl integration-testing -am
 
 # Quick smoke test — should return JSON body with jwt.* attributes
-TOKEN=$(curl -s -X POST http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
-  -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap' \
+TOKEN=$(curl -sk -X POST https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -d 'grant_type=password&client_id=test_client&username=testUser&password=drowssap' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
 curl -s http://localhost:7777 -H "Authorization: Bearer $TOKEN" | python3 -m json.tool   # 200 + JSON
@@ -155,7 +159,7 @@ Edit `flow.json`, then regenerate the gzipped file:
 
 ----
 cd integration-testing/src/main/docker/nifi/conf
-gzip -c flow.json > flow.xml.gz
+gzip -c flow.json > flow.json.gz
 ----
 
-NiFi 2.x reads JSON despite the `.xml.gz` filename. Restart the NiFi container after changes.
+Restart the NiFi container after changes.

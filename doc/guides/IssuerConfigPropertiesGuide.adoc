@@ -5,16 +5,18 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 == Prerequisites
 
 * Docker and Docker Compose installed
-* NiFi test environment set up (see <<test-environment-setup,Test Environment Setup>>)
+* NiFi test environment set up (see <<_test_environment_setup,Test Environment Setup>>)
 
 == Test Environment Setup
 
 . Clone the repository (if you haven't already)
 . Navigate to the repository root
 . Start the test environment:
- `bash
-   ./integration-testing/src/main/docker/run-and-deploy.sh
-`
++
+[source,bash]
+----
+./integration-testing/src/main/docker/run-and-deploy.sh
+----
 . Access NiFi UI at https://localhost:9095/nifi/ (credentials: testUser/drowssap)
 
 == Adding the Processor to the Canvas
@@ -38,7 +40,9 @@ This guide provides detailed instructions for working with the MultiIssuerJWTTok
 * Configure basic properties:
 ** JWT Issuer Config Service: reference to a configured JwtIssuerConfigService Controller Service
 ** Token Attribute: jwt.token (default)
-** Require Valid Token: true (default)
+** Require Valid Token: true (default) — controls missing-token behavior only; invalid tokens always route to `authentication-failed`
+** Required Roles: (optional) comma-separated list of roles the token must contain
+** Required Scopes: (optional) comma-separated list of scopes the token must contain
 
 === Configuring Issuer Properties
 
@@ -56,25 +60,27 @@ image::ui-configuration-tab.png[Issuer Configuration Tab]
 . To add a new issuer:
 * Click the "Add Issuer" button
 * Enter an issuer name (e.g., "keycloak")
-* Fill in the required fields:
-** Issuer URI: The URI of the token issuer (must match the "iss" claim in the JWT)
-** Example: `http://keycloak:8080/realms/oauth_integration_tests`
-** JWKS URL: The URL of the JWKS endpoint
-** Example: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+* Select the JWKS Source Type (URL or File) — this controls which JWKS input field is shown. Note: the UI also shows a "Memory" option, but inline JWKS content is not yet supported by the backend and will cause the issuer to be skipped.
+* Fill in the fields:
+** Issuer URI (required): The URI of the token issuer (must match the "iss" claim in the JWT)
+** Example: `https://keycloak:8443/realms/oauth_integration_tests`
+** JWKS URL (when type is URL): The URL of the JWKS endpoint
+** Example: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
+** JWKS File (when type is File): Path to a local JWKS key file
 ** Audience (optional): The expected audience claim value
 ** Client ID (optional): The client ID for token validation
 * Click "Save Issuer"
 
 ==== Method 2: Using Dynamic Properties (Manual Configuration)
 
-If the custom tab is not visible or not functioning properly, you can configure issuers using dynamic properties:
+If the custom tab is not visible or not functioning properly, you can configure issuers using dynamic properties on the **Controller Service**:
 
-. In the "Properties" tab, click the "+" button to add a new property
+. Open the Controller Service configuration, in the "Properties" tab click the "+" button to add a new property
 . Add properties in the format `issuer.<issuer-name>.<property-key>`:
 * `issuer.keycloak.issuer`: The URI of the token issuer
-** Example: `http://keycloak:8080/realms/oauth_integration_tests`
+** Example: `https://keycloak:8443/realms/oauth_integration_tests`
 * `issuer.keycloak.jwks-url`: The URL of the JWKS endpoint
-** Example: `http://keycloak:8080/realms/oauth_integration_tests/protocol/openid-connect/certs`
+** Example: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
 * `issuer.keycloak.audience` (optional): The expected audience claim value
 * `issuer.keycloak.client-id` (optional): The client ID for token validation
 . Click "Apply" to save the properties
@@ -84,12 +90,14 @@ If the custom tab is not visible or not functioning properly, you can configure 
 . Apply the configuration changes
 . Start the processor
 . Obtain a test token from Keycloak:
- `bash
-   curl -X POST \
- http://localhost:9080/realms/oauth_integration_tests/protocol/openid-connect/token \
- -H 'Content-Type: application/x-www-form-urlencoded' \
- -d 'grant_type=password&client_id=test_client&client_secret=yTKslWLtf4giJcWCaoVJ20H8sy6STexM&username=testUser&password=drowssap'
-`
++
+[source,bash]
+----
+curl -k -X POST \
+  https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=test_client&username=testUser&password=drowssap'
+----
 . Create a test flow to send the token to the processor:
 * Add a GenerateFlowFile processor
 * Connect it to the MultiIssuerJWTTokenAuthenticator
@@ -102,12 +110,12 @@ If the custom tab is not visible or not functioning properly, you can configure 
 
 === Custom UI Tab Not Visible
 
-If the "Issuer Configuration" tab is not visible:
+If the "Configuration" tab is not visible:
 
-. Check browser console for errors (F12 &gt; Console)
+. Check browser console for errors (F12 > Console)
 . Verify that the custom UI components are loaded:
-* Look for messages like "[DEBUG_LOG] Loading CSS for custom UI components"
-* Check for errors related to loading JavaScript or CSS files
+* Check for JavaScript or CSS loading errors in the browser console
+* Ensure the NiFi extensions NAR is properly deployed
 . Try refreshing the page or using a different browser
 . Fall back to using dynamic properties (Method 2) for configuration
 
@@ -116,9 +124,11 @@ If the "Issuer Configuration" tab is not visible:
 If the issuer configuration is not being applied:
 
 . Check the NiFi logs for errors:
- `bash
-   docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
-`
++
+[source,bash]
+----
+docker compose -f integration-testing/src/main/docker/docker-compose.yml logs nifi
+----
 . Verify that the processor is properly configured:
 * Check that the JWKS URL is correct and accessible
 * Ensure the issuer URI matches the "iss" claim in the JWT
@@ -157,8 +167,8 @@ The processor also supports loading configuration from external sources:
 . Environment variables
 . Configuration files
 
-Refer to the link:QuickStart.adoc#_static_configuration_files[Static Configuration Files] and link:QuickStart.adoc#_environment_variables[Environment Variables] sections in the Quick Start Guide for details.
+Refer to the link:../reference/configuration.adoc#_static_configuration_files[Static Configuration Files] and link:../reference/configuration.adoc#_environment_variables[Environment Variables] sections in the Configuration Reference for details.
 
 === Using with RestApiGatewayProcessor
 
-The same `JwtIssuerConfigService` Controller Service configured here is also used by the RestApiGatewayProcessor. If you configure issuers for the JWT processor, the gateway can reuse the same Controller Service instance. The gateway also provides its own **Issuer Configuration** tab for managing issuers directly from the gateway UI. See the link:QuickStart.adoc#_restapigateway_quick_start[RestApiGateway Quick Start] for gateway-specific configuration.
+The same `JwtIssuerConfigService` Controller Service configured here is also used by the RestApiGatewayProcessor. If you configure issuers for the JWT processor, the gateway can reuse the same Controller Service instance. The gateway also provides its own **Issuer Configuration** tab for managing issuers directly from the gateway UI. See the link:QuickStart.adoc[Quick Start Guide] for gateway-specific configuration.

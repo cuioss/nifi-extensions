@@ -2,28 +2,47 @@
 
 == Overview
 
-The `ProcessorApiManager` utility provides reliable, API-based management of the MultiIssuerJWTTokenAuthenticator processor on the NiFi canvas via the NiFi REST API, replacing UI-based interactions.
+The `ProcessorApiManager` utility provides reliable, API-based management of processors on the NiFi canvas via the NiFi REST API, replacing UI-based interactions. It provides full lifecycle management (add, remove, start, stop) for the `MultiIssuerJWTTokenAuthenticator` and discovery/navigation support for the `RestApiGatewayProcessor`, with process group navigation and result caching.
 
 == Key Components
 
 === ProcessorApiManager (`utils/processor-api-manager.js`)
 
-Core methods:
+Core methods (JWT processor):
 
-* *`ensureProcessorOnCanvas()`* — Ensures processor is on canvas (adds if missing). Throws on failure.
+* *`ensureProcessorOnCanvas()`* — Ensures JWT processor is on canvas (adds if missing). Throws on failure.
 * *`verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()`* — Checks if the processor type is available
 * *`verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()`* — Checks if the processor is on the canvas
 * *`addMultiIssuerJWTTokenAuthenticatorOnCanvas(position)`* — Adds the processor at specified position
 * *`removeMultiIssuerJWTTokenAuthenticatorFromCanvas()`* — Removes the processor from the canvas
 * *`startProcessor()`* / *`stopProcessor()`* — Start/stop the processor
 
+Gateway and process group methods:
+
+* *`ensureGatewayProcessorOnCanvas()`* — Verifies gateway processor exists and navigates to its process group (throws if not found)
+* *`getGatewayProcessorId()`* — Finds the RestApiGatewayProcessor and returns its ID
+* *`getGatewayProcessGroupId()`* — Finds the REST API Gateway process group ID
+* *`getJwtPipelineProcessGroupId()`* — Finds the JWT Auth Pipeline process group ID
+* *`navigateToProcessGroup(groupId)`* — Navigates the browser to a specific process group
+* *`getProcessorDetails(processorId)`* — Gets detailed processor info by ID
+* *`getProcessorsOnCanvas(groupId)`* — Returns all processors in a group
+* *`getRootProcessGroupId()`* — Gets the root process group ID
+* *`stopAllProcessors()`* — Stops all processors in the JWT Pipeline group
+* *`removeConnectionsForProcessor(processorId)`* — Removes all connections to/from a processor
+* *`makeApiCall(path, options)`* — Low-level NiFi REST API call (uses page context for auth)
+* *`clearCache()`* (static) — Clears the module-level process group/processor ID cache
+
+NOTE: `ProcessorApiManager` caches process group and processor IDs after first lookup (static cache persists across instances). Call `ProcessorApiManager.clearCache()` to force fresh API lookups. The cache is pre-seeded from `.auth/test-context.json` when available.
+
 === Setup Helper (`utils/processor-setup-helper.js`)
 
 Simplified functions for test setup/teardown:
 
-* *`setupMultiIssuerJWTAuthenticator(page, options)`* — Returns `true`/`false` (does not throw)
+* *`setupMultiIssuerJWTAuthenticator(page, options)`* — Returns `true`/`false` (does not throw). Options: `{ removeFirst: boolean }`
 * *`cleanupMultiIssuerJWTAuthenticator(page)`* — Removes processor after tests
 * *`verifyProcessorStatus(page)`* — Gets detailed processor status
+
+NOTE: `ProcessorApiManager` requires prior authentication — API calls use the page's browser context cookies (set during `AuthService.ensureReady()`). Without authentication, all API calls will fail with 401.
 
 == Usage Examples
 
@@ -52,6 +71,7 @@ test('My test that needs the processor', async ({ page }) => {
 ----
 import { test } from '@playwright/test';
 import { setupMultiIssuerJWTAuthenticator } from '../utils/processor-setup-helper.js';
+import { AuthService } from '../utils/auth-service.js';
 
 test.beforeEach(async ({ page }) => {
   const authService = new AuthService(page);
@@ -70,11 +90,17 @@ NOTE: `setupMultiIssuerJWTAuthenticator()` returns `true`/`false` and does not t
 == API Endpoints Used
 
 * `GET /nifi-api/flow/processor-types` — List available processor types
-* `GET /nifi-api/process-groups/{id}/processors` — List processors on canvas
+* `GET /nifi-api/flow/process-groups/root` — Get root process group
+* `GET /nifi-api/process-groups/{id}/processors` — List processors in a group
+* `GET /nifi-api/process-groups/{id}/process-groups` — List child process groups
 * `POST /nifi-api/process-groups/{id}/processors` — Add processor to canvas
 * `DELETE /nifi-api/processors/{id}` — Remove processor from canvas
 * `PUT /nifi-api/processors/{id}/run-status` — Start/stop processor
 * `GET /nifi-api/processors/{id}` — Get processor details
+* `PUT /nifi-api/flow/process-groups/{id}` — Start/stop all processors in a group
+* `GET /nifi-api/process-groups/{id}/connections` — List connections in a group
+* `POST /nifi-api/flowfile-queues/{id}/drop-requests` — Drop queued FlowFiles
+* `DELETE /nifi-api/connections/{id}` — Delete a connection
 
 == Troubleshooting
 
@@ -94,5 +120,5 @@ If `verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()` returns false:
 
 [source,bash]
 ----
-npm test -- self-processor-api-manager.spec.js
+npx playwright test tests/self-processor-api-manager.spec.js
 ----

@@ -15,7 +15,7 @@
     "playwright:codegen": "playwright codegen",
     "test": "NODE_EXTRA_CA_CERTS=../integration-testing/src/main/docker/certificates/localhost.crt node utils/run-tests-with-precheck.js",
     "test:self": "playwright test tests/self-*.spec.js --reporter=list",
-    "test:jwt": "node utils/run-tests-with-precheck.js tests/01-verify-configuration-tab.spec.js tests/03-verify-jwks-validation.spec.js",
+    "test:jwt": "node utils/run-tests-with-precheck.js tests/01-verify-configuration-tab.spec.js tests/02-verify-jwks-validation.spec.js",
     "test:no-precheck": "playwright test --grep-invert self- --reporter=list",
     "test:a11y": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=list",
     "test:a11y:full": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=html",

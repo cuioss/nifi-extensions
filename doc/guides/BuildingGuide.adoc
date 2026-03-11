@@ -29,7 +29,7 @@ How to build, test, and verify the NiFi Extensions project.
 ./mvnw clean verify -Psonar                      # SonarQube analysis
 ----
 
-This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules] covering https://github.com/cuioss/cui-llm-rules/tree/main/standards/java[Java], https://github.com/cuioss/cui-llm-rules/tree/main/standards/javascript[JavaScript], https://github.com/cuioss/cui-llm-rules/tree/main/standards/testing[testing], and https://github.com/cuioss/cui-llm-rules/tree/main/standards/documentation[documentation].
+This project follows centralized coding standards from https://github.com/cuioss/cui-llm-rules[cui-llm-rules].
 
 == Integration & E2E Tests
 
@@ -38,8 +38,11 @@ This project follows centralized coding standards from https://github.com/cuioss
 # Start Docker test environment (NiFi + Keycloak)
 ./integration-testing/src/main/docker/run-and-deploy.sh
 
-# Run integration tests via Maven
-./mvnw verify -Pintegration-tests
+# Run Java integration tests via Maven
+./mvnw verify -Pintegration-tests -pl integration-testing -am
+
+# Run E2E Playwright tests via Maven
+./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am
 
 # Run Playwright E2E tests directly
 cd e-2-e-playwright && npm run playwright:test
@@ -49,7 +52,7 @@ See link:../../integration-testing/README.adoc[Integration Testing] and link:../
 
 == PlantUML Diagrams
 
-To regenerate PlantUML PNG images from `.puml` sources (requires PlantUML installed locally):
+To regenerate PlantUML PNG images from `.puml` sources (downloads PlantUML JAR automatically if not installed locally):
 
 [source,bash]
 ----

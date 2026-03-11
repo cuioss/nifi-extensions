@@ -7,7 +7,7 @@ Per-test artifact persistence with human-readable text logs and consistent scree
 
 == Per-Test Artifact Structure
 
-Every test produces exactly four files in its `testInfo.outputDir`:
+Every test typically produces four files in its `testInfo.outputDir`:
 
 [cols="1,2"]
 |===
@@ -44,10 +44,12 @@ page: async ({ page }, use, testInfo) => {
     testLogger.startTest(testInfo.testId);
     testLogger.setupBrowserCapture(page);
     setupErrorMonitoring(page, testInfo);
+    testLogger.info("Test", `Started: ${testInfo.title}`);
 
     await use(page);
 
-    // Automatic after screenshot + text logs
+    testLogger.info("Test", `Finished: ${testInfo.status}`);
+    // Automatic end-tests screenshot + text logs
     mkdirSync(testInfo.outputDir, { recursive: true });
     await page.screenshot({ path: join(testInfo.outputDir, 'after.png'), fullPage: true }).catch(() => {});
     testLogger.writeLogs(testInfo);
@@ -63,6 +65,13 @@ Each test file calls `takeStartScreenshot(page, testInfo)` as the last line of i
 ----
 import { test, expect, takeStartScreenshot } from "../fixtures/test-fixtures.js";
 
+// Typical pattern (most test files)
+test.beforeEach(async ({ page }, testInfo) => {
+    await takeStartScreenshot(page, testInfo);
+});
+
+// Extended pattern (self-tests that need processor management)
+// Requires additional import: import { AuthService } from "../utils/auth-service.js";
 test.beforeEach(async ({ page, processorManager }, testInfo) => {
     const authService = new AuthService(page);
     await authService.ensureReady();
@@ -76,7 +85,7 @@ test.beforeEach(async ({ page, processorManager }, testInfo) => {
 `browser.log`:
 [source]
 ----
-[22:37:17.172] [info] [JWT-UI] JWT UI initialising...
+[22:37:17.172] [info] [JWT-UI] Component UI initialising...
 [22:37:17.139] [warning] NiFi Common API not available. UI functionality may be limited.
 [22:37:17.134] [error] Refused to apply style from '...' because its MIME type...
 [22:37:06.180] [network-error] HTTP 401 - https://localhost:9095/nifi-api/flow/current-user

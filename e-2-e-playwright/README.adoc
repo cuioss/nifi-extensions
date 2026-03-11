@@ -32,7 +32,7 @@ e-2-e-playwright/
 ├── fixtures/                     # Playwright test fixtures
 │   ├── auth-fixtures.js          # Authentication fixtures
 │   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
-├── utils/                        # Utility services and scripts (11 files)
+├── utils/                        # Utility services and scripts (12 files)
 │   ├── auth-service.js           # API token-based authentication
 │   ├── processor.js              # Processor discovery and verification
 │   ├── processor-api-manager.js  # REST API-based processor management
@@ -43,9 +43,12 @@ e-2-e-playwright/
 │   ├── accessibility-helper.js   # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
 │   ├── test-logger.js            # Unified per-test logging via testInfo.attach()
+│   ├── test-assertions.js        # Custom test assertion helpers
 │   └── run-tests-with-precheck.js# Self-test gating before functional tests
 ├── docs/                         # Detailed documentation (6 guides)
+├── global-setup.js              # Playwright global setup (API token auth)
 ├── playwright.config.cjs        # Playwright configuration
+├── eslint.config.js             # ESLint configuration
 ├── package.json                  # npm configuration
 └── pom.xml                       # Maven integration
 ----
@@ -59,9 +62,9 @@ Tests are organized into three categories, executed in order:
 Framework validation tests that verify prerequisites before functional tests run.
 Covers login, navigation, browser logging, critical error detection, and processor interaction.
 
-=== Functional Tests (`0x-*.spec.js`)
+=== Functional Tests (`01-` through `07-*.spec.js`)
 
-Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, and help content.
+Tests for specific JWT processor features: custom UI tabs, JWKS validation, token verification, metrics, help content, gateway tabs, and context help.
 
 === Accessibility Tests (`accessibility-*.spec.js`)
 
@@ -73,7 +76,7 @@ See xref:docs/accessibility-testing-guide.adoc[Accessibility Testing Guide] for 
 Tests require a running NiFi + Keycloak environment:
 
 1. *NiFi* accessible at `PLAYWRIGHT_BASE_URL` (default: `https://localhost:9095/nifi`)
-2. *Keycloak* accessible at `PLAYWRIGHT_KEYCLOAK_URL` (default: `http://localhost:9080`)
+2. *Keycloak* accessible at `PLAYWRIGHT_KEYCLOAK_URL` (default: `https://localhost:9085`)
 3. *Test credentials* configured in `utils/constants.js` must be valid
 
 === Starting the Test Environment
@@ -91,7 +94,7 @@ Tests require a running NiFi + Keycloak environment:
 ----
 
 The `run-and-deploy.sh` script builds the NAR file, starts Keycloak (with health check), then starts NiFi.
-Once running, NiFi is available at `https://localhost:9095/nifi` and Keycloak at `http://localhost:9080`.
+Once running, NiFi is available at `https://localhost:9095/nifi` and Keycloak at `https://localhost:9085`.
 
 == Running Tests
 
@@ -101,15 +104,11 @@ Tests are *skipped by default*. The `integration-tests` profile enables them and
 
 [source,bash]
 ----
-# Full integration test suite: starts containers → self-tests → functional → accessibility → stops containers
-./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests
+# Full integration test suite: starts containers → runs all tests → stops containers
+./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
-Maven separates results into distinct directories:
-
-* `target/results-selftests/` — self-test artifacts
-* `target/results-functional-tests/` — functional test artifacts
-* `target/results-accessibility-tests/` — accessibility test artifacts
+Test results are stored under `target/test-results/`. Reports are in `target/test-results.json` (JSON) and `target/junit-results.xml` (JUnit).
 
 === Via npm (for development)
 
@@ -169,8 +168,8 @@ npm run format                 # Auto-format
 
 * *Browser*: Chromium only (enterprise standard, best Playwright support)
 * *Reporters*: JSON (`target/test-results.json`), JUnit (`target/junit-results.xml`), list
-* *Artifacts*: Trace, screenshots, and video are all `on` by default
-* *Parallel*: `fullyParallel: true`, 1 worker locally, 2 in CI
+* *Artifacts*: Trace `retain-on-failure`, screenshots `only-on-failure`, video `retain-on-failure`
+* *Parallel*: `fullyParallel: false`, 1 worker (sequential execution)
 * *Timeouts*: 60s test, 15s expect, 10s action, 30s navigation
 
 === Test Artifacts
@@ -190,14 +189,8 @@ All artifacts are stored under `target/`:
 |`target/junit-results.xml`
 |JUnit XML results for CI
 
-|`target/results-selftests/`
-|Self-test artifacts (Maven integration-tests profile)
-
-|`target/results-functional-tests/`
-|Functional test artifacts (Maven integration-tests profile)
-
-|`target/results-accessibility-tests/`
-|Accessibility test artifacts (Maven integration-tests profile)
+|`target/playwright-report/`
+|HTML report (only generated when using `--reporter=html`, e.g. `npm run test:a11y:full`)
 |===
 
 All artifacts are cleaned by `mvn clean`.
@@ -214,7 +207,7 @@ All artifacts are cleaned by `mvn clean`.
 
 |`PLAYWRIGHT_KEYCLOAK_URL`
 |Keycloak URL
-|`http://localhost:9080`
+|`https://localhost:9085`
 
 |`E2E_TIMEOUT`
 |Test timeout in seconds
@@ -226,15 +219,15 @@ All artifacts are cleaned by `mvn clean`.
 
 |`PLAYWRIGHT_TRACE`
 |Trace recording (`off`, `on`, `retain-on-failure`)
-|`on`
+|`retain-on-failure`
 
 |`PLAYWRIGHT_SCREENSHOT`
 |Screenshot capture (`off`, `on`, `only-on-failure`)
-|`on`
+|`only-on-failure`
 
 |`PLAYWRIGHT_VIDEO`
 |Video recording (`off`, `on`, `retain-on-failure`)
-|`on`
+|`retain-on-failure`
 
 |`PLAYWRIGHT_OUTPUT_DIR`
 |Base output directory
@@ -244,12 +237,8 @@ All artifacts are cleaned by `mvn clean`.
 |Test results directory
 |`target/test-results`
 
-|`PLAYWRIGHT_REPORT_DIR`
-|Report output directory
-|`target/playwright-report`
-
 |`CI`
-|CI environment flag (affects workers, `forbidOnly`)
+|CI environment flag (affects `forbidOnly`)
 |(unset)
 |===
 
@@ -302,6 +291,7 @@ Due to NiFi's Angular Material UI complexity:
 * xref:docs/roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow: modify, deploy, test, analyze
 * xref:docs/nifi-ui-structure.adoc[NiFi UI Structure Guide] — NiFi UI selectors and authentication flow
 * xref:docs/implementation-guide.adoc[Implementation Guide] — Test architecture and patterns
+* xref:docs/test-logging.adoc[Test Logging Architecture] — Per-test artifact persistence and log formats
 
 === External Resources
 

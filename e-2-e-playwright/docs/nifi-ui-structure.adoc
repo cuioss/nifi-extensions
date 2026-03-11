@@ -11,7 +11,7 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 
 *Current Version*: Apache NiFi (Angular Material UI)
 
-*UI Sources*: https://github.com/apache/nifi/tree/main/nifi-web/nifi-web-frontend
+*UI Sources*: https://github.com/apache/nifi/tree/main/nifi-frontend
 
 == Authentication Flow
 
@@ -20,15 +20,15 @@ Reference for NiFi UI structure, selectors, and authentication flow used in E2E 
 [source,text]
 ----
 POST /nifi-api/access/token
-Content-Type: application/x-www-form-urlencoded
+Content-Type: application/x-www-form-urlencoded;charset=UTF-8
+Request-Token: [CSRF token from __Secure-Request-Token cookie]
 Body: username=testUser&password=drowssap
 
 → HTTP 201 Created
-→ Set-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
-→ Response: [JWT Token Body]
+→ Response Body: [JWT Token]
 
 GET /nifi-api/flow/current-user
-Cookie: __Secure-Authorization-Bearer=[JWT-Token]
+Authorization: Bearer [JWT Token]
 ----
 
 === CSRF Token
@@ -58,7 +58,7 @@ NiFi uses URL hash patterns for routing:
 
 == Canvas Structure
 
-From NiFi source (`flow-designer/ui/canvas/canvas.component.html`):
+From NiFi source (`apps/nifi/src/app/pages/flow-designer/ui/canvas/canvas.component.html`, simplified):
 
 [source,html]
 ----
@@ -113,6 +113,7 @@ Processor configuration uses Angular Material dialogs:
 <mat-dialog-container>
   <mat-tab-group>
     <mat-tab label="Settings">...</mat-tab>
+    <mat-tab label="Scheduling">...</mat-tab>
     <mat-tab label="Properties">...</mat-tab>
     <mat-tab label="Relationships">...</mat-tab>
     <mat-tab label="Comments">...</mat-tab>
@@ -155,13 +156,13 @@ Prefer selectors in this priority order:
 |Service |URL
 
 |NiFi UI
-|`https://localhost:9095/nifi/`
+|`https://localhost:9095/nifi`
 
 |NiFi API
 |`https://localhost:9095/nifi-api/`
 
 |Keycloak
-|`http://localhost:9080`
+|`https://localhost:9085`
 |===
 
 == Related Documentation

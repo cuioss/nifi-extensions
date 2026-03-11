@@ -8,14 +8,15 @@ image::api-gateway-pattern.png[RestApiGateway Pattern]
 
 == Request Pipeline
 
-The `GatewayRequestHandler` processes each request through a 6-stage pipeline:
+The `GatewayRequestHandler` processes each request through a 7-stage pipeline:
 
 1. **Input Sanitization** -- Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
-2. **Route Matching** -- Matches the sanitized path against configured routes (exact match). Returns 404 (route not found) or 405 (method not allowed).
-3. **JWT Authentication** -- Extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure.
-4. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes).
-5. **Body Validation** -- Reads the request body up to the configured maximum size. Returns 413 if the body exceeds the limit. If a route specifies a JSON Schema (`schemaName`), returns 422 on validation failure.
-6. **Enqueue** -- Places the validated `HttpRequestContainer` on the internal queue for `onTrigger` processing. Returns 503 if the queue is full (back-pressure).
+2. **Route Lookup** -- Matches the sanitized path against configured routes (exact match). Returns 404 if no route is configured for the path.
+3. **Method Check** -- Verifies the HTTP method is allowed for the matched route. Returns 405 with `Allow` header if not.
+4. **Body Size Check** -- Reads the request body up to the configured maximum size (per-route or global). Returns 413 if the body exceeds the limit. This runs before authentication to avoid wasting CPU on oversized payloads.
+5. **JWT Authentication** -- Auth-mode dispatch per endpoint: extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure. Skipped for `NONE` and loopback `LOCAL_ONLY` requests.
+6. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes). Skipped when the route has no role or scope requirements.
+7. **Delegate to Handler** -- The matched `EndpointHandler.process()` executes handler-specific logic. For API routes (`ApiRouteHandler`), this includes optional JSON Schema validation (returns 422 on failure via `schemaPath`) and enqueue of `HttpRequestContainer` for `onTrigger` processing (returns 503 if the queue is full).
 
 All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`. See link:../reference/error-reference.adoc[Error Reference] for the full error type table.
 
@@ -40,6 +41,8 @@ Requests flow through up to three authentication layers depending on the entry p
                          |  |                 |  /config: local        |          | |
                          |  |                 |  /metrics: proxy -+    |          | |
                          |  |                 |  /test: proxy     |    |          | |
+                         |  |                 |  /token-fetch     |    |          | |
+                         |  |                 |  /discover-*      |    |          | |
                          |  +-------------------------------------|----+----------+ |
                          +-------------------------------------|----+--------------+
                                                                |    |
@@ -75,8 +78,8 @@ Each endpoint (built-in or user-defined route) has a configurable `auth-mode`:
 
 Management endpoint auth-mode is configured via static NiFi properties:
 
-* `rest.gateway.management.health.auth-mode` (default: `local-only`)
-* `rest.gateway.management.metrics.auth-mode` (default: `local-only`)
+* `rest.gateway.management.health.auth-mode` (default: `local-only,bearer`)
+* `rest.gateway.management.metrics.auth-mode` (default: `local-only,bearer`)
 
 == Endpoint Authorization Matrix
 
@@ -106,8 +109,23 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |POST
 |Proxies test requests to gateway + SSRF protection
 
+|`/nifi-api/processors/jwt/gateway/token-fetch`
+|Yes
+|POST
+|Proxies OAuth token requests to the IDP
+
+|`/nifi-api/processors/jwt/gateway/discover-token-endpoint`
+|Yes
+|POST
+|Fetches OIDC discovery for the token endpoint
+
+|`/nifi-api/processors/jwt/component-info`
+|Yes
+|GET
+|Returns processor component metadata
+
 |`/nifi-api/processors/jwt/validate-jwks-*`
-|No
+|Yes (via `ProcessorIdValidationFilter`)
 |POST
 |Stateless JWKS validation (URL, file, content)
 |===
@@ -119,12 +137,12 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Endpoint |Auth Mode |HTTP Methods |Notes
 
 |`/health`
-|`local-only`
+|`local-only,bearer`
 |GET
 |Returns `{"status":"UP","timestamp":"..."}`
 
 |`/metrics`
-|`local-only`
+|`local-only,bearer`
 |GET
 |Prometheus/JSON metrics from security event counters
 
@@ -143,8 +161,11 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |`rest.route.name`
 |Matched route name
 
+|`rest.route.outcome`
+|Resolved NiFi relationship (outcome) name for the route
+
 |`rest.route.path`
-|Matched route path pattern
+|Request URI path of the matched route
 
 |`http.method`
 |HTTP method (GET, POST, etc.)
@@ -161,8 +182,29 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |`http.query.<name>`
 |Query parameter values (one attribute per parameter)
 
+|`jwt.validatedAt`
+|ISO-8601 timestamp when the token was validated
+
+|`jwt.subject`
+|The `sub` claim
+
+|`jwt.issuer`
+|The `iss` claim
+
+|`jwt.expiration`
+|The `exp` claim
+
+|`jwt.roles`
+|Comma-separated roles from the token (omitted if empty)
+
+|`jwt.groups`
+|Comma-separated groups from the token (omitted if empty)
+
+|`jwt.scopes`
+|Comma-separated scopes from the token (omitted if empty)
+
 |`jwt.content.<claim>`
-|JWT token claims mapped by `TokenClaimMapper`
+|Individual token claims mapped by `TokenClaimMapper` (standard claims excluded to avoid duplication)
 |===
 
 == RFC 9457 Error Types
@@ -195,6 +237,7 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |BODY_TOO_LARGE |413 |Request body exceeds configured maximum
 |ROUTE_NOT_FOUND |404 |No route configured for requested path
 |METHOD_NOT_ALLOWED |405 |Route exists but HTTP method not allowed
+|SCHEMA_VALIDATION_FAILED |422 |Request body failed JSON Schema validation
 |QUEUE_FULL |503 |Request queue at capacity (back-pressure)
 |===
 
@@ -213,15 +256,15 @@ The `/metrics` endpoint aggregates three metric sources:
 [source]
 ----
 # Token validation metrics
-nifi_jwt_validations_total{result="validTokens"} 15126
-nifi_jwt_validations_total{result="invalidTokens"} 297
+nifi_jwt_validations_total{result="valid_tokens"} 15126
+nifi_jwt_validations_total{result="invalid_tokens"} 297
 
 # Transport security metrics (cui-http)
 nifi_gateway_http_security_events_total{type="sanitized_path"} 42
 
 # Gateway application metrics
-nifi_gateway_events_total{type="MISSING_BEARER_TOKEN"} 12
-nifi_gateway_events_total{type="AUTH_FAILED"} 85
+nifi_gateway_events_total{type="missing_bearer_token"} 12
+nifi_gateway_events_total{type="auth_failed"} 85
 ----
 
 === JSON Format
@@ -231,7 +274,7 @@ Requested with `Accept: application/json`:
 [source,json]
 ----
 {
-  "tokenValidation": { "validTokens": 15126, "invalidTokens": 297 },
+  "tokenValidation": { "valid_tokens": 15126, "invalid_tokens": 297 },
   "httpSecurity": { "sanitized_path": 42 },
   "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
 }
@@ -245,6 +288,6 @@ Requested with `Accept: application/json`:
 
 |de.cuioss.sheriff.oauth:oauth-sheriff-core |Token validation framework
 |org.eclipse.jetty:jetty-server (Jetty 12) |Embedded HTTP server
-|de.cuioss.cui-http:cui-http |HTTP security pipeline (input sanitization, security event counters)
+|de.cuioss:cui-http |HTTP security pipeline (input sanitization, security event counters)
 |jakarta.json:jakarta.json-api |JSON processing for RFC 9457 ProblemDetail responses
 |===
