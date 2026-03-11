@@ -318,7 +318,7 @@ spec:
     spec:
       containers:
       - name: nifi
-        image: apache/nifi:2.4.0
+        image: apache/nifi:2.8.0
         env:
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
