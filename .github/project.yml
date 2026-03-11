@@ -2,7 +2,7 @@ name: nifi-extensions
 description: CUI NiFi processor extensions with Keycloak OIDC authentication
 
 release:
-  current-version: 0.2.0
+  current-version: 0.2.1
   next-version: 0.3.0-SNAPSHOT
   create-github-release: true
 
