@@ -129,7 +129,7 @@
             "bundle": {
               "group": "de.cuioss.nifi",
               "artifact": "nifi-cuioss-nar",
-              "version": "1.0-SNAPSHOT"
+              "version": "CUIOSS_PLACEHOLDER_VERSION"
             },
             "properties": {
               "jwt.issuer.config.service": "b731b475-3078-5b65-b962-1e7a286a8f2b",
@@ -950,7 +950,7 @@
             "bundle": {
               "group": "de.cuioss.nifi",
               "artifact": "nifi-cuioss-nar",
-              "version": "1.0-SNAPSHOT"
+              "version": "CUIOSS_PLACEHOLDER_VERSION"
             },
             "properties": {
               "rest.gateway.listening.port": "9443",
@@ -1418,7 +1418,7 @@
         "bundle": {
           "group": "de.cuioss.nifi",
           "artifact": "nifi-cuioss-nar",
-          "version": "1.0-SNAPSHOT"
+          "version": "CUIOSS_PLACEHOLDER_VERSION"
         },
         "properties": {
           "jwt.validation.require.https.for.jwks": "true",
@@ -1460,7 +1460,7 @@
             "bundle": {
               "group": "de.cuioss.nifi",
               "artifact": "nifi-cuioss-api-nar",
-              "version": "1.0-SNAPSHOT"
+              "version": "CUIOSS_PLACEHOLDER_VERSION"
             }
           }
         ],

@@ -14,9 +14,9 @@ if [ -d "$HOST_DEPLOY_DIR" ]; then
     ls -la "$HOST_DEPLOY_DIR"
     echo ""
     
-    # Check NAR file details
-    NAR_FILE="$HOST_DEPLOY_DIR/nifi-cuioss-nar-1.0-SNAPSHOT.nar"
-    if [ -f "$NAR_FILE" ]; then
+    # Check NAR file details (version-independent glob)
+    NAR_FILE="$(ls "$HOST_DEPLOY_DIR"/nifi-cuioss-nar-*.nar 2>/dev/null | head -1)"
+    if [ -n "$NAR_FILE" ] && [ -f "$NAR_FILE" ]; then
         echo "NAR file exists: $NAR_FILE"
         echo "Size: $(stat -f%z "$NAR_FILE" 2>/dev/null || stat -c%s "$NAR_FILE" 2>/dev/null || echo "unknown")"
         echo "Modified: $(stat -f%m "$NAR_FILE" 2>/dev/null || stat -c%y "$NAR_FILE" 2>/dev/null || echo "unknown")"

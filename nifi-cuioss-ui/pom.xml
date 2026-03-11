@@ -209,6 +209,14 @@
                         <resource>
                             <directory>${project.build.directory}/webjar-unpack/META-INF/resources</directory>
                         </resource>
+                        <!-- Filter nifi-processor-configuration to inject ${project.version} -->
+                        <resource>
+                            <directory>src/main/webapp</directory>
+                            <filtering>true</filtering>
+                            <includes>
+                                <include>META-INF/nifi-processor-configuration</include>
+                            </includes>
+                        </resource>
                     </webResources>
                 </configuration>
             </plugin>

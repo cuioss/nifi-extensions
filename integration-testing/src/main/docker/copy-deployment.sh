@@ -24,29 +24,18 @@ cd "${PROJECT_ROOT}"
 
 # Build the NAR files unless --skip-build was passed (Maven reactor already built them)
 if [ "$SKIP_BUILD" = true ] && \
-   [ -f "${NAR_TARGET_DIR}/nifi-cuioss-nar-1.0-SNAPSHOT.nar" ] && \
-   [ -f "${API_NAR_TARGET_DIR}/nifi-cuioss-api-nar-1.0-SNAPSHOT.nar" ]; then
+   ls "${NAR_TARGET_DIR}"/nifi-cuioss-nar-*.nar &>/dev/null && \
+   ls "${API_NAR_TARGET_DIR}"/nifi-cuioss-api-nar-*.nar &>/dev/null; then
     echo "NAR files already built by Maven reactor, skipping redundant build."
 else
     echo "Building NAR files..."
     ./mvnw package -DskipTests -pl '!e-2-e-playwright'
 fi
 
-# Ensure the NiFi NAR extensions directory exists in the parent project
-if [ ! -d "${NAR_TARGET_DIR}" ]; then
-  echo "Creating NiFi NAR extensions directory..."
-  mkdir -p "${NAR_TARGET_DIR}"
-fi
-
-# Ensure the target directory for the NAR file exists
-if [ ! -d "${DEPLOY_DIR}" ]; then
-  echo "Creating target directory for NAR file..."
-  mkdir -p "${DEPLOY_DIR}"
-fi
-
-# Copy the NAR files to the target directory
+# Copy the NAR files to the target directory (glob matches any version)
+mkdir -p "${DEPLOY_DIR}"
 echo "Copying NAR files to target directory..."
-cp "${API_NAR_TARGET_DIR}/nifi-cuioss-api-nar-1.0-SNAPSHOT.nar" "${DEPLOY_DIR}/"
-cp "${NAR_TARGET_DIR}/nifi-cuioss-nar-1.0-SNAPSHOT.nar" "${DEPLOY_DIR}/"
+cp "${API_NAR_TARGET_DIR}"/nifi-cuioss-api-nar-*.nar "${DEPLOY_DIR}/"
+cp "${NAR_TARGET_DIR}"/nifi-cuioss-nar-*.nar "${DEPLOY_DIR}/"
 
 echo "NAR files have been built and copied to the deployment location."

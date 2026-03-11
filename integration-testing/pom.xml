@@ -119,6 +119,7 @@
                             </arguments>
                             <environmentVariables>
                                 <PROJECT_ROOT>${maven.multiModuleProjectDirectory}</PROJECT_ROOT>
+                                <PROJECT_VERSION>${project.version}</PROJECT_VERSION>
                             </environmentVariables>
                             <skip>${skip.docker.deployment}</skip>
                         </configuration>
