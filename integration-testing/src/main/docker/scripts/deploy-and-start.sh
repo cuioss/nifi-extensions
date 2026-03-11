@@ -34,7 +34,7 @@ bash "${DOCKER_DIR}/copy-deployment.sh" --skip-build
 if [ -n "${PROJECT_VERSION:-}" ]; then
     FLOW_JSON="${DOCKER_DIR}/nifi/conf/flow.json"
     echo "Patching flow.json bundle versions to ${PROJECT_VERSION}..."
-    sed -i.bak "s/CUIOSS_PLACEHOLDER_VERSION/${PROJECT_VERSION}/g" "$FLOW_JSON"
+    sed -i.bak "s|CUIOSS_PLACEHOLDER_VERSION|${PROJECT_VERSION}|g" "$FLOW_JSON"
     rm -f "${FLOW_JSON}.bak"
     gzip -c "$FLOW_JSON" > "${FLOW_JSON}.gz"
 fi
