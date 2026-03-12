@@ -110,14 +110,14 @@
         <!-- Sonatype -->
 
         <!-- OpenRewrite -->
-        <open.rewrite.maven.plugin.version>6.30.0</open.rewrite.maven.plugin.version>
-        <rewrite-testing-frameworks.version>3.27.0</rewrite-testing-frameworks.version>
-        <rewrite-migrate-java.version>3.28.0</rewrite-migrate-java.version>
+        <open.rewrite.maven.plugin.version>6.32.0</open.rewrite.maven.plugin.version>
+        <rewrite-testing-frameworks.version>3.29.0</rewrite-testing-frameworks.version>
+        <rewrite-migrate-java.version>3.29.0</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2026-03-11T22:11:27Z</project.build.outputTimestamp>
 
         <!-- Frontend Maven Plugin -->
         <frontend.maven.plugin.version>2.0.0</frontend.maven.plugin.version>
-        <frontend.node.version>v20.19.2</frontend.node.version>
+        <frontend.node.version>v20.20.1</frontend.node.version>
         <frontend.npm.version>10.5.0</frontend.npm.version>
 
         <!-- WebJars Dependencies -->
@@ -130,9 +130,9 @@
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>6.0.3</version.junit.jupiter>
-        <version.lombok>1.18.42</version.lombok>
+        <version.lombok>1.18.44</version.lombok>
         <version.parsson>1.1.7</version.parsson>
-        <version.snakeyaml>2.5</version.snakeyaml>
+        <version.snakeyaml>2.6</version.snakeyaml>
         <version.easymock>5.6.0</version.easymock>
         <version.rest-assured>6.0.0</version.rest-assured>
         <version.hamcrest>3.0</version.hamcrest>
