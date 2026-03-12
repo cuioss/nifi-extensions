@@ -30,16 +30,10 @@ docker compose down -v 2>/dev/null || true
 echo "Building and deploying NAR files..."
 bash "${DOCKER_DIR}/copy-deployment.sh" --skip-build
 
-# Step 3: Patch flow.json so NiFi bundle versions match the current build
-if [ -n "${PROJECT_VERSION:-}" ]; then
-    FLOW_JSON="${DOCKER_DIR}/nifi/conf/flow.json"
-    echo "Patching flow.json bundle versions to ${PROJECT_VERSION}..."
-    sed -i.bak "s|CUIOSS_PLACEHOLDER_VERSION|${PROJECT_VERSION}|g" "$FLOW_JSON"
-    rm -f "${FLOW_JSON}.bak"
-    gzip -c "$FLOW_JSON" > "${FLOW_JSON}.gz"
-fi
-
-# Step 4: Start containers
+# Step 3: Start containers
+# NOTE: flow.json uses CUIOSS_PLACEHOLDER_VERSION for cuioss bundle versions.
+# NiFi 2.x resolves bundles by processor type — when only one version of a NAR
+# is installed, it is automatically selected regardless of the version in flow.json.
 echo "Starting Docker containers..."
 docker compose up -d --build
 
