@@ -41,6 +41,8 @@ import java.util.Objects;
  * @param body            the request body bytes (empty array for GET/DELETE)
  * @param contentType     the Content-Type header value
  * @param token           the validated JWT access token (null for unauthenticated routes)
+ * @param traceId         the unique trace identifier for request tracking (null when tracking disabled)
+ * @param parentTraceId   optional parent trace ID for chained requests (null when not chained)
  */
 public record HttpRequestContainer(
 @NonNull String routeName,
@@ -51,7 +53,9 @@ Map<String, String> headers,
 @NonNull String remoteHost,
 byte[] body,
 @Nullable String contentType,
-@Nullable AccessTokenContent token) {
+@Nullable AccessTokenContent token,
+@Nullable String traceId,
+@Nullable String parentTraceId) {
 
     /**
      * Compact constructor — defensive copies for maps, null-safe body.
@@ -82,20 +86,22 @@ byte[] body,
                 && Objects.equals(remoteHost, that.remoteHost)
                 && Arrays.equals(body, that.body)
                 && Objects.equals(contentType, that.contentType)
-                && Objects.equals(token, that.token);
+                && Objects.equals(token, that.token)
+                && Objects.equals(traceId, that.traceId)
+                && Objects.equals(parentTraceId, that.parentTraceId);
     }
 
     @Override
     public int hashCode() {
         int result = Objects.hash(routeName, method, requestUri, queryParameters,
-                headers, remoteHost, contentType, token);
+                headers, remoteHost, contentType, token, traceId, parentTraceId);
         result = 31 * result + Arrays.hashCode(body);
         return result;
     }
 
     @Override
     public String toString() {
-        return "HttpRequestContainer[routeName=%s, method=%s, requestUri=%s, bodyLength=%d]"
-                .formatted(routeName, method, requestUri, body.length);
+        return "HttpRequestContainer[routeName=%s, method=%s, requestUri=%s, bodyLength=%d, traceId=%s]"
+                .formatted(routeName, method, requestUri, body.length, traceId);
     }
 }

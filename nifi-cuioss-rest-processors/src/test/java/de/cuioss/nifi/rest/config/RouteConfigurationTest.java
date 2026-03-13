@@ -16,7 +16,6 @@
  */
 package de.cuioss.nifi.rest.config;
 
-import de.cuioss.nifi.rest.config.AuthMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

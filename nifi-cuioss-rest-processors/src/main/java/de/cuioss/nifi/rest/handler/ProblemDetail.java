@@ -23,8 +23,13 @@ import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonValue;
 import lombok.Builder;
 import lombok.Singular;
+import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -256,6 +261,20 @@ int status,
                 .status(503)
                 .detail(detail)
                 .build();
+    }
+
+    /**
+     * Sends this problem detail as a complete HTTP response.
+     *
+     * @param response the Jetty response
+     * @param callback the Jetty callback
+     */
+    public void sendResponse(Response response, Callback callback) {
+        response.setStatus(status);
+        response.getHeaders().put(HttpHeader.CONTENT_TYPE, CONTENT_TYPE);
+        byte[] problemBody = toJson().getBytes(StandardCharsets.UTF_8);
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, problemBody.length);
+        response.write(true, ByteBuffer.wrap(problemBody), callback);
     }
 
     /**

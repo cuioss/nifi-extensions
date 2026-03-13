@@ -582,7 +582,7 @@
           {
             "identifier": "ef96fc35-f2e5-53ac-bc2b-3c794fb41102",
             "instanceIdentifier": "63164e33-f621-5cc3-b421-da8aa896adee",
-            "name": "HandleHttpRequest → Extract Token",
+            "name": "HandleHttpRequest \u2192 Extract Token",
             "source": {
               "id": "a5155653-5257-5972-b192-df42647b5cc5",
               "type": "PROCESSOR",
@@ -612,7 +612,7 @@
           {
             "identifier": "1fd53156-fa4d-5acb-b968-5a51fa82074e",
             "instanceIdentifier": "5e0adb41-5871-5779-96f8-2f96b03ecacc",
-            "name": "Extract Token → JWT Auth",
+            "name": "Extract Token \u2192 JWT Auth",
             "source": {
               "id": "2bc2e54b-3237-5182-8add-376cdb3e8b32",
               "type": "PROCESSOR",
@@ -642,7 +642,7 @@
           {
             "identifier": "b04f86fd-d3b5-5735-b00d-3de8b3f53412",
             "instanceIdentifier": "8cd0051f-c576-5aec-892b-01567da8341f",
-            "name": "JWT Auth success → LogAttribute",
+            "name": "JWT Auth success \u2192 LogAttribute",
             "source": {
               "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
               "type": "PROCESSOR",
@@ -672,7 +672,7 @@
           {
             "identifier": "21166bda-2e14-5efd-b823-62de1a4ad36a",
             "instanceIdentifier": "66f5e314-af70-542b-9614-d3823367d728",
-            "name": "JWT Auth failed → LogAttribute",
+            "name": "JWT Auth failed \u2192 LogAttribute",
             "source": {
               "id": "1c468f03-7c07-56fa-9fcc-fde3121cedec",
               "type": "PROCESSOR",
@@ -702,7 +702,7 @@
           {
             "identifier": "4c722c8c-4b25-5233-a991-092c4795e291",
             "instanceIdentifier": "19cbe385-7057-5c81-ada1-fbcd486ee768",
-            "name": "LogAttribute success → UpdateAttribute 200",
+            "name": "LogAttribute success \u2192 UpdateAttribute 200",
             "source": {
               "id": "46774c0b-d633-5368-8055-6abd92e7db8f",
               "type": "PROCESSOR",
@@ -732,7 +732,7 @@
           {
             "identifier": "b8c43877-4fcd-5920-abf3-c3958098bf22",
             "instanceIdentifier": "4e0f0848-1d23-565d-a2eb-76d8bf9f5d21",
-            "name": "LogAttribute failed → UpdateAttribute 401",
+            "name": "LogAttribute failed \u2192 UpdateAttribute 401",
             "source": {
               "id": "5608b6e1-0b5e-57f4-96bd-a2c50272b626",
               "type": "PROCESSOR",
@@ -762,7 +762,7 @@
           {
             "identifier": "5fb30869-9720-581e-898c-fe4d75c2065b",
             "instanceIdentifier": "5b4e157d-5ee1-5b74-8283-28be29cbd84d",
-            "name": "UpdateAttribute 200 → AttributesToJSON (success)",
+            "name": "UpdateAttribute 200 \u2192 AttributesToJSON (success)",
             "source": {
               "id": "98a0dc6a-2b20-533f-b6de-5932583627d4",
               "type": "PROCESSOR",
@@ -792,7 +792,7 @@
           {
             "identifier": "82b3631c-6dfe-5fec-a169-bb527ccc77b8",
             "instanceIdentifier": "1b5cc725-9d77-5bab-bd89-d247bc49d860",
-            "name": "AttributesToJSON (success) → HandleHttpResponse (200)",
+            "name": "AttributesToJSON (success) \u2192 HandleHttpResponse (200)",
             "source": {
               "id": "33c9c5e2-5a93-50b2-bed3-eeb834517c91",
               "type": "PROCESSOR",
@@ -822,7 +822,7 @@
           {
             "identifier": "9443abb1-bc95-515a-9475-7824d25433a1",
             "instanceIdentifier": "a20cbfac-2c22-5c55-b2d8-1f340842216f",
-            "name": "UpdateAttribute 401 → AttributesToJSON (failure)",
+            "name": "UpdateAttribute 401 \u2192 AttributesToJSON (failure)",
             "source": {
               "id": "a90c7ab9-95c8-5d0c-9a17-a721adcf31d6",
               "type": "PROCESSOR",
@@ -852,7 +852,7 @@
           {
             "identifier": "196a796c-29b2-5a50-9f8e-07d6955f6bd7",
             "instanceIdentifier": "4c76d5de-9dec-5369-89cb-b252c5f46960",
-            "name": "AttributesToJSON (failure) → HandleHttpResponse (401)",
+            "name": "AttributesToJSON (failure) \u2192 HandleHttpResponse (401)",
             "source": {
               "id": "10d7e9e2-00d8-5b0f-ae45-83cfa4dec05f",
               "type": "PROCESSOR",
@@ -961,7 +961,10 @@
               "rest.gateway.management.health.auth-mode": "local-only,bearer",
               "rest.gateway.management.metrics.enabled": "true",
               "rest.gateway.management.metrics.auth-mode": "local-only,bearer",
-              "rest.gateway.ssl.context.service": "a9340a05-d065-4ee9-92ae-0c10e9f462df"
+              "rest.gateway.ssl.context.service": "a9340a05-d065-4ee9-92ae-0c10e9f462df",
+              "rest.gateway.distributed-map-cache-client": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
+              "rest.gateway.management.status.enabled": "true",
+              "rest.gateway.management.status.auth-mode": "local-only,bearer"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -987,6 +990,11 @@
               "rest.gateway.request.queue.size": {
                 "name": "rest.gateway.request.queue.size",
                 "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.distributed-map-cache-client": {
+                "name": "rest.gateway.distributed-map-cache-client",
+                "identifiesControllerService": true,
                 "sensitive": false
               }
             },
@@ -1042,7 +1050,9 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": ["success"],
+            "autoTerminatedRelationships": [
+              "success"
+            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
@@ -1084,7 +1094,9 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": ["success"],
+            "autoTerminatedRelationships": [
+              "success"
+            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
@@ -1126,7 +1138,9 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": ["success"],
+            "autoTerminatedRelationships": [
+              "success"
+            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
@@ -1168,7 +1182,9 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": ["success"],
+            "autoTerminatedRelationships": [
+              "success"
+            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
@@ -1189,7 +1205,7 @@
           {
             "identifier": "85b994e7-8a48-5514-8d71-6c8cf9af43d6",
             "instanceIdentifier": "9e2f56a2-d0fb-5aa7-b007-fc8615851bd4",
-            "name": "RestApiGateway → LogAttribute (gateway-data)",
+            "name": "RestApiGateway \u2192 LogAttribute (gateway-data)",
             "source": {
               "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
               "type": "PROCESSOR",
@@ -1202,7 +1218,9 @@
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": "LogAttribute (gateway-data)"
             },
-            "selectedRelationships": ["data"],
+            "selectedRelationships": [
+              "data"
+            ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -1217,7 +1235,7 @@
           {
             "identifier": "a1b2c3d4-5678-5901-abcd-ef0123456789",
             "instanceIdentifier": "b2c3d4e5-6789-5012-bcde-f01234567890",
-            "name": "RestApiGateway → LogAttribute (gateway-admin)",
+            "name": "RestApiGateway \u2192 LogAttribute (gateway-admin)",
             "source": {
               "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
               "type": "PROCESSOR",
@@ -1230,7 +1248,9 @@
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": "LogAttribute (gateway-admin)"
             },
-            "selectedRelationships": ["admin"],
+            "selectedRelationships": [
+              "admin"
+            ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -1245,7 +1265,7 @@
           {
             "identifier": "d4e5f6a7-b8c9-5012-3456-789abcdef012",
             "instanceIdentifier": "e5f6a7b8-c9d0-5123-4567-89abcdef0123",
-            "name": "RestApiGateway → LogAttribute (gateway-validated)",
+            "name": "RestApiGateway \u2192 LogAttribute (gateway-validated)",
             "source": {
               "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
               "type": "PROCESSOR",
@@ -1258,7 +1278,9 @@
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": "LogAttribute (gateway-validated)"
             },
-            "selectedRelationships": ["validated"],
+            "selectedRelationships": [
+              "validated"
+            ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -1273,7 +1295,7 @@
           {
             "identifier": "e5f6a7b8-c9d0-5012-3456-789abcdef678",
             "instanceIdentifier": "f6a7b8c9-d0e1-5123-4567-89abcdef7890",
-            "name": "RestApiGateway → LogAttribute (gateway-inline-validated)",
+            "name": "RestApiGateway \u2192 LogAttribute (gateway-inline-validated)",
             "source": {
               "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
               "type": "PROCESSOR",
@@ -1286,7 +1308,9 @@
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": "LogAttribute (gateway-inline-validated)"
             },
-            "selectedRelationships": ["inline-validated"],
+            "selectedRelationships": [
+              "inline-validated"
+            ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -1301,7 +1325,7 @@
           {
             "identifier": "c5a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5c",
             "instanceIdentifier": "c5a1b2c3-d4e5-4f6a-8b9c-0d1e2f3a4b5d",
-            "name": "RestApiGateway → LogAttribute (gateway-admin) [failure]",
+            "name": "RestApiGateway \u2192 LogAttribute (gateway-admin) [failure]",
             "source": {
               "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
               "type": "PROCESSOR",
@@ -1314,7 +1338,9 @@
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": "LogAttribute (gateway-admin)"
             },
-            "selectedRelationships": ["failure"],
+            "selectedRelationships": [
+              "failure"
+            ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -1461,6 +1487,83 @@
               "group": "de.cuioss.nifi",
               "artifact": "nifi-cuioss-api-nar",
               "version": "CUIOSS_PLACEHOLDER_VERSION"
+            }
+          }
+        ],
+        "scheduledState": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
+      },
+      {
+        "identifier": "c1d2e3f4-a5b6-5c7d-8e9f-0a1b2c3d4e5f",
+        "instanceIdentifier": "d2e3f4a5-b6c7-5d8e-9f0a-1b2c3d4e5f6a",
+        "name": "DistributedMapCacheServer",
+        "type": "org.apache.nifi.distributed.cache.server.map.MapCacheServer",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-distributed-cache-services-nar",
+          "version": "2.8.0"
+        },
+        "properties": {
+          "Port": "4557",
+          "Maximum Cache Entries": "10000"
+        },
+        "propertyDescriptors": {
+          "Port": {
+            "name": "Port",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Maximum Cache Entries": {
+            "name": "Maximum Cache Entries",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "controllerServiceApis": [],
+        "scheduledState": "ENABLED",
+        "componentType": "CONTROLLER_SERVICE",
+        "groupIdentifier": "c924c469-532b-5216-89c1-bf34a546abed"
+      },
+      {
+        "identifier": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
+        "instanceIdentifier": "f4a5b6c7-d8e9-5f0a-1b2c-3d4e5f6a7b8c",
+        "name": "DistributedMapCacheClientService",
+        "type": "org.apache.nifi.distributed.cache.client.MapCacheClientService",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-distributed-cache-services-nar",
+          "version": "2.8.0"
+        },
+        "properties": {
+          "Server Hostname": "localhost",
+          "Server Port": "4557",
+          "Communications Timeout": "30 secs"
+        },
+        "propertyDescriptors": {
+          "Server Hostname": {
+            "name": "Server Hostname",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Server Port": {
+            "name": "Server Port",
+            "identifiesControllerService": false,
+            "sensitive": false
+          },
+          "Communications Timeout": {
+            "name": "Communications Timeout",
+            "identifiesControllerService": false,
+            "sensitive": false
+          }
+        },
+        "controllerServiceApis": [
+          {
+            "type": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClient",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-services-api-nar",
+              "version": "2.8.0"
             }
           }
         ],
