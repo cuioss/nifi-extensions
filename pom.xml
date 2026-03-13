@@ -209,6 +209,12 @@
                 <version>${version.nifi}</version>
                 <scope>provided</scope>
             </dependency>
+            <dependency>
+                <groupId>org.apache.nifi</groupId>
+                <artifactId>nifi-distributed-cache-client-service-api</artifactId>
+                <version>${version.nifi}</version>
+                <scope>provided</scope>
+            </dependency>
             <!-- CUI-OSS -->
             <dependency>
                 <groupId>de.cuioss</groupId>

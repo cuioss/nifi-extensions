@@ -53,4 +53,10 @@ public final class RestApiAttributes {
 
     /** Prefix for header attributes: {@code http.header.<name>}. */
     public static final String HEADER_PREFIX = "http.header.";
+
+    /** Unique trace ID for request tracking. */
+    public static final String TRACE_ID = "rest.trace.id";
+
+    /** Parent trace ID for chained request tracking. */
+    public static final String PARENT_TRACE_ID = "rest.trace.parent.id";
 }

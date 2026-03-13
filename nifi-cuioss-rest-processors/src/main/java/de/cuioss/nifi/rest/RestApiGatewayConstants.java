@@ -19,6 +19,7 @@ package de.cuioss.nifi.rest;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
@@ -167,6 +168,50 @@ public final class RestApiGatewayConstants {
                 .displayName("Metrics Endpoint Required Scopes")
                 .description("Comma-separated scopes required in the JWT token for the /metrics endpoint. "
                         + "Only relevant when auth-mode includes 'bearer'.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor DISTRIBUTED_MAP_CACHE_CLIENT = new PropertyDescriptor.Builder()
+                .name("rest.gateway.distributed-map-cache-client")
+                .displayName("Distributed Map Cache Client")
+                .description("The Controller Service providing distributed map cache for request tracking. "
+                        + "Required when any route has tracking-enabled=true.")
+                .required(false)
+                .identifiesControllerService(DistributedMapCacheClient.class)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_STATUS_ENABLED = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.status.enabled")
+                .displayName("Status Endpoint Enabled")
+                .description("Whether the /status/{traceId} management endpoint is active")
+                .required(false)
+                .defaultValue("true")
+                .allowableValues("true", "false")
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_STATUS_AUTH_MODE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.status.auth-mode")
+                .displayName("Status Endpoint Auth Mode")
+                .description("Authentication modes for the /status endpoint (comma-separated): "
+                        + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous).")
+                .required(false)
+                .defaultValue("local-only,bearer")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_STATUS_REQUIRED_ROLES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.status.required-roles")
+                .displayName("Status Endpoint Required Roles")
+                .description("Comma-separated roles required in the JWT token for the /status endpoint.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_STATUS_REQUIRED_SCOPES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.status.required-scopes")
+                .displayName("Status Endpoint Required Scopes")
+                .description("Comma-separated scopes required in the JWT token for the /status endpoint.")
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();

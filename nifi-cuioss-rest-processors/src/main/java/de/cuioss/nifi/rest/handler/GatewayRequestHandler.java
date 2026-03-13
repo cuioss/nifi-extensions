@@ -172,8 +172,16 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         String path = sanitized.get().path();
 
-        // 2. Lookup handler by path
+        // 2. Lookup handler by path (exact match first, then prefix match)
         EndpointHandler handler = handlerMap.get(path);
+        if (handler == null) {
+            for (EndpointHandler h : handlerMap.values()) {
+                if (h.prefixMatch() && path.startsWith(h.path() + "/")) {
+                    handler = h;
+                    break;
+                }
+            }
+        }
         if (handler == null || !handler.enabled()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);

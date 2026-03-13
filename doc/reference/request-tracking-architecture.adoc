@@ -1,0 +1,214 @@
+= Request Tracking Architecture
+:toc: auto
+:toclevels: 3
+
+== Overview
+
+The REST API Gateway supports asynchronous request tracking for routes that process long-running operations.
+When tracking is enabled on a route, body methods (POST/PUT/PATCH) receive a unique `traceId` and clients
+can poll `/status/{traceId}` to check processing progress.
+
+This implements the integration server concept where accepted requests return `HTTP 202` with a `Location`
+header pointing to a status endpoint.
+
+== Status Lifecycle
+
+Requests follow this status lifecycle:
+
+[plantuml]
+----
+@startuml
+[*] --> ACCEPTED : POST received
+ACCEPTED --> PROCESSING : downstream flow starts
+PROCESSING --> PROCESSED : success
+PROCESSING --> REJECTED : validation/business error
+PROCESSING --> RETRY : transient error
+PROCESSING --> ERROR : unrecoverable error
+RETRY --> PROCESSING : retry attempt
+PROCESSED --> [*]
+REJECTED --> [*]
+ERROR --> [*]
+@enduml
+----
+
+Valid transitions:
+
+* `ACCEPTED` -> `PROCESSING` -> `PROCESSED`
+* `ACCEPTED` -> `PROCESSING` -> `REJECTED`
+* `ACCEPTED` -> `PROCESSING` -> `RETRY` -> `PROCESSING` (loop)
+* `ACCEPTED` -> `PROCESSING` -> `ERROR`
+
+== Architecture
+
+=== Async POST Request Flow
+
+[plantuml]
+----
+@startuml
+participant "Client" as C
+participant "Gateway\n(Jetty thread)" as G
+participant "DistributedMapCache" as DMC
+participant "Request Queue" as Q
+participant "onTrigger()\n(NiFi thread)" as NT
+participant "Downstream\nNiFi Flow" as DF
+
+C -> G : POST /api/orders
+activate G
+G -> G : Authenticate (JWT)
+G -> G : Validate request
+G -> G : Generate traceId (UUID)
+G -> DMC : put(traceId, ACCEPTED)
+G -> Q : enqueue HttpRequestContainer\n(with traceId)
+G -> C : 202 Accepted\nLocation: /status/{traceId}\nBody: {"traceId":"...", "_links":{...}}
+deactivate G
+
+NT -> Q : poll()
+activate NT
+NT -> NT : Create FlowFile\n(rest.trace.id = traceId)
+NT -> NT : Record RECEIVE provenance
+NT -> DF : transfer(flowFile)
+deactivate NT
+
+DF -> DMC : PutDistributedMapCache\n(PROCESSING)
+DF -> DF : Process request
+DF -> DMC : PutDistributedMapCache\n(PROCESSED / REJECTED / ERROR)
+@enduml
+----
+
+=== Status Query Flow
+
+[plantuml]
+----
+@startuml
+participant "Client" as C
+participant "Gateway\n(Jetty thread)" as G
+participant "DistributedMapCache" as DMC
+
+C -> G : GET /status/{traceId}
+activate G
+G -> G : Authenticate
+G -> G : Validate UUID format
+G -> DMC : get(traceId)
+alt Entry found
+    G -> C : 200 OK\n{"traceId":"...", "status":"PROCESSING", ...}
+else Not found
+    G -> C : 404 Not Found\n(RFC 9457 Problem Detail)
+end
+deactivate G
+@enduml
+----
+
+=== Chained Requests
+
+Requests can reference a parent traceId for correlation:
+
+[plantuml]
+----
+@startuml
+participant "Client" as C
+participant "Gateway" as G
+participant "DistributedMapCache" as DMC
+
+C -> G : POST /api/orders\n(receives traceId-A)
+G -> DMC : put(traceId-A, ACCEPTED)
+G -> C : 202 {traceId: "traceId-A"}
+
+C -> G : POST /api/payments\nX-Parent-Trace-Id: traceId-A\n(receives traceId-B)
+G -> DMC : put(traceId-B, ACCEPTED,\nparentTraceId=traceId-A)
+G -> C : 202 {traceId: "traceId-B"}
+
+C -> G : GET /status/traceId-B
+G -> DMC : get(traceId-B)
+G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
+@enduml
+----
+
+== Data Model
+
+=== RequestStatusEntry
+
+[cols="1,1,3"]
+|===
+|Field |Type |Description
+
+|`traceId`
+|String (UUID)
+|Unique identifier for the tracked request
+
+|`status`
+|Enum
+|Current status: ACCEPTED, PROCESSING, PROCESSED, REJECTED, RETRY, ERROR
+
+|`acceptedAt`
+|ISO 8601 Instant
+|When the request was first accepted
+
+|`updatedAt`
+|ISO 8601 Instant
+|When the status was last changed
+
+|`parentTraceId`
+|String (UUID, optional)
+|Parent trace ID for chained/correlated requests
+
+|`errorDetail`
+|String (optional)
+|Error description for REJECTED/ERROR statuses
+|===
+
+== Component Relationships
+
+* **`DistributedMapCacheClient`** -- NiFi Controller Service providing cluster-safe key-value storage
+* **`RequestStatusStore`** -- Typed wrapper around the cache client with serializers
+* **`StatusEndpointHandler`** -- Handles GET `/status/{traceId}` queries (prefix-matched)
+* **`ApiRouteHandler`** -- Generates traceId for tracked body methods, stores ACCEPTED status
+
+== Response Formats
+
+=== 202 Accepted (Tracked POST)
+
+[source,json]
+----
+{
+  "status": "accepted",
+  "traceId": "550e8400-e29b-41d4-a716-446655440000",
+  "_links": {
+    "status": {
+      "href": "/status/550e8400-e29b-41d4-a716-446655440000"
+    }
+  }
+}
+----
+
+Headers:
+
+* `Location: http://host:port/status/550e8400-e29b-41d4-a716-446655440000` (absolute URI)
+* `Content-Type: application/json`
+
+=== Status Query Response (200 OK)
+
+[source,json]
+----
+{
+  "traceId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "PROCESSING",
+  "acceptedAt": "2026-03-13T10:00:00Z",
+  "updatedAt": "2026-03-13T10:00:05Z",
+  "parentTraceId": "660e8400-e29b-41d4-a716-446655440001"
+}
+----
+
+=== Error Status Response (REJECTED/ERROR)
+
+[source,json]
+----
+{
+  "traceId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "REJECTED",
+  "acceptedAt": "2026-03-13T10:00:00Z",
+  "updatedAt": "2026-03-13T10:00:10Z",
+  "error": {
+    "detail": "Order validation failed: insufficient inventory"
+  }
+}
+----

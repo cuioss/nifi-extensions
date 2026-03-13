@@ -23,6 +23,7 @@ import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.nifi.rest.validation.SchemaViolation;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
+import jakarta.json.Json;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -34,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.stream.Collectors;
 
@@ -46,22 +48,35 @@ public class ApiRouteHandler implements EndpointHandler {
     private static final CuiLogger LOGGER = new CuiLogger(ApiRouteHandler.class);
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
 
+    private static final String X_PARENT_TRACE_ID = "X-Parent-Trace-Id";
+
     private final RouteConfiguration route;
     private final BlockingQueue<HttpRequestContainer> queue;
     private final int globalMaxRequestSize;
     @Nullable private final JsonSchemaValidator schemaValidator;
     private final GatewaySecurityEvents gatewaySecurityEvents;
+    @Nullable private final RequestStatusStore statusStore;
 
     public ApiRouteHandler(RouteConfiguration route,
             BlockingQueue<HttpRequestContainer> queue,
             int globalMaxRequestSize,
             @Nullable JsonSchemaValidator schemaValidator,
             GatewaySecurityEvents gatewaySecurityEvents) {
+        this(route, queue, globalMaxRequestSize, schemaValidator, gatewaySecurityEvents, null);
+    }
+
+    public ApiRouteHandler(RouteConfiguration route,
+            BlockingQueue<HttpRequestContainer> queue,
+            int globalMaxRequestSize,
+            @Nullable JsonSchemaValidator schemaValidator,
+            GatewaySecurityEvents gatewaySecurityEvents,
+            @Nullable RequestStatusStore statusStore) {
         this.route = route;
         this.queue = queue;
         this.globalMaxRequestSize = globalMaxRequestSize;
         this.schemaValidator = schemaValidator;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
+        this.statusStore = statusStore;
     }
 
     @Override
@@ -138,6 +153,25 @@ public class ApiRouteHandler implements EndpointHandler {
             }
         }
 
+        // Determine if this is a tracked body method
+        boolean tracked = route.trackingEnabled() && isBodyMethod(method) && statusStore != null;
+        String traceId = null;
+        String parentTraceId = null;
+
+        if (tracked) {
+            traceId = UUID.randomUUID().toString();
+            parentTraceId = sanitized.headers().get(X_PARENT_TRACE_ID);
+            try {
+                statusStore.accept(traceId, parentTraceId);
+            } catch (IOException e) {
+                LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+                sendProblemResponse(response, callback,
+                        ProblemDetail.serviceUnavailable("Status store temporarily unavailable"));
+                return;
+            }
+            LOGGER.info(RestApiLogMessages.INFO.REQUEST_TRACKED, traceId, route.name());
+        }
+
         // FlowFile enqueue
         if (route.createFlowFile()) {
             var container = new HttpRequestContainer(
@@ -146,7 +180,9 @@ public class ApiRouteHandler implements EndpointHandler {
                     Request.getRemoteAddr(request),
                     body,
                     request.getHeaders().get(HttpHeader.CONTENT_TYPE),
-                    token);
+                    token,
+                    traceId,
+                    parentTraceId);
 
             if (!queue.offer(container)) {
                 gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
@@ -162,7 +198,11 @@ public class ApiRouteHandler implements EndpointHandler {
         // Success response
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
                 route.name(), method, path, Request.getRemoteAddr(request));
-        sendSuccessResponse(response, callback, method);
+        if (tracked) {
+            sendTrackedResponse(response, callback, request, traceId);
+        } else {
+            sendSuccessResponse(response, callback, method);
+        }
     }
 
     private static void sendSuccessResponse(Response response, Callback callback, String method) {
@@ -171,6 +211,39 @@ public class ApiRouteHandler implements EndpointHandler {
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, ACCEPTED_RESPONSE.length);
         response.write(true, ByteBuffer.wrap(ACCEPTED_RESPONSE), callback);
+    }
+
+    private static void sendTrackedResponse(Response response, Callback callback,
+            Request request, String traceId) {
+        // Build absolute Location URI from the Jetty request
+        var httpUri = request.getHttpURI();
+        String scheme = httpUri.getScheme();
+        String host = Request.getServerName(request);
+        int port = Request.getServerPort(request);
+        String locationUri;
+        if (("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443)) {
+            locationUri = "%s://%s/status/%s".formatted(scheme, host, traceId);
+        } else {
+            locationUri = "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
+        }
+
+        // Build JSON body with HATEOAS _links (relative URI for proxy safety)
+        String statusPath = "/status/" + traceId;
+        byte[] responseBody = Json.createObjectBuilder()
+                .add("status", "accepted")
+                .add("traceId", traceId)
+                .add("_links", Json.createObjectBuilder()
+                        .add("status", Json.createObjectBuilder()
+                                .add("href", statusPath)))
+                .build()
+                .toString()
+                .getBytes(StandardCharsets.UTF_8);
+
+        response.setStatus(202);
+        response.getHeaders().put(HttpHeader.LOCATION, locationUri);
+        response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
+        response.write(true, ByteBuffer.wrap(responseBody), callback);
     }
 
     private static boolean isBodyMethod(String method) {

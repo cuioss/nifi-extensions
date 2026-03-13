@@ -57,6 +57,12 @@
             <groupId>dev.harrel</groupId>
             <artifactId>json-schema</artifactId>
         </dependency>
+        <!-- NiFi Distributed Map Cache Client API (cluster-safe state store) -->
+        <dependency>
+            <groupId>org.apache.nifi</groupId>
+            <artifactId>nifi-distributed-cache-client-service-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- Jetty 12 Core (from NiFi BOM, provided at runtime by NiFi) -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>

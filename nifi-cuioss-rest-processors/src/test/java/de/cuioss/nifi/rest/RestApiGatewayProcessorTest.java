@@ -23,6 +23,7 @@ import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -488,7 +489,7 @@ class RestApiGatewayProcessorTest {
             // Call getRelationships() WITHOUT scheduling — simulates NiFi framework calling before @OnScheduled
             var relationships = processor.getRelationships();
             var relationshipNames = relationships.stream()
-                    .map(org.apache.nifi.processor.Relationship::getName)
+                    .map(Relationship::getName)
                     .collect(Collectors.toSet());
 
             assertTrue(relationshipNames.contains("failure"), "Should always contain failure");
@@ -518,7 +519,7 @@ class RestApiGatewayProcessorTest {
             try {
                 var relationships = processor.getRelationships();
                 var relationshipNames = relationships.stream()
-                        .map(org.apache.nifi.processor.Relationship::getName)
+                        .map(Relationship::getName)
                         .collect(Collectors.toSet());
 
                 assertTrue(relationshipNames.contains("failure"), "Should always contain failure");

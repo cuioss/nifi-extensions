@@ -99,6 +99,18 @@ public final class RestApiLogMessages {
                 .template("Loaded %s route properties from external configuration file")
                 .build();
 
+        public static final LogRecord REQUEST_TRACKED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(11)
+                .template("Request accepted with traceId=%s, route=%s")
+                .build();
+
+        public static final LogRecord STATUS_QUERIED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(12)
+                .template("Status queried for traceId=%s, status=%s")
+                .build();
+
     }
 
     @UtilityClass
@@ -162,6 +174,18 @@ public final class RestApiLogMessages {
                 .prefix(PREFIX)
                 .identifier(109)
                 .template("Security violation detected for %s %s from %s: %s")
+                .build();
+
+        public static final LogRecord STATUS_NOT_FOUND = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(110)
+                .template("Status query for unknown traceId: %s")
+                .build();
+
+        public static final LogRecord STATUS_STORE_ERROR = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(111)
+                .template("Failed to access status store: %s")
                 .build();
     }
 

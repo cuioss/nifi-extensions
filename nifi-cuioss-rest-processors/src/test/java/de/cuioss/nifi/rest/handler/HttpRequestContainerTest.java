@@ -44,7 +44,7 @@ class HttpRequestContainerTest {
             var container = new HttpRequestContainer(
                     "users", "POST", "/api/users",
                     Map.of("page", "1"), Map.of("Authorization", "Bearer token"),
-                    "127.0.0.1", body, "application/json", token);
+                    "127.0.0.1", body, "application/json", token, null, null);
 
             // Assert
             assertEquals("users", container.routeName());
@@ -67,7 +67,7 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    Map.of(), Map.of(), "127.0.0.1", new byte[0], null, token);
+                    Map.of(), Map.of(), "127.0.0.1", new byte[0], null, token, null, null);
 
             // Assert
             assertEquals(0, container.body().length);
@@ -81,7 +81,7 @@ class HttpRequestContainerTest {
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
                     Map.of("key", "value"), Map.of("Header", "value"),
-                    "127.0.0.1", null, null, token);
+                    "127.0.0.1", null, null, token, null, null);
 
             // Assert
             assertThrows(UnsupportedOperationException.class,
@@ -99,7 +99,7 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    Map.of(), Map.of(), "127.0.0.1", null, null, token);
+                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null);
 
             // Assert
             assertSame(token, container.token());
@@ -114,7 +114,7 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    null, null, "127.0.0.1", null, null, token);
+                    null, null, "127.0.0.1", null, null, token, null, null);
 
             // Assert
             assertEquals(0, container.body().length);

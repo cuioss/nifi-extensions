@@ -45,6 +45,7 @@ import java.util.Set;
  * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
  * @param authModes       authentication modes for this route (default: BEARER)
  * @param maxRequestSize  per-route body size limit in bytes; 0 means use global default
+ * @param trackingEnabled whether async request tracking is enabled for this route (POST/PUT/PATCH only)
  */
 @Builder
 public record RouteConfiguration(
@@ -58,7 +59,8 @@ boolean enabled,
 @Nullable String successOutcome,
 boolean createFlowFile,
 @NonNull Set<AuthMode> authModes,
-int maxRequestSize) {
+int maxRequestSize,
+boolean trackingEnabled) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");

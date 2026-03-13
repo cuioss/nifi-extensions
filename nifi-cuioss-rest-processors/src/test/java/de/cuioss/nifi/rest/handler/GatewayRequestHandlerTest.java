@@ -18,7 +18,6 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
-import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;

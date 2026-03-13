@@ -32,6 +32,7 @@ import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
@@ -72,6 +73,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.SSL_CONTEXT_SERVICE,
             RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE,
             RestApiGatewayConstants.Properties.REQUEST_QUEUE_SIZE,
+            RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT,
             RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED,
             RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE,
             RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES,
@@ -79,7 +81,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED,
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE,
             RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES,
-            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES);
+            RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES,
+            RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED,
+            RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE,
+            RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES,
+            RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Injectable for testing — when null, a new instance is created in onScheduled. */
@@ -187,6 +193,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         var httpSecurityEvents = new SecurityEventCounter();
         var gatewaySecurityEvents = new GatewaySecurityEvents();
 
+        // Resolve optional DistributedMapCacheClient for request tracking
+        DistributedMapCacheClient cacheClient = context.getProperty(
+                RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT)
+                .asControllerService(DistributedMapCacheClient.class);
+        RequestStatusStore statusStore = (cacheClient != null) ? new RequestStatusStore(cacheClient) : null;
+
         // Build endpoint handlers: built-in management first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>();
 
@@ -215,10 +227,24 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 gatewaySecurityEvents, metricsEnabled, metricsAuthModes,
                 metricsRoles, metricsScopes));
 
+        // Status endpoint (only if cache client is available)
+        if (statusStore != null) {
+            boolean statusEnabled = context.getProperty(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED).asBoolean();
+            Set<AuthMode> statusAuthModes = AuthMode.fromValues(context.getProperty(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE).getValue());
+            Set<String> statusRoles = parseCommaSeparated(context.getProperty(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES).getValue());
+            Set<String> statusScopes = parseCommaSeparated(context.getProperty(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES).getValue());
+            handlers.add(new StatusEndpointHandler(statusStore, statusEnabled, statusAuthModes,
+                    statusRoles, statusScopes));
+        }
+
         // User route handlers
         for (RouteConfiguration route : routes) {
             handlers.add(new ApiRouteHandler(route, requestQueue, maxRequestSize,
-                    schemaValidator, gatewaySecurityEvents));
+                    schemaValidator, gatewaySecurityEvents, statusStore));
         }
 
         var gatewayHandler = new GatewayRequestHandler(handlers, configService, maxRequestSize,
@@ -266,6 +292,14 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             container.queryParameters().forEach((key, value) ->
                     attributes.put(RestApiAttributes.QUERY_PARAM_PREFIX + key, value));
 
+            // Set trace ID attributes for request tracking
+            if (container.traceId() != null) {
+                attributes.put(RestApiAttributes.TRACE_ID, container.traceId());
+            }
+            if (container.parentTraceId() != null) {
+                attributes.put(RestApiAttributes.PARENT_TRACE_ID, container.parentTraceId());
+            }
+
             // Map JWT claims (guard against null token for unauthenticated routes)
             if (container.token() != null) {
                 attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
@@ -281,6 +315,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             if (container.body().length > 0) {
                 flowFile = session.write(flowFile, out -> out.write(container.body()));
             }
+
+            // Record provenance RECEIVE event for traceability
+            session.getProvenanceReporter().receive(flowFile, container.requestUri());
 
             // Route to the outcome relationship (reuse pre-built instance)
             Relationship target = dynamicRelationships.get(outcome);
