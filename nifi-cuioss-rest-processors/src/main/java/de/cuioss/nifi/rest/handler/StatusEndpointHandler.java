@@ -79,8 +79,8 @@ public class StatusEndpointHandler extends AbstractManagementHandler {
 
         // Extract traceId from path: /status/{traceId}
         if (!path.startsWith(STATUS_PATH_PREFIX) || path.length() <= STATUS_PATH_PREFIX.length()) {
-            sendProblemResponse(response, callback,
-                    ProblemDetail.badRequest("Missing traceId in path. Expected: /status/{traceId}"));
+            ProblemDetail.badRequest("Missing traceId in path. Expected: /status/{traceId}")
+                    .sendResponse(response, callback);
             return;
         }
 
@@ -90,8 +90,8 @@ public class StatusEndpointHandler extends AbstractManagementHandler {
         try {
             UUID.fromString(traceId);
         } catch (IllegalArgumentException e) {
-            sendProblemResponse(response, callback,
-                    ProblemDetail.badRequest("Invalid traceId format. Expected UUID: " + traceId));
+            ProblemDetail.badRequest("Invalid traceId format. Expected UUID.")
+                    .sendResponse(response, callback);
             return;
         }
 
@@ -99,17 +99,17 @@ public class StatusEndpointHandler extends AbstractManagementHandler {
         Optional<RequestStatusEntry> entry;
         try {
             entry = statusStore.getStatus(traceId);
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
-            sendProblemResponse(response, callback,
-                    ProblemDetail.serviceUnavailable("Status store temporarily unavailable"));
+            ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
+                    .sendResponse(response, callback);
             return;
         }
 
         if (entry.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_NOT_FOUND, traceId);
-            sendProblemResponse(response, callback,
-                    ProblemDetail.notFound("No status found for traceId: " + traceId));
+            ProblemDetail.notFound("No status found for traceId: " + traceId)
+                    .sendResponse(response, callback);
             return;
         }
 
@@ -141,11 +141,4 @@ public class StatusEndpointHandler extends AbstractManagementHandler {
         response.write(true, ByteBuffer.wrap(responseBody), callback);
     }
 
-    private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {
-        response.setStatus(problem.status());
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, ProblemDetail.CONTENT_TYPE);
-        byte[] problemBody = problem.toJson().getBytes(StandardCharsets.UTF_8);
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, problemBody.length);
-        response.write(true, ByteBuffer.wrap(problemBody), callback);
-    }
 }

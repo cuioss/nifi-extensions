@@ -59,4 +59,7 @@ public final class RestApiAttributes {
 
     /** Parent trace ID for chained request tracking. */
     public static final String PARENT_TRACE_ID = "rest.trace.parent.id";
+
+    /** ISO 8601 timestamp when the tracked request was accepted. */
+    public static final String TRACE_ACCEPTED_AT = "rest.trace.accepted.at";
 }

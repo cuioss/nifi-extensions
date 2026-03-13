@@ -146,9 +146,9 @@ public class ApiRouteHandler implements EndpointHandler {
                     violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
                 }
                 LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.validationError(
-                                "Request body failed JSON Schema validation", violations));
+                ProblemDetail.validationError(
+                                "Request body failed JSON Schema validation", violations)
+                        .sendResponse(response, callback);
                 return;
             }
         }
@@ -165,8 +165,8 @@ public class ApiRouteHandler implements EndpointHandler {
                 statusStore.accept(traceId, parentTraceId);
             } catch (IOException e) {
                 LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
-                sendProblemResponse(response, callback,
-                        ProblemDetail.serviceUnavailable("Status store temporarily unavailable"));
+                ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
+                        .sendResponse(response, callback);
                 return;
             }
             LOGGER.info(RestApiLogMessages.INFO.REQUEST_TRACKED, traceId, route.name());
@@ -187,8 +187,8 @@ public class ApiRouteHandler implements EndpointHandler {
             if (!queue.offer(container)) {
                 gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
                 LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, Request.getRemoteAddr(request));
-                sendProblemResponse(response, callback,
-                        ProblemDetail.serviceUnavailable("Server is at capacity, please retry later"));
+                ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
+                        .sendResponse(response, callback);
                 return;
             }
         } else {
@@ -252,11 +252,4 @@ public class ApiRouteHandler implements EndpointHandler {
                 || "PATCH".equalsIgnoreCase(method);
     }
 
-    private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {
-        response.setStatus(problem.status());
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, ProblemDetail.CONTENT_TYPE);
-        byte[] problemBody = problem.toJson().getBytes(StandardCharsets.UTF_8);
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, problemBody.length);
-        response.write(true, ByteBuffer.wrap(problemBody), callback);
-    }
 }

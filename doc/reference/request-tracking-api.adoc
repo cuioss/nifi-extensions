@@ -156,6 +156,9 @@ When request tracking is enabled, FlowFiles carry these additional attributes:
 
 |`rest.trace.parent.id`
 |The parent trace ID (if `X-Parent-Trace-Id` header was provided)
+
+|`rest.trace.accepted.at`
+|ISO 8601 timestamp when the request was accepted (e.g., `2026-03-13T10:00:00Z`)
 |===
 
 === Updating Status via PutDistributedMapCache
@@ -183,7 +186,7 @@ Downstream flows update the request status using NiFi's standard `PutDistributed
 Update to PROCESSING at the start of your flow:
 [source,json]
 ----
-{"traceId":"${rest.trace.id}","status":"PROCESSING","acceptedAt":"${rest.trace.accepted.at:ifElse('2026-01-01T00:00:00Z')}","updatedAt":"${now():format('yyyy-MM-dd''T''HH:mm:ss''Z''','UTC')}"}
+{"traceId":"${rest.trace.id}","status":"PROCESSING","acceptedAt":"${rest.trace.accepted.at}","updatedAt":"${now():format('yyyy-MM-dd''T''HH:mm:ss''Z''','UTC')}"}
 ----
 
 NOTE: The simplest approach is to use `UpdateAttribute` to build the JSON, then `PutDistributedMapCache`.

@@ -43,6 +43,7 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
 
 import javax.net.ssl.SSLContext;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -295,6 +296,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             // Set trace ID attributes for request tracking
             if (container.traceId() != null) {
                 attributes.put(RestApiAttributes.TRACE_ID, container.traceId());
+                attributes.put(RestApiAttributes.TRACE_ACCEPTED_AT, Instant.now().toString());
             }
             if (container.parentTraceId() != null) {
                 attributes.put(RestApiAttributes.PARENT_TRACE_ID, container.parentTraceId());
