@@ -110,7 +110,7 @@ class KeycloakRealmConfigIT {
 
         @Test
         @DisplayName("testUser token should contain 'roles' claim with 'user' and 'read'")
-        void testUserShouldHaveUserAndReadRoles() {
+        void userShouldHaveUserAndReadRoles() {
             JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
 
             // The realm-roles-mapper maps realm roles into a top-level 'roles' claim
@@ -193,7 +193,7 @@ class KeycloakRealmConfigIT {
 
         @Test
         @DisplayName("test_client should support password grant (direct access)")
-        void testClientShouldSupportPasswordGrant() {
+        void clientShouldSupportPasswordGrant() {
             given().spec(tokenSpec)
                     .formParam("username", TEST_USER)
                     .formParam("password", PASSWORD)
@@ -207,7 +207,7 @@ class KeycloakRealmConfigIT {
 
         @Test
         @DisplayName("test_client (public) should NOT support client_credentials grant")
-        void testClientShouldRejectClientCredentialsGrant() {
+        void clientShouldRejectClientCredentialsGrant() {
             given().baseUri(KEYCLOAK_TOKEN_ENDPOINT)
                     .config(keycloakSslConfig)
                     .contentType("application/x-www-form-urlencoded")

@@ -111,7 +111,7 @@ class RestApiGatewayIT {
         }
 
         @Test
-        @DisplayName("should return 202 Accepted for POST /api/data with valid JWT and body")
+        @DisplayName("should return 202 Accepted for POST /api/data with traceId and Location header")
         void shouldAcceptDataPostWithValidJwt() {
             given().spec(authSpec)
                     .body("{\"key\": \"value\"}")
@@ -119,7 +119,10 @@ class RestApiGatewayIT {
                     .post("/api/data")
                     .then()
                     .statusCode(202)
-                    .body(not(emptyString()));
+                    .header("Location", containsString("/status/"))
+                    .body("status", equalTo("accepted"))
+                    .body("traceId", notNullValue())
+                    .body("_links.status.href", startsWith("/status/"));
         }
 
         @Test
@@ -255,6 +258,129 @@ class RestApiGatewayIT {
                     .get("/health")
                     .then()
                     .statusCode(401);
+        }
+    }
+
+    // ── Request Tracking ──────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Request Tracking")
+    class RequestTrackingTests {
+
+        @Test
+        @DisplayName("should return ACCEPTED status when polling with traceId from POST")
+        void shouldReturnAcceptedStatusForTrackedRequest() {
+            // Submit a tracked request
+            String traceId = given().spec(authSpec)
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            // Poll for status
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/" + traceId)
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("application/json"))
+                    .body("traceId", equalTo(traceId))
+                    .body("status", equalTo("ACCEPTED"))
+                    .body("acceptedAt", notNullValue())
+                    .body("updatedAt", notNullValue());
+        }
+
+        @Test
+        @DisplayName("should return 404 for unknown traceId")
+        void shouldReturn404ForUnknownTraceId() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/00000000-0000-0000-0000-000000000000")
+                    .then()
+                    .statusCode(404)
+                    .contentType(containsString("application/problem+json"))
+                    .body("title", equalTo("Not Found"))
+                    .body("status", equalTo(404));
+        }
+
+        @Test
+        @DisplayName("should return 400 for invalid UUID format")
+        void shouldReturn400ForInvalidUuid() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/not-a-uuid")
+                    .then()
+                    .statusCode(400)
+                    .contentType(containsString("application/problem+json"))
+                    .body("title", equalTo("Bad Request"));
+        }
+
+        @Test
+        @DisplayName("should return 400 for missing traceId in status path")
+        void shouldReturn400ForMissingTraceId() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/")
+                    .then()
+                    .statusCode(400);
+        }
+
+        @Test
+        @DisplayName("should return 401 for status endpoint without auth")
+        void shouldReturn401ForStatusWithoutAuth() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/status/00000000-0000-0000-0000-000000000000")
+                    .then()
+                    .statusCode(401);
+        }
+
+        @Test
+        @DisplayName("should include parentTraceId when X-Parent-Trace-Id header is provided")
+        void shouldIncludeParentTraceIdWhenHeaderProvided() {
+            // First request to get a traceId
+            String parentTraceId = given().spec(authSpec)
+                    .body("{\"key\": \"parent\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            // Second request with parent trace header
+            String childTraceId = given().spec(authSpec)
+                    .header("X-Parent-Trace-Id", parentTraceId)
+                    .body("{\"key\": \"child\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            // Verify child status includes parentTraceId
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/" + childTraceId)
+                    .then()
+                    .statusCode(200)
+                    .body("traceId", equalTo(childTraceId))
+                    .body("parentTraceId", equalTo(parentTraceId));
+        }
+
+        @Test
+        @DisplayName("should return 200 OK for GET on tracked route (no tracking for GET)")
+        void shouldReturn200ForGetOnTrackedRoute() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/data")
+                    .then()
+                    .statusCode(200)
+                    .body(not(containsString("traceId")));
         }
     }
 

@@ -70,6 +70,8 @@ public class RouteConfigurationParser {
     static final String AUTH_MODE_KEY = "auth-mode";
     /** Property key for per-route maximum request body size. */
     static final String MAX_REQUEST_SIZE_KEY = "max-request-size";
+    /** Property key for request tracking flag. */
+    static final String TRACKING_ENABLED_KEY = "tracking-enabled";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -117,6 +119,7 @@ public class RouteConfigurationParser {
                 }
             }
             int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
+            boolean trackingEnabled = "true".equalsIgnoreCase(routeProps.get(TRACKING_ENABLED_KEY));
 
             if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
                 LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
@@ -128,6 +131,7 @@ public class RouteConfigurationParser {
                     .methods(methods).requiredRoles(roles).requiredScopes(scopes)
                     .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
                     .authModes(authModes).maxRequestSize(maxRequestSize)
+                    .trackingEnabled(trackingEnabled)
                     .build());
             LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
                     routeName, path, enabled, methods, authModes);

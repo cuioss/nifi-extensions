@@ -53,6 +53,17 @@ public interface EndpointHandler {
     /** Whether this is a built-in (non-removable) endpoint like /health or /metrics. */
     boolean builtIn();
 
+    /**
+     * Whether this handler uses prefix matching instead of exact path matching.
+     * When {@code true}, the dispatcher matches any request path that starts with
+     * {@code path() + "/"} (e.g. {@code /status/abc-123} matches handler with path {@code /status}).
+     *
+     * @return {@code true} for prefix matching, {@code false} for exact matching (default)
+     */
+    default boolean prefixMatch() {
+        return false;
+    }
+
     /** Required JWT roles — empty set means no role check. */
     Set<String> requiredRoles();
 
