@@ -671,7 +671,7 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
             const outcome = routeProps?.['success-outcome']?.trim() || name;
             const connected = !connectedRels || connectedRels.has(outcome);
             const source = routeProps?._source;
-            const origin = (source === 'external') ? 'external' : 'persisted';
+            const origin = (source === 'external' || source === 'both') ? 'external' : 'persisted';
             const row = createTableRow(name, routeProps, componentId, container, origin, connected);
             tbody.appendChild(row);
         }
@@ -688,16 +688,16 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
  */
 const buildOriginBadge = (origin, connected) => {
     if (origin === 'external') {
-        return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}">${sanitizeHtml(t('origin.badge.external'))}</span>`;
+        return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}"><i class="fa fa-file-text"></i> ${sanitizeHtml(t('origin.badge.external'))}</span>`;
     }
     if (origin === 'new') {
-        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
+        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}"><i class="fa fa-plus"></i> ${sanitizeHtml(t('origin.badge.new'))}</span>`;
     }
     if (origin === 'modified') {
-        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
+        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}"><i class="fa fa-pencil"></i> ${sanitizeHtml(t('origin.badge.modified'))}</span>`;
     }
     if (connected) {
-        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-database"></i> ${sanitizeHtml(t('origin.badge.persisted'))}</span>`;
     }
     return '';
 };

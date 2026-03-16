@@ -517,12 +517,12 @@ const loadExistingIssuersGateway = async (container, ctx) => {
 
 const buildOriginBadge = (origin) => {
     if (origin === 'new') {
-        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
+        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}"><i class="fa fa-plus"></i> ${sanitizeHtml(t('origin.badge.new'))}</span>`;
     }
     if (origin === 'modified') {
-        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
+        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}"><i class="fa fa-pencil"></i> ${sanitizeHtml(t('origin.badge.modified'))}</span>`;
     }
-    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
+    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-database"></i> ${sanitizeHtml(t('origin.badge.persisted'))}</span>`;
 };
 
 const renderIssuerSummaryTable = (container, issuers, ctx) => {

@@ -44,13 +44,14 @@ export const TRANSLATIONS = {
         'common.loading': 'Loading...',
 
         // -- origin badges --
-        'origin.badge.persisted.title': 'Loaded from processor properties (persisted)',
-        'origin.badge.modified.title': 'Modified in this session (not yet persisted)',
-        'origin.badge.new.title': 'Created in this session (not yet persisted)',
+        'origin.badge.persisted.title': 'Saved in NiFi processor properties',
+        'origin.badge.persisted': 'NiFi',
+        'origin.badge.modified.title': 'Modified in this session (not yet saved)',
         'origin.badge.modified': 'Modified',
+        'origin.badge.new.title': 'Created in this session (not yet saved)',
         'origin.badge.new': 'New',
-        'origin.badge.external': 'External',
-        'origin.badge.external.title': 'Loaded from external configuration file',
+        'origin.badge.external': 'Config',
+        'origin.badge.external.title': 'Loaded from configuration file (read-only)',
         'route.source.external.tooltip': 'This route is defined in the external configuration file. It cannot be deleted, but can be overridden via NiFi properties.',
         'route.source.external.edit.tooltip': 'Edit to override external route via NiFi properties',
 
@@ -439,13 +440,14 @@ export const TRANSLATIONS = {
         'common.loading': 'Laden\u2026',
 
         // -- origin badges --
-        'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen (persistent)',
-        'origin.badge.modified.title': 'In dieser Sitzung ge\u00e4ndert (noch nicht persistent)',
-        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
+        'origin.badge.persisted.title': 'In NiFi Prozessor-Eigenschaften gespeichert',
+        'origin.badge.persisted': 'NiFi',
+        'origin.badge.modified.title': 'In dieser Sitzung ge\u00e4ndert (noch nicht gespeichert)',
         'origin.badge.modified': 'Ge\u00e4ndert',
+        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht gespeichert)',
         'origin.badge.new': 'Neu',
-        'origin.badge.external': 'Extern',
-        'origin.badge.external.title': 'Aus externer Konfigurationsdatei geladen',
+        'origin.badge.external': 'Konfig',
+        'origin.badge.external.title': 'Aus Konfigurationsdatei geladen (schreibgesch\u00fctzt)',
         'route.source.external.tooltip': 'Diese Route ist in der externen Konfigurationsdatei definiert. Sie kann nicht gel\u00f6scht, aber \u00fcber NiFi-Eigenschaften \u00fcberschrieben werden.',
         'route.source.external.edit.tooltip': 'Bearbeiten, um externe Route \u00fcber NiFi-Eigenschaften zu \u00fcberschreiben',
 

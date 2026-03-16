@@ -82,6 +82,19 @@
     content: "\f019" !important;
 }
 
+/* Origin Badge Icons (rest-endpoint-config.js) */
+.fa-database::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 900 !important;
+    content: "\f1c0" !important;
+}
+
+.fa-file-text::before {
+    font-family: "Font Awesome 7 Free", sans-serif !important;
+    font-weight: 400 !important;
+    content: "\f15c" !important;
+}
+
 /* CRUD Icons (rest-endpoint-config.js, issuer-config.js) */
 .fa-plus::before {
     font-family: "Font Awesome 7 Free", sans-serif !important;
