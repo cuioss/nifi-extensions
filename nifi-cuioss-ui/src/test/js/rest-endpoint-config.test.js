@@ -68,6 +68,12 @@ describe('rest-endpoint-config', () => {
         utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
+        utils.buildOriginBadge.mockImplementation((origin) => {
+            const o = origin || 'persisted';
+            const title = utils.t(`origin.badge.${o}.title`);
+            const text = utils.t(`origin.badge.${o}`);
+            return ` <span class="origin-badge origin-${o}" title="${title}"><i class="fa fa-database"></i> ${text}</span>`;
+        });
         createContextHelp.mockImplementation(mockCreateContextHelp);
         createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID

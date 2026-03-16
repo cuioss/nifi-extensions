@@ -11,7 +11,8 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
+    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
+    buildOriginBadge
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -126,8 +127,7 @@ const buildTrackingBadge = (trackingEnabled, methods) => {
         ? BODY_METHODS
         : parsed.filter((m) => BODY_METHODS.includes(m));
     if (tracked.length === 0) return '';
-    const suffix = tracked.length < BODY_METHODS.length || parsed.length > 0
-        ? ` (${tracked.join(', ')})` : '';
+    const suffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
     return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${suffix}</span>`;
 };
 const MGMT_PREFIX = 'rest.gateway.management.';
@@ -699,23 +699,7 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
     container.prepend(table);
 };
 
-/**
- * Build an origin badge HTML snippet for a route row.
- * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
- * @returns {string} HTML string for the badge
- */
-const buildOriginBadge = (origin) => {
-    if (origin === 'external') {
-        return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}"><i class="fa fa-file-text"></i> ${sanitizeHtml(t('origin.badge.external'))}</span>`;
-    }
-    if (origin === 'new') {
-        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}"><i class="fa fa-plus"></i> ${sanitizeHtml(t('origin.badge.new'))}</span>`;
-    }
-    if (origin === 'modified') {
-        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}"><i class="fa fa-pencil"></i> ${sanitizeHtml(t('origin.badge.modified'))}</span>`;
-    }
-    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-database"></i> ${sanitizeHtml(t('origin.badge.persisted'))}</span>`;
-};
+// buildOriginBadge imported from utils.js
 
 /**
  * Create a single summary table row for a route.

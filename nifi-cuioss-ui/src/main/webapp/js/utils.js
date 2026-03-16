@@ -857,6 +857,30 @@ export const sanitizeHtml = (html) => {
 };
 
 // ---------------------------------------------------------------------------
+// Origin badges
+// ---------------------------------------------------------------------------
+
+const ORIGIN_BADGE_CONFIG = {
+    external: { icon: 'fa-file-text', textKey: 'origin.badge.external' },
+    new: { icon: 'fa-plus', textKey: 'origin.badge.new' },
+    modified: { icon: 'fa-pencil', textKey: 'origin.badge.modified' },
+    persisted: { icon: 'fa-database', textKey: 'origin.badge.persisted' }
+};
+
+/**
+ * Build an origin badge HTML snippet.
+ * @param {'persisted'|'modified'|'new'|'external'} origin  the origin state
+ * @returns {string} HTML string for the badge
+ */
+export const buildOriginBadge = (origin) => {
+    const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
+    const config = ORIGIN_BADGE_CONFIG[badgeType];
+    const title = sanitizeHtml(t(`${config.textKey}.title`));
+    const text = sanitizeHtml(t(config.textKey));
+    return ` <span class="origin-badge origin-${badgeType}" title="${title}"><i class="fa ${config.icon}"></i> ${text}</span>`;
+};
+
+// ---------------------------------------------------------------------------
 // Formatters
 // ---------------------------------------------------------------------------
 
