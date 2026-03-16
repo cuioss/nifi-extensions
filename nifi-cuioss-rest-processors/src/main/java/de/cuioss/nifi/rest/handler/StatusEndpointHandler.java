@@ -21,6 +21,7 @@ import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
+import jakarta.json.JsonException;
 import jakarta.json.JsonObjectBuilder;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
@@ -99,7 +100,7 @@ public class StatusEndpointHandler extends AbstractManagementHandler {
         Optional<RequestStatusEntry> entry;
         try {
             entry = statusStore.getStatus(traceId);
-        } catch (Exception e) {
+        } catch (IOException | JsonException | IllegalArgumentException e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
                     .sendResponse(response, callback);
