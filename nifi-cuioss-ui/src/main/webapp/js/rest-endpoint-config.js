@@ -729,9 +729,9 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
     const schemaBadge = (props?.schema?.trim())
-        ? ' <span class="schema-badge">Schema</span>' : '';
+        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}">Schema</span>` : '';
     const trackingBadge = (props?.['tracking-enabled'] === 'true')
-        ? ` <span class="tracking-badge"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
+        ? ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
 
     const originBadge = buildOriginBadge(origin, connected);
 
@@ -806,9 +806,9 @@ const updateTableRow = (row, formData) => {
     }
 
     const schemaBadge = formData.schema?.trim()
-        ? ' <span class="schema-badge">Schema</span>' : '';
+        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}">Schema</span>` : '';
     const trackingBadge = formData['tracking-enabled']
-        ? ` <span class="tracking-badge"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
+        ? ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
     cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
