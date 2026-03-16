@@ -610,6 +610,7 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
             'required-scopes': Array.isArray(route.requiredScopes) ? route.requiredScopes.join(',') : (route.requiredScopes || ''),
             'auth-mode': route.authMode || 'bearer',
             'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
+            'tracking-enabled': route.trackingEnabled === true ? 'true' : 'false',
             _source: route.source || 'nifi'
         };
         if (route.schema) {
@@ -730,7 +731,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
     const trackingBadge = (props?.['tracking-enabled'] === 'true')
-        ? ` <span class="tracking-badge">${t('route.table.tracking')}</span>` : '';
+        ? ` <span class="tracking-badge"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
 
     const originBadge = buildOriginBadge(origin, connected);
 
@@ -807,7 +808,7 @@ const updateTableRow = (row, formData) => {
     const schemaBadge = formData.schema?.trim()
         ? ' <span class="schema-badge">Schema</span>' : '';
     const trackingBadge = formData['tracking-enabled']
-        ? ` <span class="tracking-badge">${t('route.table.tracking')}</span>` : '';
+        ? ` <span class="tracking-badge"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
     cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')

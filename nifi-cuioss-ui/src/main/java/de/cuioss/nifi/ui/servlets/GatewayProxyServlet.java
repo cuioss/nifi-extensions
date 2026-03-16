@@ -911,6 +911,8 @@ public class GatewayProxyServlet extends HttpServlet {
                 LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
             }
         }
+        routeObj.add("trackingEnabled", "true".equalsIgnoreCase(
+                routeProps.getOrDefault("tracking-enabled", "false")));
         return routeObj;
     }
 
