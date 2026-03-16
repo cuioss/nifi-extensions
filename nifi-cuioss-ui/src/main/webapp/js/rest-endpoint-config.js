@@ -111,6 +111,25 @@ const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+
+/**
+ * Build the tracking badge HTML for a route, showing which methods are tracked.
+ * @param {boolean|string} trackingEnabled  whether tracking is enabled
+ * @param {string} methods  comma-separated method list (empty = all methods)
+ * @returns {string} HTML string or empty
+ */
+const buildTrackingBadge = (trackingEnabled, methods) => {
+    const enabled = trackingEnabled === true || trackingEnabled === 'true';
+    if (!enabled) return '';
+    const parsed = (methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
+    const tracked = parsed.length === 0
+        ? BODY_METHODS
+        : parsed.filter((m) => BODY_METHODS.includes(m));
+    if (tracked.length === 0) return '';
+    const suffix = tracked.length < BODY_METHODS.length || parsed.length > 0
+        ? ` (${tracked.join(', ')})` : '';
+    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${suffix}</span>`;
+};
 const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**
@@ -730,8 +749,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const schemaBadge = (props?.schema?.trim())
         ? ` <span class="schema-badge" title="${t('route.table.schema.title')}">Schema</span>` : '';
-    const trackingBadge = (props?.['tracking-enabled'] === 'true')
-        ? ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
+    const trackingBadge = buildTrackingBadge(props?.['tracking-enabled'], methods);
 
     const originBadge = buildOriginBadge(origin, connected);
 
@@ -807,8 +825,7 @@ const updateTableRow = (row, formData) => {
 
     const schemaBadge = formData.schema?.trim()
         ? ` <span class="schema-badge" title="${t('route.table.schema.title')}">Schema</span>` : '';
-    const trackingBadge = formData['tracking-enabled']
-        ? ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}</span>` : '';
+    const trackingBadge = buildTrackingBadge(formData['tracking-enabled'], formData.methods);
     cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
