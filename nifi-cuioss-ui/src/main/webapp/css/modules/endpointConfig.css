@@ -248,6 +248,26 @@
     cursor: pointer;
 }
 
+/* Request Tracking toggle */
+
+.field-container-tracking-enabled {
+    margin-bottom: 10px;
+}
+
+.tracking-enabled-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.route-form .form-field .tracking-enabled-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
 /* Status badges in table */
 
 .status-enabled {
