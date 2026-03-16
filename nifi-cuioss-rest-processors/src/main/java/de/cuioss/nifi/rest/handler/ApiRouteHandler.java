@@ -147,7 +147,7 @@ public class ApiRouteHandler implements EndpointHandler {
                 }
                 LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
                 ProblemDetail.validationError(
-                                "Request body failed JSON Schema validation", violations)
+                        "Request body failed JSON Schema validation", violations)
                         .sendResponse(response, callback);
                 return;
             }

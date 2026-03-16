@@ -1749,6 +1749,156 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(adminRow.locator(".remove-route-button")).toHaveCount(0);
     });
 
+    test("should display tracking checkbox in route editor (unchecked by default)", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel =
+            customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        const summaryTable =
+            endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click edit on the validated route (POST)
+        const validatedRow = summaryTable.locator(
+            'tbody tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+        await validatedRow.locator(".edit-route-button").click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Tracking checkbox should be present and unchecked by default
+        const trackingCheckbox = routeForm.locator(
+            ".tracking-enabled-checkbox",
+        );
+        await expect(trackingCheckbox).toBeVisible({ timeout: 5000 });
+        await expect(trackingCheckbox).not.toBeChecked();
+
+        // Context help button should exist near the tracking label
+        const trackingContainer = routeForm.locator(
+            ".field-container-tracking-enabled",
+        );
+        const helpButton = trackingContainer.locator(
+            ".context-help-toggle",
+        );
+        await expect(helpButton).toBeVisible({ timeout: 3000 });
+
+        // Cancel to close editor
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
+    test("should show tracking badge after enabling tracking on a POST route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel =
+            customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        const summaryTable =
+            endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // The validated route should not have a tracking badge initially
+        const validatedRow = summaryTable.locator(
+            'tbody tr[data-route-name="validated"]',
+        );
+        await expect(validatedRow).toBeVisible({ timeout: 5000 });
+        await expect(
+            validatedRow.locator(".tracking-badge"),
+        ).toHaveCount(0);
+
+        // Click edit
+        await validatedRow.locator(".edit-route-button").click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Enable tracking
+        const trackingCheckbox = routeForm.locator(
+            ".tracking-enabled-checkbox",
+        );
+        await trackingCheckbox.check();
+
+        // Save
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+
+        // Tracking badge should appear in the table row
+        await expect(
+            validatedRow.locator(".tracking-badge"),
+        ).toBeVisible({ timeout: 5000 });
+        await expect(
+            validatedRow.locator(".tracking-badge"),
+        ).toContainText("Tracking");
+    });
+
+    test("should show validation error when enabling tracking on GET-only route", async ({
+        customUIFrame,
+    }) => {
+        // Navigate to Endpoint Configuration tab
+        const endpointConfigTab = customUIFrame.locator(
+            'a[href="#endpoint-config"]',
+        );
+        await expect(endpointConfigTab).toBeVisible({ timeout: 5000 });
+        await endpointConfigTab.click();
+
+        const endpointConfigPanel =
+            customUIFrame.locator("#endpoint-config");
+        await expect(endpointConfigPanel).toBeVisible({ timeout: 5000 });
+
+        const summaryTable =
+            endpointConfigPanel.locator(".route-summary-table");
+        await expect(summaryTable).toBeVisible({ timeout: 15000 });
+
+        // Click edit on the admin route (GET only)
+        const adminRow = summaryTable.locator(
+            'tbody tr[data-route-name="admin"]',
+        );
+        await expect(adminRow).toBeVisible({ timeout: 5000 });
+        await adminRow.locator(".edit-route-button").click();
+
+        const routeForm = endpointConfigPanel.locator(".route-form");
+        await expect(routeForm).toBeVisible({ timeout: 5000 });
+
+        // Enable tracking
+        const trackingCheckbox = routeForm.locator(
+            ".tracking-enabled-checkbox",
+        );
+        await trackingCheckbox.check();
+
+        // Try to save
+        const saveBtn = routeForm.locator(".save-route-button");
+        await saveBtn.click();
+
+        // Validation error should be displayed
+        const errorMessages = routeForm.locator(
+            ".route-form-error-messages",
+        );
+        await expect(errorMessages).toBeVisible({ timeout: 5000 });
+
+        // Cancel to close editor
+        const cancelBtn = routeForm.locator(".cancel-route-button");
+        await cancelBtn.click();
+    });
+
     test("should not display disabled-test route from external config", async ({
         customUIFrame,
     }) => {
