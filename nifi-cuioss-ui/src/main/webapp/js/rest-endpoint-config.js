@@ -728,6 +728,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
+    const trackingBadge = (props?.['tracking-enabled'] === 'true')
+        ? ' <span class="tracking-badge">Tracking</span>' : '';
 
     const originBadge = buildOriginBadge(origin, connected);
 
@@ -754,7 +756,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
         <td>${outcomeCell}</td>
-        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
+        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}${trackingBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
@@ -803,7 +805,9 @@ const updateTableRow = (row, formData) => {
 
     const schemaBadge = formData.schema?.trim()
         ? ' <span class="schema-badge">Schema</span>' : '';
-    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
+    const trackingBadge = formData['tracking-enabled']
+        ? ' <span class="tracking-badge">Tracking</span>' : '';
+    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())
@@ -833,6 +837,7 @@ const updateTableRow = (row, formData) => {
         row._routeProps.schema = formData.schema || '';
         row._routeProps['success-outcome'] = formData['success-outcome'] || '';
         row._routeProps['create-flowfile'] = formData['create-flowfile'] === false ? 'false' : 'true';
+        row._routeProps['tracking-enabled'] = formData['tracking-enabled'] ? 'true' : 'false';
     }
 };
 
@@ -925,6 +930,33 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     header.appendChild(nameHelp.panel);
     header.appendChild(enabledHelp.panel);
     form.appendChild(header);
+
+    // ---- tracking-enabled checkbox (after header, before form fields) ----
+    const trackingEnabledVal = properties?.['tracking-enabled'] === 'true';
+    const trackingToggle = document.createElement('div');
+    trackingToggle.className = 'form-field field-container-tracking-enabled';
+    const trackingLabel = document.createElement('label');
+    trackingLabel.className = 'tracking-enabled-label';
+    trackingLabel.setAttribute('for', `tracking-enabled-${idx}`);
+
+    const trackingCheckbox = document.createElement('input');
+    trackingCheckbox.type = 'checkbox';
+    trackingCheckbox.id = `tracking-enabled-${idx}`;
+    trackingCheckbox.className = 'tracking-enabled-checkbox';
+    if (trackingEnabledVal) trackingCheckbox.checked = true;
+    trackingCheckbox.setAttribute('aria-label', 'Request Tracking');
+    trackingLabel.appendChild(trackingCheckbox);
+    trackingLabel.append(` ${t('route.form.tracking')}`);
+
+    const trackingHelp = createContextHelp({
+        helpKey: 'contexthelp.route.tracking',
+        propertyKey: `restapi.${rn}.tracking-enabled`,
+        currentValue: String(trackingEnabledVal)
+    });
+    trackingLabel.appendChild(trackingHelp.button);
+    trackingToggle.appendChild(trackingLabel);
+    trackingToggle.appendChild(trackingHelp.panel);
+    form.appendChild(trackingToggle);
 
     // ---- form fields ----
     const fields = document.createElement('div');
@@ -1216,7 +1248,8 @@ const extractFormFields = (form) => {
         'max-request-size': q('.field-max-request-size'),
         schema: schemaEnabled ? getActiveSchemaValue(form) : '',
         'success-outcome': createFlowFile ? q('.field-success-outcome') : '',
-        'create-flowfile': createFlowFile
+        'create-flowfile': createFlowFile,
+        'tracking-enabled': form.querySelector('.tracking-enabled-checkbox')?.checked === true
     };
 };
 
@@ -1235,6 +1268,14 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (!f.path) return { isValid: false, error: new Error(t('route.validate.path.required')) };
+    const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+    if (f['tracking-enabled']) {
+        const methods = (f.methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
+        const hasBodyMethod = methods.length === 0 || methods.some((m) => BODY_METHODS.includes(m));
+        if (!hasBodyMethod) {
+            return { isValid: false, error: new Error(t('route.validate.tracking.methods')) };
+        }
+    }
     return { isValid: true };
 };
 
@@ -1250,6 +1291,7 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
+    u[`${ROUTE_PREFIX}${name}.tracking-enabled`] = f['tracking-enabled'] ? 'true' : null;
     return u;
 };
 
