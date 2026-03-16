@@ -512,6 +512,24 @@
     vertical-align: middle;
 }
 
+/* Tracking badge in summary table */
+
+.tracking-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--info-bg, #e3f2fd);
+    color: var(--info-color-dark, #1565c0);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.tracking-badge .fa {
+    margin-right: 3px;
+}
+
 /* Schema mode toggle (file vs inline) */
 
 .schema-mode-toggle {
