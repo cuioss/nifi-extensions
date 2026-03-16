@@ -1016,8 +1016,8 @@ describe('rest-endpoint-config', () => {
 
         const newRow = container.querySelector('tr[data-route-name="brand-new"]');
         expect(newRow.dataset.origin).toBe('persisted');
-        // No lock icon — route is persisted but not yet connected on canvas
-        expect(newRow.querySelector('.origin-persisted')).toBeNull();
+        // Persisted badge always shown for persisted routes
+        expect(newRow.querySelector('.origin-persisted')).not.toBeNull();
     });
 
     it('should show persisted badge with tooltip', async () => {
@@ -1202,7 +1202,7 @@ describe('rest-endpoint-config', () => {
         }
     });
 
-    it('should show lock icon only for routes with connected relationships', async () => {
+    it('should show origin badge for all persisted routes regardless of connection', async () => {
         // Only 'health' is connected; 'data' is not
         api.getConnectedRelationships.mockResolvedValue(new Set(['health']));
         api.getComponentProperties.mockResolvedValue({
@@ -1212,36 +1212,14 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Both routes are persisted (loaded from properties)
+        // Both routes are persisted and should show origin badge
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         expect(healthRow.dataset.origin).toBe('persisted');
         expect(healthRow.querySelector('.origin-persisted')).not.toBeNull();
 
-        // Unconnected route: still persisted, but no lock icon
-        const dataRow = container.querySelector('tr[data-route-name="data"]');
-        expect(dataRow.dataset.origin).toBe('persisted');
-        expect(dataRow.querySelector('.origin-persisted')).toBeNull();
-    });
-
-    it('should use success-outcome for connection check when specified', async () => {
-        // 'api-data' is connected (custom outcome), 'health' is not
-        api.getConnectedRelationships.mockResolvedValue(new Set(['api-data']));
-        api.getComponentProperties.mockResolvedValue({
-            properties: PROPERTIES_WITH_OUTCOME,
-            revision: { version: 1 }
-        });
-
-        await init(container);
-
-        // data route uses custom outcome 'api-data' which is connected → lock icon
         const dataRow = container.querySelector('tr[data-route-name="data"]');
         expect(dataRow.dataset.origin).toBe('persisted');
         expect(dataRow.querySelector('.origin-persisted')).not.toBeNull();
-
-        // health route has no connection → no lock icon
-        const healthRow = container.querySelector('tr[data-route-name="health"]');
-        expect(healthRow.dataset.origin).toBe('persisted');
-        expect(healthRow.querySelector('.origin-persisted')).toBeNull();
     });
 
     it('should show dash in Connection column when create-flowfile is false', async () => {
