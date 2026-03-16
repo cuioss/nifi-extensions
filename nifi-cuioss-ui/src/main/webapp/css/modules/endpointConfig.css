@@ -271,13 +271,23 @@
 /* Status badges in table */
 
 .status-enabled {
-    color: var(--success-color-dark, #28a745);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
     font-weight: 600;
+    background: var(--success-bg, #e8f5e9);
+    color: var(--success-color-dark, #28a745);
 }
 
 .status-disabled {
-    color: var(--text-muted, #666);
-    font-weight: normal;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--disabled-bg, #f5f5f5);
+    color: var(--text-muted, #888);
     font-style: italic;
 }
 
@@ -315,7 +325,14 @@
     color: var(--badge-color, #1565c0);
 }
 
-/* Management endpoints table hidden rows */
+/* Management endpoints section */
+
+.management-endpoints-display {
+    background: var(--mgmt-section-bg, #fafafa);
+    border-radius: 6px;
+    padding: 0 12px 12px;
+    margin-bottom: 16px;
+}
 
 .management-endpoints-table tbody tr.hidden {
     display: none;
@@ -514,6 +531,10 @@
     color: var(--success-color-dark, #28a745);
     margin-left: 8px;
     vertical-align: middle;
+}
+
+.schema-badge .fa {
+    margin-right: 3px;
 }
 
 /* Tracking badge in summary table */

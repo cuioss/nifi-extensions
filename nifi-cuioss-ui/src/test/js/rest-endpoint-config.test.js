@@ -504,7 +504,7 @@ describe('rest-endpoint-config', () => {
         const healthRow = container.querySelector('tr[data-route-name="health"]');
         const badge = healthRow.querySelector('.schema-badge');
         expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('Schema');
+        expect(badge.textContent).toContain('Schema');
     });
 
     it('should not show schema badge for route without schema', async () => {
