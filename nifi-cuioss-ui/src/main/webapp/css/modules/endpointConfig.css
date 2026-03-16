@@ -478,9 +478,13 @@
     vertical-align: middle;
 }
 
+.origin-badge .fa {
+    margin-right: 2px;
+}
+
 .origin-persisted {
-    color: var(--text-muted, #888);
-    font-size: 0.7rem;
+    background: var(--muted-bg, #f0f0f0);
+    color: var(--text-muted, #666);
 }
 
 .origin-modified {
