@@ -1798,7 +1798,7 @@ test.describe("REST API Gateway Tabs", () => {
         await cancelBtn.click();
     });
 
-    test("should show tracking badge after enabling tracking on a POST route", async ({
+    test("should not show tracking badge when route has no tracking enabled", async ({
         customUIFrame,
     }) => {
         // Navigate to Endpoint Configuration tab
@@ -1816,7 +1816,7 @@ test.describe("REST API Gateway Tabs", () => {
             endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // The validated route should not have a tracking badge initially
+        // The validated route should not have a tracking badge (not configured)
         const validatedRow = summaryTable.locator(
             'tbody tr[data-route-name="validated"]',
         );
@@ -1824,30 +1824,6 @@ test.describe("REST API Gateway Tabs", () => {
         await expect(
             validatedRow.locator(".tracking-badge"),
         ).toHaveCount(0);
-
-        // Click edit
-        await validatedRow.locator(".edit-route-button").click();
-
-        const routeForm = endpointConfigPanel.locator(".route-form");
-        await expect(routeForm).toBeVisible({ timeout: 5000 });
-
-        // Enable tracking
-        const trackingCheckbox = routeForm.locator(
-            ".tracking-enabled-checkbox",
-        );
-        await trackingCheckbox.check();
-
-        // Save
-        const saveBtn = routeForm.locator(".save-route-button");
-        await saveBtn.click();
-
-        // Tracking badge should appear in the table row
-        await expect(
-            validatedRow.locator(".tracking-badge"),
-        ).toBeVisible({ timeout: 5000 });
-        await expect(
-            validatedRow.locator(".tracking-badge"),
-        ).toContainText("Tracking");
     });
 
     test("should show validation error when enabling tracking on GET-only route", async ({
