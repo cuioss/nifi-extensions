@@ -2606,7 +2606,7 @@ describe('rest-endpoint-config', () => {
         const dataRow = container.querySelector('tr[data-route-name="data"]');
         const badge = dataRow.querySelector('.tracking-badge');
         expect(badge).not.toBeNull();
-        expect(badge.textContent).toBe('Tracking');
+        expect(badge.textContent).toBe('route.table.tracking');
     });
 
     it('should not show tracking badge when tracking is disabled', async () => {

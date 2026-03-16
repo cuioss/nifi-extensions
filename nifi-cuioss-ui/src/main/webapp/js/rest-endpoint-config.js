@@ -110,6 +110,7 @@ export const cleanup = () => { /* no persistent resources */ };
 const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
+const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**
@@ -729,7 +730,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const schemaBadge = (props?.schema?.trim())
         ? ' <span class="schema-badge">Schema</span>' : '';
     const trackingBadge = (props?.['tracking-enabled'] === 'true')
-        ? ' <span class="tracking-badge">Tracking</span>' : '';
+        ? ` <span class="tracking-badge">${t('route.table.tracking')}</span>` : '';
 
     const originBadge = buildOriginBadge(origin, connected);
 
@@ -806,7 +807,7 @@ const updateTableRow = (row, formData) => {
     const schemaBadge = formData.schema?.trim()
         ? ' <span class="schema-badge">Schema</span>' : '';
     const trackingBadge = formData['tracking-enabled']
-        ? ' <span class="tracking-badge">Tracking</span>' : '';
+        ? ` <span class="tracking-badge">${t('route.table.tracking')}</span>` : '';
     cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
@@ -1268,7 +1269,6 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (!f.path) return { isValid: false, error: new Error(t('route.validate.path.required')) };
-    const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
     if (f['tracking-enabled']) {
         const methods = (f.methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
         const hasBodyMethod = methods.length === 0 || methods.some((m) => BODY_METHODS.includes(m));
