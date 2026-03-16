@@ -702,10 +702,9 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
 /**
  * Build an origin badge HTML snippet for a route row.
  * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
- * @param {boolean} connected  whether the route's relationship is wired on the NiFi canvas
  * @returns {string} HTML string for the badge
  */
-const buildOriginBadge = (origin, connected) => {
+const buildOriginBadge = (origin) => {
     if (origin === 'external') {
         return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}"><i class="fa fa-file-text"></i> ${sanitizeHtml(t('origin.badge.external'))}</span>`;
     }
@@ -715,10 +714,7 @@ const buildOriginBadge = (origin, connected) => {
     if (origin === 'modified') {
         return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}"><i class="fa fa-pencil"></i> ${sanitizeHtml(t('origin.badge.modified'))}</span>`;
     }
-    if (connected) {
-        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-database"></i> ${sanitizeHtml(t('origin.badge.persisted'))}</span>`;
-    }
-    return '';
+    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-database"></i> ${sanitizeHtml(t('origin.badge.persisted'))}</span>`;
 };
 
 /**
@@ -751,7 +747,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
         ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
     const trackingBadge = buildTrackingBadge(props?.['tracking-enabled'], methods);
 
-    const originBadge = buildOriginBadge(origin, connected);
+    const originBadge = buildOriginBadge(origin);
 
     // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
@@ -808,7 +804,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  */
 const updateTableRow = (row, formData) => {
     const origin = row.dataset.origin || 'persisted';
-    const originBadge = buildOriginBadge(origin, false);
+    const originBadge = buildOriginBadge(origin);
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
