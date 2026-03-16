@@ -77,7 +77,10 @@ public record RequestStatusEntry(
      * @throws jakarta.json.JsonException if the JSON is malformed
      */
     public static RequestStatusEntry fromJson(String json) {
-        JsonObject obj = Json.createReader(new StringReader(json)).readObject();
+        JsonObject obj;
+        try (var reader = Json.createReader(new StringReader(json))) {
+            obj = reader.readObject();
+        }
         return new RequestStatusEntry(
                 obj.getString("traceId"),
                 RequestStatus.valueOf(obj.getString("status")),
