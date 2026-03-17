@@ -48,6 +48,7 @@ import java.util.Set;
  * @param trackingMode        controls async request tracking for this route (POST/PUT/PATCH only)
  * @param attachmentsMinCount minimum number of attachments required (only valid when trackingMode is ATTACHMENTS)
  * @param attachmentsMaxCount maximum number of attachments allowed (only valid when trackingMode is ATTACHMENTS; 0 means use global hard limit)
+ * @param attachmentsTimeout  NiFi time duration for the Wait processor expiration (only valid when trackingMode is ATTACHMENTS; e.g. "30 sec")
  */
 @Builder
 public record RouteConfiguration(
@@ -64,7 +65,8 @@ boolean createFlowFile,
 int maxRequestSize,
 @NonNull TrackingMode trackingMode,
 int attachmentsMinCount,
-int attachmentsMaxCount) {
+int attachmentsMaxCount,
+@Nullable String attachmentsTimeout) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
@@ -85,6 +87,10 @@ int attachmentsMaxCount) {
         if (trackingMode != TrackingMode.ATTACHMENTS && (attachmentsMinCount != 0 || attachmentsMaxCount != 0)) {
             throw new IllegalArgumentException(
                     "attachmentsMinCount/attachmentsMaxCount can only be set when trackingMode is ATTACHMENTS");
+        }
+        if (trackingMode != TrackingMode.ATTACHMENTS && attachmentsTimeout != null) {
+            throw new IllegalArgumentException(
+                    "attachmentsTimeout can only be set when trackingMode is ATTACHMENTS");
         }
         if (attachmentsMinCount < 0) {
             throw new IllegalArgumentException("attachmentsMinCount must be >= 0");
@@ -137,5 +143,6 @@ int attachmentsMaxCount) {
         private TrackingMode trackingMode = TrackingMode.NONE;
         private int attachmentsMinCount = 0;
         private int attachmentsMaxCount = 0;
+        private String attachmentsTimeout = null;
     }
 }

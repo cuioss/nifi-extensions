@@ -66,6 +66,17 @@ int attachmentsMaxCount,
     }
 
     /**
+     * Creates a new COLLECTING_ATTACHMENTS entry for routes with attachment tracking.
+     * The parent request enters this state immediately and waits for attachments to arrive.
+     */
+    public static RequestStatusEntry collectingAttachments(String traceId, @Nullable String parentTraceId,
+            @Nullable String routeName, int attachmentsMaxCount) {
+        Instant now = Instant.now();
+        return new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS, now, now,
+                parentTraceId, null, attachmentsMaxCount, routeName);
+    }
+
+    /**
      * Serializes this entry to a JSON string.
      */
     public String toJson() {

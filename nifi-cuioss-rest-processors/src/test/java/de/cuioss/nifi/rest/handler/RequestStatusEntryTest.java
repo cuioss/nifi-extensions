@@ -66,6 +66,24 @@ class RequestStatusEntryTest {
             // Assert
             assertEquals(parentTraceId, entry.parentTraceId());
         }
+
+        @Test
+        @DisplayName("Should create COLLECTING_ATTACHMENTS entry")
+        void shouldCreateCollectingAttachmentsEntry() {
+            // Arrange
+            String traceId = UUID.randomUUID().toString();
+
+            // Act
+            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 5);
+
+            // Assert
+            assertEquals(traceId, entry.traceId());
+            assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, entry.status());
+            assertEquals("upload", entry.routeName());
+            assertEquals(5, entry.attachmentsMaxCount());
+            assertNotNull(entry.acceptedAt());
+            assertEquals(entry.acceptedAt(), entry.updatedAt());
+        }
     }
 
     @Nested
@@ -129,6 +147,23 @@ class RequestStatusEntryTest {
 
             // Assert
             assertEquals(status, deserialized.status());
+        }
+
+        @Test
+        @DisplayName("Should serialize and deserialize COLLECTING_ATTACHMENTS round-trip")
+        void shouldSerializeDeserializeCollectingAttachments() {
+            // Arrange
+            String traceId = UUID.randomUUID().toString();
+            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 3);
+
+            // Act
+            String json = entry.toJson();
+            var deserialized = RequestStatusEntry.fromJson(json);
+
+            // Assert
+            assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, deserialized.status());
+            assertEquals("upload", deserialized.routeName());
+            assertEquals(3, deserialized.attachmentsMaxCount());
         }
 
         @Test

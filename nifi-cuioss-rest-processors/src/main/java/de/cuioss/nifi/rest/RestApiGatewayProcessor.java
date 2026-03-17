@@ -104,6 +104,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
     /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
     private final ConcurrentHashMap<String, String> routeToOutcome = new ConcurrentHashMap<>();
+    /** Maps route name → attachments timeout (only for ATTACHMENTS tracking mode). */
+    private final ConcurrentHashMap<String, String> routeToAttachmentsTimeout = new ConcurrentHashMap<>();
+    /** Maps route name → attachments min count (only for ATTACHMENTS tracking mode). */
+    private final ConcurrentHashMap<String, Integer> routeToAttachmentsMinCount = new ConcurrentHashMap<>();
     /** Guards lazy loading of external config relationships before @OnScheduled. */
     private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
 
@@ -264,6 +268,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 LOGGER.info("Route '%s': attachments mode, bounds min=%d max=%d (effective max=%d, hard limit=%d)",
                         route.name(), route.attachmentsMinCount(), route.attachmentsMaxCount(),
                         effectiveMax, hardLimit);
+                if (route.attachmentsTimeout() != null) {
+                    routeToAttachmentsTimeout.put(route.name(), route.attachmentsTimeout());
+                }
+                if (route.attachmentsMinCount() > 0) {
+                    routeToAttachmentsMinCount.put(route.name(), route.attachmentsMinCount());
+                }
             }
         }
 
@@ -347,6 +357,16 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 attributes.put(RestApiAttributes.PARENT_TRACE_ID, container.parentTraceId());
             }
 
+            // Set attachment attributes for Wait processor Expression Language
+            String attachmentsTimeout = routeToAttachmentsTimeout.get(container.routeName());
+            if (attachmentsTimeout != null) {
+                attributes.put(RestApiAttributes.TRACE_ATTACHMENTS_TIMEOUT, attachmentsTimeout);
+            }
+            Integer attachmentsMinCount = routeToAttachmentsMinCount.get(container.routeName());
+            if (attachmentsMinCount != null) {
+                attributes.put(RestApiAttributes.TRACE_ATTACHMENTS_MIN_COUNT, String.valueOf(attachmentsMinCount));
+            }
+
             // Map JWT claims (guard against null token for unauthenticated routes)
             if (container.token() != null) {
                 attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
@@ -424,6 +444,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {
         dynamicRelationships.clear();
         routeToOutcome.clear();
+        routeToAttachmentsTimeout.clear();
+        routeToAttachmentsMinCount.clear();
         for (RouteConfiguration route : routes) {
             if (!route.createFlowFile()) {
                 LOGGER.info("Route '%s' has createFlowFile=false — no NiFi relationship created", route.name());

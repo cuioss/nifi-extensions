@@ -507,5 +507,42 @@ class RouteConfigurationParserTest {
 
             assertEquals(TrackingMode.SIMPLE, routes.getFirst().trackingMode());
         }
+
+        @Test
+        @DisplayName("Should parse attachments-timeout")
+        void shouldParseAttachmentsTimeout() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.upload.path", "/api/upload");
+            properties.put("restapi.upload.tracking-mode", "attachments");
+            properties.put("restapi.upload.attachments-timeout", "1 min");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals("1 min", routes.getFirst().attachmentsTimeout());
+        }
+
+        @Test
+        @DisplayName("Should default attachments-timeout to 30 sec")
+        void shouldDefaultAttachmentsTimeout() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.upload.path", "/api/upload");
+            properties.put("restapi.upload.tracking-mode", "attachments");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals("30 sec", routes.getFirst().attachmentsTimeout());
+        }
+
+        @Test
+        @DisplayName("Should not set attachments-timeout for non-ATTACHMENTS mode")
+        void shouldNotSetTimeoutForNonAttachments() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.tracking-mode", "simple");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertNull(routes.getFirst().attachmentsTimeout());
+        }
     }
 }

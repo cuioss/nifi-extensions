@@ -315,6 +315,26 @@ class AttachmentsEndpointHandlerTest {
     }
 
     @Test
+    @DisplayName("Should return 409 when attachment window is closed (status != COLLECTING_ATTACHMENTS)")
+    void shouldReturn409WhenAttachmentWindowClosed() throws Exception {
+        String parentTraceId = createParentEntry("/api/upload");
+
+        // Manually update the parent status to PROCESSING (simulating Wait processor releasing)
+        statusStore.updateStatus(parentTraceId, RequestStatus.PROCESSING);
+
+        var response = httpClient.send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
+                        .header("Content-Type", "application/octet-stream")
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(409, response.statusCode());
+        assertTrue(response.body().contains("Attachment window closed"));
+    }
+
+    @Test
     @DisplayName("Should set parentTraceId on attachment status entry")
     void shouldSetParentTraceIdOnAttachmentEntry() throws Exception {
         String parentTraceId = createParentEntry("/api/upload");

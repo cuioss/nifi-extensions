@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -83,6 +84,41 @@ public class RequestStatusStore {
             @Nullable String routeName, int attachmentsMaxCount) throws IOException {
         var entry = RequestStatusEntry.accepted(traceId, parentTraceId, routeName, attachmentsMaxCount);
         cacheClient.put(traceId, entry, STRING_SERIALIZER, ENTRY_SERIALIZER);
+    }
+
+    /**
+     * Stores a new COLLECTING_ATTACHMENTS status entry for attachment-tracked routes.
+     *
+     * @param traceId             the unique trace identifier
+     * @param parentTraceId       optional parent trace ID for chained requests
+     * @param routeName           the route name for traceability
+     * @param attachmentsMaxCount maximum number of attachments allowed
+     * @throws IOException if the cache operation fails
+     */
+    public void collectingAttachments(String traceId, @Nullable String parentTraceId,
+            @Nullable String routeName, int attachmentsMaxCount) throws IOException {
+        var entry = RequestStatusEntry.collectingAttachments(traceId, parentTraceId, routeName, attachmentsMaxCount);
+        cacheClient.put(traceId, entry, STRING_SERIALIZER, ENTRY_SERIALIZER);
+    }
+
+    /**
+     * Updates the status of an existing entry, preserving all other fields.
+     *
+     * @param traceId   the trace identifier to update
+     * @param newStatus the new status to set
+     * @throws IOException if the cache operation fails
+     */
+    public void updateStatus(String traceId, RequestStatus newStatus) throws IOException {
+        RequestStatusEntry existing = cacheClient.get(traceId, STRING_SERIALIZER, ENTRY_DESERIALIZER);
+        if (existing == null) {
+            LOGGER.warn("Cannot update status for unknown traceId '%s'", traceId);
+            return;
+        }
+        var updated = new RequestStatusEntry(
+                existing.traceId(), newStatus, existing.acceptedAt(), Instant.now(),
+                existing.parentTraceId(), existing.errorDetail(),
+                existing.attachmentsMaxCount(), existing.routeName());
+        cacheClient.put(traceId, updated, STRING_SERIALIZER, ENTRY_SERIALIZER);
     }
 
     /**
