@@ -44,13 +44,14 @@ export const TRANSLATIONS = {
         'common.loading': 'Loading...',
 
         // -- origin badges --
-        'origin.badge.persisted.title': 'Loaded from processor properties (persisted)',
-        'origin.badge.modified.title': 'Modified in this session (not yet persisted)',
-        'origin.badge.new.title': 'Created in this session (not yet persisted)',
+        'origin.badge.persisted.title': 'Saved in NiFi processor properties',
+        'origin.badge.persisted': 'NiFi',
+        'origin.badge.modified.title': 'Modified in this session (not yet saved)',
         'origin.badge.modified': 'Modified',
+        'origin.badge.new.title': 'Created in this session (not yet saved)',
         'origin.badge.new': 'New',
-        'origin.badge.external': 'External',
-        'origin.badge.external.title': 'Loaded from external configuration file',
+        'origin.badge.external': 'Config',
+        'origin.badge.external.title': 'Loaded from configuration file (read-only)',
         'route.source.external.tooltip': 'This route is defined in the external configuration file. It cannot be deleted, but can be overridden via NiFi properties.',
         'route.source.external.edit.tooltip': 'Edit to override external route via NiFi properties',
 
@@ -177,6 +178,11 @@ export const TRANSLATIONS = {
         'route.form.schema.inline': 'Inline JSON',
         'route.form.schema.file.placeholder': './conf/schemas/my-schema.json',
         'route.form.schema.inline.placeholder': '{"type":"object","properties":{}}',
+        'route.form.tracking': 'Request Tracking',
+        'route.table.tracking': 'Tracking',
+        'route.table.tracking.title': 'Async request tracking enabled — POST/PUT/PATCH return 202 with traceId',
+        'route.table.schema.title': 'JSON Schema validation enabled for request body',
+        'route.validate.tracking.methods': 'Request Tracking requires at least one body method (POST, PUT, or PATCH).',
         'route.validate.name.required': 'Route name is required.',
         'route.validate.name.invalid': 'Route name can only contain alphanumeric characters, hyphens, and underscores.',
         'route.validate.name.duplicate': 'A route named "{0}" already exists.',
@@ -400,6 +406,7 @@ export const TRANSLATIONS = {
         'contexthelp.route.create.flowfile': 'Whether to create a NiFi FlowFile for matched requests. When disabled, the route responds directly without passing to downstream processors.',
         'contexthelp.route.connection': 'NiFi relationship name for routing FlowFiles to the correct downstream connection on the NiFi canvas.',
         'contexthelp.route.schema': 'JSON Schema for request body validation. Requests that fail schema validation are rejected with HTTP 400.',
+        'contexthelp.route.tracking': 'Enable async request tracking for this route. When enabled, POST/PUT/PATCH requests return 202 Accepted with a traceId. Clients can poll /status/{traceId} for updates. Requires a Distributed Map Cache Client on the processor. Only applies to body methods (POST, PUT, PATCH).',
         'contexthelp.issuer.name': 'Unique identifier for this JWT issuer. Used as prefix in NiFi dynamic properties (issuer.<name>.*).',
         'contexthelp.issuer.jwks.type': 'How JWKS signing keys are loaded: from a remote URL, a local file, or inline content.',
         'contexthelp.issuer.uri': 'Expected value of the "iss" claim in JWT tokens. Tokens with a different issuer are rejected.',
@@ -433,13 +440,14 @@ export const TRANSLATIONS = {
         'common.loading': 'Laden\u2026',
 
         // -- origin badges --
-        'origin.badge.persisted.title': 'Aus Prozessor-Eigenschaften geladen (persistent)',
-        'origin.badge.modified.title': 'In dieser Sitzung ge\u00e4ndert (noch nicht persistent)',
-        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht persistent)',
+        'origin.badge.persisted.title': 'In NiFi Prozessor-Eigenschaften gespeichert',
+        'origin.badge.persisted': 'NiFi',
+        'origin.badge.modified.title': 'In dieser Sitzung ge\u00e4ndert (noch nicht gespeichert)',
         'origin.badge.modified': 'Ge\u00e4ndert',
+        'origin.badge.new.title': 'In dieser Sitzung erstellt (noch nicht gespeichert)',
         'origin.badge.new': 'Neu',
-        'origin.badge.external': 'Extern',
-        'origin.badge.external.title': 'Aus externer Konfigurationsdatei geladen',
+        'origin.badge.external': 'Konfig',
+        'origin.badge.external.title': 'Aus Konfigurationsdatei geladen (schreibgesch\u00fctzt)',
         'route.source.external.tooltip': 'Diese Route ist in der externen Konfigurationsdatei definiert. Sie kann nicht gel\u00f6scht, aber \u00fcber NiFi-Eigenschaften \u00fcberschrieben werden.',
         'route.source.external.edit.tooltip': 'Bearbeiten, um externe Route \u00fcber NiFi-Eigenschaften zu \u00fcberschreiben',
 
@@ -566,6 +574,11 @@ export const TRANSLATIONS = {
         'route.form.schema.inline': 'Inline-JSON',
         'route.form.schema.file.placeholder': './conf/schemas/my-schema.json',
         'route.form.schema.inline.placeholder': '{"type":"object","properties":{}}',
+        'route.form.tracking': 'Request Tracking',
+        'route.table.tracking': 'Tracking',
+        'route.table.tracking.title': 'Asynchrones Request Tracking aktiviert \u2014 POST/PUT/PATCH antworten mit 202 und traceId',
+        'route.table.schema.title': 'JSON Schema Validation f\u00fcr den Request Body aktiviert',
+        'route.validate.tracking.methods': 'Request Tracking erfordert mindestens eine Body-Methode (POST, PUT oder PATCH).',
         'route.validate.name.required': 'Routenname ist erforderlich.',
         'route.validate.name.invalid': 'Routenname darf nur alphanumerische Zeichen, Bindestriche und Unterstriche enthalten.',
         'route.validate.name.duplicate': 'Eine Route mit dem Namen \u201e{0}\u201c existiert bereits.',
@@ -789,6 +802,7 @@ export const TRANSLATIONS = {
         'contexthelp.route.create.flowfile': 'Ob ein NiFi FlowFile f\u00fcr matchende Requests erstellt wird. Wenn deaktiviert, antwortet die Route direkt ohne Weiterleitung.',
         'contexthelp.route.connection': 'NiFi Relationship Name f\u00fcr die Weiterleitung von FlowFiles an die korrekte Downstream Connection.',
         'contexthelp.route.schema': 'JSON Schema f\u00fcr Request Body Validation. Requests, die die Schema Validation nicht bestehen, werden mit HTTP 400 abgelehnt.',
+        'contexthelp.route.tracking': 'Aktiviert asynchrones Request Tracking f\u00fcr diese Route. Bei Aktivierung antworten POST/PUT/PATCH Requests mit 202 Accepted und einer traceId. Clients k\u00f6nnen /status/{traceId} abfragen. Erfordert einen Distributed Map Cache Client am Prozessor. Gilt nur f\u00fcr Body Methods (POST, PUT, PATCH).',
         'contexthelp.issuer.name': 'Eindeutiger Bezeichner f\u00fcr diesen JWT Issuer. Wird als Pr\u00e4fix in NiFi Dynamic Properties verwendet (issuer.<name>.*).',
         'contexthelp.issuer.jwks.type': 'Wie JWKS Signing Keys geladen werden: von einer Remote URL, einer lokalen Datei oder als Inline Content.',
         'contexthelp.issuer.uri': 'Erwarteter Wert des "iss" Claims in JWT Tokens. Tokens mit einem anderen Issuer werden abgelehnt.',
@@ -840,6 +854,30 @@ export const sanitizeHtml = (html) => {
     const d = document.createElement('div');
     d.textContent = html;
     return d.innerHTML;
+};
+
+// ---------------------------------------------------------------------------
+// Origin badges
+// ---------------------------------------------------------------------------
+
+const ORIGIN_BADGE_CONFIG = {
+    external: { icon: 'fa-file-text', textKey: 'origin.badge.external' },
+    new: { icon: 'fa-plus', textKey: 'origin.badge.new' },
+    modified: { icon: 'fa-pencil', textKey: 'origin.badge.modified' },
+    persisted: { icon: 'fa-database', textKey: 'origin.badge.persisted' }
+};
+
+/**
+ * Build an origin badge HTML snippet.
+ * @param {'persisted'|'modified'|'new'|'external'} origin  the origin state
+ * @returns {string} HTML string for the badge
+ */
+export const buildOriginBadge = (origin) => {
+    const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
+    const config = ORIGIN_BADGE_CONFIG[badgeType];
+    const title = sanitizeHtml(t(`${config.textKey}.title`));
+    const text = sanitizeHtml(t(config.textKey));
+    return ` <span class="origin-badge origin-${badgeType}" title="${title}"><i class="fa ${config.icon}"></i> ${text}</span>`;
 };
 
 // ---------------------------------------------------------------------------

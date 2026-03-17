@@ -11,7 +11,8 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t
+    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
+    buildOriginBadge
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -110,6 +111,25 @@ export const cleanup = () => { /* no persistent resources */ };
 const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
+const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+
+/**
+ * Build the tracking badge HTML for a route, showing which methods are tracked.
+ * @param {boolean|string} trackingEnabled  whether tracking is enabled
+ * @param {string} methods  comma-separated method list (empty = all methods)
+ * @returns {string} HTML string or empty
+ */
+const buildTrackingBadge = (trackingEnabled, methods) => {
+    const enabled = trackingEnabled === true || trackingEnabled === 'true';
+    if (!enabled) return '';
+    const parsed = (methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
+    const tracked = parsed.length === 0
+        ? BODY_METHODS
+        : parsed.filter((m) => BODY_METHODS.includes(m));
+    if (tracked.length === 0) return '';
+    const suffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
+    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${suffix}</span>`;
+};
 const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**
@@ -609,6 +629,7 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
             'required-scopes': Array.isArray(route.requiredScopes) ? route.requiredScopes.join(',') : (route.requiredScopes || ''),
             'auth-mode': route.authMode || 'bearer',
             'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
+            'tracking-enabled': route.trackingEnabled === true ? 'true' : 'false',
             _source: route.source || 'nifi'
         };
         if (route.schema) {
@@ -669,7 +690,7 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
             const outcome = routeProps?.['success-outcome']?.trim() || name;
             const connected = !connectedRels || connectedRels.has(outcome);
             const source = routeProps?._source;
-            const origin = (source === 'external') ? 'external' : 'persisted';
+            const origin = (source === 'external' || source === 'both') ? 'external' : 'persisted';
             const row = createTableRow(name, routeProps, componentId, container, origin, connected);
             tbody.appendChild(row);
         }
@@ -678,27 +699,7 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
     container.prepend(table);
 };
 
-/**
- * Build an origin badge HTML snippet for a route row.
- * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
- * @param {boolean} connected  whether the route's relationship is wired on the NiFi canvas
- * @returns {string} HTML string for the badge
- */
-const buildOriginBadge = (origin, connected) => {
-    if (origin === 'external') {
-        return ` <span class="origin-badge origin-external" title="${sanitizeHtml(t('origin.badge.external.title'))}">${sanitizeHtml(t('origin.badge.external'))}</span>`;
-    }
-    if (origin === 'new') {
-        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
-    }
-    if (origin === 'modified') {
-        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
-    }
-    if (connected) {
-        return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
-    }
-    return '';
-};
+// buildOriginBadge imported from utils.js
 
 /**
  * Create a single summary table row for a route.
@@ -727,9 +728,10 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
     const schemaBadge = (props?.schema?.trim())
-        ? ' <span class="schema-badge">Schema</span>' : '';
+        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const trackingBadge = buildTrackingBadge(props?.['tracking-enabled'], methods);
 
-    const originBadge = buildOriginBadge(origin, connected);
+    const originBadge = buildOriginBadge(origin);
 
     // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
@@ -754,7 +756,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
         <td>${outcomeCell}</td>
-        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}</td>
+        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}${trackingBadge}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
@@ -786,7 +788,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
  */
 const updateTableRow = (row, formData) => {
     const origin = row.dataset.origin || 'persisted';
-    const originBadge = buildOriginBadge(origin, false);
+    const originBadge = buildOriginBadge(origin);
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
@@ -802,8 +804,9 @@ const updateTableRow = (row, formData) => {
     }
 
     const schemaBadge = formData.schema?.trim()
-        ? ' <span class="schema-badge">Schema</span>' : '';
-    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}`;
+        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const trackingBadge = buildTrackingBadge(formData['tracking-enabled'], formData.methods);
+    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())
@@ -833,6 +836,7 @@ const updateTableRow = (row, formData) => {
         row._routeProps.schema = formData.schema || '';
         row._routeProps['success-outcome'] = formData['success-outcome'] || '';
         row._routeProps['create-flowfile'] = formData['create-flowfile'] === false ? 'false' : 'true';
+        row._routeProps['tracking-enabled'] = formData['tracking-enabled'] ? 'true' : 'false';
     }
 };
 
@@ -925,6 +929,33 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     header.appendChild(nameHelp.panel);
     header.appendChild(enabledHelp.panel);
     form.appendChild(header);
+
+    // ---- tracking-enabled checkbox (after header, before form fields) ----
+    const trackingEnabledVal = properties?.['tracking-enabled'] === 'true';
+    const trackingToggle = document.createElement('div');
+    trackingToggle.className = 'form-field field-container-tracking-enabled';
+    const trackingLabel = document.createElement('label');
+    trackingLabel.className = 'tracking-enabled-label';
+    trackingLabel.setAttribute('for', `tracking-enabled-${idx}`);
+
+    const trackingCheckbox = document.createElement('input');
+    trackingCheckbox.type = 'checkbox';
+    trackingCheckbox.id = `tracking-enabled-${idx}`;
+    trackingCheckbox.className = 'tracking-enabled-checkbox';
+    if (trackingEnabledVal) trackingCheckbox.checked = true;
+    trackingCheckbox.setAttribute('aria-label', 'Request Tracking');
+    trackingLabel.appendChild(trackingCheckbox);
+    trackingLabel.append(` ${t('route.form.tracking')}`);
+
+    const trackingHelp = createContextHelp({
+        helpKey: 'contexthelp.route.tracking',
+        propertyKey: `restapi.${rn}.tracking-enabled`,
+        currentValue: String(trackingEnabledVal)
+    });
+    trackingLabel.appendChild(trackingHelp.button);
+    trackingToggle.appendChild(trackingLabel);
+    trackingToggle.appendChild(trackingHelp.panel);
+    form.appendChild(trackingToggle);
 
     // ---- form fields ----
     const fields = document.createElement('div');
@@ -1216,7 +1247,8 @@ const extractFormFields = (form) => {
         'max-request-size': q('.field-max-request-size'),
         schema: schemaEnabled ? getActiveSchemaValue(form) : '',
         'success-outcome': createFlowFile ? q('.field-success-outcome') : '',
-        'create-flowfile': createFlowFile
+        'create-flowfile': createFlowFile,
+        'tracking-enabled': form.querySelector('.tracking-enabled-checkbox')?.checked === true
     };
 };
 
@@ -1235,6 +1267,13 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (!f.path) return { isValid: false, error: new Error(t('route.validate.path.required')) };
+    if (f['tracking-enabled']) {
+        const methods = (f.methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
+        const hasBodyMethod = methods.length === 0 || methods.some((m) => BODY_METHODS.includes(m));
+        if (!hasBodyMethod) {
+            return { isValid: false, error: new Error(t('route.validate.tracking.methods')) };
+        }
+    }
     return { isValid: true };
 };
 
@@ -1250,6 +1289,7 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
+    u[`${ROUTE_PREFIX}${name}.tracking-enabled`] = f['tracking-enabled'] ? 'true' : null;
     return u;
 };
 

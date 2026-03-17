@@ -248,16 +248,46 @@
     cursor: pointer;
 }
 
-/* Status badges in table */
+/* Request Tracking toggle */
 
-.status-enabled {
-    color: var(--success-color-dark, #28a745);
+.field-container-tracking-enabled {
+    margin-bottom: 10px;
+}
+
+.tracking-enabled-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
     font-weight: 600;
 }
 
+.route-form .form-field .tracking-enabled-checkbox {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Status badges in table */
+
+.status-enabled {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--success-bg, #e8f5e9);
+    color: var(--success-color-dark, #28a745);
+}
+
 .status-disabled {
-    color: var(--text-muted, #666);
-    font-weight: normal;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--disabled-bg, #f5f5f5);
+    color: var(--text-muted, #888);
     font-style: italic;
 }
 
@@ -295,7 +325,14 @@
     color: var(--badge-color, #1565c0);
 }
 
-/* Management endpoints table hidden rows */
+/* Management endpoints section */
+
+.management-endpoints-display {
+    background: var(--mgmt-section-bg, #fafafa);
+    border-radius: 6px;
+    padding: 0 12px 12px;
+    margin-bottom: 16px;
+}
 
 .management-endpoints-table tbody tr.hidden {
     display: none;
@@ -458,9 +495,13 @@
     vertical-align: middle;
 }
 
+.origin-badge .fa {
+    margin-right: 2px;
+}
+
 .origin-persisted {
-    color: var(--text-muted, #888);
-    font-size: 0.7rem;
+    background: var(--muted-bg, #f0f0f0);
+    color: var(--text-muted, #666);
 }
 
 .origin-modified {
@@ -490,6 +531,28 @@
     color: var(--success-color-dark, #28a745);
     margin-left: 8px;
     vertical-align: middle;
+}
+
+.schema-badge .fa {
+    margin-right: 3px;
+}
+
+/* Tracking badge in summary table */
+
+.tracking-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--info-bg, #e3f2fd);
+    color: var(--info-color-dark, #1565c0);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.tracking-badge .fa {
+    margin-right: 3px;
 }
 
 /* Schema mode toggle (file vs inline) */

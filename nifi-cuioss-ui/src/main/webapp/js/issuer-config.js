@@ -9,7 +9,8 @@
 import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
-    validateIssuerConfig, validateProcessorIdFromUrl, log, t
+    validateIssuerConfig, validateProcessorIdFromUrl, log, t,
+    buildOriginBadge
 } from './utils.js';
 import { createContextHelp, createFormField } from './context-help.js';
 
@@ -515,15 +516,7 @@ const loadExistingIssuersGateway = async (container, ctx) => {
 // Gateway summary table
 // ---------------------------------------------------------------------------
 
-const buildOriginBadge = (origin) => {
-    if (origin === 'new') {
-        return ` <span class="origin-badge origin-new" title="${sanitizeHtml(t('origin.badge.new.title'))}">${sanitizeHtml(t('origin.badge.new'))}</span>`;
-    }
-    if (origin === 'modified') {
-        return ` <span class="origin-badge origin-modified" title="${sanitizeHtml(t('origin.badge.modified.title'))}">${sanitizeHtml(t('origin.badge.modified'))}</span>`;
-    }
-    return ` <span class="origin-badge origin-persisted" title="${sanitizeHtml(t('origin.badge.persisted.title'))}"><i class="fa fa-lock"></i></span>`;
-};
+// buildOriginBadge imported from utils.js
 
 const renderIssuerSummaryTable = (container, issuers, ctx) => {
     const existing = container.querySelector('.issuer-summary-table');
