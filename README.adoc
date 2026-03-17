@@ -40,6 +40,18 @@ Key capabilities:
 * **RFC 9457 error responses** -- standardized problem details for authentication and authorization failures
 * **Management endpoints** -- `/metrics` (Prometheus-compatible) and `/health`
 
+=== Request Tracking
+
+Routes can enable async request tracking for `POST`/`PUT`/`PATCH` requests. Two modes are available:
+
+image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
+
+**Simple** (`tracking-mode=simple`) -- returns `202 Accepted` with a `traceId` and a `/status` polling link. Status lifecycle: `ACCEPTED` -> `PROCESSING` -> `PROCESSED`/`REJECTED`/`ERROR`.
+
+**Attachments** (`tracking-mode=attachments`) -- like Simple, but also provides an `/attachments/{traceId}` upload link. The parent request is held by a NiFi Wait processor until attachments arrive (or a configurable timeout expires). Once released, the attachment window closes and further uploads return `409 Conflict`. Status lifecycle: `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED`/`REJECTED`/`ERROR`.
+
+Both modes require a `DistributedMapCacheClient` Controller Service. See the link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide] for the Wait/Notify flow architecture.
+
 == Installation
 
 You need **two NAR files** (NiFi Archives):
@@ -162,6 +174,7 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 * link:doc/guides/QuickStart.adoc[Quick Start Guide] -- RestApiGateway setup in under 5 minutes
 * link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation with integration test flow
 * link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with test environment and troubleshooting
+* link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide] -- Wait/Notify synchronization for parent requests with attachments
 * link:doc/guides/BuildingGuide.adoc[Building Guide] -- build, code quality, SonarQube, integration and E2E tests
 
 === Reference
