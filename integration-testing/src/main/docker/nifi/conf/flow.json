@@ -1233,8 +1233,7 @@
               "Distributed Cache Service": {
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
-                "sensitive": false,
-                "identifiesControllerServiceType": "org.apache.nifi.distributed.cache.client.AtomicDistributedMapCacheClient"
+                "sensitive": false
               }
             },
             "style": {},
@@ -1297,8 +1296,7 @@
               "Distributed Cache Service": {
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
-                "sensitive": false,
-                "identifiesControllerServiceType": "org.apache.nifi.distributed.cache.client.AtomicDistributedMapCacheClient"
+                "sensitive": false
               },
               "Attribute Cache Regex": {
                 "name": "Attribute Cache Regex",
@@ -1353,8 +1351,7 @@
               "Distributed Cache Service": {
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
-                "sensitive": false,
-                "identifiesControllerServiceType": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClient"
+                "sensitive": false
               }
             },
             "style": {},
@@ -1460,8 +1457,7 @@
               "Distributed Cache Service": {
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
-                "sensitive": false,
-                "identifiesControllerServiceType": "org.apache.nifi.distributed.cache.client.DistributedMapCacheClient"
+                "sensitive": false
               }
             },
             "style": {},
