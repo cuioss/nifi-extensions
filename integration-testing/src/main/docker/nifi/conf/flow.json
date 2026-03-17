@@ -1012,8 +1012,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800,
-              "y": 200
+              "x": 400.0,
+              "y": 200.0
             },
             "style": {},
             "retriedRelationships": [],
@@ -1056,8 +1056,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 1000,
-              "y": 400
+              "x": 700.0,
+              "y": 500.0
             },
             "style": {},
             "retriedRelationships": [],
@@ -1100,8 +1100,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 1200,
-              "y": 400
+              "x": 1000.0,
+              "y": 500.0
             },
             "style": {},
             "retriedRelationships": [],
@@ -1144,8 +1144,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 1200,
-              "y": 600
+              "x": 1000.0,
+              "y": 700.0
             },
             "style": {},
             "retriedRelationships": [],
@@ -1188,8 +1188,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800,
-              "y": 400
+              "x": 400.0,
+              "y": 500.0
             },
             "style": {},
             "retriedRelationships": [],
@@ -1251,8 +1251,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800.0,
-              "y": 700.0
+              "x": 400.0,
+              "y": 800.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1313,8 +1313,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 1400.0,
-              "y": 700.0
+              "x": 1300.0,
+              "y": 800.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1364,8 +1364,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800.0,
-              "y": 1100.0
+              "x": 400.0,
+              "y": 1050.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1420,8 +1420,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800.0,
-              "y": 1300.0
+              "x": 400.0,
+              "y": 1250.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1470,8 +1470,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800.0,
-              "y": 1500.0
+              "x": 400.0,
+              "y": 1450.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1509,8 +1509,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 800.0,
-              "y": 1700.0
+              "x": 400.0,
+              "y": 1650.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
@@ -1548,8 +1548,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 1400.0,
-              "y": 900.0
+              "x": 1300.0,
+              "y": 1000.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
             "maxBackoffPeriod": "10 mins",
