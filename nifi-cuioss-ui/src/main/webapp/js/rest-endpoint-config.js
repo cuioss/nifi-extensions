@@ -1027,17 +1027,9 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     timeoutLabel.textContent = `${t('route.form.attachments.timeout')} `;
     timeoutLabel.appendChild(timeoutInput);
 
-    const timeoutHelp = createContextHelp({
-        helpKey: 'contexthelp.route.attachments.timeout',
-        propertyKey: `restapi.${rn}.attachments-timeout`,
-        currentValue: properties?.['attachments-timeout'] || '30 sec'
-    });
-    timeoutLabel.appendChild(timeoutHelp.button);
-
     attachmentFields.appendChild(minLabel);
     attachmentFields.appendChild(maxLabel);
     attachmentFields.appendChild(timeoutLabel);
-    attachmentFields.appendChild(timeoutHelp.panel);
     trackingToggle.appendChild(attachmentFields);
 
     const toggleAttachmentFields = () => {
