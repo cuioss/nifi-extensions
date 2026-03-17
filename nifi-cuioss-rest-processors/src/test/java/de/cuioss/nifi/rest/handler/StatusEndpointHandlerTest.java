@@ -20,6 +20,7 @@ import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
+import de.cuioss.nifi.rest.config.TrackingMode;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -79,7 +80,7 @@ class StatusEndpointHandlerTest {
         var trackedRoute = RouteConfiguration.builder()
                 .name("orders").path("/api/orders")
                 .method("POST").method("GET")
-                .trackingEnabled(true)
+                .trackingMode(TrackingMode.SIMPLE)
                 .build();
         var queue = new LinkedBlockingQueue<HttpRequestContainer>(50);
         handlers.add(new ApiRouteHandler(trackedRoute, queue, GLOBAL_MAX_REQUEST_SIZE,

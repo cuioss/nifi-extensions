@@ -82,6 +82,15 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String METRICS_AUTH_MODE_PROPERTY = "rest.gateway.management.metrics.auth-mode";
     private static final String METRICS_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.metrics.required-roles";
     private static final String METRICS_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.metrics.required-scopes";
+    private static final String STATUS_ENABLED_PROPERTY = "rest.gateway.management.status.enabled";
+    private static final String STATUS_AUTH_MODE_PROPERTY = "rest.gateway.management.status.auth-mode";
+    private static final String STATUS_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.status.required-roles";
+    private static final String STATUS_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.status.required-scopes";
+    private static final String ATTACHMENTS_ENABLED_PROPERTY = "rest.gateway.management.attachments.enabled";
+    private static final String ATTACHMENTS_AUTH_MODE_PROPERTY = "rest.gateway.management.attachments.auth-mode";
+    private static final String ATTACHMENTS_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.attachments.required-roles";
+    private static final String ATTACHMENTS_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.attachments.required-scopes";
+    private static final String ATTACHMENTS_HARD_LIMIT_PROPERTY = "rest.gateway.management.attachments.hard-limit";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
@@ -767,6 +776,7 @@ public class GatewayProxyServlet extends HttpServlet {
             root.add("listeningHost", host);
         }
 
+        root.add("attachmentsHardLimit", safeParseInt(props, ATTACHMENTS_HARD_LIMIT_PROPERTY, 20));
         root.add("managementEndpoints", buildManagementEndpointsArray(props));
 
         // Merge external config routes with NiFi processor routes
@@ -911,8 +921,24 @@ public class GatewayProxyServlet extends HttpServlet {
                 LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
             }
         }
-        routeObj.add("trackingEnabled", "true".equalsIgnoreCase(
-                routeProps.getOrDefault("tracking-enabled", "false")));
+        String trackingMode = routeProps.getOrDefault("tracking-mode", "none");
+        routeObj.add("trackingMode", trackingMode);
+        String attachmentsMinCount = routeProps.get("attachments-min-count");
+        if (attachmentsMinCount != null && !attachmentsMinCount.isBlank()) {
+            try {
+                routeObj.add("attachmentsMinCount", Integer.parseInt(attachmentsMinCount.strip()));
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Ignoring invalid non-numeric attachments-min-count value: '%s'", attachmentsMinCount);
+            }
+        }
+        String attachmentsMaxCount = routeProps.get("attachments-max-count");
+        if (attachmentsMaxCount != null && !attachmentsMaxCount.isBlank()) {
+            try {
+                routeObj.add("attachmentsMaxCount", Integer.parseInt(attachmentsMaxCount.strip()));
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Ignoring invalid non-numeric attachments-max-count value: '%s'", attachmentsMaxCount);
+            }
+        }
         return routeObj;
     }
 
@@ -952,6 +978,30 @@ public class GatewayProxyServlet extends HttpServlet {
         metrics.add("requiredScopes", prop(props, METRICS_REQUIRED_SCOPES_PROPERTY, ""));
         metrics.add("builtIn", true);
         mgmtArray.add(metrics);
+
+        JsonObjectBuilder status = Json.createObjectBuilder();
+        status.add("name", "status");
+        status.add("path", "/status/{traceId}");
+        status.add("methods", Json.createArrayBuilder().add("GET"));
+        status.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+                prop(props, STATUS_ENABLED_PROPERTY, "true")));
+        status.add("authMode", prop(props, STATUS_AUTH_MODE_PROPERTY, "local-only,bearer"));
+        status.add("requiredRoles", prop(props, STATUS_REQUIRED_ROLES_PROPERTY, ""));
+        status.add("requiredScopes", prop(props, STATUS_REQUIRED_SCOPES_PROPERTY, ""));
+        status.add("builtIn", true);
+        mgmtArray.add(status);
+
+        JsonObjectBuilder attachments = Json.createObjectBuilder();
+        attachments.add("name", "attachments");
+        attachments.add("path", "/attachments/{parentTraceId}");
+        attachments.add("methods", Json.createArrayBuilder().add("POST"));
+        attachments.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+                prop(props, ATTACHMENTS_ENABLED_PROPERTY, "true")));
+        attachments.add("authMode", prop(props, ATTACHMENTS_AUTH_MODE_PROPERTY, "local-only,bearer"));
+        attachments.add("requiredRoles", prop(props, ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ""));
+        attachments.add("requiredScopes", prop(props, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY, ""));
+        attachments.add("builtIn", true);
+        mgmtArray.add(attachments);
 
         return mgmtArray;
     }

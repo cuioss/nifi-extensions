@@ -28,12 +28,14 @@ import java.time.Instant;
 /**
  * Immutable status entry for an asynchronously tracked request.
  *
- * @param traceId       the unique trace identifier (UUID)
- * @param status        the current processing status
- * @param acceptedAt    when the request was first accepted
- * @param updatedAt     when the status was last updated
- * @param parentTraceId optional parent trace ID for chained requests
- * @param errorDetail   optional error detail for REJECTED/ERROR statuses (RFC 9457 detail string)
+ * @param traceId             the unique trace identifier (UUID)
+ * @param status              the current processing status
+ * @param acceptedAt          when the request was first accepted
+ * @param updatedAt           when the status was last updated
+ * @param parentTraceId       optional parent trace ID for chained requests
+ * @param errorDetail         optional error detail for REJECTED/ERROR statuses (RFC 9457 detail string)
+ * @param attachmentsMaxCount maximum attachments allowed for this request (0 = no attachments expected)
+ * @param routeName           the route name that created this entry (for traceability)
  */
 public record RequestStatusEntry(
 @NonNull String traceId,
@@ -41,14 +43,26 @@ public record RequestStatusEntry(
 @NonNull Instant acceptedAt,
 @NonNull Instant updatedAt,
 @Nullable String parentTraceId,
-@Nullable String errorDetail) {
+@Nullable String errorDetail,
+int attachmentsMaxCount,
+@Nullable String routeName) {
 
     /**
      * Creates a new ACCEPTED entry with the given trace ID.
      */
     public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId) {
         Instant now = Instant.now();
-        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null);
+        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, null);
+    }
+
+    /**
+     * Creates a new ACCEPTED entry with attachment metadata.
+     */
+    public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId,
+            @Nullable String routeName, int attachmentsMaxCount) {
+        Instant now = Instant.now();
+        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now,
+                parentTraceId, null, attachmentsMaxCount, routeName);
     }
 
     /**
@@ -65,6 +79,12 @@ public record RequestStatusEntry(
         }
         if (errorDetail != null) {
             builder.add("errorDetail", errorDetail);
+        }
+        if (attachmentsMaxCount > 0) {
+            builder.add("attachmentsMaxCount", attachmentsMaxCount);
+        }
+        if (routeName != null) {
+            builder.add("routeName", routeName);
         }
         return builder.build().toString();
     }
@@ -89,6 +109,9 @@ public record RequestStatusEntry(
                 obj.containsKey("parentTraceId") && !obj.isNull("parentTraceId")
                         ? obj.getString("parentTraceId") : null,
                 obj.containsKey("errorDetail") && !obj.isNull("errorDetail")
-                        ? obj.getString("errorDetail") : null);
+                        ? obj.getString("errorDetail") : null,
+                obj.containsKey("attachmentsMaxCount") ? obj.getInt("attachmentsMaxCount") : 0,
+                obj.containsKey("routeName") && !obj.isNull("routeName")
+                        ? obj.getString("routeName") : null);
     }
 }

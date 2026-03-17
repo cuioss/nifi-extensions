@@ -1057,7 +1057,11 @@ test.describe("REST API Gateway Tabs", () => {
         const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
         await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
 
-        // Select POST method
+        // Select a route that supports POST (route order is non-deterministic)
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await routeSelector.selectOption("/api/data");
+
+        // Select POST method (now guaranteed to be available for this route)
         const methodSelector = endpointTesterPanel.locator(".method-selector");
         await methodSelector.selectOption("POST");
 
@@ -1777,16 +1781,16 @@ test.describe("REST API Gateway Tabs", () => {
         const routeForm = endpointConfigPanel.locator(".route-form");
         await expect(routeForm).toBeVisible({ timeout: 5000 });
 
-        // Tracking checkbox should be present and unchecked by default
-        const trackingCheckbox = routeForm.locator(
-            ".tracking-enabled-checkbox",
+        // Tracking mode dropdown should be present and set to 'none' by default
+        const trackingSelect = routeForm.locator(
+            ".tracking-mode-select",
         );
-        await expect(trackingCheckbox).toBeVisible({ timeout: 5000 });
-        await expect(trackingCheckbox).not.toBeChecked();
+        await expect(trackingSelect).toBeVisible({ timeout: 5000 });
+        await expect(trackingSelect).toHaveValue("none");
 
         // Context help button should exist near the tracking label
         const trackingContainer = routeForm.locator(
-            ".field-container-tracking-enabled",
+            ".field-container-tracking-mode",
         );
         const helpButton = trackingContainer.locator(
             ".context-help-toggle",
@@ -1854,11 +1858,11 @@ test.describe("REST API Gateway Tabs", () => {
         const routeForm = endpointConfigPanel.locator(".route-form");
         await expect(routeForm).toBeVisible({ timeout: 5000 });
 
-        // Enable tracking
-        const trackingCheckbox = routeForm.locator(
-            ".tracking-enabled-checkbox",
+        // Set tracking to simple
+        const trackingSelect = routeForm.locator(
+            ".tracking-mode-select",
         );
-        await trackingCheckbox.check();
+        await trackingSelect.selectOption("simple");
 
         // Try to save
         const saveBtn = routeForm.locator(".save-route-button");

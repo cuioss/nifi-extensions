@@ -248,24 +248,46 @@
     cursor: pointer;
 }
 
-/* Request Tracking toggle */
+/* Request Tracking mode */
 
-.field-container-tracking-enabled {
+.field-container-tracking-mode {
     margin-bottom: 10px;
 }
 
-.tracking-enabled-label {
+.tracking-mode-label {
     display: flex;
     align-items: center;
     gap: 6px;
-    cursor: pointer;
     font-weight: 600;
 }
 
-.route-form .form-field .tracking-enabled-checkbox {
-    width: auto;
-    margin: 0;
-    cursor: pointer;
+.tracking-mode-select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--input-border, #ccc);
+    font-size: 0.9em;
+}
+
+.attachment-bounds-fields {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.attachment-bounds-fields label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.attachment-bounds-fields input[type="number"] {
+    width: 70px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--input-border, #ccc);
 }
 
 /* Status badges in table */

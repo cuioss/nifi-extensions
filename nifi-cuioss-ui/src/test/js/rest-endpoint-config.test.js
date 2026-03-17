@@ -53,7 +53,7 @@ const PROPERTIES_NO_FLOWFILE = {
 
 const PROPERTIES_WITH_TRACKING = {
     ...SAMPLE_PROPERTIES,
-    'restapi.data.tracking-enabled': 'true'
+    'restapi.data.tracking-mode': 'simple'
 };
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
@@ -1976,7 +1976,7 @@ describe('rest-endpoint-config', () => {
         await initWithMgmt();
 
         const healthRow = container.querySelector('tr[data-mgmt-name="health"]');
-        const authCell = healthRow.querySelectorAll('td')[3];
+        const authCell = healthRow.querySelectorAll('td')[4];
         const badge = authCell.querySelector('.authmode-badge');
         expect(badge).not.toBeNull();
         // Should contain combined label
@@ -2439,7 +2439,7 @@ describe('rest-endpoint-config', () => {
     // Tracking enabled
     // -------------------------------------------------------------------
 
-    it('should render tracking checkbox in route editor (unchecked by default)', async () => {
+    it('should render tracking-mode dropdown in route editor (none by default)', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -2449,12 +2449,12 @@ describe('rest-endpoint-config', () => {
 
         container.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        expect(checkbox).not.toBeNull();
-        expect(checkbox.checked).toBe(false);
+        const select = form.querySelector('.tracking-mode-select');
+        expect(select).not.toBeNull();
+        expect(select.value).toBe('none');
     });
 
-    it('should render tracking checkbox checked when tracking-enabled=true', async () => {
+    it('should render tracking-mode dropdown with simple selected when tracking-mode=simple', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: PROPERTIES_WITH_TRACKING,
             revision: { version: 1 }
@@ -2462,16 +2462,16 @@ describe('rest-endpoint-config', () => {
 
         await init(container);
 
-        // Click edit on the data route (which has tracking-enabled=true)
+        // Click edit on the data route (which has tracking-mode=simple)
         const dataRow = container.querySelector('tr[data-route-name="data"]');
         dataRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        expect(checkbox).not.toBeNull();
-        expect(checkbox.checked).toBe(true);
+        const select = form.querySelector('.tracking-mode-select');
+        expect(select).not.toBeNull();
+        expect(select.value).toBe('simple');
     });
 
-    it('should include tracking-enabled in extractFormFields', async () => {
+    it('should include tracking-mode in extractFormFields', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -2485,17 +2485,17 @@ describe('rest-endpoint-config', () => {
         dataRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        // Enable tracking
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        checkbox.checked = true;
+        // Set tracking to simple
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'simple';
 
-        // Save and check the API call includes tracking-enabled
+        // Save and check the API call includes tracking-mode
         form.querySelector('.save-route-button').click();
         await tick();
 
         const call = api.updateComponentProperties.mock.calls[0];
         const props = call[1];
-        expect(props['restapi.data.tracking-enabled']).toBe('true');
+        expect(props['restapi.data.tracking-mode']).toBe('simple');
     });
 
     it('should reject tracking on GET-only routes', async () => {
@@ -2511,9 +2511,9 @@ describe('rest-endpoint-config', () => {
         healthRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        // Enable tracking
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        checkbox.checked = true;
+        // Set tracking to simple
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'simple';
 
         // Try to save
         form.querySelector('.save-route-button').click();
@@ -2542,9 +2542,9 @@ describe('rest-endpoint-config', () => {
         dataRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        // Enable tracking
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        checkbox.checked = true;
+        // Set tracking to simple
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'simple';
 
         form.querySelector('.save-route-button').click();
         await tick();
@@ -2570,8 +2570,8 @@ describe('rest-endpoint-config', () => {
         healthRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        const checkbox = form.querySelector('.tracking-enabled-checkbox');
-        checkbox.checked = true;
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'simple';
 
         form.querySelector('.save-route-button').click();
         await tick();
@@ -2579,7 +2579,7 @@ describe('rest-endpoint-config', () => {
         expect(api.updateComponentProperties).toHaveBeenCalled();
     });
 
-    it('should show tracking badge in table when tracking-enabled=true', async () => {
+    it('should show tracking badge in table when tracking-mode=simple', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: PROPERTIES_WITH_TRACKING,
             revision: { version: 1 }
@@ -2593,7 +2593,7 @@ describe('rest-endpoint-config', () => {
         expect(badge.textContent).toContain('route.table.tracking');
     });
 
-    it('should not show tracking badge when tracking is disabled', async () => {
+    it('should not show tracking badge when tracking-mode is none', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -2606,7 +2606,7 @@ describe('rest-endpoint-config', () => {
         expect(badge).toBeNull();
     });
 
-    it('should include tracking-enabled=true in buildPropertyUpdates', async () => {
+    it('should include tracking-mode=simple in buildPropertyUpdates', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -2620,15 +2620,15 @@ describe('rest-endpoint-config', () => {
         dataRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        // Enable tracking
-        form.querySelector('.tracking-enabled-checkbox').checked = true;
+        // Set tracking to simple
+        form.querySelector('.tracking-mode-select').value = 'simple';
 
         form.querySelector('.save-route-button').click();
         await tick();
 
         const call = api.updateComponentProperties.mock.calls[0];
         const props = call[1];
-        expect(props['restapi.data.tracking-enabled']).toBe('true');
+        expect(props['restapi.data.tracking-mode']).toBe('simple');
     });
 
     it('should render context help button for tracking field', async () => {
@@ -2642,7 +2642,7 @@ describe('rest-endpoint-config', () => {
         container.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        const trackingContainer = form.querySelector('.field-container-tracking-enabled');
+        const trackingContainer = form.querySelector('.field-container-tracking-mode');
         expect(trackingContainer).not.toBeNull();
         const helpButton = trackingContainer.querySelector('.context-help-toggle');
         expect(helpButton).not.toBeNull();
@@ -2664,13 +2664,96 @@ describe('rest-endpoint-config', () => {
         dataRow.querySelector('.edit-route-button').click();
         const form = container.querySelector('.route-form');
 
-        // Enable tracking
-        form.querySelector('.tracking-enabled-checkbox').checked = true;
+        // Set tracking to simple
+        form.querySelector('.tracking-mode-select').value = 'simple';
 
         form.querySelector('.save-route-button').click();
         await tick();
 
         // Badge should now appear
         expect(dataRow.querySelector('.tracking-badge')).not.toBeNull();
+    });
+
+    it('should show attachment bounds fields only when mode is attachments', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        container.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        const attachmentFields = form.querySelector('.attachment-bounds-fields');
+        expect(attachmentFields).not.toBeNull();
+        // Should be hidden by default (mode=none)
+        expect(attachmentFields.classList.contains('hidden')).toBe(true);
+
+        // Switch to attachments mode
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'attachments';
+        select.dispatchEvent(new Event('change'));
+
+        // Should now be visible
+        expect(attachmentFields.classList.contains('hidden')).toBe(false);
+
+        // Switch back to none
+        select.value = 'none';
+        select.dispatchEvent(new Event('change'));
+        expect(attachmentFields.classList.contains('hidden')).toBe(true);
+    });
+
+    it('should reject attachments when min > max', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-min-count').value = '5';
+        form.querySelector('.field-attachments-max-count').value = '3';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(utils.displayUiError).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ message: 'route.validate.attachments.min.exceeds.max' }),
+            expect.anything(),
+            expect.anything()
+        );
+    });
+
+    it('should reject attachments when max > hard limit', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-max-count').value = '25';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(utils.displayUiError).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ message: 'route.validate.attachments.max.exceeds.limit' }),
+            expect.anything(),
+            expect.anything()
+        );
     });
 });

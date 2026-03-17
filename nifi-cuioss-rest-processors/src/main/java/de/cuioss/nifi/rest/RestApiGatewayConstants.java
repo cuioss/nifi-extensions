@@ -38,6 +38,11 @@ public final class RestApiGatewayConstants {
                 .name("failure")
                 .description("FlowFiles created from requests that caused internal errors are routed here")
                 .build();
+
+        public static final Relationship ATTACHMENTS = new Relationship.Builder()
+                .name("attachments")
+                .description("FlowFiles created from attachment upload requests are routed here")
+                .build();
     }
 
     @UtilityClass
@@ -176,7 +181,7 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.distributed-map-cache-client")
                 .displayName("Distributed Map Cache Client")
                 .description("The Controller Service providing distributed map cache for request tracking. "
-                        + "Required when any route has tracking-enabled=true.")
+                        + "Required when any route has tracking-mode other than 'none'.")
                 .required(false)
                 .identifiesControllerService(DistributedMapCacheClient.class)
                 .build();
@@ -214,6 +219,61 @@ public final class RestApiGatewayConstants {
                 .description("Comma-separated scopes required in the JWT token for the /status endpoint.")
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_ENABLED = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.enabled")
+                .displayName("Attachments Endpoint Enabled")
+                .description("Whether the /attachments/{parentTraceId} endpoint is active")
+                .required(false)
+                .defaultValue("true")
+                .allowableValues("true", "false")
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_AUTH_MODE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.auth-mode")
+                .displayName("Attachments Endpoint Auth Mode")
+                .description("Authentication modes for the /attachments endpoint (comma-separated): "
+                        + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous).")
+                .required(false)
+                .defaultValue("local-only,bearer")
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.required-roles")
+                .displayName("Attachments Endpoint Required Roles")
+                .description("Comma-separated roles required in the JWT token for the /attachments endpoint.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.required-scopes")
+                .displayName("Attachments Endpoint Required Scopes")
+                .description("Comma-separated scopes required in the JWT token for the /attachments endpoint.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.max-request-size")
+                .displayName("Attachments Max Request Size")
+                .description("Maximum allowed request body size in bytes for attachment uploads. "
+                        + "0 means use the global max request size.")
+                .required(false)
+                .defaultValue("0")
+                .addValidator(StandardValidators.NON_NEGATIVE_INTEGER_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_HARD_LIMIT = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.attachments.hard-limit")
+                .displayName("Attachments Hard Limit")
+                .description("Global maximum number of attachments allowed per parent request. "
+                        + "Routes cannot configure attachments-max-count higher than this value.")
+                .required(false)
+                .defaultValue("20")
+                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
                 .build();
 
     }

@@ -282,7 +282,7 @@ class GatewayProxyServletTest {
                     .get("/gateway/config")
                     .then()
                     .statusCode(200)
-                    .body("managementEndpoints.size()", equalTo(2))
+                    .body("managementEndpoints.size()", equalTo(4))
                     .body("managementEndpoints.find { it.name == 'health' }.path",
                             equalTo("/health"))
                     .body("managementEndpoints.find { it.name == 'health' }.enabled",
@@ -302,7 +302,15 @@ class GatewayProxyServletTest {
                     .body("managementEndpoints.find { it.name == 'metrics' }.requiredRoles",
                             equalTo(""))
                     .body("managementEndpoints.find { it.name == 'metrics' }.requiredScopes",
-                            equalTo(""));
+                            equalTo(""))
+                    .body("managementEndpoints.find { it.name == 'status' }.path",
+                            equalTo("/status/{traceId}"))
+                    .body("managementEndpoints.find { it.name == 'status' }.enabled",
+                            equalTo(true))
+                    .body("managementEndpoints.find { it.name == 'attachments' }.path",
+                            equalTo("/attachments/{parentTraceId}"))
+                    .body("managementEndpoints.find { it.name == 'attachments' }.enabled",
+                            equalTo(true));
         }
 
         @Test

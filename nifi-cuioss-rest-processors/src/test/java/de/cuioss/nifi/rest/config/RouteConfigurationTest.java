@@ -275,4 +275,87 @@ class RouteConfigurationTest {
             assertTrue(authReqs.hasAuthorizationRequirements());
         }
     }
+
+    @Nested
+    @DisplayName("TrackingMode")
+    class TrackingModeTests {
+
+        @Test
+        @DisplayName("Should default trackingMode to NONE")
+        void shouldDefaultTrackingModeToNone() {
+            var route = RouteConfiguration.builder().name("health").path("/api/health").build();
+            assertEquals(TrackingMode.NONE, route.trackingMode());
+            assertFalse(route.isTracked());
+        }
+
+        @Test
+        @DisplayName("Should report isTracked for SIMPLE")
+        void shouldReportIsTrackedForSimple() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.SIMPLE).build();
+            assertTrue(route.isTracked());
+        }
+
+        @Test
+        @DisplayName("Should report isTracked for ATTACHMENTS")
+        void shouldReportIsTrackedForAttachments() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS)
+                    .attachmentsMinCount(1).attachmentsMaxCount(5).build();
+            assertTrue(route.isTracked());
+        }
+
+        @Test
+        @DisplayName("Should reject bounds when mode is not ATTACHMENTS")
+        void shouldRejectBoundsWhenNotAttachments() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    RouteConfiguration.builder()
+                            .name("data").path("/api/data")
+                            .trackingMode(TrackingMode.SIMPLE)
+                            .attachmentsMinCount(1).build());
+        }
+
+        @Test
+        @DisplayName("Should reject negative min count")
+        void shouldRejectNegativeMinCount() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    RouteConfiguration.builder()
+                            .name("data").path("/api/data")
+                            .trackingMode(TrackingMode.ATTACHMENTS)
+                            .attachmentsMinCount(-1).build());
+        }
+
+        @Test
+        @DisplayName("Should reject min > max when both set")
+        void shouldRejectMinExceedingMax() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    RouteConfiguration.builder()
+                            .name("data").path("/api/data")
+                            .trackingMode(TrackingMode.ATTACHMENTS)
+                            .attachmentsMinCount(5).attachmentsMaxCount(3).build());
+        }
+
+        @Test
+        @DisplayName("Should accept valid attachment bounds")
+        void shouldAcceptValidBounds() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS)
+                    .attachmentsMinCount(1).attachmentsMaxCount(10).build();
+            assertEquals(1, route.attachmentsMinCount());
+            assertEquals(10, route.attachmentsMaxCount());
+        }
+
+        @Test
+        @DisplayName("Should accept zero bounds for ATTACHMENTS mode")
+        void shouldAcceptZeroBounds() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS).build();
+            assertEquals(0, route.attachmentsMinCount());
+            assertEquals(0, route.attachmentsMaxCount());
+        }
+    }
 }

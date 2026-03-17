@@ -19,6 +19,7 @@ package de.cuioss.nifi.rest.handler;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
+import de.cuioss.nifi.rest.config.TrackingMode;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.nifi.rest.validation.SchemaViolation;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
@@ -154,7 +155,7 @@ public class ApiRouteHandler implements EndpointHandler {
         }
 
         // Determine if this is a tracked body method
-        boolean tracked = route.trackingEnabled() && isBodyMethod(method) && statusStore != null;
+        boolean tracked = route.isTracked() && isBodyMethod(method) && statusStore != null;
         String traceId = null;
         String parentTraceId = null;
 
@@ -162,7 +163,11 @@ public class ApiRouteHandler implements EndpointHandler {
             traceId = UUID.randomUUID().toString();
             parentTraceId = sanitized.headers().get(X_PARENT_TRACE_ID);
             try {
-                statusStore.accept(traceId, parentTraceId);
+                if (route.trackingMode() == TrackingMode.ATTACHMENTS) {
+                    statusStore.accept(traceId, parentTraceId, route.name(), route.attachmentsMaxCount());
+                } else {
+                    statusStore.accept(traceId, parentTraceId);
+                }
             } catch (IOException e) {
                 LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
                 ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
@@ -199,7 +204,7 @@ public class ApiRouteHandler implements EndpointHandler {
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
                 route.name(), method, path, Request.getRemoteAddr(request));
         if (tracked) {
-            sendTrackedResponse(response, callback, request, traceId);
+            sendTrackedResponse(response, callback, request, traceId, route.trackingMode());
         } else {
             sendSuccessResponse(response, callback, method);
         }
@@ -214,7 +219,7 @@ public class ApiRouteHandler implements EndpointHandler {
     }
 
     private static void sendTrackedResponse(Response response, Callback callback,
-            Request request, String traceId) {
+            Request request, String traceId, TrackingMode trackingMode) {
         // Build absolute Location URI from the Jetty request
         var httpUri = request.getHttpURI();
         String scheme = httpUri.getScheme();
@@ -229,12 +234,17 @@ public class ApiRouteHandler implements EndpointHandler {
 
         // Build JSON body with HATEOAS _links (relative URI for proxy safety)
         String statusPath = "/status/" + traceId;
+        var linksBuilder = Json.createObjectBuilder()
+                .add("status", Json.createObjectBuilder()
+                        .add("href", statusPath));
+        if (trackingMode == TrackingMode.ATTACHMENTS) {
+            linksBuilder.add("attachments", Json.createObjectBuilder()
+                    .add("href", "/attachments/" + traceId));
+        }
         byte[] responseBody = Json.createObjectBuilder()
                 .add("status", "accepted")
                 .add("traceId", traceId)
-                .add("_links", Json.createObjectBuilder()
-                        .add("status", Json.createObjectBuilder()
-                                .add("href", statusPath)))
+                .add("_links", linksBuilder)
                 .build()
                 .toString()
                 .getBytes(StandardCharsets.UTF_8);

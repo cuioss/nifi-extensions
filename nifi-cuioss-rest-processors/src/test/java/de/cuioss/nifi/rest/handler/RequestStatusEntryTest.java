@@ -101,7 +101,7 @@ class RequestStatusEntryTest {
             Instant now = Instant.now();
             var entry = new RequestStatusEntry(
                     traceId, RequestStatus.REJECTED, now, now,
-                    parentTraceId, "Validation failed");
+                    parentTraceId, "Validation failed", 0, null);
 
             // Act
             String json = entry.toJson();
@@ -121,7 +121,7 @@ class RequestStatusEntryTest {
             // Arrange
             Instant now = Instant.now();
             var entry = new RequestStatusEntry(
-                    UUID.randomUUID().toString(), status, now, now, null, null);
+                    UUID.randomUUID().toString(), status, now, now, null, null, 0, null);
 
             // Act
             String json = entry.toJson();

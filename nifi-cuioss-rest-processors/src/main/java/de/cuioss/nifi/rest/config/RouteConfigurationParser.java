@@ -70,8 +70,12 @@ public class RouteConfigurationParser {
     static final String AUTH_MODE_KEY = "auth-mode";
     /** Property key for per-route maximum request body size. */
     static final String MAX_REQUEST_SIZE_KEY = "max-request-size";
-    /** Property key for request tracking flag. */
-    static final String TRACKING_ENABLED_KEY = "tracking-enabled";
+    /** Property key for request tracking mode. */
+    static final String TRACKING_MODE_KEY = "tracking-mode";
+    /** Property key for minimum number of attachments. */
+    static final String ATTACHMENTS_MIN_COUNT_KEY = "attachments-min-count";
+    /** Property key for maximum number of attachments. */
+    static final String ATTACHMENTS_MAX_COUNT_KEY = "attachments-max-count";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -119,7 +123,9 @@ public class RouteConfigurationParser {
                 }
             }
             int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
-            boolean trackingEnabled = "true".equalsIgnoreCase(routeProps.get(TRACKING_ENABLED_KEY));
+            TrackingMode trackingMode = parseTrackingMode(routeProps.get(TRACKING_MODE_KEY));
+            int attachmentsMinCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MIN_COUNT_KEY), 0);
+            int attachmentsMaxCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MAX_COUNT_KEY), 0);
 
             if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
                 LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
@@ -131,7 +137,9 @@ public class RouteConfigurationParser {
                     .methods(methods).requiredRoles(roles).requiredScopes(scopes)
                     .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
                     .authModes(authModes).maxRequestSize(maxRequestSize)
-                    .trackingEnabled(trackingEnabled)
+                    .trackingMode(trackingMode)
+                    .attachmentsMinCount(attachmentsMinCount)
+                    .attachmentsMaxCount(attachmentsMaxCount)
                     .build());
             LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
                     routeName, path, enabled, methods, authModes);
@@ -167,6 +175,31 @@ public class RouteConfigurationParser {
         } catch (NumberFormatException e) {
             LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
             return defaultValue;
+        }
+    }
+
+    private static int parseNonNegativeInt(String value, int defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(value.strip());
+            return parsed >= 0 ? parsed : defaultValue;
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
+            return defaultValue;
+        }
+    }
+
+    private static TrackingMode parseTrackingMode(String value) {
+        if (value == null || value.isBlank()) {
+            return TrackingMode.NONE;
+        }
+        try {
+            return TrackingMode.valueOf(value.strip().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid tracking-mode '%s', defaulting to NONE", value);
+            return TrackingMode.NONE;
         }
     }
 }
