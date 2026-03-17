@@ -1057,7 +1057,11 @@ test.describe("REST API Gateway Tabs", () => {
         const endpointTesterPanel = customUIFrame.locator("#endpoint-tester");
         await expect(endpointTesterPanel).toBeVisible({ timeout: 5000 });
 
-        // Select POST method
+        // Select a route that supports POST (route order is non-deterministic)
+        const routeSelector = endpointTesterPanel.locator(".route-selector");
+        await routeSelector.selectOption("/api/data");
+
+        // Select POST method (now guaranteed to be available for this route)
         const methodSelector = endpointTesterPanel.locator(".method-selector");
         await methodSelector.selectOption("POST");
 
