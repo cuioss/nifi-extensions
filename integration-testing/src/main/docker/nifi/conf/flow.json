@@ -1254,7 +1254,12 @@
             "position": {
               "x": 800.0,
               "y": 700.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ntfy00000001",
@@ -1318,7 +1323,12 @@
             "position": {
               "x": 1400.0,
               "y": 700.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
@@ -1364,7 +1374,12 @@
             "position": {
               "x": 800.0,
               "y": 1100.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000001",
@@ -1415,7 +1430,12 @@
             "position": {
               "x": 800.0,
               "y": 1300.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
@@ -1461,7 +1481,12 @@
             "position": {
               "x": 800.0,
               "y": 1500.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
@@ -1495,7 +1520,12 @@
             "position": {
               "x": 800.0,
               "y": 1700.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-loga00000001",
@@ -1529,7 +1559,12 @@
             "position": {
               "x": 1400.0,
               "y": 900.0
-            }
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           }
         ],
         "inputPorts": [],
@@ -1713,7 +1748,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000002",
@@ -1743,7 +1780,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000003",
@@ -1773,7 +1812,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000004",
@@ -1803,7 +1844,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000005",
@@ -1833,7 +1876,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000006",
@@ -1863,7 +1908,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000007",
@@ -1893,7 +1940,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000008",
@@ -1923,7 +1972,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000009",
@@ -1953,7 +2004,9 @@
             "partitioningAttribute": "",
             "loadBalanceCompression": "DO_NOT_COMPRESS",
             "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa"
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
           }
         ],
         "labels": [],
