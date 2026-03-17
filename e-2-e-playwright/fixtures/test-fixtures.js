@@ -317,19 +317,14 @@ export const serialGatewayTest = test.extend({
             await processorManager.ensureGatewayProcessorOnCanvas();
             const processorService = new ProcessorService(_sharedPage);
 
-            // Navigate directly to the Advanced UI page using the processor ID
-            // from the API — bypasses unreliable canvas right-click which fails
-            // when the canvas has many processors and auto-fit makes them too small.
-            const processorId = await processorManager.getGatewayProcessorId();
-            if (!processorId) {
-                throw new Error("Failed to get gateway processor ID from API");
-            }
-            const gatewayGroupId = await processorManager.getGatewayProcessGroupId();
-            const advancedUrl = `/nifi/#/process-groups/${gatewayGroupId}/processor/${processorId}/advanced`;
-            await _sharedPage.goto(advancedUrl);
-            await _sharedPage.waitForURL('**/advanced', { timeout: 10000 });
-            await _sharedPage.waitForSelector('iframe', { timeout: 5000 });
-
+            // Find the processor on canvas using CSS selectors and open its Advanced UI.
+            // The processor is found via the original findProcessor approach — the canvas
+            // layout is kept compact enough that auto-fit keeps processors interactable.
+            const processor = await processorService.find(
+                PROCESSOR_TYPES.REST_API_GATEWAY,
+                { failIfNotFound: true },
+            );
+            await processorService.openAdvancedUI(processor);
             const frame =
                 await processorService.getAdvancedUIFrame();
             if (!frame) {
@@ -357,12 +352,11 @@ export const serialGatewayTest = test.extend({
                 await page.goto("/nifi");
                 await page.waitForLoadState("domcontentloaded");
                 await processorManager.ensureGatewayProcessorOnCanvas();
-                const processorId = await processorManager.getGatewayProcessorId();
-                const gatewayGroupId = await processorManager.getGatewayProcessGroupId();
-                const advancedUrl = `/nifi/#/process-groups/${gatewayGroupId}/processor/${processorId}/advanced`;
-                await page.goto(advancedUrl);
-                await page.waitForURL('**/advanced', { timeout: 10000 });
-                await page.waitForSelector('iframe', { timeout: 5000 });
+                const processor = await processorService.find(
+                    PROCESSOR_TYPES.REST_API_GATEWAY,
+                    { failIfNotFound: true },
+                );
+                await processorService.openAdvancedUI(processor);
                 const newFrame =
                     await processorService.getAdvancedUIFrame();
                 if (!newFrame) {
