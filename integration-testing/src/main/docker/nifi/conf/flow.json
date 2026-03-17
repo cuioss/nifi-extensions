@@ -1211,7 +1211,7 @@
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
               "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
-              "Expiration Duration": "${rest.trace.attachments.timeout}",
+              "Expiration Duration": "30 sec",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
             "propertyDescriptors": {
@@ -1274,8 +1274,7 @@
               "Release Signal Identifier": "merge-signal-${rest.trace.parent.id}",
               "Signal Counter Delta": "1",
               "Signal Counter Name": "default",
-              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
-              "Attribute Cache Regex": "rest\\..*"
+              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
             "propertyDescriptors": {
               "Release Signal Identifier": {
@@ -1296,11 +1295,6 @@
               "Distributed Cache Service": {
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
-                "sensitive": false
-              },
-              "Attribute Cache Regex": {
-                "name": "Attribute Cache Regex",
-                "identifiesControllerService": false,
                 "sensitive": false
               }
             },
@@ -1364,7 +1358,8 @@
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
             "autoTerminatedRelationships": [
-              "failure"
+              "failure",
+              "not-found"
             ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
