@@ -1,0 +1,9 @@
+@startuml
+[*] --> COLLECTING_ATTACHMENTS : POST /api/upload\n(tracking-mode=attachments)
+COLLECTING_ATTACHMENTS --> PROCESSING : Wait releases parent\n(signal or timeout)
+PROCESSING --> PROCESSED : Downstream success
+PROCESSING --> REJECTED : Downstream rejection
+PROCESSING --> ERROR : Downstream error
+PROCESSING --> RETRY : Temporary failure
+RETRY --> PROCESSING : Retry
+@enduml

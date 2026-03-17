@@ -1,6 +1,7 @@
 = Attachment Merge Guide
 :toc:
 :toc-placement: preamble
+:imagesdir: ../plantuml
 
 This guide explains how the REST API Gateway synchronizes parent requests with their attachments using NiFi's Wait/Notify pattern.
 
@@ -12,18 +13,7 @@ When a route uses `tracking-mode=attachments`, the gateway holds the parent requ
 
 The attachment flow introduces a new status: `COLLECTING_ATTACHMENTS`.
 
-[plantuml]
-----
-@startuml
-[*] --> COLLECTING_ATTACHMENTS : POST /api/upload\n(tracking-mode=attachments)
-COLLECTING_ATTACHMENTS --> PROCESSING : Wait releases parent\n(signal or timeout)
-PROCESSING --> PROCESSED : Downstream success
-PROCESSING --> REJECTED : Downstream rejection
-PROCESSING --> ERROR : Downstream error
-PROCESSING --> RETRY : Temporary failure
-RETRY --> PROCESSING : Retry
-@enduml
-----
+image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
 
 |===
 | Status | Meaning | Attachment Window
@@ -39,29 +29,7 @@ RETRY --> PROCESSING : Retry
 
 == Flow Architecture
 
-[plantuml]
-----
-@startuml
-rectangle "RestApiGateway" as gw
-rectangle "Wait\n(wait-for-attachments)" as wait
-rectangle "Notify\n(notify-attachment-received)" as notify
-rectangle "FetchDistributedMapCache" as fetch
-rectangle "ReplaceText\n(status transition)" as replace
-rectangle "PutDistributedMapCache" as put
-rectangle "LogAttribute\n(gateway-merged)" as logMerged
-rectangle "LogAttribute\n(gateway-attachment-done)" as logAttach
-
-gw -down-> wait : upload
-gw -down-> notify : attachments
-wait -left-> wait : wait (self-loop)
-wait -down-> fetch : success
-wait -down-> fetch : expired
-notify -down-> logAttach : success
-fetch -down-> replace : success
-replace -down-> put : success
-put -down-> logMerged : success
-@enduml
-----
+image::attachment-flow.png[Attachment Flow Architecture]
 
 == Wait/Notify Configuration
 
@@ -69,13 +37,12 @@ put -down-> logMerged : success
 
 * *Signal ID:* `merge-signal-${rest.trace.id}` — unique per parent request
 * *Target Signal Count:* `${rest.trace.attachments.min.count}` (defaults to 1)
-* *Expiration Duration:* `${rest.trace.attachments.timeout}` — configurable per route
+* *Expiration Duration:* 30 sec (static default, configurable per route via properties)
 
 === Notify Processor
 
 * *Signal ID:* `merge-signal-${rest.trace.parent.id}` — references parent's signal
 * *Counter Delta:* 1 — each attachment increments the counter
-* *Attribute Cache Regex:* `rest\..*` — caches trace attributes
 
 == Status Gate Mechanism
 
@@ -109,21 +76,21 @@ The timeout field appears in the route editor alongside min/max attachment count
 
 === Normal Flow
 
-1. Client sends `POST /api/upload` → parent enters Wait (status: `COLLECTING_ATTACHMENTS`)
-2. Client sends `POST /attachments/{parentTraceId}` → Notify fires, counter increments
-3. When counter reaches target → Wait releases parent → status transitions to `PROCESSING`
-4. Subsequent attachment uploads → *409 Conflict*
+1. Client sends `POST /api/upload` — parent enters Wait (status: `COLLECTING_ATTACHMENTS`)
+2. Client sends `POST /attachments/{parentTraceId}` — Notify fires, counter increments
+3. When counter reaches target — Wait releases parent, status transitions to `PROCESSING`
+4. Subsequent attachment uploads — *409 Conflict*
 
 === Timeout
 
-1. Client sends `POST /api/upload` → parent enters Wait
+1. Client sends `POST /api/upload` — parent enters Wait
 2. No attachments arrive within timeout period
-3. Wait releases parent via `expired` relationship → status transitions to `PROCESSING`
-4. Subsequent attachment uploads → *409 Conflict*
+3. Wait releases parent via `expired` relationship — status transitions to `PROCESSING`
+4. Subsequent attachment uploads — *409 Conflict*
 
 === Multiple Attachments
 
-1. Client sends `POST /api/upload` → parent enters Wait
+1. Client sends `POST /api/upload` — parent enters Wait
 2. Client sends multiple `POST /attachments/{parentTraceId}` requests
 3. Each Notify increments the counter
-4. When minimum count is reached → parent released
+4. When minimum count is reached — parent released
