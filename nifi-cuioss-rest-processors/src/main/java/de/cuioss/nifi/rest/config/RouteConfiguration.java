@@ -44,8 +44,10 @@ import java.util.Set;
  * @param successOutcome  NiFi relationship name; required when createFlowFile is true, null when false
  * @param createFlowFile  whether to enqueue a FlowFile for this route ({@code false} = HTTP-only, no NiFi relationship)
  * @param authModes       authentication modes for this route (default: BEARER)
- * @param maxRequestSize  per-route body size limit in bytes; 0 means use global default
- * @param trackingEnabled whether async request tracking is enabled for this route (POST/PUT/PATCH only)
+ * @param maxRequestSize      per-route body size limit in bytes; 0 means use global default
+ * @param trackingMode        controls async request tracking for this route (POST/PUT/PATCH only)
+ * @param attachmentsMinCount minimum number of attachments required (only valid when trackingMode is ATTACHMENTS)
+ * @param attachmentsMaxCount maximum number of attachments allowed (only valid when trackingMode is ATTACHMENTS; 0 means use global hard limit)
  */
 @Builder
 public record RouteConfiguration(
@@ -60,7 +62,9 @@ boolean enabled,
 boolean createFlowFile,
 @NonNull Set<AuthMode> authModes,
 int maxRequestSize,
-boolean trackingEnabled) {
+@NonNull TrackingMode trackingMode,
+int attachmentsMinCount,
+int attachmentsMaxCount) {
 
     /** Default allowed HTTP methods when none are configured. */
     public static final Set<String> DEFAULT_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
@@ -77,6 +81,24 @@ boolean trackingEnabled) {
         requiredRoles = requiredRoles != null ? Set.copyOf(requiredRoles) : Set.of();
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
         authModes = authModes != null && !authModes.isEmpty() ? Set.copyOf(authModes) : EnumSet.of(AuthMode.BEARER);
+        trackingMode = trackingMode != null ? trackingMode : TrackingMode.NONE;
+        if (trackingMode != TrackingMode.ATTACHMENTS && (attachmentsMinCount != 0 || attachmentsMaxCount != 0)) {
+            throw new IllegalArgumentException(
+                    "attachmentsMinCount/attachmentsMaxCount can only be set when trackingMode is ATTACHMENTS");
+        }
+        if (attachmentsMinCount < 0) {
+            throw new IllegalArgumentException("attachmentsMinCount must be >= 0");
+        }
+        if (attachmentsMaxCount > 0 && attachmentsMinCount > attachmentsMaxCount) {
+            throw new IllegalArgumentException("attachmentsMinCount must not exceed attachmentsMaxCount");
+        }
+    }
+
+    /**
+     * Whether this route has any form of request tracking enabled.
+     */
+    public boolean isTracked() {
+        return trackingMode != TrackingMode.NONE;
     }
 
     /**
@@ -112,5 +134,8 @@ boolean trackingEnabled) {
         private boolean createFlowFile = true;
         private Set<AuthMode> authModes = EnumSet.of(AuthMode.BEARER);
         private int maxRequestSize = 0;
+        private TrackingMode trackingMode = TrackingMode.NONE;
+        private int attachmentsMinCount = 0;
+        private int attachmentsMaxCount = 0;
     }
 }

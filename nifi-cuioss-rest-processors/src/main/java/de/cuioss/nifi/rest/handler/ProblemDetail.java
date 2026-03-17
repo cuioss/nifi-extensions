@@ -77,6 +77,7 @@ int status,
     static final String TYPE_METHOD_NOT_ALLOWED = ERROR_DOC_BASE;
     static final String TYPE_PAYLOAD_TOO_LARGE = ERROR_DOC_BASE;
     static final String TYPE_VALIDATION_ERROR = ERROR_DOC_BASE;
+    static final String TYPE_CONFLICT = ERROR_DOC_BASE;
     static final String TYPE_SERVICE_UNAVAILABLE = ERROR_DOC_BASE;
     static final String TYPE_INTERNAL_ERROR = ERROR_DOC_BASE;
 
@@ -89,6 +90,7 @@ int status,
     static final String TITLE_METHOD_NOT_ALLOWED = "Method Not Allowed";
     static final String TITLE_PAYLOAD_TOO_LARGE = "Payload Too Large";
     static final String TITLE_VALIDATION_ERROR = "Unprocessable Content";
+    static final String TITLE_CONFLICT = "Conflict";
     static final String TITLE_SERVICE_UNAVAILABLE = "Service Unavailable";
     static final String TITLE_INTERNAL_ERROR = "Internal Server Error";
 
@@ -246,6 +248,20 @@ int status,
                 .status(422)
                 .detail(detail)
                 .extension("violations", arrayBuilder.build())
+                .build();
+    }
+
+    /**
+     * Creates a 409 Conflict problem detail.
+     *
+     * @see <a href="https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc">Error Reference</a>
+     */
+    public static ProblemDetail conflict(String detail) {
+        return ProblemDetail.builder()
+                .type(TYPE_CONFLICT)
+                .title(TITLE_CONFLICT)
+                .status(409)
+                .detail(detail)
                 .build();
     }
 

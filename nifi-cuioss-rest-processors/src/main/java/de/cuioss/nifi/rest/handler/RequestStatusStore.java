@@ -71,6 +71,21 @@ public class RequestStatusStore {
     }
 
     /**
+     * Stores a new ACCEPTED status entry with attachment metadata.
+     *
+     * @param traceId             the unique trace identifier
+     * @param parentTraceId       optional parent trace ID for chained requests
+     * @param routeName           the route name for traceability
+     * @param attachmentsMaxCount maximum number of attachments allowed
+     * @throws IOException if the cache operation fails
+     */
+    public void accept(String traceId, @Nullable String parentTraceId,
+            @Nullable String routeName, int attachmentsMaxCount) throws IOException {
+        var entry = RequestStatusEntry.accepted(traceId, parentTraceId, routeName, attachmentsMaxCount);
+        cacheClient.put(traceId, entry, STRING_SERIALIZER, ENTRY_SERIALIZER);
+    }
+
+    /**
      * Retrieves the status entry for the given trace ID.
      *
      * @param traceId the trace identifier to look up

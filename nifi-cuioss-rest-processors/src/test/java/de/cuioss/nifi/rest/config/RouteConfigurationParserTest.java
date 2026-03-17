@@ -440,4 +440,72 @@ class RouteConfigurationParserTest {
                     () -> routes.add(RouteConfiguration.builder().name("x").path("/x").build()));
         }
     }
+
+    @Nested
+    @DisplayName("TrackingMode and Attachments")
+    class TrackingModeAndAttachments {
+
+        @Test
+        @DisplayName("Should parse tracking-mode=simple")
+        void shouldParseTrackingModeSimple() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.tracking-mode", "simple");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(TrackingMode.SIMPLE, routes.getFirst().trackingMode());
+        }
+
+        @Test
+        @DisplayName("Should parse tracking-mode=attachments with bounds")
+        void shouldParseTrackingModeAttachments() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.upload.path", "/api/upload");
+            properties.put("restapi.upload.tracking-mode", "attachments");
+            properties.put("restapi.upload.attachments-min-count", "1");
+            properties.put("restapi.upload.attachments-max-count", "5");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(TrackingMode.ATTACHMENTS, routes.getFirst().trackingMode());
+            assertEquals(1, routes.getFirst().attachmentsMinCount());
+            assertEquals(5, routes.getFirst().attachmentsMaxCount());
+        }
+
+        @Test
+        @DisplayName("Should default tracking-mode to NONE when absent")
+        void shouldDefaultTrackingModeToNone() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(TrackingMode.NONE, routes.getFirst().trackingMode());
+        }
+
+        @Test
+        @DisplayName("Should default tracking-mode to NONE for invalid value")
+        void shouldDefaultForInvalidValue() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.tracking-mode", "invalid");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(TrackingMode.NONE, routes.getFirst().trackingMode());
+        }
+
+        @Test
+        @DisplayName("Should parse tracking-mode case-insensitively")
+        void shouldParseCaseInsensitive() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.data.path", "/api/data");
+            properties.put("restapi.data.tracking-mode", "Simple");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(TrackingMode.SIMPLE, routes.getFirst().trackingMode());
+        }
+    }
 }

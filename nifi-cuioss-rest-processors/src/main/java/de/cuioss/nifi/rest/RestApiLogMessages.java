@@ -111,6 +111,12 @@ public final class RestApiLogMessages {
                 .template("Status queried for traceId=%s, status=%s")
                 .build();
 
+        public static final LogRecord ATTACHMENT_ACCEPTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(13)
+                .template("Attachment accepted with traceId=%s, parentTraceId=%s (count %s/%s)")
+                .build();
+
     }
 
     @UtilityClass
@@ -186,6 +192,24 @@ public final class RestApiLogMessages {
                 .prefix(PREFIX)
                 .identifier(111)
                 .template("Failed to access status store: %s")
+                .build();
+
+        public static final LogRecord PARENT_TRACE_NOT_FOUND = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(112)
+                .template("Attachment rejected: parent traceId not found: %s")
+                .build();
+
+        public static final LogRecord ATTACHMENTS_NOT_SUPPORTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(113)
+                .template("Attachment rejected: parent %s does not accept attachments")
+                .build();
+
+        public static final LogRecord ATTACHMENT_LIMIT_REACHED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(114)
+                .template("Attachment rejected: limit reached for parent %s (%s/%s)")
                 .build();
     }
 

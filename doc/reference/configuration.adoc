@@ -227,6 +227,7 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |restapi.<name>.max-request-size |Per-route max body size in bytes (0 = global default) |524288
 |restapi.<name>.enabled |Whether the route is active (default: true) |false
 |restapi.<name>.schema |File path to JSON Schema for request body validation |./conf/schemas/user.json
+|restapi.<name>.tracking-mode |Tracking mode: `none` (default), `simple`, `attachments` (see link:attachments-api.adoc[Attachments API]) |simple
 |===
 
 === Multi-Route Configuration Example

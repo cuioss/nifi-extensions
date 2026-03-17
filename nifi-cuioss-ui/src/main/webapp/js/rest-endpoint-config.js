@@ -114,21 +114,29 @@ const ROUTE_PREFIX = 'restapi.';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 
 /**
- * Build the tracking badge HTML for a route, showing which methods are tracked.
- * @param {boolean|string} trackingEnabled  whether tracking is enabled
+ * Build the tracking badge HTML for a route, showing tracking mode and attachment bounds.
+ * @param {string} trackingMode  'none', 'simple', or 'attachments'
  * @param {string} methods  comma-separated method list (empty = all methods)
+ * @param {number} [minCount]  minimum attachment count (only for attachments mode)
+ * @param {number} [maxCount]  maximum attachment count (only for attachments mode)
  * @returns {string} HTML string or empty
  */
-const buildTrackingBadge = (trackingEnabled, methods) => {
-    const enabled = trackingEnabled === true || trackingEnabled === 'true';
-    if (!enabled) return '';
+const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
+    const mode = (trackingMode || 'none').toLowerCase();
+    if (mode === 'none') return '';
     const parsed = (methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
     const tracked = parsed.length === 0
         ? BODY_METHODS
         : parsed.filter((m) => BODY_METHODS.includes(m));
     if (tracked.length === 0) return '';
-    const suffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
-    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${suffix}</span>`;
+    const methodSuffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
+    if (mode === 'attachments') {
+        const min = parseInt(minCount, 10) || 0;
+        const max = parseInt(maxCount, 10) || 0;
+        const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
+        return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')} + ${t('route.form.tracking.attachments')} (${bounds})${methodSuffix}</span>`;
+    }
+    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${methodSuffix}</span>`;
 };
 const MGMT_PREFIX = 'rest.gateway.management.';
 
@@ -289,6 +297,7 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
             <tr>
                 <th>${t('route.management.table.name')}</th>
                 <th>${t('route.management.table.path')}</th>
+                <th>${t('route.table.methods')}</th>
                 <th>${t('route.management.table.enabled')}</th>
                 <th>${t('route.management.table.authmode')}</th>
                 <th>${t('route.management.table.actions')}</th>
@@ -306,9 +315,12 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
         row.dataset.mgmtScopes = ep.requiredScopes || '';
         const enabledClass = ep.enabled ? 'status-enabled' : 'status-disabled';
         const enabledText = ep.enabled ? t('common.status.enabled') : t('common.status.disabled');
+        const methodsList = Array.isArray(ep.methods) ? ep.methods : ['GET'];
+        const methodBadgesHtml = methodsList.map((m) => `<span class="method-badge">${sanitizeHtml(m)}</span>`).join(' ');
         row.innerHTML = `
             <td>${sanitizeHtml(ep.name)}</td>
             <td>${sanitizeHtml(ep.path)}</td>
+            <td>${methodBadgesHtml}</td>
             <td><span class="${enabledClass}">${enabledText}</span></td>
             <td>${formatAuthModeBadges(ep.authMode)}</td>
             <td>
@@ -629,7 +641,9 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
             'required-scopes': Array.isArray(route.requiredScopes) ? route.requiredScopes.join(',') : (route.requiredScopes || ''),
             'auth-mode': route.authMode || 'bearer',
             'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
-            'tracking-enabled': route.trackingEnabled === true ? 'true' : 'false',
+            'tracking-mode': route.trackingMode || 'none',
+            'attachments-min-count': route.attachmentsMinCount != null ? String(route.attachmentsMinCount) : '',
+            'attachments-max-count': route.attachmentsMaxCount != null ? String(route.attachmentsMaxCount) : '',
             _source: route.source || 'nifi'
         };
         if (route.schema) {
@@ -729,7 +743,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const schemaBadge = (props?.schema?.trim())
         ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
-    const trackingBadge = buildTrackingBadge(props?.['tracking-enabled'], methods);
+    const trackingBadge = buildTrackingBadge(props?.['tracking-mode'], methods,
+        props?.['attachments-min-count'], props?.['attachments-max-count']);
 
     const originBadge = buildOriginBadge(origin);
 
@@ -805,7 +820,8 @@ const updateTableRow = (row, formData) => {
 
     const schemaBadge = formData.schema?.trim()
         ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
-    const trackingBadge = buildTrackingBadge(formData['tracking-enabled'], formData.methods);
+    const trackingBadge = buildTrackingBadge(formData['tracking-mode'], formData.methods,
+        formData['attachments-min-count'], formData['attachments-max-count']);
     cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
 
     const methodBadges = (formData.methods || '').split(',')
@@ -836,7 +852,9 @@ const updateTableRow = (row, formData) => {
         row._routeProps.schema = formData.schema || '';
         row._routeProps['success-outcome'] = formData['success-outcome'] || '';
         row._routeProps['create-flowfile'] = formData['create-flowfile'] === false ? 'false' : 'true';
-        row._routeProps['tracking-enabled'] = formData['tracking-enabled'] ? 'true' : 'false';
+        row._routeProps['tracking-mode'] = formData['tracking-mode'] || 'none';
+        row._routeProps['attachments-min-count'] = formData['attachments-min-count'] || '';
+        row._routeProps['attachments-max-count'] = formData['attachments-max-count'] || '';
     }
 };
 
@@ -930,31 +948,78 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     header.appendChild(enabledHelp.panel);
     form.appendChild(header);
 
-    // ---- tracking-enabled checkbox (after header, before form fields) ----
-    const trackingEnabledVal = properties?.['tracking-enabled'] === 'true';
+    // ---- tracking-mode dropdown (after header, before form fields) ----
+    const trackingModeVal = properties?.['tracking-mode'] || 'none';
     const trackingToggle = document.createElement('div');
-    trackingToggle.className = 'form-field field-container-tracking-enabled';
+    trackingToggle.className = 'form-field field-container-tracking-mode';
     const trackingLabel = document.createElement('label');
-    trackingLabel.className = 'tracking-enabled-label';
-    trackingLabel.setAttribute('for', `tracking-enabled-${idx}`);
+    trackingLabel.className = 'tracking-mode-label';
+    trackingLabel.setAttribute('for', `tracking-mode-${idx}`);
+    trackingLabel.textContent = `${t('route.form.tracking.mode')} `;
 
-    const trackingCheckbox = document.createElement('input');
-    trackingCheckbox.type = 'checkbox';
-    trackingCheckbox.id = `tracking-enabled-${idx}`;
-    trackingCheckbox.className = 'tracking-enabled-checkbox';
-    if (trackingEnabledVal) trackingCheckbox.checked = true;
-    trackingCheckbox.setAttribute('aria-label', 'Request Tracking');
-    trackingLabel.appendChild(trackingCheckbox);
-    trackingLabel.append(` ${t('route.form.tracking')}`);
+    const trackingSelect = document.createElement('select');
+    trackingSelect.id = `tracking-mode-${idx}`;
+    trackingSelect.className = 'tracking-mode-select';
+    trackingSelect.setAttribute('aria-label', t('route.form.tracking.mode'));
+    const modeOptions = [
+        { value: 'none', label: t('route.form.tracking.none') },
+        { value: 'simple', label: t('route.form.tracking.simple') },
+        { value: 'attachments', label: t('route.form.tracking.attachments') }
+    ];
+    for (const opt of modeOptions) {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        if (opt.value === trackingModeVal.toLowerCase()) option.selected = true;
+        trackingSelect.appendChild(option);
+    }
+    trackingLabel.appendChild(trackingSelect);
 
     const trackingHelp = createContextHelp({
         helpKey: 'contexthelp.route.tracking',
-        propertyKey: `restapi.${rn}.tracking-enabled`,
-        currentValue: String(trackingEnabledVal)
+        propertyKey: `restapi.${rn}.tracking-mode`,
+        currentValue: trackingModeVal
     });
     trackingLabel.appendChild(trackingHelp.button);
     trackingToggle.appendChild(trackingLabel);
     trackingToggle.appendChild(trackingHelp.panel);
+
+    // ---- conditional attachment bounds fields ----
+    const attachmentFields = document.createElement('div');
+    attachmentFields.className = 'attachment-bounds-fields';
+    const minInput = document.createElement('input');
+    minInput.type = 'number';
+    minInput.className = 'field-attachments-min-count';
+    minInput.min = '0';
+    minInput.value = properties?.['attachments-min-count'] || '0';
+    minInput.placeholder = '0';
+    minInput.setAttribute('aria-label', t('route.form.attachments.min'));
+    const minLabel = document.createElement('label');
+    minLabel.textContent = `${t('route.form.attachments.min')} `;
+    minLabel.appendChild(minInput);
+
+    const maxInput = document.createElement('input');
+    maxInput.type = 'number';
+    maxInput.className = 'field-attachments-max-count';
+    maxInput.min = '0';
+    maxInput.max = '20';
+    maxInput.value = properties?.['attachments-max-count'] || '0';
+    maxInput.placeholder = '0';
+    maxInput.setAttribute('aria-label', t('route.form.attachments.max'));
+    const maxLabel = document.createElement('label');
+    maxLabel.textContent = `${t('route.form.attachments.max')} `;
+    maxLabel.appendChild(maxInput);
+
+    attachmentFields.appendChild(minLabel);
+    attachmentFields.appendChild(maxLabel);
+    trackingToggle.appendChild(attachmentFields);
+
+    const toggleAttachmentFields = () => {
+        attachmentFields.classList.toggle('hidden', trackingSelect.value !== 'attachments');
+    };
+    trackingSelect.addEventListener('change', toggleAttachmentFields);
+    toggleAttachmentFields();
+
     form.appendChild(trackingToggle);
 
     // ---- form fields ----
@@ -1248,7 +1313,9 @@ const extractFormFields = (form) => {
         schema: schemaEnabled ? getActiveSchemaValue(form) : '',
         'success-outcome': createFlowFile ? q('.field-success-outcome') : '',
         'create-flowfile': createFlowFile,
-        'tracking-enabled': form.querySelector('.tracking-enabled-checkbox')?.checked === true
+        'tracking-mode': form.querySelector('.tracking-mode-select')?.value || 'none',
+        'attachments-min-count': form.querySelector('.field-attachments-min-count')?.value || '0',
+        'attachments-max-count': form.querySelector('.field-attachments-max-count')?.value || '0'
     };
 };
 
@@ -1267,12 +1334,22 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (!f.path) return { isValid: false, error: new Error(t('route.validate.path.required')) };
-    if (f['tracking-enabled']) {
+    const trackingMode = (f['tracking-mode'] || 'none').toLowerCase();
+    if (trackingMode !== 'none') {
         const methods = (f.methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
         const hasBodyMethod = methods.length === 0 || methods.some((m) => BODY_METHODS.includes(m));
         if (!hasBodyMethod) {
             return { isValid: false, error: new Error(t('route.validate.tracking.methods')) };
         }
+    }
+    if (trackingMode === 'attachments') {
+        const min = parseInt(f['attachments-min-count'], 10) || 0;
+        const max = parseInt(f['attachments-max-count'], 10) || 0;
+        if (min < 0) return { isValid: false, error: new Error(t('route.validate.attachments.min.negative')) };
+        if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
+        if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
+        const hardLimit = 20;
+        if (max > hardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(hardLimit))) };
     }
     return { isValid: true };
 };
@@ -1289,7 +1366,12 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.schema`] = f.schema || null;
     u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
-    u[`${ROUTE_PREFIX}${name}.tracking-enabled`] = f['tracking-enabled'] ? 'true' : null;
+    const trackingMode = (f['tracking-mode'] || 'none').toLowerCase();
+    u[`${ROUTE_PREFIX}${name}.tracking-mode`] = trackingMode !== 'none' ? trackingMode : null;
+    u[`${ROUTE_PREFIX}${name}.attachments-min-count`] = trackingMode === 'attachments' && parseInt(f['attachments-min-count'], 10) > 0
+        ? f['attachments-min-count'] : null;
+    u[`${ROUTE_PREFIX}${name}.attachments-max-count`] = trackingMode === 'attachments' && parseInt(f['attachments-max-count'], 10) > 0
+        ? f['attachments-max-count'] : null;
     return u;
 };
 

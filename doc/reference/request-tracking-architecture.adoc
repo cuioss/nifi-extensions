@@ -154,6 +154,14 @@ G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
 |`errorDetail`
 |String (optional)
 |Error description for REJECTED/ERROR statuses
+
+|`attachmentsMaxCount`
+|int (default: 0)
+|Maximum attachments allowed for this request (0 = no attachments expected). See link:attachments-api.adoc[Attachments API].
+
+|`routeName`
+|String (optional)
+|The route name that created this entry (for traceability)
 |===
 
 == Component Relationships
@@ -161,6 +169,7 @@ G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
 * **`DistributedMapCacheClient`** -- NiFi Controller Service providing cluster-safe key-value storage
 * **`RequestStatusStore`** -- Typed wrapper around the cache client with serializers
 * **`StatusEndpointHandler`** -- Handles GET `/status/{traceId}` queries (prefix-matched)
+* **`AttachmentsEndpointHandler`** -- Handles POST `/attachments/{parentTraceId}` uploads with limit enforcement (see link:attachments-api.adoc[Attachments API])
 * **`ApiRouteHandler`** -- Generates traceId for tracked body methods, stores ACCEPTED status
 
 == Response Formats
