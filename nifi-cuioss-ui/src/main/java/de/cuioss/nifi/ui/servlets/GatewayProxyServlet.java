@@ -90,6 +90,7 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String ATTACHMENTS_AUTH_MODE_PROPERTY = "rest.gateway.management.attachments.auth-mode";
     private static final String ATTACHMENTS_REQUIRED_ROLES_PROPERTY = "rest.gateway.management.attachments.required-roles";
     private static final String ATTACHMENTS_REQUIRED_SCOPES_PROPERTY = "rest.gateway.management.attachments.required-scopes";
+    private static final String ATTACHMENTS_HARD_LIMIT_PROPERTY = "rest.gateway.management.attachments.hard-limit";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
@@ -775,6 +776,7 @@ public class GatewayProxyServlet extends HttpServlet {
             root.add("listeningHost", host);
         }
 
+        root.add("attachmentsHardLimit", safeParseInt(props, ATTACHMENTS_HARD_LIMIT_PROPERTY, 20));
         root.add("managementEndpoints", buildManagementEndpointsArray(props));
 
         // Merge external config routes with NiFi processor routes

@@ -220,7 +220,7 @@ if (parent exists?) then (no)
     stop
 endif
 
-if (parent.attachmentsMaxCount > 0?) then (no)
+if (parent.attachmentsMaxCount == 0?) then (yes)
     :409 Conflict\n"Parent does not accept attachments";
     stop
 endif

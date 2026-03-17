@@ -112,6 +112,8 @@ const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
+let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
 /**
  * Build the tracking badge HTML for a route, showing tracking mode and attachment bounds.
@@ -596,6 +598,9 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
                 if (gwConfig && gwConfig.routes) {
                     gwRoutes = gwConfig.routes;
                 }
+                if (gwConfig && gwConfig.attachmentsHardLimit > 0) {
+                    attachmentsHardLimit = gwConfig.attachmentsHardLimit;
+                }
             } catch {
                 if (retries > 0) {
                     await new Promise((r) => setTimeout(r, 2000));
@@ -1002,7 +1007,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     maxInput.type = 'number';
     maxInput.className = 'field-attachments-max-count';
     maxInput.min = '0';
-    maxInput.max = '20';
+    maxInput.max = String(attachmentsHardLimit);
     maxInput.value = properties?.['attachments-max-count'] || '0';
     maxInput.placeholder = '0';
     maxInput.setAttribute('aria-label', t('route.form.attachments.max'));
@@ -1348,8 +1353,7 @@ const validateFormData = (f, routesContainer, originalName) => {
         if (min < 0) return { isValid: false, error: new Error(t('route.validate.attachments.min.negative')) };
         if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
         if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
-        const hardLimit = 20;
-        if (max > hardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(hardLimit))) };
+        if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
     }
     return { isValid: true };
 };
