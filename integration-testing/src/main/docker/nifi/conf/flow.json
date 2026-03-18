@@ -1211,7 +1211,7 @@
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
               "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
-              "Expiration Duration": "30 sec",
+              "Expiration Duration": "${rest.trace.attachments.timeout:ifEmpty('30 sec')}",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
             "propertyDescriptors": {
