@@ -58,6 +58,22 @@ GET /status/550e8400-e29b-41d4-a716-446655440000 HTTP/1.1
 }
 ----
 
+==== COLLECTING_ATTACHMENTS
+
+Only for routes with `tracking-mode=attachments`. The parent request is waiting for attachments to arrive (see link:attachments-api.adoc[Attachments API]).
+
+[source,json]
+----
+{
+  "traceId": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "COLLECTING_ATTACHMENTS",
+  "acceptedAt": "2026-03-13T10:00:00Z",
+  "updatedAt": "2026-03-13T10:00:00Z"
+}
+----
+
+While in this status, `POST /attachments/{traceId}` uploads are accepted. Once the Wait/Notify signal is reached or the timeout expires, the status transitions to `PROCESSING` and further uploads are rejected with `409 Conflict`.
+
 ==== PROCESSING
 
 [source,json]
