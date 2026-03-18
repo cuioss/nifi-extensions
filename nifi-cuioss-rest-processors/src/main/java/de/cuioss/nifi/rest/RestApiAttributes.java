@@ -62,4 +62,10 @@ public final class RestApiAttributes {
 
     /** ISO 8601 timestamp when the tracked request was accepted. */
     public static final String TRACE_ACCEPTED_AT = "rest.trace.accepted.at";
+
+    /** Attachment collection timeout for the Wait processor (NiFi time duration). */
+    public static final String TRACE_ATTACHMENTS_TIMEOUT = "rest.trace.attachments.timeout";
+
+    /** Minimum attachment count for the Wait processor target signal count. */
+    public static final String TRACE_ATTACHMENTS_MIN_COUNT = "rest.trace.attachments.min.count";
 }

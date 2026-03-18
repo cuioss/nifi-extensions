@@ -28,7 +28,7 @@ The `type` field links to this documentation page. Error responses are produced 
 
 |400
 |Bad Request
-|Input sanitization failed -- malformed path, query parameters, or headers detected by cui-http security pipelines
+|Input sanitization failed: malformed path, query parameters, or headers detected by cui-http security pipelines
 |`Request rejected: Known attack signature detected`
 
 |401

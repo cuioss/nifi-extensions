@@ -1,8 +1,6 @@
 @startuml configuration-overview
+!include plantuml.skin
 !pragma layout smetana
-skinparam backgroundColor white
-skinparam componentStyle rectangle
-skinparam defaultTextAlignment center
 
 title NiFi Extensions Configuration Overview
 

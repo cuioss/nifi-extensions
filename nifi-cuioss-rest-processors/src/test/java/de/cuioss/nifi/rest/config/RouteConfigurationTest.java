@@ -357,5 +357,25 @@ class RouteConfigurationTest {
             assertEquals(0, route.attachmentsMinCount());
             assertEquals(0, route.attachmentsMaxCount());
         }
+
+        @Test
+        @DisplayName("Should accept attachments timeout with ATTACHMENTS mode")
+        void shouldAcceptAttachmentsTimeout() {
+            var route = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS)
+                    .attachmentsTimeout("30 sec").build();
+            assertEquals("30 sec", route.attachmentsTimeout());
+        }
+
+        @Test
+        @DisplayName("Should reject attachments timeout when mode is not ATTACHMENTS")
+        void shouldRejectTimeoutWhenNotAttachments() {
+            assertThrows(IllegalArgumentException.class, () ->
+                    RouteConfiguration.builder()
+                            .name("data").path("/api/data")
+                            .trackingMode(TrackingMode.SIMPLE)
+                            .attachmentsTimeout("30 sec").build());
+        }
     }
 }

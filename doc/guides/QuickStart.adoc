@@ -74,9 +74,9 @@ The gateway provides a visual route editor in its custom UI. Right-click the pro
 
 The **Endpoint Configuration** tab shows three sections:
 
-* **Global Settings** -- read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
-* **Management Endpoints** -- built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
-* **API Routes** -- user-defined routes with CRUD controls
+* **Global Settings**: read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
+* **Management Endpoints**: built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
+* **API Routes**: user-defined routes with CRUD controls
 
 image::ui-gateway-endpoint-configuration.png[Gateway Endpoint Configuration]
 
@@ -158,9 +158,9 @@ image::ui-gateway-token-verification.png[Gateway Token Verification Tab]
 
 The **Metrics** tab provides real-time monitoring of the gateway with three sections:
 
-* **Token Validation** -- JWT validation success/failure counts
-* **HTTP Security** -- security-related HTTP events
-* **Gateway Events** -- overall gateway activity
+* **Token Validation**: JWT validation success/failure counts
+* **HTTP Security**: security-related HTTP events
+* **Gateway Events**: overall gateway activity
 
 image::ui-gateway-metrics.png[Gateway Metrics Tab]
 
@@ -172,7 +172,7 @@ image::ui-gateway-help.png[Gateway Help Tab]
 
 == Next Steps
 
-* link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough] -- step-by-step guide with test environment setup and troubleshooting
-* link:MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation
-* link:../reference/configuration.adoc[Configuration reference] -- complete configuration reference
-* link:../reference/error-reference.adoc[REST API error reference] -- RFC 9457 error types returned by the gateway
+* link:IssuerConfigPropertiesGuide.adoc[Detailed issuer configuration walkthrough]: step-by-step guide with test environment setup and troubleshooting
+* link:MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]: FlowFile-based JWT validation
+* link:../reference/configuration.adoc[Configuration reference]: complete configuration reference
+* link:../reference/error-reference.adoc[REST API error reference]: RFC 9457 error types returned by the gateway

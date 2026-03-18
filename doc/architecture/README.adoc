@@ -13,19 +13,19 @@ image::architecture.png[NiFi Extensions Architecture]
 |Module |Purpose
 
 |nifi-cuioss-api
-|Controller Service API types (`JwtIssuerConfigService` interface, `JwtAuthenticationConfig` record) -- packaged as separate NAR for NiFi 2.x classloader separation
+|Controller Service API types (`JwtIssuerConfigService` interface, `JwtAuthenticationConfig` record), packaged as separate NAR for NiFi 2.x classloader separation
 
 |nifi-cuioss-common
 |Shared JWT infrastructure: Controller Service implementation, configuration management, utilities
 
 |nifi-cuioss-processors
-|`MultiIssuerJWTTokenAuthenticator` -- FlowFile-based JWT validation processor
+|`MultiIssuerJWTTokenAuthenticator`: FlowFile-based JWT validation processor
 
 |nifi-cuioss-rest-processors
-|`RestApiGatewayProcessor` -- REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
+|`RestApiGatewayProcessor`: REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
 
 |nifi-cuioss-ui
-|Unified Custom UI serving both processors -- issuer configuration, token verification, endpoint configuration, metrics
+|Unified Custom UI serving both processors: issuer configuration, token verification, endpoint configuration, metrics
 
 |nifi-cuioss-api-nar
 |NAR packaging for the API module (NiFi 2.x classloader separation)
@@ -52,7 +52,7 @@ Both processors share JWT validation through a common `JwtIssuerConfigService` C
 |You need to validate JWT on FlowFiles already in a NiFi flow
 
 |Replaces multi-processor gateway patterns (`HandleHttpRequest` + JWT + `HandleHttpResponse`) with a single node
-|Drops into any flow as a single node -- reads JWT from a FlowFile attribute, validates, routes
+|Drops into any flow as a single node, reads JWT from a FlowFile attribute, validates, routes
 
 |Built-in `/metrics` (Prometheus), `/health`, RFC 9457 error responses, back-pressure (503)
 |Routes to `success` or `authentication-failed`; writes `jwt.*` attributes
@@ -63,8 +63,8 @@ Both processors share JWT validation through a common `JwtIssuerConfigService` C
 
 == Further Reading
 
-* link:gateway.adoc[Gateway Architecture] -- pipeline, auth layers, metrics, error handling
-* link:jwt-processor.adoc[JWT Processor Architecture] -- flow, attributes, lifecycle
+* link:gateway.adoc[Gateway Architecture]: pipeline, auth layers, metrics, error handling
+* link:jwt-processor.adoc[JWT Processor Architecture]: flow, attributes, lifecycle
 * link:standards.adoc[Standards Compliance]
 * link:../reference/configuration.adoc[Configuration Reference]
 * link:../reference/error-reference.adoc[Error Reference]

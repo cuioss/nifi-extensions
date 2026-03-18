@@ -76,6 +76,10 @@ public class RouteConfigurationParser {
     static final String ATTACHMENTS_MIN_COUNT_KEY = "attachments-min-count";
     /** Property key for maximum number of attachments. */
     static final String ATTACHMENTS_MAX_COUNT_KEY = "attachments-max-count";
+    /** Property key for attachment collection timeout (NiFi time duration, e.g. "30s"). */
+    static final String ATTACHMENTS_TIMEOUT_KEY = "attachments-timeout";
+    /** Default timeout for attachment collection. */
+    static final String DEFAULT_ATTACHMENTS_TIMEOUT = "30 sec";
 
     /**
      * Parses route configurations from the given flat property map.
@@ -126,6 +130,9 @@ public class RouteConfigurationParser {
             TrackingMode trackingMode = parseTrackingMode(routeProps.get(TRACKING_MODE_KEY));
             int attachmentsMinCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MIN_COUNT_KEY), 0);
             int attachmentsMaxCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MAX_COUNT_KEY), 0);
+            String attachmentsTimeout = trackingMode == TrackingMode.ATTACHMENTS
+                    ? parseAttachmentsTimeout(routeProps.get(ATTACHMENTS_TIMEOUT_KEY))
+                    : null;
 
             if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
                 LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
@@ -140,6 +147,7 @@ public class RouteConfigurationParser {
                     .trackingMode(trackingMode)
                     .attachmentsMinCount(attachmentsMinCount)
                     .attachmentsMaxCount(attachmentsMaxCount)
+                    .attachmentsTimeout(attachmentsTimeout)
                     .build());
             LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
                     routeName, path, enabled, methods, authModes);
@@ -189,6 +197,13 @@ public class RouteConfigurationParser {
             LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
             return defaultValue;
         }
+    }
+
+    private static String parseAttachmentsTimeout(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_ATTACHMENTS_TIMEOUT;
+        }
+        return value.strip();
     }
 
     private static TrackingMode parseTrackingMode(String value) {

@@ -1,62 +1,72 @@
 #!/bin/bash
 
-# Script to generate PNG images from PlantUML files using locally installed PlantUML or downloaded JAR
-# This script replaces the Maven build process for PlantUML diagrams
+# Generate PNG images from PlantUML (.puml) files.
+#
+# PlantUML resolution order:
+#   1. Local `plantuml` command (e.g. brew install plantuml)
+#   2. Maven-downloaded JAR in target/ (project root)
+#   3. Auto-download from GitHub Releases into target/
+#
+# The JAR is stored in ${PROJECT_ROOT}/target/ so it is ignored by git
+# and cleaned by `mvn clean`.
 
-# Set the directory containing the PlantUML files
+set -euo pipefail
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLANTUML_DIR="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+TARGET_DIR="${PROJECT_ROOT}/target"
 
-# Check if PlantUML is installed
-if ! command -v plantuml &> /dev/null; then
-    echo "PlantUML is not installed or not in the PATH. Checking for plantuml.jar..."
+# Pinned version — update when newer features are needed
+PLANTUML_VERSION="1.2025.2"
+PLANTUML_JAR="${TARGET_DIR}/plantuml-${PLANTUML_VERSION}.jar"
+PLANTUML_URL="https://github.com/plantuml/plantuml/releases/download/v${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar"
 
-    # Check if plantuml.jar exists, if not download it
-    PLANTUML_JAR="plantuml.jar"
-    if [ ! -f "$PLANTUML_JAR" ]; then
-        echo "PlantUML JAR not found. Downloading..."
-        curl -sSL https://sourceforge.net/projects/plantuml/files/plantuml.jar/download -o "$PLANTUML_JAR"
+resolve_plantuml() {
+    # 1. Local command (verify it actually works, not just exists)
+    if command -v plantuml &> /dev/null && plantuml -version &> /dev/null; then
+        echo "Using locally installed PlantUML: $(which plantuml)"
+        PLANTUML_CMD="plantuml -tpng"
+        return
     fi
 
-    # Use the downloaded JAR to generate PNG files
-    echo "Generating PNG images from PlantUML files in $PLANTUML_DIR using plantuml.jar"
-    echo ""
-    echo "Processing PlantUML files:"
-    find "$PLANTUML_DIR" -name "*.puml" | while read -r puml_file; do
-        echo "  - $puml_file"
-        # Generate PNG image in the same directory as the source file
-        java -jar "$PLANTUML_JAR" "$puml_file"
-        
-        # Check if the PNG was generated successfully
-        png_file="${puml_file%.puml}.png"
-        if [ -f "$png_file" ]; then
-            echo "    ✓ Generated $png_file"
-        else
-            echo "    ✗ Failed to generate $png_file"
-        fi
-    done
-else
-    # Print information about what we're doing
-    echo "Generating PNG images from PlantUML files in $PLANTUML_DIR"
-    echo "Using locally installed PlantUML: $(which plantuml)"
-    echo ""
+    # 2/3. JAR in target/ (download if missing)
+    mkdir -p "$TARGET_DIR"
+    if [ ! -f "$PLANTUML_JAR" ]; then
+        echo "Downloading PlantUML ${PLANTUML_VERSION} to ${PLANTUML_JAR}..."
+        curl -fSL "$PLANTUML_URL" -o "$PLANTUML_JAR"
+        echo "Download complete ($(du -h "$PLANTUML_JAR" | cut -f1))"
+    else
+        echo "Using cached PlantUML ${PLANTUML_VERSION}"
+    fi
+    PLANTUML_CMD="java -jar ${PLANTUML_JAR}"
+}
 
-    # Find all .puml files and process them
-    echo "Processing PlantUML files:"
-    find "$PLANTUML_DIR" -name "*.puml" | while read -r puml_file; do
-        echo "  - $puml_file"
-        # Generate PNG image in the same directory as the source file
-        plantuml -tpng "$puml_file"
-        
-        # Check if the PNG was generated successfully
-        png_file="${puml_file%.puml}.png"
-        if [ -f "$png_file" ]; then
-            echo "    ✓ Generated $png_file"
-        else
-            echo "    ✗ Failed to generate $png_file"
-        fi
-    done
-fi
+resolve_plantuml
 
 echo ""
-echo "PlantUML generation complete"
+echo "Processing PlantUML files in ${PLANTUML_DIR}:"
+FAILED=0
+find "$PLANTUML_DIR" -name "*.puml" | sort | while read -r puml_file; do
+    basename="${puml_file##*/}"
+    png_file="${puml_file%.puml}.png"
+    echo -n "  ${basename} ... "
+    if $PLANTUML_CMD "$puml_file" 2>&1; then
+        if [ -f "$png_file" ]; then
+            echo "ok"
+        else
+            echo "FAILED (no output)"
+            FAILED=1
+        fi
+    else
+        echo "FAILED"
+        FAILED=1
+    fi
+done
+
+echo ""
+if [ "$FAILED" -eq 0 ] 2>/dev/null; then
+    echo "PlantUML generation complete"
+else
+    echo "PlantUML generation complete (some files may have failed)"
+fi

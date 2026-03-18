@@ -29,13 +29,13 @@ export async function findProcessor(page, processorType, options = {}) {
     `[title*="${processorType}"]`,
     `[alt*="${processorType}"]`,
 
-    // General processor selectors on canvas
-    `g.processor, rect.processor`,
-    `[data-component-type="processor"]`,
-    `g.component`,
-
-    // If looking for any processor, use very general selectors
-    ...(processorType === "processor" || processorType.includes("Processor") ? [
+    // General processor selectors — only used when NOT searching for a specific type
+    // (e.g. when processorType is just "processor"). Using these for a specific type
+    // risks matching the wrong processor on a crowded canvas.
+    ...(processorType === "processor" ? [
+      `g.processor, rect.processor`,
+      `[data-component-type="processor"]`,
+      `g.component`,
       `svg g.processor`,
       `svg rect.processor`,
       `g[transform]`,

@@ -316,6 +316,10 @@ export const serialGatewayTest = test.extend({
             const processorManager = new ProcessorApiManager(_sharedPage);
             await processorManager.ensureGatewayProcessorOnCanvas();
             const processorService = new ProcessorService(_sharedPage);
+
+            // Find the processor on canvas using CSS selectors and open its Advanced UI.
+            // The processor is found via the original findProcessor approach — the canvas
+            // layout is kept compact enough that auto-fit keeps processors interactable.
             const processor = await processorService.find(
                 PROCESSOR_TYPES.REST_API_GATEWAY,
                 { failIfNotFound: true },

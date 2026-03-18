@@ -242,7 +242,7 @@ stop
 ----
 
 Counters are held in a `ConcurrentHashMap<String, AtomicInteger>` inside `AttachmentsEndpointHandler`.
-They reset on processor restart -- this is a documented limitation (worst case: allows slightly more attachments than configured after restart).
+They reset on processor restart, this is a documented limitation (worst case: allows slightly more attachments than configured after restart).
 
 == Configuration
 

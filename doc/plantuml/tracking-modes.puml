@@ -1,0 +1,37 @@
+@startuml
+!include plantuml.skin
+hide footbox
+
+title Request Tracking Modes
+
+== Simple (tracking-mode=simple) ==
+
+Client -> Gateway : POST /api/data
+Gateway --> Client : 202 {traceId, _links: {status}}
+
+Client -> Gateway : GET /status/{traceId}
+Gateway --> Client : {status: "ACCEPTED"}
+
+note over Gateway : downstream processing
+Client -> Gateway : GET /status/{traceId}
+Gateway --> Client : {status: "PROCESSED"}
+
+== Attachments (tracking-mode=attachments) ==
+
+Client -> Gateway : POST /api/upload
+Gateway --> Client : 202 {traceId, _links: {status, attachments}}
+
+note over Gateway : status = COLLECTING_ATTACHMENTS
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 202 (attachment accepted)
+note over Gateway : Notify signals Wait
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 202 (attachment accepted)
+note over Gateway : Wait releases parent\nstatus = PROCESSING
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 409 (window closed)
+
+@enduml

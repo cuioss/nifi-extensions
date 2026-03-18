@@ -93,6 +93,48 @@ class RequestStatusStoreTest {
             // Assert
             assertTrue(result.isEmpty());
         }
+
+        @Test
+        @DisplayName("Should store COLLECTING_ATTACHMENTS entry")
+        void shouldStoreCollectingAttachmentsEntry() throws Exception {
+            // Arrange
+            String traceId = UUID.randomUUID().toString();
+
+            // Act
+            store.collectingAttachments(traceId, null, "upload", 5);
+            var result = store.getStatus(traceId);
+
+            // Assert
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, result.get().status());
+            assertEquals("upload", result.get().routeName());
+            assertEquals(5, result.get().attachmentsMaxCount());
+        }
+
+        @Test
+        @DisplayName("Should update status preserving other fields")
+        void shouldUpdateStatusPreservingOtherFields() throws Exception {
+            // Arrange
+            String traceId = UUID.randomUUID().toString();
+            store.collectingAttachments(traceId, null, "upload", 5);
+
+            // Act
+            store.updateStatus(traceId, RequestStatus.PROCESSING);
+            var result = store.getStatus(traceId);
+
+            // Assert
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.PROCESSING, result.get().status());
+            assertEquals("upload", result.get().routeName());
+            assertEquals(5, result.get().attachmentsMaxCount());
+        }
+
+        @Test
+        @DisplayName("Should handle updateStatus for unknown traceId gracefully")
+        void shouldHandleUpdateStatusForUnknownTraceId() throws Exception {
+            // Act & Assert — should not throw
+            store.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING);
+        }
     }
 
     @Nested

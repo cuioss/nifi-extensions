@@ -2731,6 +2731,28 @@ describe('rest-endpoint-config', () => {
         );
     });
 
+    it('should show timeout field with default value when mode is attachments', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        container.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        // Switch to attachments mode
+        const select = form.querySelector('.tracking-mode-select');
+        select.value = 'attachments';
+        select.dispatchEvent(new Event('change'));
+
+        // Timeout field should be present and have default value
+        const timeoutInput = form.querySelector('.field-attachments-timeout');
+        expect(timeoutInput).not.toBeNull();
+        expect(timeoutInput.value).toBe('30 sec');
+    });
+
     it('should reject attachments when max > hard limit', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,

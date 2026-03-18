@@ -649,6 +649,7 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
             'tracking-mode': route.trackingMode || 'none',
             'attachments-min-count': route.attachmentsMinCount != null ? String(route.attachmentsMinCount) : '',
             'attachments-max-count': route.attachmentsMaxCount != null ? String(route.attachmentsMaxCount) : '',
+            'attachments-timeout': route.attachmentsTimeout || '',
             _source: route.source || 'nifi'
         };
         if (route.schema) {
@@ -860,6 +861,7 @@ const updateTableRow = (row, formData) => {
         row._routeProps['tracking-mode'] = formData['tracking-mode'] || 'none';
         row._routeProps['attachments-min-count'] = formData['attachments-min-count'] || '';
         row._routeProps['attachments-max-count'] = formData['attachments-max-count'] || '';
+        row._routeProps['attachments-timeout'] = formData['attachments-timeout'] || '';
     }
 };
 
@@ -1015,8 +1017,19 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     maxLabel.textContent = `${t('route.form.attachments.max')} `;
     maxLabel.appendChild(maxInput);
 
+    const timeoutInput = document.createElement('input');
+    timeoutInput.type = 'text';
+    timeoutInput.className = 'field-attachments-timeout';
+    timeoutInput.value = properties?.['attachments-timeout'] || '30 sec';
+    timeoutInput.placeholder = '30 sec';
+    timeoutInput.setAttribute('aria-label', t('route.form.attachments.timeout'));
+    const timeoutLabel = document.createElement('label');
+    timeoutLabel.textContent = `${t('route.form.attachments.timeout')} `;
+    timeoutLabel.appendChild(timeoutInput);
+
     attachmentFields.appendChild(minLabel);
     attachmentFields.appendChild(maxLabel);
+    attachmentFields.appendChild(timeoutLabel);
     trackingToggle.appendChild(attachmentFields);
 
     const toggleAttachmentFields = () => {
@@ -1320,7 +1333,8 @@ const extractFormFields = (form) => {
         'create-flowfile': createFlowFile,
         'tracking-mode': form.querySelector('.tracking-mode-select')?.value || 'none',
         'attachments-min-count': form.querySelector('.field-attachments-min-count')?.value || '0',
-        'attachments-max-count': form.querySelector('.field-attachments-max-count')?.value || '0'
+        'attachments-max-count': form.querySelector('.field-attachments-max-count')?.value || '0',
+        'attachments-timeout': form.querySelector('.field-attachments-timeout')?.value || '30 sec'
     };
 };
 
@@ -1376,6 +1390,8 @@ const buildPropertyUpdates = (name, f) => {
         ? f['attachments-min-count'] : null;
     u[`${ROUTE_PREFIX}${name}.attachments-max-count`] = trackingMode === 'attachments' && parseInt(f['attachments-max-count'], 10) > 0
         ? f['attachments-max-count'] : null;
+    u[`${ROUTE_PREFIX}${name}.attachments-timeout`] = trackingMode === 'attachments' && f['attachments-timeout']
+        && f['attachments-timeout'] !== '30 sec' ? f['attachments-timeout'] : null;
     return u;
 };
 

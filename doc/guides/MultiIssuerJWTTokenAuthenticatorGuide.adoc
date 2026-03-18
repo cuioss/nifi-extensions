@@ -13,7 +13,7 @@ image::../../doc/plantuml/jwt-token-flow.png[JWT Token Processing Flow]
 == Use Case
 
 NiFi flows that consume REST APIs or process webhook payloads often receive JWT-authenticated requests.
-The `MultiIssuerJWTTokenAuthenticator` drops into any flow as a single node -- no multi-processor chaining required.
+The `MultiIssuerJWTTokenAuthenticator` drops into any flow as a single node, no multi-processor chaining required.
 
 Typical scenarios:
 
@@ -35,7 +35,7 @@ On success, token claims are written as `jwt.*` FlowFile attributes (subject, is
 == Step 2: Configure the Processor
 
 . Right-click the processor and select **Configure**.
-. In the **Properties** tab, review the defaults -- they work for the most common case (see <<Processor Properties>> for all options).
+. In the **Properties** tab, review the defaults, they work for the most common case (see <<Processor Properties>> for all options).
 . Switch to the **Configuration** tab in the custom UI to configure issuers visually:
 
 image::ui-configuration-tab.png[Configuration Tab - Issuer Configuration]
@@ -191,7 +191,7 @@ Each identity provider is configured as dynamic properties on the `JwtIssuerConf
 |`/opt/nifi/conf/jwks.json`
 
 |`issuer.<name>.jwks-content`
-|Inline JWKS JSON content. *Not yet supported* -- the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
+|Inline JWKS JSON content. *Not yet supported*, the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
 |`{"keys":[...]}`
 
 |`issuer.<name>.jwks-type`
@@ -279,10 +279,10 @@ For Kubernetes and Docker deployments, core settings can be provided through env
 
 The JWT processor includes a custom web UI with four tabs beyond the standard NiFi properties dialog:
 
-* **Configuration** -- visually manage issuer configurations (see <<Step 2>>)
-* **Token Verification** -- paste a JWT to test it against the current configuration (isolated -- does not affect processor metrics)
-* **Metrics** -- displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
-* **Help** -- built-in documentation and troubleshooting
+* **Configuration**: visually manage issuer configurations (see <<Step 2>>)
+* **Token Verification**: paste a JWT to test it against the current configuration (isolated, does not affect processor metrics)
+* **Metrics**: displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
+* **Help**: built-in documentation and troubleshooting
 
 image::ui-token-verification-tab.png[Token Verification Tab]
 
@@ -319,6 +319,6 @@ Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interact
 
 == Further Reading
 
-* link:QuickStart.adoc[Quick Start Guide] -- RestApiGateway setup
-* link:IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with troubleshooting
-* link:../architecture/jwt-processor.adoc[JWT Processor Architecture] -- flow, lifecycle, OAuth-Sheriff integration
+* link:QuickStart.adoc[Quick Start Guide]: RestApiGateway setup
+* link:IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough]: step-by-step UI configuration with troubleshooting
+* link:../architecture/jwt-processor.adoc[JWT Processor Architecture]: flow, lifecycle, OAuth-Sheriff integration

@@ -19,4 +19,5 @@ cd "${SCRIPT_DIR}"
 echo "Restarting NiFi service..."
 docker compose restart nifi
 
-echo "NiFi service has been restarted. The new NAR file should now be loaded."
+# Wait for NiFi health + start all processors
+"${SCRIPT_DIR}/wait-and-start-processors.sh"

@@ -220,10 +220,10 @@ For REJECTED/ERROR statuses, include the `errorDetail` field:
 
 === Best Practices
 
-1. **Update to PROCESSING early** -- immediately after the gateway emits the FlowFile
-2. **Update to PROCESSED/REJECTED at the end** -- after all processing is complete
-3. **Use RETRY sparingly** -- only for genuinely transient errors that will be retried
-4. **Include meaningful errorDetail** -- helps consumers understand what went wrong
+1. **Update to PROCESSING early**: immediately after the gateway emits the FlowFile
+2. **Update to PROCESSED/REJECTED at the end**: after all processing is complete
+3. **Use RETRY sparingly**: only for genuinely transient errors that will be retried
+4. **Include meaningful errorDetail**: helps consumers understand what went wrong
 
 == Configuration Reference
 

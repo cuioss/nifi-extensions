@@ -184,6 +184,15 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             return;
         }
 
+        // Verify attachment window is still open
+        if (parent.status() != RequestStatus.COLLECTING_ATTACHMENTS) {
+            LOGGER.warn("Attachment window closed for parentTraceId '%s' — status is %s",
+                    parentTraceId, parent.status());
+            ProblemDetail.conflict("Attachment window closed — parent request is already being processed")
+                    .sendResponse(response, callback);
+            return;
+        }
+
         // Enforce upper bound
         int count = attachmentCounters
                 .computeIfAbsent(parentTraceId, k -> new AtomicInteger(0))

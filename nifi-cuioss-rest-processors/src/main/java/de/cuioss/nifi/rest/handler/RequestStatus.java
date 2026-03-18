@@ -25,10 +25,12 @@ package de.cuioss.nifi.rest.handler;
  *   <li>ACCEPTED → PROCESSING → REJECTED</li>
  *   <li>ACCEPTED → PROCESSING → RETRY → PROCESSING</li>
  *   <li>ACCEPTED → PROCESSING → ERROR</li>
+ *   <li>COLLECTING_ATTACHMENTS → PROCESSING → PROCESSED/REJECTED/ERROR</li>
  * </ul>
  */
 public enum RequestStatus {
     ACCEPTED,
+    COLLECTING_ATTACHMENTS,
     PROCESSING,
     PROCESSED,
     REJECTED,
