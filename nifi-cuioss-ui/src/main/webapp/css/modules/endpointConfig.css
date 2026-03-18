@@ -257,6 +257,7 @@
 .tracking-mode-label {
     display: flex;
     align-items: center;
+    flex-wrap: nowrap;
     gap: 6px;
     font-weight: 600;
 }
@@ -266,6 +267,7 @@
     border-radius: 4px;
     border: 1px solid var(--input-border, #ccc);
     font-size: 0.9em;
+    max-width: 200px;
 }
 
 .attachment-bounds-fields {
@@ -288,6 +290,28 @@
     padding: 4px 6px;
     border-radius: 4px;
     border: 1px solid var(--input-border, #ccc);
+}
+
+.timeout-input-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.timeout-input-group .field-attachments-timeout-value {
+    border-radius: 4px 0 0 4px;
+    border-right: none;
+}
+
+.timeout-input-group .field-attachments-timeout-unit {
+    width: auto;
+    padding: 4px 4px;
+    border-radius: 0 4px 4px 0;
+    border: 1px solid var(--input-border, #ccc);
+    font-size: 0.85em;
+    background: var(--bg-secondary, #f5f5f5);
+    cursor: pointer;
 }
 
 /* Status badges in table */
@@ -842,4 +866,28 @@
 .management-endpoints-table .btn-edit:hover {
     background-color: var(--primary-color, #2196f3);
     color: var(--container-background, #fff);
+}
+
+/* Route form sections (fieldset grouping) */
+.route-form-section {
+    border: none;
+    border-top: 1px solid var(--border-light, #eee);
+    margin: 0 0 12px 0;
+    padding: 12px 0 0 0;
+    min-width: 0; /* Firefox fieldset fix */
+}
+
+.route-form-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.route-form-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0 4px;
+    margin-bottom: 8px;
 }
