@@ -21,6 +21,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
@@ -134,7 +135,7 @@ class IntegrationTestSupport {
      * @return the access token string
      */
     static String fetchKeycloakToken(HttpClient client, String endpoint,
-            String clientId, String clientSecret,
+            String clientId, @Nullable String clientSecret,
             String username, String password) throws Exception {
         var params = new LinkedHashMap<>(Map.of(
                 "grant_type", "password",

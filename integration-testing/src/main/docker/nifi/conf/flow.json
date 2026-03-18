@@ -1206,12 +1206,12 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
-              "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
-              "Expiration Duration": "${rest.trace.attachments.timeout:ifEmpty('30 sec')}",
+              "Target Signal Count": "${rest.trace.attachments.min.count:replaceEmpty('1')}",
+              "Expiration Duration": "${rest.trace.attachments.timeout:replaceEmpty('30 sec')}",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
             "propertyDescriptors": {
@@ -1258,7 +1258,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ntfy00000001",
@@ -1268,7 +1268,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.parent.id}",
@@ -1320,7 +1320,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
@@ -1330,7 +1330,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Cache Entry Identifier": "${rest.trace.id}",
@@ -1371,7 +1371,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000001",
@@ -1381,7 +1381,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Search Value": "\"status\":\"COLLECTING_ATTACHMENTS\"",
@@ -1427,7 +1427,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
@@ -1437,11 +1437,12 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Cache Entry Identifier": "${rest.trace.id}",
-              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
+              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
+              "Cache update strategy": "replace"
             },
             "propertyDescriptors": {
               "Cache Entry Identifier": {
@@ -1477,7 +1478,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
@@ -1487,7 +1488,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-merged"
@@ -1516,7 +1517,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-loga00000001",
@@ -1526,7 +1527,7 @@
             "bundle": {
               "group": "org.apache.nifi",
               "artifact": "nifi-standard-nar",
-              "version": "2.4.0"
+              "version": "2.8.0"
             },
             "properties": {
               "Log prefix": "gateway-attachment-done"
@@ -1555,7 +1556,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           }
         ],
         "inputPorts": [],

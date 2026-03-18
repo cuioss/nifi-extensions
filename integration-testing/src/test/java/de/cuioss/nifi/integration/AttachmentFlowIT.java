@@ -22,6 +22,7 @@ import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,6 +33,7 @@ import java.time.Duration;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -53,8 +55,8 @@ import static org.hamcrest.Matchers.*;
 @DisplayName("Attachment Flow Integration Tests")
 class AttachmentFlowIT {
 
-    private static RequestSpecification authSpec;
-    private static RequestSpecification noAuthSpec;
+    private static @Nullable RequestSpecification authSpec;
+    private static @Nullable RequestSpecification noAuthSpec;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -153,7 +155,6 @@ class AttachmentFlowIT {
         @Test
         @DisplayName("should accept attachment for a tracked upload request")
         void shouldAcceptAttachmentForTrackedUpload() {
-            // Step 1: Create parent upload request
             String parentTraceId = given().spec(authSpec)
                     .body("{\"document\": \"parent-with-attachment\"}")
                     .when()
@@ -163,7 +164,6 @@ class AttachmentFlowIT {
                     .extract()
                     .path("traceId");
 
-            // Step 2: Submit attachment
             given().spec(authSpec)
                     .body("{\"file\": \"attachment-content\"}")
                     .when()
@@ -202,7 +202,6 @@ class AttachmentFlowIT {
         @Test
         @DisplayName("should return 409 for attachment on simple tracking-mode request")
         void shouldReturn409ForAttachmentOnSimpleRequest() {
-            // Create a simple-mode request (via /api/data)
             String simpleTraceId = given().spec(authSpec)
                     .body("{\"key\": \"simple-request\"}")
                     .when()
@@ -212,7 +211,6 @@ class AttachmentFlowIT {
                     .extract()
                     .path("traceId");
 
-            // Attempt to attach to it
             given().spec(authSpec)
                     .body("{\"file\": \"rejected-attachment\"}")
                     .when()
@@ -254,7 +252,6 @@ class AttachmentFlowIT {
         @Test
         @DisplayName("should reject attachment when max count (5) is exceeded")
         void shouldRejectWhenMaxCountExceeded() {
-            // Create parent upload request
             String parentTraceId = given().spec(authSpec)
                     .body("{\"document\": \"max-count-test\"}")
                     .when()
@@ -264,7 +261,6 @@ class AttachmentFlowIT {
                     .extract()
                     .path("traceId");
 
-            // Submit 5 attachments (max configured)
             for (int i = 1; i <= 5; i++) {
                 given().spec(authSpec)
                         .body("{\"file\": \"attachment-" + i + "\"}")
@@ -274,7 +270,6 @@ class AttachmentFlowIT {
                         .statusCode(202);
             }
 
-            // 6th attachment should be rejected
             given().spec(authSpec)
                     .body("{\"file\": \"attachment-6-rejected\"}")
                     .when()
@@ -294,7 +289,6 @@ class AttachmentFlowIT {
         @Test
         @DisplayName("should track attachment with its own traceId and parentTraceId")
         void shouldTrackAttachmentWithParentReference() {
-            // Step 1: Create parent upload
             String parentTraceId = given().spec(authSpec)
                     .body("{\"document\": \"e2e-parent\"}")
                     .when()
@@ -304,7 +298,6 @@ class AttachmentFlowIT {
                     .extract()
                     .path("traceId");
 
-            // Step 2: Submit attachment and capture its traceId
             String attachmentTraceId = given().spec(authSpec)
                     .body("{\"file\": \"e2e-attachment\"}")
                     .when()
@@ -314,7 +307,6 @@ class AttachmentFlowIT {
                     .extract()
                     .path("traceId");
 
-            // Step 3: Verify attachment status has parentTraceId reference
             given().spec(authSpec)
                     .when()
                     .get("/status/" + attachmentTraceId)
@@ -335,6 +327,49 @@ class AttachmentFlowIT {
                     .then()
                     .statusCode(202)
                     .body("_links.attachments.href", startsWith("/attachments/"));
+        }
+
+        @Test
+        @DisplayName("should transition to PROCESSING after attachment triggers Wait/Notify release")
+        void shouldTransitionToProcessingAfterWaitRelease() {
+            // Step 1: Create parent upload (status = COLLECTING_ATTACHMENTS)
+            String parentTraceId = given().spec(authSpec)
+                    .body("{\"document\": \"wait-notify-test\"}")
+                    .when()
+                    .post("/api/upload")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            given().spec(authSpec)
+                    .when()
+                    .get("/status/" + parentTraceId)
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo("COLLECTING_ATTACHMENTS"));
+
+            // Step 2: Submit attachment (min count = 1, triggers Notify → Wait release)
+            given().spec(authSpec)
+                    .body("{\"file\": \"trigger-attachment\"}")
+                    .when()
+                    .post("/attachments/" + parentTraceId)
+                    .then()
+                    .statusCode(202);
+
+            // Step 3: Wait for downstream flow to update status.
+            // Flow: Wait release → FetchDistributedMapCache → ReplaceText
+            // (COLLECTING_ATTACHMENTS → PROCESSING) → PutDistributedMapCache
+            // Wait expiration is 30s + downstream processing takes a few seconds
+            await().atMost(Duration.ofSeconds(60))
+                    .pollInterval(Duration.ofSeconds(2))
+                    .untilAsserted(() ->
+                            given().spec(authSpec)
+                                    .when()
+                                    .get("/status/" + parentTraceId)
+                                    .then()
+                                    .statusCode(200)
+                                    .body("status", equalTo("PROCESSING")));
         }
     }
 }
