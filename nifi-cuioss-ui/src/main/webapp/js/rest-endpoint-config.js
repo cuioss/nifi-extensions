@@ -1428,6 +1428,10 @@ const validateFormData = (f, routesContainer, originalName) => {
         if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
         if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
         if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
+        const timeoutValue = parseInt(f['attachments-timeout'], 10);
+        if (isNaN(timeoutValue) || timeoutValue < 1) {
+            return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
+        }
     }
     return { isValid: true };
 };
