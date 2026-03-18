@@ -1,40 +1,36 @@
 @startuml
-!pragma layout smetana
-skinparam defaultTextAlignment center
-skinparam rectangleBackgroundColor #f5f5f5
-skinparam noteBorderColor #999999
+hide footbox
 
-together {
-  rectangle "**Simple Tracking**\n(tracking-mode=simple)" as simple {
-    rectangle "POST /api/data" as s1
-    rectangle "202 + traceId\n+ status link" as s2
-    rectangle "ACCEPTED" as s3
-    rectangle "PROCESSING" as s4
-    rectangle "PROCESSED" as s5
+title Request Tracking Modes
 
-    s1 -down-> s2
-    s3 -right-> s4
-    s4 -right-> s5
-  }
-}
+== Simple (tracking-mode=simple) ==
 
-rectangle "**Attachment Tracking**\n(tracking-mode=attachments)" as attach {
-  rectangle "POST /api/upload" as a1
-  rectangle "202 + traceId\n+ status + attachments links" as a2
-  rectangle "POST /attachments/{id}\n(Notify → Wait)" as a3
-  rectangle "Wait releases parent\n(signal or timeout)" as a4
-  rectangle "POST /attachments/{id}\n→ 409 window closed" as a5
+Client -> Gateway : POST /api/data
+Gateway --> Client : 202 {traceId, _links: {status}}
 
-  rectangle "COLLECTING_ATTACHMENTS" as st1
-  rectangle "PROCESSING" as st2
-  rectangle "PROCESSED" as st3
+Client -> Gateway : GET /status/{traceId}
+Gateway --> Client : {status: "ACCEPTED"}
 
-  a1 -down-> a2
-  a2 -down-> a3
-  a3 -down-> a4
-  a4 -down-> a5
+note over Gateway : downstream processing
+Client -> Gateway : GET /status/{traceId}
+Gateway --> Client : {status: "PROCESSED"}
 
-  st1 -right-> st2
-  st2 -right-> st3
-}
+== Attachments (tracking-mode=attachments) ==
+
+Client -> Gateway : POST /api/upload
+Gateway --> Client : 202 {traceId, _links: {status, attachments}}
+
+note over Gateway : status = COLLECTING_ATTACHMENTS
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 202 (attachment accepted)
+note over Gateway : Notify signals Wait
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 202 (attachment accepted)
+note over Gateway : Wait releases parent\nstatus = PROCESSING
+
+Client -> Gateway : POST /attachments/{traceId}
+Gateway --> Client : 409 (window closed)
+
 @enduml

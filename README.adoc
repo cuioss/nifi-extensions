@@ -42,15 +42,13 @@ Key capabilities:
 
 === Request Tracking
 
-Routes can enable async request tracking for `POST`/`PUT`/`PATCH` requests. Two modes are available:
+Routes can enable async request tracking for `POST`/`PUT`/`PATCH` requests.
+Both modes require a `DistributedMapCacheClient` Controller Service.
 
 image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
 
-**Simple** (`tracking-mode=simple`) -- returns `202 Accepted` with a `traceId` and a `/status` polling link. Status lifecycle: `ACCEPTED` -> `PROCESSING` -> `PROCESSED`/`REJECTED`/`ERROR`.
-
-**Attachments** (`tracking-mode=attachments`) -- like Simple, but also provides an `/attachments/{traceId}` upload link. The parent request is held by a NiFi Wait processor until attachments arrive (or a configurable timeout expires). Once released, the attachment window closes and further uploads return `409 Conflict`. Status lifecycle: `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED`/`REJECTED`/`ERROR`.
-
-Both modes require a `DistributedMapCacheClient` Controller Service. See the link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide] for the Wait/Notify flow architecture.
+* **Simple** (`tracking-mode=simple`) -- `202` with `traceId` and `/status` polling link
+* **Attachments** (`tracking-mode=attachments`) -- adds an `/attachments/{traceId}` upload endpoint; the parent request waits for attachments (or timeout), then the window closes (`409`). See link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide].
 
 == Installation
 
