@@ -880,6 +880,20 @@ const closeActiveEditor = (routesContainer) => {
 };
 
 // ---------------------------------------------------------------------------
+// Section helper
+// ---------------------------------------------------------------------------
+
+const createSection = (titleKey) => {
+    const fieldset = document.createElement('fieldset');
+    fieldset.className = 'route-form-section';
+    const legend = document.createElement('legend');
+    legend.className = 'route-form-section-title';
+    legend.textContent = t(titleKey);
+    fieldset.appendChild(legend);
+    return fieldset;
+};
+
+// ---------------------------------------------------------------------------
 // Inline editor
 // ---------------------------------------------------------------------------
 
@@ -955,7 +969,65 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     header.appendChild(enabledHelp.panel);
     form.appendChild(header);
 
-    // ---- tracking-mode dropdown (after header, before form fields) ----
+    // ---- Section: Basic (path + methods) ----
+    const basicSection = createSection('route.form.section.basic');
+    const basicFields = document.createElement('div');
+    basicFields.className = 'form-fields';
+    basicSection.appendChild(basicFields);
+
+    addField({ container: basicFields, idx, name: 'path', label: t('route.form.path.label'),
+        placeholder: t('route.form.path.placeholder'),
+        value: properties?.path,
+        helpKey: 'contexthelp.route.path', propertyKey: `restapi.${rn}.path`,
+        currentValue: properties?.path });
+    createMethodChipInput({ container: basicFields, idx, value: properties?.methods });
+
+    form.appendChild(basicSection);
+
+    // ---- Section: Authentication (auth-mode + roles/scopes) ----
+    const authSection = createSection('route.form.section.auth');
+    const authFields = document.createElement('div');
+    authFields.className = 'form-fields';
+    authSection.appendChild(authFields);
+
+    const currentAuthMode = properties?.['auth-mode'] || 'bearer';
+    const authModeChip = createAuthModeChipInput({
+        container: authFields, idx, value: currentAuthMode,
+        helpKey: 'contexthelp.route.authmode',
+        propertyKey: `restapi.${rn}.auth-mode`,
+        currentValue: currentAuthMode
+    });
+
+    addField({ container: authFields, idx, name: 'required-roles', label: t('route.form.roles.label'),
+        placeholder: t('route.form.roles.placeholder'),
+        value: properties?.['required-roles'],
+        helpKey: 'contexthelp.route.roles', propertyKey: `restapi.${rn}.required-roles`,
+        currentValue: properties?.['required-roles'] });
+    addField({ container: authFields, idx, name: 'required-scopes', label: t('route.form.scopes.label'),
+        placeholder: t('route.form.scopes.placeholder'),
+        value: properties?.['required-scopes'],
+        helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
+        currentValue: properties?.['required-scopes'] });
+
+    // Hide roles/scopes containers when bearer is not among selected auth modes
+    const rolesContainer = authFields.querySelector('.field-container-required-roles');
+    const scopesContainer = authFields.querySelector('.field-container-required-scopes');
+    const toggleRolesScopes = () => {
+        const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
+        const hasBearer = modes.includes('bearer');
+        if (rolesContainer) rolesContainer.classList.toggle('hidden', !hasBearer);
+        if (scopesContainer) scopesContainer.classList.toggle('hidden', !hasBearer);
+    };
+    // Listen for changes on the hidden field dispatched by the chip input
+    const authModeHidden = authFields.querySelector('.field-auth-mode');
+    if (authModeHidden) authModeHidden.addEventListener('change', toggleRolesScopes);
+    toggleRolesScopes();
+
+    form.appendChild(authSection);
+
+    // ---- Section: Tracking (tracking-mode + attachment bounds) ----
+    const trackingSection = createSection('route.form.section.tracking');
+
     const trackingModeVal = properties?.['tracking-mode'] || 'none';
     const trackingToggle = document.createElement('div');
     trackingToggle.className = 'form-field field-container-tracking-mode';
@@ -1017,15 +1089,40 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     maxLabel.textContent = `${t('route.form.attachments.max')} `;
     maxLabel.appendChild(maxInput);
 
+    const timeoutRaw = properties?.['attachments-timeout'] || '30 sec';
+    const timeoutMatch = timeoutRaw.match(/^(\d+)\s*(ms|sec|min|hr|day)$/i);
+    const timeoutNum = timeoutMatch ? timeoutMatch[1] : '30';
+    const timeoutUnit = timeoutMatch ? timeoutMatch[2].toLowerCase() : 'sec';
+
     const timeoutInput = document.createElement('input');
-    timeoutInput.type = 'text';
-    timeoutInput.className = 'field-attachments-timeout';
-    timeoutInput.value = properties?.['attachments-timeout'] || '30 sec';
-    timeoutInput.placeholder = '30 sec';
+    timeoutInput.type = 'number';
+    timeoutInput.className = 'field-attachments-timeout-value';
+    timeoutInput.min = '1';
+    timeoutInput.value = timeoutNum;
     timeoutInput.setAttribute('aria-label', t('route.form.attachments.timeout'));
+
+    const timeoutUnitSelect = document.createElement('select');
+    timeoutUnitSelect.className = 'field-attachments-timeout-unit';
+    timeoutUnitSelect.setAttribute('aria-label', t('route.form.attachments.timeout') + ' unit');
+    const timeUnits = [
+        { value: 'sec', label: 'sec' },
+        { value: 'min', label: 'min' },
+        { value: 'hr', label: 'hr' },
+        { value: 'day', label: 'day' }
+    ];
+    for (const tu of timeUnits) {
+        const opt = document.createElement('option');
+        opt.value = tu.value;
+        opt.textContent = tu.label;
+        if (tu.value === timeoutUnit) opt.selected = true;
+        timeoutUnitSelect.appendChild(opt);
+    }
+
     const timeoutLabel = document.createElement('label');
+    timeoutLabel.className = 'timeout-input-group';
     timeoutLabel.textContent = `${t('route.form.attachments.timeout')} `;
     timeoutLabel.appendChild(timeoutInput);
+    timeoutLabel.appendChild(timeoutUnitSelect);
 
     attachmentFields.appendChild(minLabel);
     attachmentFields.appendChild(maxLabel);
@@ -1038,56 +1135,17 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     trackingSelect.addEventListener('change', toggleAttachmentFields);
     toggleAttachmentFields();
 
-    form.appendChild(trackingToggle);
+    trackingSection.appendChild(trackingToggle);
+    form.appendChild(trackingSection);
 
-    // ---- form fields ----
-    const fields = document.createElement('div');
-    fields.className = 'form-fields';
-    form.appendChild(fields);
-
-    addField({ container: fields, idx, name: 'path', label: t('route.form.path.label'),
-        placeholder: t('route.form.path.placeholder'),
-        value: properties?.path,
-        helpKey: 'contexthelp.route.path', propertyKey: `restapi.${rn}.path`,
-        currentValue: properties?.path });
-    createMethodChipInput({ container: fields, idx, value: properties?.methods });
-
-    // ---- auth-mode chip input (before roles/scopes so toggle can hide them) ----
-    const currentAuthMode = properties?.['auth-mode'] || 'bearer';
-    const authModeChip = createAuthModeChipInput({
-        container: fields, idx, value: currentAuthMode,
-        helpKey: 'contexthelp.route.authmode',
-        propertyKey: `restapi.${rn}.auth-mode`,
-        currentValue: currentAuthMode
-    });
-
-    addField({ container: fields, idx, name: 'required-roles', label: t('route.form.roles.label'),
-        placeholder: t('route.form.roles.placeholder'),
-        value: properties?.['required-roles'],
-        helpKey: 'contexthelp.route.roles', propertyKey: `restapi.${rn}.required-roles`,
-        currentValue: properties?.['required-roles'] });
-    addField({ container: fields, idx, name: 'required-scopes', label: t('route.form.scopes.label'),
-        placeholder: t('route.form.scopes.placeholder'),
-        value: properties?.['required-scopes'],
-        helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
-        currentValue: properties?.['required-scopes'] });
-
-    // Hide roles/scopes containers when bearer is not among selected auth modes
-    const rolesContainer = fields.querySelector('.field-container-required-roles');
-    const scopesContainer = fields.querySelector('.field-container-required-scopes');
-    const toggleRolesScopes = () => {
-        const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
-        const hasBearer = modes.includes('bearer');
-        if (rolesContainer) rolesContainer.classList.toggle('hidden', !hasBearer);
-        if (scopesContainer) scopesContainer.classList.toggle('hidden', !hasBearer);
-    };
-    // Listen for changes on the hidden field dispatched by the chip input
-    const authModeHidden = fields.querySelector('.field-auth-mode');
-    if (authModeHidden) authModeHidden.addEventListener('change', toggleRolesScopes);
-    toggleRolesScopes();
+    // ---- Section: Advanced (max-request-size, flowfile, schema) ----
+    const advancedSection = createSection('route.form.section.advanced');
+    const advancedFields = document.createElement('div');
+    advancedFields.className = 'form-fields';
+    advancedSection.appendChild(advancedFields);
 
     // ---- max-request-size field ----
-    addField({ container: fields, idx, name: 'max-request-size',
+    addField({ container: advancedFields, idx, name: 'max-request-size',
         label: t('route.form.max.request.size.label'),
         placeholder: t('route.form.max.request.size.placeholder'),
         value: properties?.['max-request-size'] || '' });
@@ -1118,7 +1176,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     flowFileToggle.appendChild(flowfileLabel);
     flowFileToggle.appendChild(flowfileHelp.panel);
-    form.appendChild(flowFileToggle);
+    advancedSection.appendChild(flowFileToggle);
 
     const outcomeContainer = document.createElement('div');
     outcomeContainer.className = `form-field field-container-success-outcome${createFlowFileVal ? '' : ' hidden'}`;
@@ -1165,7 +1223,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     datalist.id = `connection-names-${idx}`;
     datalist.innerHTML = datalistOptions;
     outcomeContainer.appendChild(datalist);
-    form.appendChild(outcomeContainer);
+    advancedSection.appendChild(outcomeContainer);
 
     // Wire create-flowfile checkbox toggle
     const createFlowFileCheckbox = flowFileToggle.querySelector('.create-flowfile-checkbox');
@@ -1202,7 +1260,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     schemaToggle.appendChild(schemaLabel);
     schemaToggle.appendChild(schemaHelp.panel);
-    form.appendChild(schemaToggle);
+    advancedSection.appendChild(schemaToggle);
 
     // ---- schema mode toggle + inputs (hidden by default unless route has schema) ----
     const schemaContainer = document.createElement('div');
@@ -1240,7 +1298,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
                       rows="5" aria-label="Inline JSON Schema"
             >${sanitizeHtml(inlineVal)}</textarea>
         </div>`;
-    form.appendChild(schemaContainer);
+    advancedSection.appendChild(schemaContainer);
 
     // Wire radio toggle
     const fileRadio = schemaContainer.querySelector('.schema-mode-file');
@@ -1266,6 +1324,8 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
             schemaContainer.classList.add('hidden');
         }
     });
+
+    form.appendChild(advancedSection);
 
     // ---- error messages ----
     const errorContainer = document.createElement('div');
@@ -1334,7 +1394,7 @@ const extractFormFields = (form) => {
         'tracking-mode': form.querySelector('.tracking-mode-select')?.value || 'none',
         'attachments-min-count': form.querySelector('.field-attachments-min-count')?.value || '0',
         'attachments-max-count': form.querySelector('.field-attachments-max-count')?.value || '0',
-        'attachments-timeout': form.querySelector('.field-attachments-timeout')?.value || '30 sec'
+        'attachments-timeout': `${form.querySelector('.field-attachments-timeout-value')?.value || '30'} ${form.querySelector('.field-attachments-timeout-unit')?.value || 'sec'}`
     };
 };
 
@@ -1413,7 +1473,15 @@ const buildExportText = (routesContainer) => {
         const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
         const cells = row.querySelectorAll('td');
         // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=authmode, 5=enabled, 6=actions
-        const pathText = cells[2]?.textContent?.trim() || '';
+        // Extract only the path text, excluding badge elements (schema-badge, tracking-badge)
+        const pathCell = cells[2];
+        const pathText = pathCell
+            ? Array.from(pathCell.childNodes)
+                .filter((n) => n.nodeType === Node.TEXT_NODE)
+                .map((n) => n.textContent.trim())
+                .filter(Boolean)
+                .join('') || ''
+            : '';
         const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
         const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
         const rawAuthMode = row.dataset.authMode || 'bearer';
@@ -1442,6 +1510,26 @@ const buildExportText = (routesContainer) => {
         if (hasSchemaBadge) {
             // Schema value is not stored in the table; it was saved to properties
             lines.push(`${prefix}${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
+        }
+        // Tracking properties (from stored props on the row)
+        const props = row._routeProps;
+        const trackingMode = props?.['tracking-mode'];
+        if (trackingMode && trackingMode !== 'none') {
+            lines.push(`${prefix}${ROUTE_PREFIX}${name}.tracking-mode = ${trackingMode}`);
+            if (trackingMode === 'attachments') {
+                const minCount = props?.['attachments-min-count'];
+                if (minCount && minCount !== '0') {
+                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-min-count = ${minCount}`);
+                }
+                const maxCount = props?.['attachments-max-count'];
+                if (maxCount && maxCount !== '0') {
+                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-max-count = ${maxCount}`);
+                }
+                const timeout = props?.['attachments-timeout'];
+                if (timeout && timeout !== '30 sec') {
+                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-timeout = ${timeout}`);
+                }
+            }
         }
     }
     return lines.join('\n');

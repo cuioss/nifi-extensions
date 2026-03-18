@@ -1881,8 +1881,7 @@ describe('rest-endpoint-config', () => {
         container.querySelector('.edit-route-button').click();
 
         const form = container.querySelector('.route-form');
-        const fields = form.querySelector('.form-fields');
-        const containers = Array.from(fields.querySelectorAll('.form-field'));
+        const containers = Array.from(form.querySelectorAll('.form-field'));
         const authModeIdx = containers.findIndex((el) => el.classList.contains('field-container-auth-mode'));
         const rolesIdx = containers.findIndex((el) => el.classList.contains('field-container-required-roles'));
         const scopesIdx = containers.findIndex((el) => el.classList.contains('field-container-required-scopes'));
@@ -2747,10 +2746,13 @@ describe('rest-endpoint-config', () => {
         select.value = 'attachments';
         select.dispatchEvent(new Event('change'));
 
-        // Timeout field should be present and have default value
-        const timeoutInput = form.querySelector('.field-attachments-timeout');
-        expect(timeoutInput).not.toBeNull();
-        expect(timeoutInput.value).toBe('30 sec');
+        // Timeout value + unit fields should be present with defaults
+        const timeoutValue = form.querySelector('.field-attachments-timeout-value');
+        const timeoutUnit = form.querySelector('.field-attachments-timeout-unit');
+        expect(timeoutValue).not.toBeNull();
+        expect(timeoutValue.value).toBe('30');
+        expect(timeoutUnit).not.toBeNull();
+        expect(timeoutUnit.value).toBe('sec');
     });
 
     it('should reject attachments when max > hard limit', async () => {
