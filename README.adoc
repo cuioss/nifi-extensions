@@ -47,8 +47,8 @@ Both modes require a `DistributedMapCacheClient` Controller Service.
 
 image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
 
-* **Simple** (`tracking-mode=simple`) — `202` with `traceId` and `/status` polling link
-* **Attachments** (`tracking-mode=attachments`) — adds an `/attachments/{traceId}` upload endpoint; the parent request waits for attachments (or timeout), then the window closes (`409`). See link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide].
+* **Simple** (`tracking-mode=simple`): `202` with `traceId` and `/status` polling link
+* **Attachments** (`tracking-mode=attachments`): adds an `/attachments/{traceId}` upload endpoint; the parent request waits for attachments (or timeout), then the window closes (`409`). See link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide].
 
 == Installation
 
