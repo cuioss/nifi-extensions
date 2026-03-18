@@ -10,13 +10,13 @@ image::api-gateway-pattern.png[RestApiGateway Pattern]
 
 The `GatewayRequestHandler` processes each request through a 7-stage pipeline:
 
-1. **Input Sanitization** -- Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
-2. **Route Lookup** -- Matches the sanitized path against configured routes (exact match). Returns 404 if no route is configured for the path.
-3. **Method Check** -- Verifies the HTTP method is allowed for the matched route. Returns 405 with `Allow` header if not.
-4. **Body Size Check** -- Reads the request body up to the configured maximum size (per-route or global). Returns 413 if the body exceeds the limit. This runs before authentication to avoid wasting CPU on oversized payloads.
-5. **JWT Authentication** -- Auth-mode dispatch per endpoint: extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure. Skipped for `NONE` and loopback `LOCAL_ONLY` requests.
-6. **Authorization** -- Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes). Skipped when the route has no role or scope requirements.
-7. **Delegate to Handler** -- The matched `EndpointHandler.process()` executes handler-specific logic. For API routes (`ApiRouteHandler`), this includes optional JSON Schema validation (returns 422 on failure via `schemaPath`) and enqueue of `HttpRequestContainer` for `onTrigger` processing (returns 503 if the queue is full).
+1. **Input Sanitization**: Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
+2. **Route Lookup**: Matches the sanitized path against configured routes (exact match). Returns 404 if no route is configured for the path.
+3. **Method Check**: Verifies the HTTP method is allowed for the matched route. Returns 405 with `Allow` header if not.
+4. **Body Size Check**: Reads the request body up to the configured maximum size (per-route or global). Returns 413 if the body exceeds the limit. This runs before authentication to avoid wasting CPU on oversized payloads.
+5. **JWT Authentication**: Auth-mode dispatch per endpoint: extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure. Skipped for `NONE` and loopback `LOCAL_ONLY` requests.
+6. **Authorization**: Validates required roles and scopes using `AuthorizationValidator`. Returns 403 (missing roles) or 401 with `insufficient_scope` (missing scopes). Skipped when the route has no role or scope requirements.
+7. **Delegate to Handler**: The matched `EndpointHandler.process()` executes handler-specific logic. For API routes (`ApiRouteHandler`), this includes optional JSON Schema validation (returns 422 on failure via `schemaPath`) and enqueue of `HttpRequestContainer` for `onTrigger` processing (returns 503 if the queue is full).
 
 All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`. See link:../reference/error-reference.adoc[Error Reference] for the full error type table.
 
@@ -64,7 +64,7 @@ Requests flow through up to three authentication layers depending on the entry p
                          +-------------------------------+
 ----
 
-* **Layer 1 (NiFi Container)**: NiFi session authentication -- unauthenticated users cannot reach Custom UI servlets.
+* **Layer 1 (NiFi Container)**: NiFi session authentication, unauthenticated users cannot reach Custom UI servlets.
 * **Layer 2 (Custom UI)**: `SecurityHeadersFilter` (defense-in-depth headers), `ProcessorIdValidationFilter` (UUID check), per-component NiFi authorization via `ComponentConfigReader`.
 * **Layer 3 (Gateway Jetty)**: Auth-mode dispatch per endpoint.
 
@@ -72,9 +72,9 @@ Requests flow through up to three authentication layers depending on the entry p
 
 Each endpoint (built-in or user-defined route) has a configurable `auth-mode`:
 
-* **`BEARER`** (default for data routes) -- Full JWT Bearer authentication with role/scope authorization.
-* **`LOCAL_ONLY`** (default for management endpoints) -- Loopback requests (127.0.0.1, ::1) bypass authentication; remote requests require JWT Bearer auth.
-* **`NONE`** -- No authentication required (anonymous access).
+* **`BEARER`** (default for data routes): Full JWT Bearer authentication with role/scope authorization.
+* **`LOCAL_ONLY`** (default for management endpoints): Loopback requests (127.0.0.1, ::1) bypass authentication; remote requests require JWT Bearer auth.
+* **`NONE`**: No authentication required (anonymous access).
 
 Management endpoint auth-mode is configured via static NiFi properties:
 
@@ -247,9 +247,9 @@ These counters are exposed through the `/metrics` management endpoint.
 
 The `/metrics` endpoint aggregates three metric sources:
 
-1. **Token Validation** (`tokenValidation`) -- OAuth-Sheriff `SecurityEventCounter` events
-2. **Transport Security** (`httpSecurity`) -- cui-http security events (input sanitization)
-3. **Gateway Application Events** (`gatewayEvents`) -- Application-level events from `GatewaySecurityEvents`
+1. **Token Validation** (`tokenValidation`): OAuth-Sheriff `SecurityEventCounter` events
+2. **Transport Security** (`httpSecurity`): cui-http security events (input sanitization)
+3. **Gateway Application Events** (`gatewayEvents`): Application-level events from `GatewaySecurityEvents`
 
 === Prometheus Format (default)
 

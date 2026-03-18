@@ -19,19 +19,19 @@ image::jwt-token-flow.png[JWT Token Processing Flow]
 
 Both processors (`MultiIssuerJWTTokenAuthenticator` and `RestApiGatewayProcessor`) share JWT validation through the `JwtIssuerConfigService` Controller Service:
 
-* **Interface**: `JwtIssuerConfigService` (in `nifi-cuioss-api` -- separate NAR for NiFi 2.x classloader separation)
+* **Interface**: `JwtIssuerConfigService` (in `nifi-cuioss-api`, separate NAR for NiFi 2.x classloader separation)
 * **Implementation**: `StandardJwtIssuerConfigService` (in `nifi-cuioss-common`)
 * **Config Record**: `JwtAuthenticationConfig` (immutable snapshot)
 
 The CS provides:
 
-* `validateToken(String rawToken)` -- validates a raw JWT string, returns `AccessTokenContent` (throws `TokenValidationException` on failure)
-* `getAuthenticationConfig()` -- returns immutable configuration snapshot
-* `getSecurityEventCounter()` -- returns `Optional<SecurityEventCounter>` (empty if the service is not enabled)
+* `validateToken(String rawToken)`: validates a raw JWT string, returns `AccessTokenContent` (throws `TokenValidationException` on failure)
+* `getAuthenticationConfig()`: returns immutable configuration snapshot
+* `getSecurityEventCounter()`: returns `Optional<SecurityEventCounter>` (empty if the service is not enabled)
 
 == OAuth-Sheriff Lifecycle in NiFi
 
-The `TokenValidator` is stateful -- it maintains JWKS key caches and background refresh tasks. It is managed by the `StandardJwtIssuerConfigService` Controller Service, not by the processors directly:
+The `TokenValidator` is stateful, it maintains JWKS key caches and background refresh tasks. It is managed by the `StandardJwtIssuerConfigService` Controller Service, not by the processors directly:
 
 * **`@OnEnabled`** (CS): Creates and configures the `TokenValidator` with all issuer configurations. Parses JWKS endpoints, initializes dsl-json under the NAR classloader.
 * **`@OnDisabled`** (CS): Nulls the `TokenValidator` reference, releasing HTTP connections and caches.
@@ -39,7 +39,7 @@ The `TokenValidator` is stateful -- it maintains JWKS key caches and background 
 The processor lifecycle is simpler:
 
 * **`@OnScheduled`** (Processor): Retrieves the `JwtIssuerConfigService` reference and caches authorization requirements.
-* **`onTrigger`** (Processor): Calls `jwtConfigService.validateToken()` -- all validation is delegated to the CS.
+* **`onTrigger`** (Processor): Calls `jwtConfigService.validateToken()`, all validation is delegated to the CS.
 * **`@OnStopped`** (Processor): Resets internal counters.
 
 Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint traffic, higher latency, and potential rate limiting.
@@ -67,8 +67,8 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 
 == Error Routing
 
-* **`success`** -- token is valid and authorization passed; also used for missing tokens when `Require Valid Token` is `false` (with `jwt.present=false` and `jwt.error.reason` set)
-* **`authentication-failed`** -- token is invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes; also used for missing tokens when `Require Valid Token` is `true`
+* **`success`**: token is valid and authorization passed; also used for missing tokens when `Require Valid Token` is `false` (with `jwt.present=false` and `jwt.error.reason` set)
+* **`authentication-failed`**: token is invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes; also used for missing tokens when `Require Valid Token` is `true`
 
 == Token Verification UI
 

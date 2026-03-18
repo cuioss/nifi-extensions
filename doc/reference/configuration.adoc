@@ -83,7 +83,7 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |/opt/nifi/conf/jwks.json
 
 |issuer.<name>.jwks-content
-|Inline JWKS JSON content. *Not yet supported* -- the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
+|Inline JWKS JSON content. *Not yet supported*, the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
 |`{"keys":[...]}`
 
 |issuer.<name>.jwks-type
@@ -371,7 +371,7 @@ The Custom UI backend provides REST endpoints shared by both processors:
 * *Path*: `/nifi-api/processors/jwt/verify-token`
 * *Method*: POST
 * Verifies JWT tokens using the same configuration as the processor
-* Isolated -- does not affect processor metrics
+* Isolated, does not affect processor metrics
 
 === JWKS Validation
 
