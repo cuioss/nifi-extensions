@@ -2780,4 +2780,104 @@ describe('rest-endpoint-config', () => {
             expect.anything()
         );
     });
+
+    it('should reject attachments when timeout is zero', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-timeout-value').value = '0';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(utils.displayUiError).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ message: 'route.validate.attachments.timeout.invalid' }),
+            expect.anything(),
+            expect.anything()
+        );
+    });
+
+    it('should include tracking properties in export for routes with tracking', async () => {
+        const propsWithTracking = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.data.tracking-mode': 'attachments',
+            'restapi.data.attachments-min-count': '2',
+            'restapi.data.attachments-max-count': '10',
+            'restapi.data.attachments-timeout': '5 min'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsWithTracking,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const details = container.querySelector('.property-export');
+        details.open = true;
+        details.dispatchEvent(new Event('toggle'));
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.data.tracking-mode = attachments');
+        expect(textarea.value).toContain('restapi.data.attachments-min-count = 2');
+        expect(textarea.value).toContain('restapi.data.attachments-max-count = 10');
+        expect(textarea.value).toContain('restapi.data.attachments-timeout = 5 min');
+    });
+
+    it('should not include badge text in exported path values', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: {
+                ...SAMPLE_PROPERTIES,
+                'restapi.health.schema': '{"type":"object"}',
+                'restapi.data.tracking-mode': 'simple'
+            },
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const details = container.querySelector('.property-export');
+        details.open = true;
+        details.dispatchEvent(new Event('toggle'));
+
+        const textarea = container.querySelector('.property-export-textarea');
+        // Path values should be clean, without badge text
+        expect(textarea.value).toContain('restapi.health.path = /api/health');
+        expect(textarea.value).not.toMatch(/restapi\.health\.path = .*Schema/);
+        expect(textarea.value).toContain('restapi.data.path = /api/data');
+        expect(textarea.value).not.toMatch(/restapi\.data\.path = .*Tracking/);
+    });
+
+    it('should render four form sections with correct titles', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+        container.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const sections = form.querySelectorAll('.route-form-section');
+        expect(sections).toHaveLength(4);
+
+        const titles = Array.from(sections).map(
+            (s) => s.querySelector('.route-form-section-title').textContent
+        );
+        expect(titles).toEqual([
+            'route.form.section.basic',
+            'route.form.section.auth',
+            'route.form.section.tracking',
+            'route.form.section.advanced'
+        ]);
+    });
 });
