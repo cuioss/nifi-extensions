@@ -360,8 +360,9 @@ class AttachmentFlowIT {
             // Step 3: Wait for downstream flow to update status.
             // Flow: Wait release → FetchDistributedMapCache → ReplaceText
             // (COLLECTING_ATTACHMENTS → PROCESSING) → PutDistributedMapCache
-            // Wait expiration is 30s + downstream processing takes a few seconds
-            await().atMost(Duration.ofSeconds(60))
+            // Wait expiration is 30s; in CI the scheduling interval + downstream
+            // processing can add 20-30s under resource contention.
+            await().atMost(Duration.ofSeconds(90))
                     .pollInterval(Duration.ofSeconds(2))
                     .untilAsserted(() ->
                             given().spec(authSpec)
