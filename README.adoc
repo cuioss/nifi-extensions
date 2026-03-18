@@ -17,7 +17,7 @@ image:https://sonarcloud.io/api/project_badges/measure?project=cuioss_nifi-exten
 
 == What is it?
 
-A self-contained REST API gateway for https://nifi.apache.org/[Apache NiFi]. The **RestApiGatewayProcessor** embeds a Jetty HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses -- replacing multi-processor gateway patterns with a single node.
+A self-contained REST API gateway for https://nifi.apache.org/[Apache NiFi]. The **RestApiGatewayProcessor** embeds a Jetty HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses, replacing multi-processor gateway patterns with a single node.
 
 The project also includes a **MultiIssuerJWTTokenAuthenticator** for FlowFile-based JWT validation (see link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]).
 Both processors share JWT validation through a common **JwtIssuerConfigService** Controller Service supporting multiple identity providers (Keycloak, Entra ID, Auth0) with automatic JWKS key rotation and caching.
@@ -25,7 +25,7 @@ Both processors share JWT validation through a common **JwtIssuerConfigService**
 == The Problem
 
 Building a REST API gateway in NiFi manually requires chaining `HandleHttpRequest` + custom validation + `HandleHttpResponse` with complex error routing.
-Adding JWT authentication on top means even more processors, relationships, and configuration -- all for what should be a single concern.
+Adding JWT authentication on top means even more processors, relationships, and configuration, all for what should be a single concern.
 
 == The Solution
 
@@ -35,10 +35,10 @@ image::doc/plantuml/api-gateway-pattern.png[RestApiGateway Pattern]
 
 Key capabilities:
 
-* **Route-based dispatching** -- define routes via dynamic properties, each with its own HTTP methods and path patterns
-* **Per-route JWT authorization** -- require specific roles for individual routes
-* **RFC 9457 error responses** -- standardized problem details for authentication and authorization failures
-* **Management endpoints** -- `/metrics` (Prometheus-compatible) and `/health`
+* **Route-based dispatching**:define routes via dynamic properties, each with its own HTTP methods and path patterns
+* **Per-route JWT authorization**:require specific roles for individual routes
+* **RFC 9457 error responses**:standardized problem details for authentication and authorization failures
+* **Management endpoints**:`/metrics` (Prometheus-compatible) and `/health`
 
 === Request Tracking
 
@@ -54,8 +54,8 @@ image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
 
 You need **two NAR files** (NiFi Archives):
 
-* **`nifi-cuioss-api-nar`** -- Controller Service API interfaces (required by NiFi 2.x classloader separation)
-* **`nifi-cuioss-nar`** -- Processors, Controller Service implementation, configuration UI, and all dependencies
+* **`nifi-cuioss-api-nar`**:Controller Service API interfaces (required by NiFi 2.x classloader separation)
+* **`nifi-cuioss-nar`**:Processors, Controller Service implementation, configuration UI, and all dependencies
 
 NiFi 2.x requires that Controller Service API interfaces reside in a separate NAR from their implementations. Both NARs must be deployed together.
 
@@ -76,9 +76,9 @@ cp nifi-cuioss-api-nar-*.nar nifi-cuioss-nar-*.nar $NIFI_HOME/extensions/
 
 Both processors can be configured through three methods (highest precedence first):
 
-. **NiFi UI** -- interactive configuration with built-in JWKS validation and token testing
-. **Environment variables** -- for container orchestration (Kubernetes, Docker)
-. **Static configuration files** -- for automated / container deployments
+. **NiFi UI**:interactive configuration with built-in JWKS validation and token testing
+. **Environment variables**:for container orchestration (Kubernetes, Docker)
+. **Static configuration files**:for automated / container deployments
 
 See the link:doc/guides/QuickStart.adoc[Quick Start Guide] for a step-by-step walkthrough covering processor properties, issuer configuration, routes, relationships, and the custom UI. For static configuration files and environment variables, see the link:doc/reference/configuration.adoc[Configuration Reference].
 
@@ -134,22 +134,22 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 |Controller Service API types (`JwtIssuerConfigService` interface, `JwtAuthenticationConfig` record)
 
 |link:nifi-cuioss-api-nar/[nifi-cuioss-api-nar]
-|NiFi Archive (NAR) for the API -- required by NiFi 2.x classloader separation
+|NiFi Archive (NAR) for the API: required by NiFi 2.x classloader separation
 
 |link:nifi-cuioss-common/[nifi-cuioss-common]
 |Shared JWT infrastructure: Controller Service implementation, configuration, utilities
 
 |link:nifi-cuioss-processors/[nifi-cuioss-processors]
-|`MultiIssuerJWTTokenAuthenticator` -- FlowFile-based JWT validation processor
+|`MultiIssuerJWTTokenAuthenticator`: FlowFile-based JWT validation processor
 
 |link:nifi-cuioss-rest-processors/[nifi-cuioss-rest-processors]
-|`RestApiGatewayProcessor` -- REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
+|`RestApiGatewayProcessor`: REST API gateway with embedded Jetty, route-based dispatching, RFC 9457 errors
 
 |link:nifi-cuioss-ui/[nifi-cuioss-ui]
-|Unified Custom UI serving both processors -- issuer configuration, token verification, endpoint configuration, metrics
+|Unified Custom UI serving both processors: issuer configuration, token verification, endpoint configuration, metrics
 
 |link:nifi-cuioss-nar/[nifi-cuioss-nar]
-|NiFi Archive (NAR) -- the main deployable artifact bundling processors + UI
+|NiFi Archive (NAR): the main deployable artifact bundling processors + UI
 
 |link:integration-testing/README.adoc[integration-testing]
 |Docker-based test environment (NiFi + Keycloak)
@@ -162,28 +162,28 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 
 === Architecture
 
-* link:doc/architecture/README.adoc[Architecture Overview] -- module overview, "which processor" decision guide
-* link:doc/architecture/gateway.adoc[Gateway Architecture] -- pipeline, auth layers, metrics, error handling
-* link:doc/architecture/jwt-processor.adoc[JWT Processor Architecture] -- flow, attributes, OAuth-Sheriff lifecycle
-* link:doc/architecture/standards.adoc[Standards Compliance] -- RFC/standards compliance table
+* link:doc/architecture/README.adoc[Architecture Overview]:module overview, "which processor" decision guide
+* link:doc/architecture/gateway.adoc[Gateway Architecture]:pipeline, auth layers, metrics, error handling
+* link:doc/architecture/jwt-processor.adoc[JWT Processor Architecture]:flow, attributes, OAuth-Sheriff lifecycle
+* link:doc/architecture/standards.adoc[Standards Compliance]:RFC/standards compliance table
 
 === Guides
 
-* link:doc/guides/QuickStart.adoc[Quick Start Guide] -- RestApiGateway setup in under 5 minutes
-* link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide] -- FlowFile-based JWT validation with integration test flow
-* link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough] -- step-by-step UI configuration with test environment and troubleshooting
-* link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide] -- Wait/Notify synchronization for parent requests with attachments
-* link:doc/guides/BuildingGuide.adoc[Building Guide] -- build, code quality, SonarQube, integration and E2E tests
+* link:doc/guides/QuickStart.adoc[Quick Start Guide]:RestApiGateway setup in under 5 minutes
+* link:doc/guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]:FlowFile-based JWT validation with integration test flow
+* link:doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough]:step-by-step UI configuration with test environment and troubleshooting
+* link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide]:Wait/Notify synchronization for parent requests with attachments
+* link:doc/guides/BuildingGuide.adoc[Building Guide]:build, code quality, SonarQube, integration and E2E tests
 
 === Reference
 
-* link:doc/reference/configuration.adoc[Configuration Reference] -- all property tables, static config, environment variables
-* link:doc/reference/error-reference.adoc[Error Reference (RFC 9457)] -- consolidated error types returned by the gateway
+* link:doc/reference/configuration.adoc[Configuration Reference]:all property tables, static config, environment variables
+* link:doc/reference/error-reference.adoc[Error Reference (RFC 9457)]:consolidated error types returned by the gateway
 
 === Testing
 
-* link:integration-testing/README.adoc[Integration Testing Environment] -- Docker setup with NiFi and Keycloak
-* link:e-2-e-playwright/README.adoc[End-to-End Testing] -- Playwright tests for processor UI and WCAG compliance
+* link:integration-testing/README.adoc[Integration Testing Environment]:Docker setup with NiFi and Keycloak
+* link:e-2-e-playwright/README.adoc[End-to-End Testing]:Playwright tests for processor UI and WCAG compliance
 * link:e-2-e-playwright/docs/accessibility-testing-guide.adoc[Accessibility Testing Guide]
 
 == Building
