@@ -1,6 +1,6 @@
 @startuml api-gateway-pattern
+!include plantuml.skin
 !pragma layout smetana
-skinparam componentStyle rectangle
 
 title "RestApiGateway Processor - Request Flow"
 

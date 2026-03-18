@@ -1,7 +1,6 @@
 @startuml configuration-properties
+!include plantuml.skin
 !pragma layout smetana
-skinparam backgroundColor white
-skinparam defaultTextAlignment left
 skinparam packageStyle rectangle
 
 title JWT Token Authenticator: Configuration Properties

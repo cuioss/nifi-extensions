@@ -1,6 +1,6 @@
 @startuml
+!include plantuml.skin
 !pragma layout smetana
-skinparam rectangleBackgroundColor #f5f5f5
 
 rectangle "RestApiGateway" as gw
 rectangle "Wait\n(wait-for-attachments)" as wait

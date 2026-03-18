@@ -1,7 +1,6 @@
 @startuml jwt-token-flow
+!include plantuml.skin
 !pragma layout smetana
-skinparam defaultTextAlignment center
-skinparam componentStyle uml2
 
 title "JWT Token Processing Flow"
 
