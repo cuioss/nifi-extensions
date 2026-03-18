@@ -20,11 +20,11 @@ image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
 
 | `COLLECTING_ATTACHMENTS`
 | Parent request accepted, waiting for attachments
-| *Open* — uploads accepted
+| *Open*: uploads accepted
 
 | `PROCESSING`
 | Downstream flow started (after Wait releases parent)
-| *Closed* — uploads rejected with 409
+| *Closed*: uploads rejected with 409
 |===
 
 == Flow Architecture
@@ -35,22 +35,22 @@ image::attachment-flow.png[Attachment Flow Architecture]
 
 === Wait Processor
 
-* *Signal ID:* `merge-signal-${rest.trace.id}` — unique per parent request
+* *Signal ID:* `merge-signal-${rest.trace.id}`: unique per parent request
 * *Target Signal Count:* `${rest.trace.attachments.min.count}` (defaults to 1)
 * *Expiration Duration:* 30 sec (static default, configurable per route via properties)
 
 === Notify Processor
 
-* *Signal ID:* `merge-signal-${rest.trace.parent.id}` — references parent's signal
-* *Counter Delta:* 1 — each attachment increments the counter
+* *Signal ID:* `merge-signal-${rest.trace.parent.id}`: references parent's signal
+* *Counter Delta:* 1: each attachment increments the counter
 
 == Status Gate Mechanism
 
 When the Wait processor releases the parent (via signal or timeout), the flow updates the Distributed Map Cache:
 
-1. *FetchDistributedMapCache* — reads the current status entry (JSON)
-2. *ReplaceText* — changes `"status":"COLLECTING_ATTACHMENTS"` to `"status":"PROCESSING"`
-3. *PutDistributedMapCache* — writes the updated entry back
+1. *FetchDistributedMapCache*: reads the current status entry (JSON)
+2. *ReplaceText*: changes `"status":"COLLECTING_ATTACHMENTS"` to `"status":"PROCESSING"`
+3. *PutDistributedMapCache*: writes the updated entry back
 
 After this transition, any `POST /attachments/{parentTraceId}` returns *409 Conflict* with the message "Attachment window closed".
 
@@ -76,21 +76,21 @@ The timeout field appears in the route editor alongside min/max attachment count
 
 === Normal Flow
 
-1. Client sends `POST /api/upload` — parent enters Wait (status: `COLLECTING_ATTACHMENTS`)
-2. Client sends `POST /attachments/{parentTraceId}` — Notify fires, counter increments
-3. When counter reaches target — Wait releases parent, status transitions to `PROCESSING`
-4. Subsequent attachment uploads — *409 Conflict*
+1. Client sends `POST /api/upload`: parent enters Wait (status: `COLLECTING_ATTACHMENTS`)
+2. Client sends `POST /attachments/{parentTraceId}`: Notify fires, counter increments
+3. When counter reaches target: Wait releases parent, status transitions to `PROCESSING`
+4. Subsequent attachment uploads: *409 Conflict*
 
 === Timeout
 
-1. Client sends `POST /api/upload` — parent enters Wait
+1. Client sends `POST /api/upload`: parent enters Wait
 2. No attachments arrive within timeout period
-3. Wait releases parent via `expired` relationship — status transitions to `PROCESSING`
-4. Subsequent attachment uploads — *409 Conflict*
+3. Wait releases parent via `expired` relationship: status transitions to `PROCESSING`
+4. Subsequent attachment uploads: *409 Conflict*
 
 === Multiple Attachments
 
-1. Client sends `POST /api/upload` — parent enters Wait
+1. Client sends `POST /api/upload`: parent enters Wait
 2. Client sends multiple `POST /attachments/{parentTraceId}` requests
 3. Each Notify increments the counter
-4. When minimum count is reached — parent released
+4. When minimum count is reached: parent released
