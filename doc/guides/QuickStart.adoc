@@ -75,7 +75,7 @@ The gateway provides a visual route editor in its custom UI. Right-click the pro
 The **Endpoint Configuration** tab shows three sections:
 
 * **Global Settings**: read-only settings derived from processor properties (Listening Port, Max Request Body Size, Queue Size, SSL Enabled, Listening Host)
-* **Management Endpoints**: built-in endpoints (`/health`, `/metrics`) with configurable auth modes and enabled status
+* **Standard Endpoints**: built-in endpoints (`/health`, `/metrics`, `/status/{traceId}`, `/attachments/{parentTraceId}`) with configurable auth modes and enabled status
 * **API Routes**: user-defined routes with CRUD controls
 
 image::ui-gateway-endpoint-configuration.png[Gateway Endpoint Configuration]
@@ -84,23 +84,67 @@ To add a route, click **+ Add Route** and fill in the form:
 
 image::ui-gateway-route-editor.png[Gateway Route Editor]
 
-Each route has the following fields:
+The route editor form is organized into sections:
 
-[cols="1,3"]
+[cols="1,1,3"]
 |===
-|Field |Description
+|Section |Field |Description
 
-|Route Name |Unique identifier for the route (e.g. `users`, `admin`)
-|Enabled |Checkbox to enable/disable the route without removing it
-|Path |URL path pattern (e.g. `/api/users`)
-|Methods |Tag input for HTTP methods (e.g. `GET`, `POST`)
-|Auth Mode |Tag input for authentication modes (e.g. `Bearer`)
-|Required Roles |Comma-separated roles required for access (optional)
-|Required Scopes |Comma-separated scopes required for access (optional)
-|Max Request Size |Per-route request body size limit (leave empty for global default)
-|Create FlowFile |Checkbox to create a NiFi FlowFile when a request matches this route
-|NiFi Connection Name |The NiFi relationship/connection name for routed FlowFiles
-|Schema Validation |Checkbox to enable JSON Schema validation for request bodies
+|_(header)_
+|Route Name
+|Unique identifier for the route (e.g. `users`, `admin`)
+
+|_(header)_
+|Enabled
+|Checkbox to enable/disable the route without removing it
+
+|BASIC
+|Path
+|URL path pattern (e.g. `/api/users`)
+
+|BASIC
+|Methods
+|Tag input for HTTP methods (e.g. `GET`, `POST`)
+
+|BASIC
+|Auth Mode
+|Tag input for authentication modes (e.g. `Bearer`)
+
+|AUTHORIZATION
+|Required Roles
+|Comma-separated roles required for access (optional)
+
+|AUTHORIZATION
+|Required Scopes
+|Comma-separated scopes required for access (optional)
+
+|ADVANCED
+|Max Request Size
+|Per-route request body size limit (leave empty for global default)
+
+|ADVANCED
+|Create FlowFile
+|Checkbox to create a NiFi FlowFile when a request matches this route
+
+|ADVANCED
+|NiFi Connection Name
+|The NiFi relationship/connection name for routed FlowFiles
+
+|ADVANCED
+|Schema Validation
+|Checkbox to enable JSON Schema validation for request bodies
+
+|TRACKING
+|Tracking Mode
+|`none` (default), `simple`, or `attachments` for async request tracking
+
+|TRACKING
+|Attachments Min/Max Count
+|Minimum and maximum attachments (only for `attachments` mode)
+
+|TRACKING
+|Attachments Timeout
+|Collection timeout (only for `attachments` mode)
 |===
 
 TIP: You can also configure routes via dynamic properties on the processor (useful for automated deployments). Click the **Export Properties** panel at the bottom of the Endpoint Configuration tab to see the equivalent `restapi.*` properties.
@@ -124,7 +168,7 @@ The **Endpoint Tester** tab in the custom UI lets you send test requests directl
 image::ui-gateway-endpoint-tester.png[Gateway Endpoint Tester]
 
 . Select a route and HTTP method from the dropdowns.
-. Paste an authorization token (or leave empty to test unauthenticated access).
+. Paste an authorization token (or leave empty to test unauthenticated access). Alternatively, expand the **Fetch Token** section to acquire a token from a configured issuer's token endpoint.
 . Click **Send Request** to see the response status, headers, and body.
 
 image::ui-gateway-endpoint-tester-response.png[Gateway Endpoint Tester with Response]

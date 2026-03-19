@@ -20,6 +20,8 @@ Requests follow this status lifecycle:
 @startuml
 [*] --> ACCEPTED : POST received
 ACCEPTED --> PROCESSING : downstream flow starts
+ACCEPTED --> COLLECTING_ATTACHMENTS : tracking-mode=attachments
+COLLECTING_ATTACHMENTS --> PROCESSING : attachments received or timeout
 PROCESSING --> PROCESSED : success
 PROCESSING --> REJECTED : validation/business error
 PROCESSING --> RETRY : transient error
@@ -37,6 +39,7 @@ Valid transitions:
 * `ACCEPTED` -> `PROCESSING` -> `REJECTED`
 * `ACCEPTED` -> `PROCESSING` -> `RETRY` -> `PROCESSING` (loop)
 * `ACCEPTED` -> `PROCESSING` -> `ERROR`
+* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED` / `REJECTED` / `ERROR` (attachment routes)
 
 == Architecture
 
@@ -137,7 +140,7 @@ G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
 
 |`status`
 |Enum
-|Current status: ACCEPTED, PROCESSING, PROCESSED, REJECTED, RETRY, ERROR
+|Current status: ACCEPTED, COLLECTING_ATTACHMENTS, PROCESSING, PROCESSED, REJECTED, RETRY, ERROR
 
 |`acceptedAt`
 |ISO 8601 Instant
