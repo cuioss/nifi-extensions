@@ -330,8 +330,8 @@ class AttachmentFlowIT {
         }
 
         @Test
-        @DisplayName("should transition to PROCESSING after attachment triggers Wait/Notify release")
-        void shouldTransitionToProcessingAfterWaitRelease() {
+        @DisplayName("should transition through full lifecycle: COLLECTING_ATTACHMENTS → PROCESSING → PROCESSED")
+        void shouldTransitionThroughFullLifecycle() {
             // Step 1: Create parent upload (status = COLLECTING_ATTACHMENTS)
             String parentTraceId = given().spec(authSpec)
                     .body("{\"document\": \"wait-notify-test\"}")
@@ -357,11 +357,10 @@ class AttachmentFlowIT {
                     .then()
                     .statusCode(202);
 
-            // Step 3: Wait for downstream flow to update status.
-            // Flow: Wait release → FetchDistributedMapCache → ReplaceText
-            // (COLLECTING_ATTACHMENTS → PROCESSING) → PutDistributedMapCache
-            // Wait expiration is 30s; in CI the scheduling interval + downstream
-            // processing can add 20-30s under resource contention.
+            // Step 3: Wait for downstream flow to update status through full lifecycle.
+            // Flow: Wait release → Fetch → ReplaceText (COLLECTING_ATTACHMENTS → PROCESSING)
+            // → Put → LogAttribute → Fetch → ReplaceText (PROCESSING → PROCESSED) → Put
+            // PROCESSING is now a transient state that transitions immediately to PROCESSED.
             await().atMost(Duration.ofSeconds(90))
                     .pollInterval(Duration.ofSeconds(2))
                     .untilAsserted(() ->
@@ -370,7 +369,7 @@ class AttachmentFlowIT {
                                     .get("/status/" + parentTraceId)
                                     .then()
                                     .statusCode(200)
-                                    .body("status", equalTo("PROCESSING")));
+                                    .body("status", equalTo("PROCESSED")));
         }
     }
 }
