@@ -11,7 +11,7 @@
 
     <groupId>de.cuioss.nifi</groupId>
     <artifactId>nifi-extensions</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.3.0</version>
     <packaging>pom</packaging>
     <name>Apache Nifi extensions</name>
     <description>Some extensions for apache nifi</description>
@@ -59,7 +59,7 @@
         <developerConnection>
             scm:git:https://github.com/cuioss/nifi-extensions/
         </developerConnection>
-        <tag>HEAD</tag>
+        <tag>nifi-extensions-0.3.0</tag>
     </scm>
     <issueManagement>
         <url>https://github.com/cuioss/nifi-extensions/issues</url>
@@ -113,7 +113,7 @@
         <open.rewrite.maven.plugin.version>6.33.0</open.rewrite.maven.plugin.version>
         <rewrite-testing-frameworks.version>3.30.0</rewrite-testing-frameworks.version>
         <rewrite-migrate-java.version>3.30.0</rewrite-migrate-java.version>
-        <project.build.outputTimestamp>2026-03-11T22:11:27Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-03-19T20:01:32Z</project.build.outputTimestamp>
 
         <!-- Frontend Maven Plugin -->
         <frontend.maven.plugin.version>2.0.0</frontend.maven.plugin.version>
