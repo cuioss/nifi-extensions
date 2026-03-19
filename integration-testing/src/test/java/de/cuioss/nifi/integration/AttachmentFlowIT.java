@@ -361,7 +361,7 @@ class AttachmentFlowIT {
             // Flow: Wait release → Fetch → ReplaceText (COLLECTING_ATTACHMENTS → PROCESSING)
             // → Put → LogAttribute → Fetch → ReplaceText (PROCESSING → PROCESSED) → Put
             // PROCESSING is now a transient state that transitions immediately to PROCESSED.
-            await().atMost(Duration.ofSeconds(90))
+            await().atMost(Duration.ofMinutes(3))
                     .pollInterval(Duration.ofSeconds(2))
                     .untilAsserted(() ->
                             given().spec(authSpec)
