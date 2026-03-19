@@ -162,7 +162,9 @@ This is a reusable three-processor chain for any status transition:
 2. *ReplaceText*: literal string replace of the status value
 3. *PutDistributedMapCache*: writes the updated entry back with `replace` strategy
 
-==== COLLECTING_ATTACHMENTS → PROCESSING (after Wait release)
+==== COLLECTING_ATTACHMENTS → PROCESSED (sandbox)
+
+The sandbox flow uses a single Status Gate to transition directly to `PROCESSED`:
 
 [cols="1,2,3"]
 |===
@@ -182,7 +184,7 @@ This is a reusable three-processor chain for any status transition:
 
 | ReplaceText
 | Replacement Value
-| `"status":"PROCESSING"`
+| `"status":"PROCESSED"`
 
 | ReplaceText
 | Replacement Strategy
@@ -197,30 +199,19 @@ This is a reusable three-processor chain for any status transition:
 | `replace`
 |===
 
-==== PROCESSING → PROCESSED (downstream completion)
+==== Multi-step transitions (production)
 
-Same pattern, different search/replacement values:
+For production flows, use multiple Status Gate chains to model intermediate states:
 
-[cols="1,2,3"]
-|===
-| Processor | Property | Value
+1. `COLLECTING_ATTACHMENTS` → `PROCESSING`: after Wait release
+2. _(your business logic processors here)_
+3. `PROCESSING` → `PROCESSED`: after downstream processing completes
 
-| ReplaceText
-| Search Value
-| `"status":"PROCESSING"`
-
-| ReplaceText
-| Replacement Value
-| `"status":"PROCESSED"`
-
-| ReplaceText
-| Replacement Strategy
-| `Literal Replace`
-|===
+Each transition is a separate Fetch → ReplaceText → Put chain with the appropriate search/replacement values.
 
 ==== Custom transitions
 
-For error handling in your own flows, add additional Status Gate chains:
+For error handling, add additional Status Gate chains:
 
 * `PROCESSING` → `REJECTED`: route validation failures
 * `PROCESSING` → `ERROR`: route processing errors
