@@ -27,24 +27,24 @@ Requests flow through up to three authentication layers depending on the entry p
 [source]
 ----
                          +----------------------------------------------------------+
-                         |                    NiFi Web Container                     |
-                         |                      (Layer 1)                            |
+                         |                    NiFi Web Container                    |
+                         |                      (Layer 1)                           |
                          |  +-----------------------------------------------------+ |
-                         |  |              Custom UI WAR (Layer 2)                 | |
+                         |  |              Custom UI WAR (Layer 2)                | |
                          |  |                                                     | |
   NiFi UI                |  |  SecurityHeadersFilter --> all responses            | |
   (iframe)  --- HTTPS -->|  |         |                                           | |
                          |  |  ProcessorIdValidationFilter                        | |
                          |  |         |  (X-Processor-Id UUID check)              | |
                          |  |         |                                           | |
-                         |  |         +---> GatewayProxyServlet --------+          | |
+                         |  |         +---> GatewayProxyServlet --------+         | |
                          |  |                 |  /config: local        |          | |
                          |  |                 |  /metrics: proxy -+    |          | |
                          |  |                 |  /test: proxy     |    |          | |
                          |  |                 |  /token-fetch     |    |          | |
                          |  |                 |  /discover-*      |    |          | |
                          |  +-------------------------------------|----+----------+ |
-                         +-------------------------------------|----+--------------+
+                         +-------------------------------------|----+---------------+
                                                                |    |
                                                                v    |
                          +-------------------------------+          |
