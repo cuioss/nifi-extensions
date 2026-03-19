@@ -1598,8 +1598,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 600,
-              "y": 1500
+              "x": 1400,
+              "y": 900
             },
             "style": {},
             "retriedRelationships": [],
@@ -1654,8 +1654,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 600,
-              "y": 1650
+              "x": 1400,
+              "y": 1050
             },
             "style": {},
             "retriedRelationships": [],
@@ -1710,8 +1710,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 600,
-              "y": 1800
+              "x": 1400,
+              "y": 1200
             },
             "style": {},
             "retriedRelationships": [],
@@ -1755,8 +1755,8 @@
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
-              "x": 600,
-              "y": 1950
+              "x": 1400,
+              "y": 1350
             },
             "style": {},
             "retriedRelationships": [],
