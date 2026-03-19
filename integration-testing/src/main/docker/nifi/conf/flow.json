@@ -1481,8 +1481,8 @@
             "scheduledState": "ENABLED"
           },
           {
-            "identifier": "f0a1b2c3-d4e5-5012-abcd-logm00000002",
-            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-logm00000002",
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-logm00000001",
             "name": "LogAttribute (gateway-merged)",
             "type": "org.apache.nifi.processors.standard.LogAttribute",
             "bundle": {
@@ -1504,6 +1504,7 @@
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
             "autoTerminatedRelationships": [
+              "success",
               "failure"
             ],
             "componentType": "PROCESSOR",
@@ -1558,6 +1559,22 @@
             "scheduledState": "ENABLED"
           },
           {
+            "scheduledState": "ENABLED",
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "style": {},
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "executionNode": "ALL",
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-ftch00000002",
             "name": "FetchDistributedMapCache (downstream-fetch)",
@@ -1583,7 +1600,17 @@
                 "sensitive": false
               }
             },
-            "scheduledState": "RUNNING",
+            "autoTerminatedRelationships": [
+              "failure",
+              "not-found"
+            ],
+            "position": {
+              "x": 1400,
+              "y": 900
+            }
+          },
+          {
+            "scheduledState": "ENABLED",
             "schedulingPeriod": "0 sec",
             "schedulingStrategy": "TIMER_DRIVEN",
             "penaltyDuration": "30 sec",
@@ -1591,24 +1618,14 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "failure",
-              "not-found"
-            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1400,
-              "y": 900
-            },
             "style": {},
             "retriedRelationships": [],
             "retryCount": 0,
             "executionNode": "ALL",
             "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
+            "maxBackoffPeriod": "10 mins",
             "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000002",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-rplc00000002",
             "name": "ReplaceText (PROCESSING → PROCESSED)",
@@ -1640,7 +1657,16 @@
                 "sensitive": false
               }
             },
-            "scheduledState": "RUNNING",
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "position": {
+              "x": 1400,
+              "y": 1050
+            }
+          },
+          {
+            "scheduledState": "ENABLED",
             "schedulingPeriod": "0 sec",
             "schedulingStrategy": "TIMER_DRIVEN",
             "penaltyDuration": "30 sec",
@@ -1648,23 +1674,14 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "failure"
-            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1400,
-              "y": 1050
-            },
             "style": {},
             "retriedRelationships": [],
             "retryCount": 0,
             "executionNode": "ALL",
             "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
+            "maxBackoffPeriod": "10 mins",
             "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000002",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-putc00000002",
             "name": "PutDistributedMapCache (downstream-put)",
@@ -1689,14 +1706,18 @@
                 "name": "Distributed Cache Service",
                 "identifiesControllerService": true,
                 "sensitive": false
-              },
-              "Cache update strategy": {
-                "name": "Cache update strategy",
-                "identifiesControllerService": false,
-                "sensitive": false
               }
             },
-            "scheduledState": "RUNNING",
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "position": {
+              "x": 1400,
+              "y": 1200
+            }
+          },
+          {
+            "scheduledState": "ENABLED",
             "schedulingPeriod": "0 sec",
             "schedulingStrategy": "TIMER_DRIVEN",
             "penaltyDuration": "30 sec",
@@ -1704,23 +1725,14 @@
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
-            "autoTerminatedRelationships": [
-              "failure"
-            ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "position": {
-              "x": 1400,
-              "y": 1200
-            },
             "style": {},
             "retriedRelationships": [],
             "retryCount": 0,
             "executionNode": "ALL",
             "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
-          },
-          {
+            "maxBackoffPeriod": "10 mins",
             "identifier": "f0a1b2c3-d4e5-5012-abcd-logc00000001",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-logc00000001",
             "name": "LogAttribute (downstream-complete)",
@@ -1733,37 +1745,15 @@
             "properties": {
               "Log prefix": "downstream-complete"
             },
-            "propertyDescriptors": {
-              "Log prefix": {
-                "name": "Log prefix",
-                "identifiesControllerService": false,
-                "sensitive": false
-              }
-            },
-            "scheduledState": "RUNNING",
-            "schedulingPeriod": "0 sec",
-            "schedulingStrategy": "TIMER_DRIVEN",
-            "penaltyDuration": "30 sec",
-            "yieldDuration": "1 sec",
-            "bulletinLevel": "WARN",
-            "runDurationMillis": 0,
-            "concurrentlySchedulableTaskCount": 1,
+            "propertyDescriptors": {},
             "autoTerminatedRelationships": [
               "success",
               "failure"
             ],
-            "componentType": "PROCESSOR",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
               "x": 1400,
               "y": 1350
-            },
-            "style": {},
-            "retriedRelationships": [],
-            "retryCount": 0,
-            "executionNode": "ALL",
-            "backoffMechanism": "PENALIZE_FLOWFILE",
-            "maxBackoffPeriod": "10 mins"
+            }
           }
         ],
         "inputPorts": [],
@@ -2154,7 +2144,7 @@
               "name": ""
             },
             "destination": {
-              "id": "f0a1b2c3-d4e5-5012-abcd-logm00000002",
+              "id": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
               "type": "PROCESSOR",
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": ""
@@ -2208,10 +2198,23 @@
             "zIndex": 0
           },
           {
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0,
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000010",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000010",
+            "name": "PutDistributedMapCache → FetchDistributedMapCache (downstream-fetch)",
             "source": {
-              "id": "f0a1b2c3-d4e5-5012-abcd-logm00000002",
+              "id": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
               "type": "PROCESSOR",
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": ""
@@ -2224,7 +2227,9 @@
             },
             "selectedRelationships": [
               "success"
-            ],
+            ]
+          },
+          {
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -2236,11 +2241,10 @@
             "componentType": "CONNECTION",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
+            "zIndex": 0,
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000011",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000011",
+            "name": "FetchDistributedMapCache (downstream-fetch) → ReplaceText",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
               "type": "PROCESSOR",
@@ -2255,7 +2259,9 @@
             },
             "selectedRelationships": [
               "success"
-            ],
+            ]
+          },
+          {
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -2267,11 +2273,10 @@
             "componentType": "CONNECTION",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
+            "zIndex": 0,
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000012",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000012",
+            "name": "ReplaceText → PutDistributedMapCache (downstream-put)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-rplc00000002",
               "type": "PROCESSOR",
@@ -2286,7 +2291,9 @@
             },
             "selectedRelationships": [
               "success"
-            ],
+            ]
+          },
+          {
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",
             "flowFileExpiration": "0 sec",
@@ -2298,11 +2305,10 @@
             "componentType": "CONNECTION",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "labelIndex": 1,
-            "zIndex": 0
-          },
-          {
+            "zIndex": 0,
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000013",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000013",
+            "name": "PutDistributedMapCache (downstream-put) → LogAttribute (downstream-complete)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-putc00000002",
               "type": "PROCESSOR",
@@ -2317,19 +2323,7 @@
             },
             "selectedRelationships": [
               "success"
-            ],
-            "backPressureObjectThreshold": 10000,
-            "backPressureDataSizeThreshold": "1 GB",
-            "flowFileExpiration": "0 sec",
-            "prioritizers": [],
-            "bends": [],
-            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
-            "partitioningAttribute": "",
-            "loadBalanceCompression": "DO_NOT_COMPRESS",
-            "componentType": "CONNECTION",
-            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
-            "labelIndex": 1,
-            "zIndex": 0
+            ]
           }
         ],
         "labels": [],
