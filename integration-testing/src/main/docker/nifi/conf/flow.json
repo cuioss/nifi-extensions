@@ -1211,7 +1211,7 @@
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
               "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
-              "Expiration Duration": "30 sec",
+              "Expiration Duration": "60 sec",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
             "propertyDescriptors": {
@@ -1240,7 +1240,7 @@
             "schedulingPeriod": "0 sec",
             "schedulingStrategy": "TIMER_DRIVEN",
             "executionNode": "ALL",
-            "penaltyDuration": "30 sec",
+            "penaltyDuration": "5 sec",
             "yieldDuration": "1 sec",
             "bulletinLevel": "WARN",
             "runDurationMillis": 0,
@@ -1258,7 +1258,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ntfy00000001",
@@ -1320,7 +1320,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
@@ -1371,7 +1371,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000001",
@@ -1427,7 +1427,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
@@ -1478,7 +1478,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
@@ -1517,7 +1517,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           },
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-loga00000001",
@@ -1556,7 +1556,7 @@
             "maxBackoffPeriod": "10 mins",
             "retriedRelationships": [],
             "retryCount": 0,
-            "scheduledState": "ENABLED"
+            "scheduledState": "RUNNING"
           }
         ],
         "inputPorts": [],
