@@ -1,17 +1,101 @@
-= Attachment Merge Guide
+= Attachment Merge Integration Guide
 :toc:
 :toc-placement: preamble
 :imagesdir: ../plantuml
 
-This guide explains how the REST API Gateway synchronizes parent requests with their attachments using NiFi's Wait/Notify pattern.
+Practical guide for integrating the attachment merge pattern into NiFi flows using the REST API Gateway processor.
 
 == Overview
 
-When a route uses `tracking-mode=attachments`, the gateway holds the parent request FlowFile until its attachments arrive, then releases it for downstream processing. A configurable timeout ensures the parent is released even if not all attachments arrive.
+When a route uses `tracking-mode=attachments`, the REST API Gateway holds the parent request in a Wait processor until its attachments arrive (or a timeout expires), then releases it for downstream processing. This guide covers the full lifecycle from initial upload through `PROCESSED` status, with curl examples against the sandbox environment.
+
+== Quick Start: curl Walkthrough
+
+These examples use the sandbox environment started via `run-and-deploy.sh`. Adjust the base URL if your deployment differs.
+
+=== 1. Get a Token
+
+[source,bash]
+----
+TOKEN=$(curl -sk -X POST \
+  'https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token' \
+  -d 'grant_type=password' \
+  -d 'client_id=integration-test-client' \
+  -d 'username=testuser' \
+  -d 'password=testpassword' \
+  | jq -r '.access_token')
+----
+
+=== 2. POST /api/upload
+
+[source,bash]
+----
+curl -sk -X POST https://localhost:9443/api/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"document": "example-payload"}' | jq .
+----
+
+Response (202):
+[source,json]
+----
+{
+  "status": "accepted",
+  "traceId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "_links": {
+    "status": { "href": "/status/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" },
+    "attachments": { "href": "/attachments/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" }
+  }
+}
+----
+
+=== 3. GET /status/{traceId}
+
+[source,bash]
+----
+curl -sk https://localhost:9443/status/$TRACE_ID \
+  -H "Authorization: Bearer $TOKEN" | jq .
+----
+
+Response: `"status": "COLLECTING_ATTACHMENTS"`
+
+=== 4. POST /attachments/{traceId}
+
+[source,bash]
+----
+curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"file": "attachment-content"}' | jq .
+----
+
+Response (202): accepted with its own `traceId` and `parentTraceId`.
+
+=== 5. GET /status/{traceId} (after processing)
+
+Poll the parent status. After the downstream flow completes:
+
+[source,bash]
+----
+curl -sk https://localhost:9443/status/$TRACE_ID \
+  -H "Authorization: Bearer $TOKEN" | jq .status
+----
+
+Response: `"PROCESSED"` (briefly visible as `"PROCESSING"` during transition).
+
+=== 6. POST /attachments/{traceId} (window closed)
+
+[source,bash]
+----
+curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"file": "too-late"}' | jq .
+----
+
+Response (409): `"Attachment window closed"`.
 
 == Status Lifecycle
-
-The attachment flow introduces a new status: `COLLECTING_ATTACHMENTS`.
 
 image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
 
@@ -25,38 +109,114 @@ image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
 | `PROCESSING`
 | Downstream flow started (after Wait releases parent)
 | *Closed*: uploads rejected with 409
+
+| `PROCESSED`
+| Downstream processing complete
+| *Closed*: uploads rejected with 409
 |===
 
-== Flow Architecture
+== NiFi Flow Setup for Integrators
 
-image::attachment-flow.png[Attachment Flow Architecture]
+=== Prerequisites
 
-== Wait/Notify Configuration
+* *DistributedMapCacheServer* controller service (e.g., port 4557)
+* *DistributedMapCacheClientService* controller service pointing to the server
+* *RestApiGateway* processor with a route configured for `tracking-mode=attachments`
 
-=== Wait Processor
+=== Wait/Notify Pattern
 
-* *Signal ID:* `merge-signal-${rest.trace.id}`: unique per parent request
-* *Target Signal Count:* `${rest.trace.attachments.min.count}` (defaults to 1)
-* *Expiration Duration:* 30 sec (static default, configurable per route via properties)
+The Wait processor holds the parent FlowFile until attachments arrive. The Notify processor (triggered by each attachment) increments the signal counter.
 
-=== Notify Processor
+[cols="1,2,3"]
+|===
+| Processor | Property | Value
 
-* *Signal ID:* `merge-signal-${rest.trace.parent.id}`: references parent's signal
-* *Counter Delta:* 1: each attachment increments the counter
+| Wait
+| Signal ID
+| `merge-signal-${rest.trace.id}`
 
-== Status Gate Mechanism
+| Wait
+| Target Signal Count
+| `${rest.trace.attachments.min.count:replaceEmpty('1')}`
 
-When the Wait processor releases the parent (via signal or timeout), the flow updates the Distributed Map Cache:
+| Wait
+| Expiration Duration
+| `${rest.trace.attachments.timeout:replaceEmpty('30 sec')}`
 
-1. *FetchDistributedMapCache*: reads the current status entry (JSON)
-2. *ReplaceText*: changes `"status":"COLLECTING_ATTACHMENTS"` to `"status":"PROCESSING"`
-3. *PutDistributedMapCache*: writes the updated entry back
+| Notify
+| Signal ID
+| `merge-signal-${rest.trace.parent.id}`
 
-After this transition, any `POST /attachments/{parentTraceId}` returns *409 Conflict* with the message "Attachment window closed".
+| Notify
+| Counter Delta
+| `1`
+|===
 
-== Configurable Timeout
+The Notify processor uses `rest.trace.parent.id` (not `rest.trace.id`) because attachments reference their parent's signal. Each attachment FlowFile carries the parent trace ID in this attribute.
 
-Each route can configure the attachment collection timeout:
+=== Status Gate Pattern (Fetch → ReplaceText → Put)
+
+This is a reusable three-processor chain for any status transition:
+
+1. *FetchDistributedMapCache*: reads the current JSON entry by `${rest.trace.id}`
+2. *ReplaceText*: literal string replace of the status value
+3. *PutDistributedMapCache*: writes the updated entry back with `replace` strategy
+
+==== COLLECTING_ATTACHMENTS → PROCESSED (sandbox)
+
+The sandbox flow uses a single Status Gate to transition directly to `PROCESSED`:
+
+[cols="1,2,3"]
+|===
+| Processor | Property | Value
+
+| FetchDistributedMapCache
+| Cache Entry Identifier
+| `${rest.trace.id}`
+
+| FetchDistributedMapCache
+| Distributed Cache Service
+| _(your cache client service)_
+
+| ReplaceText
+| Search Value
+| `"status":"COLLECTING_ATTACHMENTS"`
+
+| ReplaceText
+| Replacement Value
+| `"status":"PROCESSED"`
+
+| ReplaceText
+| Replacement Strategy
+| `Literal Replace`
+
+| PutDistributedMapCache
+| Cache Entry Identifier
+| `${rest.trace.id}`
+
+| PutDistributedMapCache
+| Cache update strategy
+| `replace`
+|===
+
+==== Multi-step transitions (production)
+
+For production flows, use multiple Status Gate chains to model intermediate states:
+
+1. `COLLECTING_ATTACHMENTS` → `PROCESSING`: after Wait release
+2. _(your business logic processors here)_
+3. `PROCESSING` → `PROCESSED`: after downstream processing completes
+
+Each transition is a separate Fetch → ReplaceText → Put chain with the appropriate search/replacement values.
+
+==== Custom transitions
+
+For error handling, add additional Status Gate chains:
+
+* `PROCESSING` → `REJECTED`: route validation failures
+* `PROCESSING` → `ERROR`: route processing errors
+
+=== Route Configuration Properties
 
 [source,properties]
 ----
@@ -66,31 +226,37 @@ restapi.upload.attachments-max-count=5
 restapi.upload.attachments-timeout=30 sec
 ----
 
-The timeout value is exposed as the `rest.trace.attachments.timeout` FlowFile attribute, which the Wait processor reads via Expression Language.
+The timeout value is exposed as the `rest.trace.attachments.timeout` FlowFile attribute, which the Wait processor reads via Expression Language. The timeout field appears in the route editor UI alongside min/max attachment count fields (only visible when `tracking-mode` is set to `attachments`).
 
-=== UI Configuration
+== Flow Architecture Diagram
 
-The timeout field appears in the route editor alongside min/max attachment count fields. It is only visible when `tracking-mode` is set to `attachments`.
+image::attachment-flow.png[Attachment Flow Architecture]
 
-== Synchronization Scenarios
+== Sandbox Reference
 
-=== Normal Flow
+Working flow location::
+`integration-testing/src/main/docker/nifi/conf/flow.json`
 
-1. Client sends `POST /api/upload`: parent enters Wait (status: `COLLECTING_ATTACHMENTS`)
-2. Client sends `POST /attachments/{parentTraceId}`: Notify fires, counter increments
-3. When counter reaches target: Wait releases parent, status transitions to `PROCESSING`
-4. Subsequent attachment uploads: *409 Conflict*
+How to run::
+`./integration-testing/src/main/docker/run-and-deploy.sh`
 
-=== Timeout
+Integration test::
+`integration-testing/src/test/java/de/cuioss/nifi/integration/AttachmentFlowIT.java`
 
-1. Client sends `POST /api/upload`: parent enters Wait
-2. No attachments arrive within timeout period
-3. Wait releases parent via `expired` relationship: status transitions to `PROCESSING`
-4. Subsequent attachment uploads: *409 Conflict*
+== Timeout and Edge Cases
 
-=== Multiple Attachments
+=== Timeout (no attachments arrive)
 
-1. Client sends `POST /api/upload`: parent enters Wait
-2. Client sends multiple `POST /attachments/{parentTraceId}` requests
-3. Each Notify increments the counter
-4. When minimum count is reached: parent released
+When the Wait processor's expiration duration elapses without reaching the target signal count, the parent FlowFile is released via the `expired` relationship. The flow still transitions through `PROCESSING` → `PROCESSED`. Subsequent attachment uploads return *409 Conflict*.
+
+=== Multiple attachments before min count
+
+Each `POST /attachments/{parentTraceId}` triggers a Notify that increments the signal counter by 1. The Wait processor only releases the parent when the counter reaches `min-count`. Until then, the parent remains in the Wait loop.
+
+=== Max count enforcement
+
+The REST API Gateway enforces `attachments-max-count` at the HTTP level. Once the count is reached, additional `POST /attachments/{parentTraceId}` requests return *409 Conflict* with `application/problem+json` before any FlowFile is created.
+
+=== Attachment after window closed
+
+Once the parent leaves the Wait processor (signal or timeout), its status transitions away from `COLLECTING_ATTACHMENTS`. Any subsequent `POST /attachments/{parentTraceId}` returns *409 Conflict* with the message "Attachment window closed".

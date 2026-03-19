@@ -5,10 +5,13 @@
 rectangle "RestApiGateway" as gw
 rectangle "Wait\n(wait-for-attachments)" as wait
 rectangle "Notify\n(notify-attachment-received)" as notify
+
+note "Status Gate\n(status transition)" as n1
 rectangle "FetchDistributedMapCache" as fetch
-rectangle "ReplaceText\n(status transition)" as replace
+rectangle "ReplaceText\n(COLLECTING_ATTACHMENTS → PROCESSED)" as replace
 rectangle "PutDistributedMapCache" as put
 rectangle "LogAttribute\n(gateway-merged)" as logMerged
+
 rectangle "LogAttribute\n(gateway-attachment-done)" as logAttach
 
 gw -down-> wait : upload
@@ -20,4 +23,6 @@ notify -down-> logAttach : success
 fetch -down-> replace : success
 replace -down-> put : success
 put -down-> logMerged : success
+
+n1 .. fetch
 @enduml
