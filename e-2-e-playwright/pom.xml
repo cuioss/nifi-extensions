@@ -4,7 +4,7 @@
     <parent>
         <groupId>de.cuioss.nifi</groupId>
         <artifactId>nifi-extensions</artifactId>
-        <version>0.4.0-SNAPSHOT</version>
+        <version>0.3.1</version>
     </parent>
 
     <artifactId>e-2-e-playwright</artifactId>
