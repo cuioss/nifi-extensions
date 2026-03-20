@@ -51,6 +51,7 @@ import java.util.Set;
  * @param attachmentsTimeout  NiFi time duration for the Wait processor expiration (only valid when trackingMode is ATTACHMENTS; e.g. "30 sec")
  */
 @Builder
+@SuppressWarnings("java:S1068") // Record fields are used by Lombok @Builder generated code
 public record RouteConfiguration(
 @NonNull String name,
 @NonNull String path,
