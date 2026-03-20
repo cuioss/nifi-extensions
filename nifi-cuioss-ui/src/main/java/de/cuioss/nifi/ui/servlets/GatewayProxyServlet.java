@@ -101,6 +101,17 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
     private static final String FALSE_STRING = "false";
+    private static final String KEY_ENABLED = "enabled";
+    private static final String KEY_METHODS = "methods";
+    private static final String KEY_REQUIRED_ROLES = "requiredRoles";
+    private static final String KEY_REQUIRED_SCOPES = "requiredScopes";
+    private static final String KEY_AUTH_MODE = "authMode";
+    private static final String KEY_BUILT_IN = "builtIn";
+    private static final String KEY_ACCESS_TOKEN = "access_token";
+    private static final String KEY_EXPIRES_IN = "expires_in";
+    private static final String KEY_HEADERS = "headers";
+    private static final String CHARSET_UTF8 = "UTF-8";
+    private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
 
     /** Cached gateway ports by processor ID. */
     private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
@@ -153,7 +164,7 @@ public class GatewayProxyServlet extends HttpServlet {
             GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
 
             resp.setContentType(CONTENT_TYPE_JSON);
-            resp.setCharacterEncoding("UTF-8");
+            resp.setCharacterEncoding(CHARSET_UTF8);
             resp.setStatus(gwResp.statusCode());
             resp.getOutputStream().write(gwResp.body().getBytes(StandardCharsets.UTF_8));
 
@@ -225,8 +236,8 @@ public class GatewayProxyServlet extends HttpServlet {
 
             // Extract headers from test request
             Map<String, String> headers = new HashMap<>();
-            if (testRequest.containsKey("headers") && !testRequest.isNull("headers")) {
-                JsonObject hdrs = testRequest.getJsonObject("headers");
+            if (testRequest.containsKey(KEY_HEADERS) && !testRequest.isNull(KEY_HEADERS)) {
+                JsonObject hdrs = testRequest.getJsonObject(KEY_HEADERS);
                 for (String key : hdrs.keySet()) {
                     headers.put(key, hdrs.getString(key, ""));
                 }
@@ -244,10 +255,10 @@ public class GatewayProxyServlet extends HttpServlet {
             if (gatewayResp.headers() != null) {
                 gatewayResp.headers().forEach(respHeaders::add);
             }
-            result.add("headers", respHeaders);
+            result.add(KEY_HEADERS, respHeaders);
 
             resp.setContentType(CONTENT_TYPE_JSON);
-            resp.setCharacterEncoding("UTF-8");
+            resp.setCharacterEncoding(CHARSET_UTF8);
             resp.setStatus(HttpServletResponse.SC_OK);
 
             try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
@@ -627,13 +638,13 @@ public class GatewayProxyServlet extends HttpServlet {
             try (var jsonReader = JSON_READER.createReader(
                          new StringReader(idpResp.body()))) {
                 JsonObject tokenResponse = jsonReader.readObject();
-                if (tokenResponse.containsKey("access_token")) {
-                    result.add("access_token",
-                            tokenResponse.getString("access_token"));
+                if (tokenResponse.containsKey(KEY_ACCESS_TOKEN)) {
+                    result.add(KEY_ACCESS_TOKEN,
+                            tokenResponse.getString(KEY_ACCESS_TOKEN));
                 }
-                if (tokenResponse.containsKey("expires_in")) {
-                    result.add("expires_in",
-                            tokenResponse.getInt("expires_in"));
+                if (tokenResponse.containsKey(KEY_EXPIRES_IN)) {
+                    result.add(KEY_EXPIRES_IN,
+                            tokenResponse.getInt(KEY_EXPIRES_IN));
                 }
             }
         } else {
@@ -785,7 +796,7 @@ public class GatewayProxyServlet extends HttpServlet {
         root.add("routes", buildMergedRoutesArray(externalRouteProps, props));
 
         resp.setContentType(CONTENT_TYPE_JSON);
-        resp.setCharacterEncoding("UTF-8");
+        resp.setCharacterEncoding(CHARSET_UTF8);
         resp.setStatus(HttpServletResponse.SC_OK);
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(root.build());
@@ -894,11 +905,11 @@ public class GatewayProxyServlet extends HttpServlet {
         JsonObjectBuilder routeObj = Json.createObjectBuilder();
         routeObj.add("name", routeName);
         routeObj.add("path", routeProps.get("path"));
-        routeObj.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+        routeObj.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
                 routeProps.getOrDefault("enabled", "true")));
-        routeObj.add("methods", buildStringArray(routeProps.get("methods")));
-        routeObj.add("requiredRoles", buildStringArray(routeProps.get("required-roles")));
-        routeObj.add("requiredScopes", buildStringArray(routeProps.get("required-scopes")));
+        routeObj.add(KEY_METHODS, buildStringArray(routeProps.get("methods")));
+        routeObj.add(KEY_REQUIRED_ROLES, buildStringArray(routeProps.get("required-roles")));
+        routeObj.add(KEY_REQUIRED_SCOPES, buildStringArray(routeProps.get("required-scopes")));
         String schema = routeProps.get("schema");
         if (schema != null && !schema.isBlank()) {
             routeObj.add("schema", schema);
@@ -912,7 +923,7 @@ public class GatewayProxyServlet extends HttpServlet {
         routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
                 routeProps.getOrDefault("create-flowfile", "true")));
         String authMode = routeProps.getOrDefault("auth-mode", "bearer");
-        routeObj.add("authMode", authMode);
+        routeObj.add(KEY_AUTH_MODE, authMode);
         String maxReqSize = routeProps.get("max-request-size");
         if (maxReqSize != null && !maxReqSize.isBlank()) {
             try {
@@ -958,49 +969,49 @@ public class GatewayProxyServlet extends HttpServlet {
         JsonObjectBuilder health = Json.createObjectBuilder();
         health.add("name", "health");
         health.add("path", "/health");
-        health.add("methods", Json.createArrayBuilder().add("GET"));
-        health.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+        health.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
+        health.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
                 prop(props, HEALTH_ENABLED_PROPERTY, "true")));
-        health.add("authMode", prop(props, HEALTH_AUTH_MODE_PROPERTY, "local-only,bearer"));
-        health.add("requiredRoles", prop(props, HEALTH_REQUIRED_ROLES_PROPERTY, ""));
-        health.add("requiredScopes", prop(props, HEALTH_REQUIRED_SCOPES_PROPERTY, ""));
-        health.add("builtIn", true);
+        health.add(KEY_AUTH_MODE, prop(props, HEALTH_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
+        health.add(KEY_REQUIRED_ROLES, prop(props, HEALTH_REQUIRED_ROLES_PROPERTY, ""));
+        health.add(KEY_REQUIRED_SCOPES, prop(props, HEALTH_REQUIRED_SCOPES_PROPERTY, ""));
+        health.add(KEY_BUILT_IN, true);
         mgmtArray.add(health);
 
         JsonObjectBuilder metrics = Json.createObjectBuilder();
         metrics.add("name", "metrics");
         metrics.add("path", "/metrics");
-        metrics.add("methods", Json.createArrayBuilder().add("GET"));
-        metrics.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+        metrics.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
+        metrics.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
                 prop(props, METRICS_ENABLED_PROPERTY, "true")));
-        metrics.add("authMode", prop(props, METRICS_AUTH_MODE_PROPERTY, "local-only,bearer"));
-        metrics.add("requiredRoles", prop(props, METRICS_REQUIRED_ROLES_PROPERTY, ""));
-        metrics.add("requiredScopes", prop(props, METRICS_REQUIRED_SCOPES_PROPERTY, ""));
-        metrics.add("builtIn", true);
+        metrics.add(KEY_AUTH_MODE, prop(props, METRICS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
+        metrics.add(KEY_REQUIRED_ROLES, prop(props, METRICS_REQUIRED_ROLES_PROPERTY, ""));
+        metrics.add(KEY_REQUIRED_SCOPES, prop(props, METRICS_REQUIRED_SCOPES_PROPERTY, ""));
+        metrics.add(KEY_BUILT_IN, true);
         mgmtArray.add(metrics);
 
         JsonObjectBuilder status = Json.createObjectBuilder();
         status.add("name", "status");
         status.add("path", "/status/{traceId}");
-        status.add("methods", Json.createArrayBuilder().add("GET"));
-        status.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+        status.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
+        status.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
                 prop(props, STATUS_ENABLED_PROPERTY, "true")));
-        status.add("authMode", prop(props, STATUS_AUTH_MODE_PROPERTY, "local-only,bearer"));
-        status.add("requiredRoles", prop(props, STATUS_REQUIRED_ROLES_PROPERTY, ""));
-        status.add("requiredScopes", prop(props, STATUS_REQUIRED_SCOPES_PROPERTY, ""));
-        status.add("builtIn", true);
+        status.add(KEY_AUTH_MODE, prop(props, STATUS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
+        status.add(KEY_REQUIRED_ROLES, prop(props, STATUS_REQUIRED_ROLES_PROPERTY, ""));
+        status.add(KEY_REQUIRED_SCOPES, prop(props, STATUS_REQUIRED_SCOPES_PROPERTY, ""));
+        status.add(KEY_BUILT_IN, true);
         mgmtArray.add(status);
 
         JsonObjectBuilder attachments = Json.createObjectBuilder();
         attachments.add("name", "attachments");
         attachments.add("path", "/attachments/{parentTraceId}");
-        attachments.add("methods", Json.createArrayBuilder().add("POST"));
-        attachments.add("enabled", !FALSE_STRING.equalsIgnoreCase(
+        attachments.add(KEY_METHODS, Json.createArrayBuilder().add("POST"));
+        attachments.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
                 prop(props, ATTACHMENTS_ENABLED_PROPERTY, "true")));
-        attachments.add("authMode", prop(props, ATTACHMENTS_AUTH_MODE_PROPERTY, "local-only,bearer"));
-        attachments.add("requiredRoles", prop(props, ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ""));
-        attachments.add("requiredScopes", prop(props, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY, ""));
-        attachments.add("builtIn", true);
+        attachments.add(KEY_AUTH_MODE, prop(props, ATTACHMENTS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
+        attachments.add(KEY_REQUIRED_ROLES, prop(props, ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ""));
+        attachments.add(KEY_REQUIRED_SCOPES, prop(props, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY, ""));
+        attachments.add(KEY_BUILT_IN, true);
         mgmtArray.add(attachments);
 
         return mgmtArray;
@@ -1034,7 +1045,7 @@ public class GatewayProxyServlet extends HttpServlet {
         try {
             resp.setStatus(status);
             resp.setContentType(CONTENT_TYPE_JSON);
-            resp.setCharacterEncoding("UTF-8");
+            resp.setCharacterEncoding(CHARSET_UTF8);
             try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
                 writer.writeObject(json);
             }
@@ -1048,7 +1059,7 @@ public class GatewayProxyServlet extends HttpServlet {
         try {
             resp.setStatus(status);
             resp.setContentType(CONTENT_TYPE_JSON);
-            resp.setCharacterEncoding("UTF-8");
+            resp.setCharacterEncoding(CHARSET_UTF8);
 
             JsonObject errorJson = Json.createObjectBuilder()
                     .add("error", message)

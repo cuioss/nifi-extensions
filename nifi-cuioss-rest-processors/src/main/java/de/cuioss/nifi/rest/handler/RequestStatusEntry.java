@@ -49,6 +49,16 @@ int attachmentsMaxCount,
 int attachmentsMinCount,
 @Nullable String routeName) {
 
+    private static final String KEY_TRACE_ID = "traceId";
+    private static final String KEY_STATUS = "status";
+    private static final String KEY_ACCEPTED_AT = "acceptedAt";
+    private static final String KEY_UPDATED_AT = "updatedAt";
+    private static final String KEY_PARENT_TRACE_ID = "parentTraceId";
+    private static final String KEY_ERROR_DETAIL = "errorDetail";
+    private static final String KEY_ATTACHMENTS_MAX_COUNT = "attachmentsMaxCount";
+    private static final String KEY_ATTACHMENTS_MIN_COUNT = "attachmentsMinCount";
+    private static final String KEY_ROUTE_NAME = "routeName";
+
     /**
      * Creates a new ACCEPTED entry with the given trace ID.
      */
@@ -83,24 +93,24 @@ int attachmentsMinCount,
      */
     public String toJson() {
         JsonObjectBuilder builder = Json.createObjectBuilder()
-                .add("traceId", traceId)
-                .add("status", status.name())
-                .add("acceptedAt", acceptedAt.toString())
-                .add("updatedAt", updatedAt.toString());
+                .add(KEY_TRACE_ID, traceId)
+                .add(KEY_STATUS, status.name())
+                .add(KEY_ACCEPTED_AT, acceptedAt.toString())
+                .add(KEY_UPDATED_AT, updatedAt.toString());
         if (parentTraceId != null) {
-            builder.add("parentTraceId", parentTraceId);
+            builder.add(KEY_PARENT_TRACE_ID, parentTraceId);
         }
         if (errorDetail != null) {
-            builder.add("errorDetail", errorDetail);
+            builder.add(KEY_ERROR_DETAIL, errorDetail);
         }
         if (attachmentsMaxCount > 0) {
-            builder.add("attachmentsMaxCount", attachmentsMaxCount);
+            builder.add(KEY_ATTACHMENTS_MAX_COUNT, attachmentsMaxCount);
         }
         if (attachmentsMinCount > 0) {
-            builder.add("attachmentsMinCount", attachmentsMinCount);
+            builder.add(KEY_ATTACHMENTS_MIN_COUNT, attachmentsMinCount);
         }
         if (routeName != null) {
-            builder.add("routeName", routeName);
+            builder.add(KEY_ROUTE_NAME, routeName);
         }
         return builder.build().toString();
     }
@@ -118,17 +128,17 @@ int attachmentsMinCount,
             obj = reader.readObject();
         }
         return new RequestStatusEntry(
-                obj.getString("traceId"),
-                RequestStatus.valueOf(obj.getString("status")),
-                Instant.parse(obj.getString("acceptedAt")),
-                Instant.parse(obj.getString("updatedAt")),
-                obj.containsKey("parentTraceId") && !obj.isNull("parentTraceId")
-                        ? obj.getString("parentTraceId") : null,
-                obj.containsKey("errorDetail") && !obj.isNull("errorDetail")
-                        ? obj.getString("errorDetail") : null,
-                obj.containsKey("attachmentsMaxCount") ? obj.getInt("attachmentsMaxCount") : 0,
-                obj.containsKey("attachmentsMinCount") ? obj.getInt("attachmentsMinCount") : 0,
-                obj.containsKey("routeName") && !obj.isNull("routeName")
-                        ? obj.getString("routeName") : null);
+                obj.getString(KEY_TRACE_ID),
+                RequestStatus.valueOf(obj.getString(KEY_STATUS)),
+                Instant.parse(obj.getString(KEY_ACCEPTED_AT)),
+                Instant.parse(obj.getString(KEY_UPDATED_AT)),
+                obj.containsKey(KEY_PARENT_TRACE_ID) && !obj.isNull(KEY_PARENT_TRACE_ID)
+                        ? obj.getString(KEY_PARENT_TRACE_ID) : null,
+                obj.containsKey(KEY_ERROR_DETAIL) && !obj.isNull(KEY_ERROR_DETAIL)
+                        ? obj.getString(KEY_ERROR_DETAIL) : null,
+                obj.containsKey(KEY_ATTACHMENTS_MAX_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MAX_COUNT) : 0,
+                obj.containsKey(KEY_ATTACHMENTS_MIN_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MIN_COUNT) : 0,
+                obj.containsKey(KEY_ROUTE_NAME) && !obj.isNull(KEY_ROUTE_NAME)
+                        ? obj.getString(KEY_ROUTE_NAME) : null);
     }
 }

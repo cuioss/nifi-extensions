@@ -47,6 +47,9 @@ public final class RestApiGatewayConstants {
 
     @UtilityClass
     public static final class Properties {
+        private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
+        private static final String BEARER_RELEVANCE_DESC = "Only relevant when auth-mode includes 'bearer'.";
+
         public static final PropertyDescriptor LISTENING_PORT = new PropertyDescriptor.Builder()
                 .name("rest.gateway.listening.port")
                 .displayName("Listening Port")
@@ -117,7 +120,7 @@ public final class RestApiGatewayConstants {
                         + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous). "
                         + "Combine modes, e.g. 'local-only,bearer' for loopback bypass OR JWT.")
                 .required(false)
-                .defaultValue("local-only,bearer")
+                .defaultValue(DEFAULT_AUTH_MODE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
@@ -125,7 +128,7 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.management.health.required-roles")
                 .displayName("Health Endpoint Required Roles")
                 .description("Comma-separated roles required in the JWT token for the /health endpoint. "
-                        + "Only relevant when auth-mode includes 'bearer'.")
+                        + BEARER_RELEVANCE_DESC)
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
@@ -134,7 +137,7 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.management.health.required-scopes")
                 .displayName("Health Endpoint Required Scopes")
                 .description("Comma-separated scopes required in the JWT token for the /health endpoint. "
-                        + "Only relevant when auth-mode includes 'bearer'.")
+                        + BEARER_RELEVANCE_DESC)
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
@@ -155,7 +158,7 @@ public final class RestApiGatewayConstants {
                         + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous). "
                         + "Combine modes, e.g. 'local-only,bearer' for loopback bypass OR JWT.")
                 .required(false)
-                .defaultValue("local-only,bearer")
+                .defaultValue(DEFAULT_AUTH_MODE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
@@ -163,7 +166,7 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.management.metrics.required-roles")
                 .displayName("Metrics Endpoint Required Roles")
                 .description("Comma-separated roles required in the JWT token for the /metrics endpoint. "
-                        + "Only relevant when auth-mode includes 'bearer'.")
+                        + BEARER_RELEVANCE_DESC)
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
@@ -172,7 +175,7 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.management.metrics.required-scopes")
                 .displayName("Metrics Endpoint Required Scopes")
                 .description("Comma-separated scopes required in the JWT token for the /metrics endpoint. "
-                        + "Only relevant when auth-mode includes 'bearer'.")
+                        + BEARER_RELEVANCE_DESC)
                 .required(false)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
@@ -201,7 +204,7 @@ public final class RestApiGatewayConstants {
                 .description("Authentication modes for the /status endpoint (comma-separated): "
                         + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous).")
                 .required(false)
-                .defaultValue("local-only,bearer")
+                .defaultValue(DEFAULT_AUTH_MODE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
@@ -236,7 +239,7 @@ public final class RestApiGatewayConstants {
                 .description("Authentication modes for the /attachments endpoint (comma-separated): "
                         + "'local-only' (loopback bypass), 'bearer' (JWT required), 'none' (anonymous).")
                 .required(false)
-                .defaultValue("local-only,bearer")
+                .defaultValue(DEFAULT_AUTH_MODE)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 

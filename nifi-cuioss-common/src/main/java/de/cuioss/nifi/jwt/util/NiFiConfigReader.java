@@ -38,6 +38,7 @@ public class NiFiConfigReader {
 
     private static final CuiLogger LOGGER = new CuiLogger(NiFiConfigReader.class);
     private static final JsonReaderFactory JSON_READER_FACTORY = Json.createReaderFactory(Map.of());
+    private static final String KEY_PROPERTIES = "properties";
 
     /**
      * Retrieves processor properties from NiFi REST API.
@@ -128,12 +129,12 @@ public class NiFiConfigReader {
             JsonObject properties;
             if (component.containsKey("config")) {
                 JsonObject config = component.getJsonObject("config");
-                if (!config.containsKey("properties")) {
+                if (!config.containsKey(KEY_PROPERTIES)) {
                     throw new IOException("Invalid component response format: missing 'properties' field");
                 }
-                properties = config.getJsonObject("properties");
-            } else if (component.containsKey("properties")) {
-                properties = component.getJsonObject("properties");
+                properties = config.getJsonObject(KEY_PROPERTIES);
+            } else if (component.containsKey(KEY_PROPERTIES)) {
+                properties = component.getJsonObject(KEY_PROPERTIES);
             } else {
                 throw new IOException("Invalid component response format: no properties found");
             }
