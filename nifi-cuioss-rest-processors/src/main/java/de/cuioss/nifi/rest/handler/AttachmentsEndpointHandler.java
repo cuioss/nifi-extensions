@@ -243,7 +243,7 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
         }
 
         // Auto-transition to PROCESSED when minimum attachment count is met
-        if (parent.attachmentsMinCount() > 0 && count >= parent.attachmentsMinCount()) {
+        if (parent.status() == RequestStatus.COLLECTING_ATTACHMENTS && parent.attachmentsMinCount() > 0 && count >= parent.attachmentsMinCount()) {
             try {
                 statusStore.updateStatus(parentTraceId, RequestStatus.PROCESSED);
                 LOGGER.info(RestApiLogMessages.INFO.ATTACHMENTS_MIN_MET,
