@@ -21,7 +21,8 @@ Requests follow this status lifecycle:
 [*] --> ACCEPTED : POST received
 ACCEPTED --> PROCESSING : downstream flow starts
 ACCEPTED --> COLLECTING_ATTACHMENTS : tracking-mode=attachments
-COLLECTING_ATTACHMENTS --> PROCESSING : attachments received or timeout
+COLLECTING_ATTACHMENTS --> PROCESSED : min attachment count met\n(Java: AttachmentsEndpointHandler)
+COLLECTING_ATTACHMENTS --> PROCESSING : downstream flow (optional)
 PROCESSING --> PROCESSED : success
 PROCESSING --> REJECTED : validation/business error
 PROCESSING --> RETRY : transient error
@@ -39,7 +40,8 @@ Valid transitions:
 * `ACCEPTED` -> `PROCESSING` -> `REJECTED`
 * `ACCEPTED` -> `PROCESSING` -> `RETRY` -> `PROCESSING` (loop)
 * `ACCEPTED` -> `PROCESSING` -> `ERROR`
-* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED` / `REJECTED` / `ERROR` (attachment routes)
+* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSED` (attachment routes, auto-transitioned when min count met)
+* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED` / `REJECTED` / `ERROR` (attachment routes with custom downstream flow)
 
 == Architecture
 
@@ -161,6 +163,10 @@ G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
 |`attachmentsMaxCount`
 |int (default: 0)
 |Maximum attachments allowed for this request (0 = no attachments expected). See link:attachments-api.adoc[Attachments API].
+
+|`attachmentsMinCount`
+|int (default: 0)
+|Minimum attachments required before auto-transitioning to PROCESSED (0 = no auto-transition). When the attachment count reaches this value, `AttachmentsEndpointHandler` updates the parent status to `PROCESSED` synchronously.
 
 |`routeName`
 |String (optional)

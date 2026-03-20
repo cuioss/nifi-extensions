@@ -7,7 +7,7 @@ Practical guide for integrating the attachment merge pattern into NiFi flows usi
 
 == Overview
 
-When a route uses `tracking-mode=attachments`, the REST API Gateway holds the parent request in a Wait processor until its attachments arrive (or a timeout expires), then releases it for downstream processing. This guide covers the full lifecycle from initial upload through `PROCESSED` status, with curl examples against the sandbox environment.
+When a route uses `tracking-mode=attachments`, the REST API Gateway accepts attachments via `POST /attachments/{parentTraceId}` and automatically transitions the parent status to `PROCESSED` once the minimum attachment count is met. The Wait/Notify pattern in the NiFi flow holds the parent FlowFile until attachments arrive (or a timeout expires), then releases it for downstream processing. This guide covers the full lifecycle from initial upload through `PROCESSED` status, with curl examples against the sandbox environment.
 
 == Quick Start: curl Walkthrough
 
@@ -71,9 +71,9 @@ curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
 
 Response (202): accepted with its own `traceId` and `parentTraceId`.
 
-=== 5. GET /status/{traceId} (after processing)
+=== 5. GET /status/{traceId} (after attachment submitted)
 
-Poll the parent status. After the downstream flow completes:
+Check the parent status. Once the minimum attachment count (`attachments-min-count`) is met, the status transitions to `PROCESSED` synchronously:
 
 [source,bash]
 ----
@@ -81,19 +81,23 @@ curl -sk https://localhost:9443/status/$TRACE_ID \
   -H "Authorization: Bearer $TOKEN" | jq .status
 ----
 
-Response: `"PROCESSED"` (briefly visible as `"PROCESSING"` during transition).
+Response: `"PROCESSED"` (transitions immediately when min count is reached).
 
-=== 6. POST /attachments/{traceId} (window closed)
+=== 6. POST /attachments/{traceId} (additional attachments)
+
+After the status transitions to `PROCESSED`, additional attachments are still accepted up to `attachments-max-count`. Once the max count is reached:
 
 [source,bash]
 ----
 curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"file": "too-late"}' | jq .
+  -d '{"file": "over-limit"}' | jq .
 ----
 
-Response (409): `"Attachment window closed"`.
+Response (409): `"Attachment limit reached"`.
+
+NOTE: If the parent status has transitioned to `PROCESSING`, `REJECTED`, or `ERROR` (e.g., by downstream NiFi flow logic), the attachment window closes and further uploads return 409 `"Attachment window closed"`.
 
 == Status Lifecycle
 
@@ -106,12 +110,12 @@ image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
 | Parent request accepted, waiting for attachments
 | *Open*: uploads accepted
 
-| `PROCESSING`
-| Downstream flow started (after Wait releases parent)
-| *Closed*: uploads rejected with 409
-
 | `PROCESSED`
-| Downstream processing complete
+| Minimum attachment count met (auto-transitioned by gateway)
+| *Open*: uploads still accepted up to max count
+
+| `PROCESSING`
+| Downstream flow processing (set by NiFi flow if needed)
 | *Closed*: uploads rejected with 409
 |===
 
@@ -154,65 +158,17 @@ The Wait processor holds the parent FlowFile until attachments arrive. The Notif
 
 The Notify processor uses `rest.trace.parent.id` (not `rest.trace.id`) because attachments reference their parent's signal. Each attachment FlowFile carries the parent trace ID in this attribute.
 
-=== Status Gate Pattern (Fetch → ReplaceText → Put)
+=== Status Transition (Java-based)
 
-This is a reusable three-processor chain for any status transition:
+The `COLLECTING_ATTACHMENTS` → `PROCESSED` transition is handled automatically by the `AttachmentsEndpointHandler` in Java code. When the number of accepted attachments reaches `attachments-min-count`, the handler calls `RequestStatusStore.updateStatus()` to set the parent status to `PROCESSED`. This is synchronous and idempotent — no NiFi flow processors are needed for this transition.
 
-1. *FetchDistributedMapCache*: reads the current JSON entry by `${rest.trace.id}`
-2. *ReplaceText*: literal string replace of the status value
-3. *PutDistributedMapCache*: writes the updated entry back with `replace` strategy
+The Wait/Notify pattern in the NiFi flow is used only for FlowFile synchronization (holding the parent FlowFile until attachments arrive), not for status updates.
 
-==== COLLECTING_ATTACHMENTS → PROCESSED (sandbox)
+==== Custom transitions (production)
 
-The sandbox flow uses a single Status Gate to transition directly to `PROCESSED`:
+For production flows that need additional status transitions after the Wait processor releases the parent FlowFile, use the standard NiFi approach of `UpdateAttribute` → `PutDistributedMapCache`:
 
-[cols="1,2,3"]
-|===
-| Processor | Property | Value
-
-| FetchDistributedMapCache
-| Cache Entry Identifier
-| `${rest.trace.id}`
-
-| FetchDistributedMapCache
-| Distributed Cache Service
-| _(your cache client service)_
-
-| ReplaceText
-| Search Value
-| `"status":"COLLECTING_ATTACHMENTS"`
-
-| ReplaceText
-| Replacement Value
-| `"status":"PROCESSED"`
-
-| ReplaceText
-| Replacement Strategy
-| `Literal Replace`
-
-| PutDistributedMapCache
-| Cache Entry Identifier
-| `${rest.trace.id}`
-
-| PutDistributedMapCache
-| Cache update strategy
-| `replace`
-|===
-
-==== Multi-step transitions (production)
-
-For production flows, use multiple Status Gate chains to model intermediate states:
-
-1. `COLLECTING_ATTACHMENTS` → `PROCESSING`: after Wait release
-2. _(your business logic processors here)_
-3. `PROCESSING` → `PROCESSED`: after downstream processing completes
-
-Each transition is a separate Fetch → ReplaceText → Put chain with the appropriate search/replacement values.
-
-==== Custom transitions
-
-For error handling, add additional Status Gate chains:
-
+* `PROCESSED` → `PROCESSING`: if downstream business logic needs an intermediate state
 * `PROCESSING` → `REJECTED`: route validation failures
 * `PROCESSING` → `ERROR`: route processing errors
 
@@ -247,7 +203,7 @@ Integration test::
 
 === Timeout (no attachments arrive)
 
-When the Wait processor's expiration duration elapses without reaching the target signal count, the parent FlowFile is released via the `expired` relationship. The flow still transitions through `PROCESSING` → `PROCESSED`. Subsequent attachment uploads return *409 Conflict*.
+When the Wait processor's expiration duration elapses without reaching the target signal count, the parent FlowFile is released via the `expired` relationship and routed to `LogAttribute (gateway-merged)`. The status remains at `COLLECTING_ATTACHMENTS` in the cache unless the min count was already met (in which case it is already `PROCESSED`).
 
 === Multiple attachments before min count
 
@@ -259,4 +215,4 @@ The REST API Gateway enforces `attachments-max-count` at the HTTP level. Once th
 
 === Attachment after window closed
 
-Once the parent leaves the Wait processor (signal or timeout), its status transitions away from `COLLECTING_ATTACHMENTS`. Any subsequent `POST /attachments/{parentTraceId}` returns *409 Conflict* with the message "Attachment window closed".
+When the parent status is set to `PROCESSING`, `REJECTED`, or `ERROR` by downstream NiFi flow logic, any subsequent `POST /attachments/{parentTraceId}` returns *409 Conflict* with the message "Attachment window closed". Note that `PROCESSED` status does _not_ close the window — attachments are still accepted up to `attachments-max-count`.

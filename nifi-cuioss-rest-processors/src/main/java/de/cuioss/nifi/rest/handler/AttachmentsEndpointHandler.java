@@ -184,8 +184,8 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             return;
         }
 
-        // Verify attachment window is still open
-        if (parent.status() != RequestStatus.COLLECTING_ATTACHMENTS) {
+        // Verify attachment window is still open (PROCESSED is allowed — auto-transitioned after min count met)
+        if (parent.status() != RequestStatus.COLLECTING_ATTACHMENTS && parent.status() != RequestStatus.PROCESSED) {
             LOGGER.warn("Attachment window closed for parentTraceId '%s' — status is %s",
                     parentTraceId, parent.status());
             ProblemDetail.conflict("Attachment window closed — parent request is already being processed")
@@ -240,6 +240,17 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return;
+        }
+
+        // Auto-transition to PROCESSED when minimum attachment count is met
+        if (parent.status() == RequestStatus.COLLECTING_ATTACHMENTS && parent.attachmentsMinCount() > 0 && count >= parent.attachmentsMinCount()) {
+            try {
+                statusStore.updateStatus(parentTraceId, RequestStatus.PROCESSED);
+                LOGGER.info(RestApiLogMessages.INFO.ATTACHMENTS_MIN_MET,
+                        parentTraceId, count, parent.attachmentsMinCount());
+            } catch (IOException e) {
+                LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+            }
         }
 
         // Build 202 response with HATEOAS links

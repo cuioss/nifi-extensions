@@ -72,7 +72,7 @@ Only for routes with `tracking-mode=attachments`. The parent request is waiting 
 }
 ----
 
-While in this status, `POST /attachments/{traceId}` uploads are accepted. Once the Wait/Notify signal is reached or the timeout expires, the status transitions to `PROCESSING` and further uploads are rejected with `409 Conflict`.
+While in this status, `POST /attachments/{traceId}` uploads are accepted. Once the minimum attachment count (`attachments-min-count`) is reached, the gateway automatically transitions the status to `PROCESSED`. Attachments are still accepted up to `attachments-max-count` even after this transition. The attachment window closes when the status is set to `PROCESSING`, `REJECTED`, or `ERROR` by downstream flow logic.
 
 ==== PROCESSING
 

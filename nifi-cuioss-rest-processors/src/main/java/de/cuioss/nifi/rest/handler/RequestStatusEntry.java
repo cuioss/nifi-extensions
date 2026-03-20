@@ -35,6 +35,7 @@ import java.time.Instant;
  * @param parentTraceId       optional parent trace ID for chained requests
  * @param errorDetail         optional error detail for REJECTED/ERROR statuses (RFC 9457 detail string)
  * @param attachmentsMaxCount maximum attachments allowed for this request (0 = no attachments expected)
+ * @param attachmentsMinCount minimum attachments required before auto-transitioning to PROCESSED (0 = no auto-transition)
  * @param routeName           the route name that created this entry (for traceability)
  */
 public record RequestStatusEntry(
@@ -45,6 +46,7 @@ public record RequestStatusEntry(
 @Nullable String parentTraceId,
 @Nullable String errorDetail,
 int attachmentsMaxCount,
+int attachmentsMinCount,
 @Nullable String routeName) {
 
     /**
@@ -52,7 +54,7 @@ int attachmentsMaxCount,
      */
     public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId) {
         Instant now = Instant.now();
-        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, null);
+        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, 0, null);
     }
 
     /**
@@ -62,7 +64,7 @@ int attachmentsMaxCount,
             @Nullable String routeName, int attachmentsMaxCount) {
         Instant now = Instant.now();
         return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now,
-                parentTraceId, null, attachmentsMaxCount, routeName);
+                parentTraceId, null, attachmentsMaxCount, 0, routeName);
     }
 
     /**
@@ -70,10 +72,10 @@ int attachmentsMaxCount,
      * The parent request enters this state immediately and waits for attachments to arrive.
      */
     public static RequestStatusEntry collectingAttachments(String traceId, @Nullable String parentTraceId,
-            @Nullable String routeName, int attachmentsMaxCount) {
+            @Nullable String routeName, int attachmentsMaxCount, int attachmentsMinCount) {
         Instant now = Instant.now();
         return new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS, now, now,
-                parentTraceId, null, attachmentsMaxCount, routeName);
+                parentTraceId, null, attachmentsMaxCount, attachmentsMinCount, routeName);
     }
 
     /**
@@ -93,6 +95,9 @@ int attachmentsMaxCount,
         }
         if (attachmentsMaxCount > 0) {
             builder.add("attachmentsMaxCount", attachmentsMaxCount);
+        }
+        if (attachmentsMinCount > 0) {
+            builder.add("attachmentsMinCount", attachmentsMinCount);
         }
         if (routeName != null) {
             builder.add("routeName", routeName);
@@ -122,6 +127,7 @@ int attachmentsMaxCount,
                 obj.containsKey("errorDetail") && !obj.isNull("errorDetail")
                         ? obj.getString("errorDetail") : null,
                 obj.containsKey("attachmentsMaxCount") ? obj.getInt("attachmentsMaxCount") : 0,
+                obj.containsKey("attachmentsMinCount") ? obj.getInt("attachmentsMinCount") : 0,
                 obj.containsKey("routeName") && !obj.isNull("routeName")
                         ? obj.getString("routeName") : null);
     }

@@ -101,7 +101,7 @@ class RequestStatusStoreTest {
             String traceId = UUID.randomUUID().toString();
 
             // Act
-            store.collectingAttachments(traceId, null, "upload", 5);
+            store.collectingAttachments(traceId, null, "upload", 5, 1);
             var result = store.getStatus(traceId);
 
             // Assert
@@ -116,7 +116,7 @@ class RequestStatusStoreTest {
         void shouldUpdateStatusPreservingOtherFields() throws Exception {
             // Arrange
             String traceId = UUID.randomUUID().toString();
-            store.collectingAttachments(traceId, null, "upload", 5);
+            store.collectingAttachments(traceId, null, "upload", 5, 1);
 
             // Act
             store.updateStatus(traceId, RequestStatus.PROCESSING);
@@ -127,6 +127,7 @@ class RequestStatusStoreTest {
             assertEquals(RequestStatus.PROCESSING, result.get().status());
             assertEquals("upload", result.get().routeName());
             assertEquals(5, result.get().attachmentsMaxCount());
+            assertEquals(1, result.get().attachmentsMinCount());
         }
 
         @Test

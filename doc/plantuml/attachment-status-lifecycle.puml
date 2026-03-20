@@ -1,7 +1,8 @@
 @startuml
 !include plantuml.skin
 [*] --> COLLECTING_ATTACHMENTS : POST /api/upload\n(tracking-mode=attachments)
-COLLECTING_ATTACHMENTS --> PROCESSING : Wait releases parent\n(signal or timeout)
+COLLECTING_ATTACHMENTS --> PROCESSED : Min attachment count met\n(Java: AttachmentsEndpointHandler)
+COLLECTING_ATTACHMENTS --> PROCESSING : Downstream flow (optional)
 PROCESSING --> PROCESSED : Downstream success
 PROCESSING --> REJECTED : Downstream rejection
 PROCESSING --> ERROR : Downstream error

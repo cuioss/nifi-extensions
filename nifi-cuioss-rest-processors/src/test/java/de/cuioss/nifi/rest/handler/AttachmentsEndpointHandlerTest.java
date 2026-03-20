@@ -28,7 +28,10 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -332,6 +335,33 @@ class AttachmentsEndpointHandlerTest {
 
         assertEquals(409, response.statusCode());
         assertTrue(response.body().contains("Attachment window closed"));
+    }
+
+    @Test
+    @DisplayName("Should transition parent to PROCESSED when min count is met")
+    void shouldTransitionToProcessedWhenMinCountMet() throws Exception {
+        // Route has attachmentsMinCount=1, so first attachment should trigger PROCESSED
+        String parentTraceId = createParentEntry("/api/upload");
+
+        // Verify initial status is COLLECTING_ATTACHMENTS
+        var parentStatus = statusStore.getStatus(parentTraceId);
+        assertTrue(parentStatus.isPresent());
+        assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, parentStatus.get().status());
+
+        // Submit one attachment (meets min count of 1)
+        var response = httpClient.send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
+                        .header("Content-Type", "application/octet-stream")
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(202, response.statusCode());
+
+        // Verify parent status transitioned to PROCESSED
+        parentStatus = statusStore.getStatus(parentTraceId);
+        assertTrue(parentStatus.isPresent());
+        assertEquals(RequestStatus.PROCESSED, parentStatus.get().status());
     }
 
     @Test
