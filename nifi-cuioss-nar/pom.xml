@@ -19,12 +19,12 @@
     <parent>
         <groupId>de.cuioss.nifi</groupId>
         <artifactId>nifi-extensions</artifactId>
-        <version>0.3.1</version>
+        <version>0.4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>nifi-cuioss-nar</artifactId>
     <name>nifi-cuioss-nar</name>
-    <version>0.3.1</version>
+    <version>0.4.0-SNAPSHOT</version>
     <packaging>nar</packaging>
 
     <properties>
