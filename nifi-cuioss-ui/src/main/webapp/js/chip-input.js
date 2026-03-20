@@ -174,14 +174,14 @@ export const createChipInput = ({ container, idx, value, config }) => {
             closeDropdown();
             return;
         }
-        for (let i = 0; i < filtered.length; i++) {
+        for (const item of filtered) {
             const li = document.createElement('li');
             li.className = `${cssPrefix}-dropdown-item`;
             li.setAttribute('role', 'option');
-            li.textContent = displayLabel(filtered[i]);
+            li.textContent = displayLabel(item);
             li.addEventListener('mousedown', (e) => {
                 e.preventDefault();
-                addItem(filtered[i]);
+                addItem(item);
             });
             dropdown.appendChild(li);
         }

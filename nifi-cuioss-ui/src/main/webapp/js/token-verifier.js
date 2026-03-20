@@ -114,9 +114,10 @@ const buildClaimsHtml = (payload) => {
     if (payload.exp) {
         const expDate = new Date(payload.exp * 1000);
         const isExpired = expDate < new Date();
+        const expiredLabel = t('token.claim.expired');
         html += `<div class="claim ${isExpired ? 'expired' : ''}">
             <strong>${t('token.claim.expiration')}:</strong> ${expDate.toLocaleString()}
-            ${isExpired ? ` <span class="expired-label">${t('token.claim.expired')}</span>` : ''}</div>`;
+            ${isExpired ? ` <span class="expired-label">${expiredLabel}</span>` : ''}</div>`;
     }
     if (payload.iss) {
         html += `<div class="claim"><strong>${t('token.claim.issuer')}:</strong> ${sanitizeHtml(String(payload.iss))}</div>`;
