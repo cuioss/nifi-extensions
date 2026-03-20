@@ -31,6 +31,7 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -379,15 +380,6 @@ class GatewayRequestHandlerTest {
             assertEquals(200, response.statusCode());
         }
 
-        @Test
-        @DisplayName("Should set correct response status for GET")
-        void shouldSetCorrectResponseStatusForGet() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/api/health").GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertEquals(200, response.statusCode());
-        }
     }
 
     @Nested
@@ -515,32 +507,15 @@ class GatewayRequestHandlerTest {
     @DisplayName("Input Security Validation")
     class InputSecurityValidation {
 
-        @Test
-        @DisplayName("Should reject path traversal attack")
-        void shouldRejectPathTraversal() throws Exception {
-            // Raw ../.. is normalized by Jetty, but still rejected (either by Jetty or handler)
+        @ParameterizedTest(name = "Should reject malicious path: {0}")
+        @ValueSource(strings = {
+                "/api/health/../../../etc/passwd",
+                "/api/health/%2e%2e/%2e%2e/etc/passwd",
+                "/api/health%00.html"
+        })
+        void shouldRejectMaliciousPath(String path) throws Exception {
             var response = httpClient.send(
-                    requestBuilder("/api/health/../../../etc/passwd").GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertNotEquals(200, response.statusCode());
-        }
-
-        @Test
-        @DisplayName("Should reject encoded path traversal")
-        void shouldRejectEncodedPathTraversal() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/api/health/%2e%2e/%2e%2e/etc/passwd").GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertNotEquals(200, response.statusCode());
-        }
-
-        @Test
-        @DisplayName("Should reject null byte injection in path")
-        void shouldRejectNullByteInjection() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/api/health%00.html").GET().build(),
+                    requestBuilder(path).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
             assertNotEquals(200, response.statusCode());

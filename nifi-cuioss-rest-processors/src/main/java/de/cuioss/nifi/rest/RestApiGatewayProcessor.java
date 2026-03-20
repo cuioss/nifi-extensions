@@ -214,44 +214,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         // Build endpoint handlers: built-in management first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>();
-
-        // Health endpoint
-        boolean healthEnabled = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
-        Set<AuthMode> healthAuthModes = AuthMode.fromValues(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
-        Set<String> healthRoles = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES).getValue());
-        Set<String> healthScopes = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES).getValue());
-        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthModes,
-                healthRoles, healthScopes));
-
-        // Metrics endpoint
-        boolean metricsEnabled = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
-        Set<AuthMode> metricsAuthModes = AuthMode.fromValues(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
-        Set<String> metricsRoles = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES).getValue());
-        Set<String> metricsScopes = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES).getValue());
-        handlers.add(new MetricsEndpointHandler(configService, httpSecurityEvents,
-                gatewaySecurityEvents, metricsEnabled, metricsAuthModes,
-                metricsRoles, metricsScopes));
-
-        // Status endpoint (only if cache client is available)
+        handlers.add(createHealthHandler(context));
+        handlers.add(createMetricsHandler(context, configService, httpSecurityEvents, gatewaySecurityEvents));
         if (statusStore != null) {
-            boolean statusEnabled = context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED).asBoolean();
-            Set<AuthMode> statusAuthModes = AuthMode.fromValues(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE).getValue());
-            Set<String> statusRoles = parseCommaSeparated(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES).getValue());
-            Set<String> statusScopes = parseCommaSeparated(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES).getValue());
-            handlers.add(new StatusEndpointHandler(statusStore, statusEnabled, statusAuthModes,
-                    statusRoles, statusScopes));
+            handlers.add(createStatusHandler(context, statusStore));
         }
 
         // Startup validation: validate attachment bounds against hard limit
@@ -279,20 +245,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         // Attachments endpoint (only if cache client is available)
         if (statusStore != null) {
-            boolean attachmentsEnabled = context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_ENABLED).asBoolean();
-            Set<AuthMode> attachmentsAuthModes = AuthMode.fromValues(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_AUTH_MODE).getValue());
-            Set<String> attachmentsRoles = parseCommaSeparated(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES).getValue());
-            Set<String> attachmentsScopes = parseCommaSeparated(context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES).getValue());
-            int attachmentsMaxRequestSize = context.getProperty(
-                    RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE).asInteger();
-            handlers.add(new AttachmentsEndpointHandler(statusStore, requestQueue,
-                    attachmentsMaxRequestSize, attachmentsEnabled, attachmentsAuthModes,
-                    attachmentsRoles, attachmentsScopes, gatewaySecurityEvents));
-            // Pre-register the attachments route for FlowFile routing
+            handlers.add(createAttachmentsHandler(context, statusStore, gatewaySecurityEvents));
             routeToOutcome.put(AttachmentsEndpointHandler.ATTACHMENTS_ROUTE_NAME, "attachments");
             dynamicRelationships.put("attachments", RestApiGatewayConstants.Relationships.ATTACHMENTS);
         }
@@ -318,6 +271,63 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         serverManager.start(port, host, gatewayHandler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
+    }
+
+    private HealthEndpointHandler createHealthHandler(ProcessContext context) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES).getValue());
+        return new HealthEndpointHandler(enabled, authModes, roles, scopes);
+    }
+
+    private MetricsEndpointHandler createMetricsHandler(ProcessContext context,
+            JwtIssuerConfigService configService,
+            SecurityEventCounter httpSecurityEvents,
+            GatewaySecurityEvents gatewaySecurityEvents) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES).getValue());
+        return new MetricsEndpointHandler(configService, httpSecurityEvents,
+                gatewaySecurityEvents, enabled, authModes, roles, scopes);
+    }
+
+    private StatusEndpointHandler createStatusHandler(ProcessContext context,
+            RequestStatusStore statusStore) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES).getValue());
+        return new StatusEndpointHandler(statusStore, enabled, authModes, roles, scopes);
+    }
+
+    private AttachmentsEndpointHandler createAttachmentsHandler(ProcessContext context,
+            RequestStatusStore statusStore, GatewaySecurityEvents gatewaySecurityEvents) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES).getValue());
+        int maxRequestSize = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE).asInteger();
+        return new AttachmentsEndpointHandler(statusStore, requestQueue,
+                maxRequestSize, enabled, authModes, roles, scopes, gatewaySecurityEvents);
     }
 
     @Override
