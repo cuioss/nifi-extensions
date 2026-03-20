@@ -357,12 +357,10 @@ class AttachmentFlowIT {
                     .then()
                     .statusCode(202);
 
-            // Step 3: Wait for downstream flow to update status through full lifecycle.
-            // Flow: Wait release → Fetch → ReplaceText (COLLECTING_ATTACHMENTS → PROCESSING)
-            // → Put → LogAttribute → Fetch → ReplaceText (PROCESSING → PROCESSED) → Put
-            // PROCESSING is now a transient state that transitions immediately to PROCESSED.
-            await().atMost(Duration.ofMinutes(3))
-                    .pollInterval(Duration.ofSeconds(2))
+            // Step 3: Status transitions to PROCESSED synchronously in AttachmentsEndpointHandler
+            // when attachment count meets attachmentsMinCount (= 1 for this route).
+            await().atMost(Duration.ofSeconds(30))
+                    .pollInterval(Duration.ofSeconds(1))
                     .untilAsserted(() ->
                             given().spec(authSpec)
                                     .when()

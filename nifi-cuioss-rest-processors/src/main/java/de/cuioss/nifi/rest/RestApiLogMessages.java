@@ -117,6 +117,12 @@ public final class RestApiLogMessages {
                 .template("Attachment accepted with traceId=%s, parentTraceId=%s (count %s/%s)")
                 .build();
 
+        public static final LogRecord ATTACHMENTS_MIN_MET = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(14)
+                .template("Minimum attachment count met for parentTraceId=%s (count %s/%s), transitioning to PROCESSED")
+                .build();
+
     }
 
     @UtilityClass

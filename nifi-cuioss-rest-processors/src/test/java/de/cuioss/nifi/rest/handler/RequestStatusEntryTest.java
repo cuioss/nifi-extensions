@@ -74,13 +74,14 @@ class RequestStatusEntryTest {
             String traceId = UUID.randomUUID().toString();
 
             // Act
-            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 5);
+            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 5, 2);
 
             // Assert
             assertEquals(traceId, entry.traceId());
             assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, entry.status());
             assertEquals("upload", entry.routeName());
             assertEquals(5, entry.attachmentsMaxCount());
+            assertEquals(2, entry.attachmentsMinCount());
             assertNotNull(entry.acceptedAt());
             assertEquals(entry.acceptedAt(), entry.updatedAt());
         }
@@ -119,7 +120,7 @@ class RequestStatusEntryTest {
             Instant now = Instant.now();
             var entry = new RequestStatusEntry(
                     traceId, RequestStatus.REJECTED, now, now,
-                    parentTraceId, "Validation failed", 0, null);
+                    parentTraceId, "Validation failed", 0, 0, null);
 
             // Act
             String json = entry.toJson();
@@ -139,7 +140,7 @@ class RequestStatusEntryTest {
             // Arrange
             Instant now = Instant.now();
             var entry = new RequestStatusEntry(
-                    UUID.randomUUID().toString(), status, now, now, null, null, 0, null);
+                    UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null);
 
             // Act
             String json = entry.toJson();
@@ -154,7 +155,7 @@ class RequestStatusEntryTest {
         void shouldSerializeDeserializeCollectingAttachments() {
             // Arrange
             String traceId = UUID.randomUUID().toString();
-            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 3);
+            var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 3, 1);
 
             // Act
             String json = entry.toJson();
@@ -164,6 +165,23 @@ class RequestStatusEntryTest {
             assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, deserialized.status());
             assertEquals("upload", deserialized.routeName());
             assertEquals(3, deserialized.attachmentsMaxCount());
+            assertEquals(1, deserialized.attachmentsMinCount());
+        }
+
+        @Test
+        @DisplayName("Should deserialize JSON without attachmentsMinCount for backward compatibility")
+        void shouldDeserializeWithoutAttachmentsMinCount() {
+            // Arrange — JSON from older version without attachmentsMinCount
+            String json = "{\"traceId\":\"abc\",\"status\":\"COLLECTING_ATTACHMENTS\","
+                    + "\"acceptedAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-01T00:00:00Z\","
+                    + "\"attachmentsMaxCount\":5}";
+
+            // Act
+            var deserialized = RequestStatusEntry.fromJson(json);
+
+            // Assert
+            assertEquals(0, deserialized.attachmentsMinCount());
+            assertEquals(5, deserialized.attachmentsMaxCount());
         }
 
         @Test

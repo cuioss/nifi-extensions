@@ -164,7 +164,7 @@ public class ApiRouteHandler implements EndpointHandler {
             parentTraceId = sanitized.headers().get(X_PARENT_TRACE_ID);
             try {
                 if (route.trackingMode() == TrackingMode.ATTACHMENTS) {
-                    statusStore.collectingAttachments(traceId, parentTraceId, route.name(), route.attachmentsMaxCount());
+                    statusStore.collectingAttachments(traceId, parentTraceId, route.name(), route.attachmentsMaxCount(), route.attachmentsMinCount());
                 } else {
                     statusStore.accept(traceId, parentTraceId);
                 }

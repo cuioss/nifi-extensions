@@ -93,11 +93,12 @@ public class RequestStatusStore {
      * @param parentTraceId       optional parent trace ID for chained requests
      * @param routeName           the route name for traceability
      * @param attachmentsMaxCount maximum number of attachments allowed
+     * @param attachmentsMinCount minimum attachments required before auto-transitioning to PROCESSED
      * @throws IOException if the cache operation fails
      */
     public void collectingAttachments(String traceId, @Nullable String parentTraceId,
-            @Nullable String routeName, int attachmentsMaxCount) throws IOException {
-        var entry = RequestStatusEntry.collectingAttachments(traceId, parentTraceId, routeName, attachmentsMaxCount);
+            @Nullable String routeName, int attachmentsMaxCount, int attachmentsMinCount) throws IOException {
+        var entry = RequestStatusEntry.collectingAttachments(traceId, parentTraceId, routeName, attachmentsMaxCount, attachmentsMinCount);
         cacheClient.put(traceId, entry, STRING_SERIALIZER, ENTRY_SERIALIZER);
     }
 
@@ -117,7 +118,7 @@ public class RequestStatusStore {
         var updated = new RequestStatusEntry(
                 existing.traceId(), newStatus, existing.acceptedAt(), Instant.now(),
                 existing.parentTraceId(), existing.errorDetail(),
-                existing.attachmentsMaxCount(), existing.routeName());
+                existing.attachmentsMaxCount(), existing.attachmentsMinCount(), existing.routeName());
         cacheClient.put(traceId, updated, STRING_SERIALIZER, ENTRY_SERIALIZER);
     }
 
