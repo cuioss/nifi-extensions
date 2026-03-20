@@ -694,7 +694,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * Overridable for testing.
      */
     protected Map<String, String> resolveControllerServiceProperties(
-            String csId, HttpServletRequest request) throws IOException {
+            String csId, HttpServletRequest request) {
         var reader = new ComponentConfigReader(configContext);
         return reader.getControllerServicePropertiesViaRest(csId, request);
     }

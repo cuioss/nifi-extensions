@@ -54,15 +54,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("NiFi Flow Pipeline Integration Tests")
 class NiFiFlowPipelineIT {
 
-    private static HttpClient HTTP_CLIENT;
+    private static HttpClient httpClient;
 
     @BeforeAll
     static void waitForFlowEndpoint() throws Exception {
-        HTTP_CLIENT = HttpClient.newBuilder()
+        httpClient = HttpClient.newBuilder()
                 .sslContext(createSslContext())
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
-        waitForEndpoint(HTTP_CLIENT, FLOW_ENDPOINT, Duration.ofSeconds(120));
+        waitForEndpoint(httpClient, FLOW_ENDPOINT, Duration.ofSeconds(120));
     }
 
     // ── Valid Token ────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 200 with jwt attributes for valid JWT with required 'read' role")
         void shouldReturn200ForValidJwtWithRequiredRoles() throws Exception {
             // testUser has roles: user, read — 'read' is required by the flow
-            String token = fetchKeycloakToken(HTTP_CLIENT,
+            String token = fetchKeycloakToken(httpClient,
                     KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
@@ -112,7 +112,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with error attributes for token signed by a different realm")
         void shouldReturn401ForTokenSignedByDifferentRealm() throws Exception {
             // Fetch a token from other_realm — signed with a different RSA key pair
-            String otherToken = fetchKeycloakToken(HTTP_CLIENT,
+            String otherToken = fetchKeycloakToken(httpClient,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
                     OTHER_USER, PASSWORD);
 
@@ -144,7 +144,7 @@ class NiFiFlowPipelineIT {
         @DisplayName("should return 401 with authorization failure for token missing required 'read' role")
         void shouldReturn401ForTokenMissingRequiredRole() throws Exception {
             // limitedUser has only 'user' role — missing 'read' which is required
-            String token = fetchKeycloakToken(HTTP_CLIENT,
+            String token = fetchKeycloakToken(httpClient,
                     KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, LIMITED_USER, PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
@@ -220,7 +220,7 @@ class NiFiFlowPipelineIT {
             builder.header("Authorization", authorizationHeader);
         }
 
-        return HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     /**

@@ -827,7 +827,7 @@ class GatewayRequestHandlerTest {
         void shouldAcceptLegitimatePattern(LegitimateTestCase testCase) throws Exception {
             // Configure a wildcard-like route for the legitimate path
             var testQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
-            var handler = new GatewayRequestHandler(
+            var localHandler = new GatewayRequestHandler(
                     toHandlers(List.of(RouteConfiguration.builder().name("test").path(testCase.legitimatePattern())
                             .method("GET").build()), testQueue, GLOBAL_MAX_REQUEST_SIZE),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
@@ -836,7 +836,7 @@ class GatewayRequestHandlerTest {
             ServerConnector connector = new ServerConnector(testServer);
             connector.setPort(0);
             testServer.addConnector(connector);
-            testServer.setHandler(handler);
+            testServer.setHandler(localHandler);
             testServer.start();
             int testPort = connector.getLocalPort();
 

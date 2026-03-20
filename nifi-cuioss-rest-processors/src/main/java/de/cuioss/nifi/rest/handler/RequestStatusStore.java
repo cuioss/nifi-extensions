@@ -24,7 +24,6 @@ import org.apache.nifi.distributed.cache.client.Serializer;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;

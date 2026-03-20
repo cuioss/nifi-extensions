@@ -364,7 +364,6 @@ class ManagementEndpointHandlerTest {
 
         @BeforeEach
         void setUpLocalOnlyServer() throws Exception {
-            LinkedBlockingQueue<HttpRequestContainer> q = new LinkedBlockingQueue<>(50);
             List<EndpointHandler> handlers = new ArrayList<>();
             handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY),
                     Set.of(), Set.of()));
