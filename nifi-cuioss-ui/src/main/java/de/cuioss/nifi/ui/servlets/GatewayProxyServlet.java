@@ -906,8 +906,8 @@ public class GatewayProxyServlet extends HttpServlet {
         routeObj.add("name", routeName);
         routeObj.add("path", routeProps.get("path"));
         routeObj.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
-                routeProps.getOrDefault("enabled", "true")));
-        routeObj.add(KEY_METHODS, buildStringArray(routeProps.get("methods")));
+                routeProps.getOrDefault(KEY_ENABLED, "true")));
+        routeObj.add(KEY_METHODS, buildStringArray(routeProps.get(KEY_METHODS)));
         routeObj.add(KEY_REQUIRED_ROLES, buildStringArray(routeProps.get("required-roles")));
         routeObj.add(KEY_REQUIRED_SCOPES, buildStringArray(routeProps.get("required-scopes")));
         String schema = routeProps.get("schema");

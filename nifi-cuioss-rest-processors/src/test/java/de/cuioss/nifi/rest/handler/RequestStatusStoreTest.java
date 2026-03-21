@@ -131,7 +131,7 @@ class RequestStatusStoreTest {
 
         @Test
         @DisplayName("Should handle updateStatus for unknown traceId gracefully")
-        void shouldHandleUpdateStatusForUnknownTraceId() throws Exception {
+        void shouldHandleUpdateStatusForUnknownTraceId() {
             // Act & Assert — should not throw
             assertDoesNotThrow(() ->
                     store.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING));
