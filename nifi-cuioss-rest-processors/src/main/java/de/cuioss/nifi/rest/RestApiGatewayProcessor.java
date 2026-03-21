@@ -214,33 +214,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         // Build endpoint handlers: built-in management first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>();
-
-        // Health endpoint
-        boolean healthEnabled = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
-        Set<AuthMode> healthAuthModes = AuthMode.fromValues(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
-        Set<String> healthRoles = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES).getValue());
-        Set<String> healthScopes = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES).getValue());
-        handlers.add(new HealthEndpointHandler(healthEnabled, healthAuthModes,
-                healthRoles, healthScopes));
-
-        // Metrics endpoint
-        boolean metricsEnabled = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
-        Set<AuthMode> metricsAuthModes = AuthMode.fromValues(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
-        Set<String> metricsRoles = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES).getValue());
-        Set<String> metricsScopes = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES).getValue());
-        handlers.add(new MetricsEndpointHandler(configService, httpSecurityEvents,
-                gatewaySecurityEvents, metricsEnabled, metricsAuthModes,
-                metricsRoles, metricsScopes));
-
-        // Status endpoint (only if cache client is available)
+        handlers.add(createHealthHandler(context));
+        handlers.add(createMetricsHandler(context, configService, httpSecurityEvents, gatewaySecurityEvents));
         if (statusStore != null) {
             boolean statusEnabled = context.getProperty(
                     RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED).asBoolean();
@@ -292,7 +267,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             handlers.add(new AttachmentsEndpointHandler(statusStore, requestQueue,
                     attachmentsMaxRequestSize, attachmentsEnabled, attachmentsAuthModes,
                     attachmentsRoles, attachmentsScopes, gatewaySecurityEvents));
-            // Pre-register the attachments route for FlowFile routing
             routeToOutcome.put(AttachmentsEndpointHandler.ATTACHMENTS_ROUTE_NAME, "attachments");
             dynamicRelationships.put("attachments", RestApiGatewayConstants.Relationships.ATTACHMENTS);
         }
@@ -318,6 +292,34 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         serverManager.start(port, host, gatewayHandler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
+    }
+
+    private HealthEndpointHandler createHealthHandler(ProcessContext context) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_HEALTH_REQUIRED_SCOPES).getValue());
+        return new HealthEndpointHandler(enabled, authModes, roles, scopes);
+    }
+
+    private MetricsEndpointHandler createMetricsHandler(ProcessContext context,
+            JwtIssuerConfigService configService,
+            SecurityEventCounter httpSecurityEvents,
+            GatewaySecurityEvents gatewaySecurityEvents) {
+        boolean enabled = context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_ENABLED).asBoolean();
+        Set<AuthMode> authModes = AuthMode.fromValues(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE).getValue());
+        Set<String> roles = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES).getValue());
+        Set<String> scopes = parseCommaSeparated(context.getProperty(
+                RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES).getValue());
+        return new MetricsEndpointHandler(configService, httpSecurityEvents,
+                gatewaySecurityEvents, enabled, authModes, roles, scopes);
     }
 
     @Override

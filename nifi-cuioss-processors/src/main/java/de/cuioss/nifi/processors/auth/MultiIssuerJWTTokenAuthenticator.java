@@ -43,7 +43,6 @@ import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
-import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;

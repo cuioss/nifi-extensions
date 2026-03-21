@@ -207,7 +207,7 @@ const initGatewayIssuerTabs = async (processorId) => {
 const applyI18nToDom = () => {
     document.documentElement.lang = lang;
     for (const el of document.querySelectorAll('[data-i18n]')) {
-        const key = el.getAttribute('data-i18n');
+        const key = el.dataset.i18n;
         if (key) el.textContent = t(key);
     }
 };

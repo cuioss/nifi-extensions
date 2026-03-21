@@ -42,9 +42,9 @@ class RestApiLogMessagesTest {
         void shouldHaveUniqueIdentifiers() {
             List<LogRecord> records = getLogRecords(RestApiLogMessages.INFO.class);
             Set<String> identifiers = new HashSet<>();
-            for (LogRecord record : records) {
-                assertTrue(identifiers.add(record.resolveIdentifierString()),
-                        "Duplicate INFO identifier: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : records) {
+                assertTrue(identifiers.add(logRecord.resolveIdentifierString()),
+                        "Duplicate INFO identifier: " + logRecord.resolveIdentifierString());
             }
         }
 
@@ -53,9 +53,9 @@ class RestApiLogMessagesTest {
         void shouldHaveRestPrefix() {
             List<LogRecord> records = getLogRecords(RestApiLogMessages.INFO.class);
             assertFalse(records.isEmpty());
-            for (LogRecord record : records) {
-                assertTrue(record.resolveIdentifierString().startsWith("REST-"),
-                        "Expected REST prefix but got: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : records) {
+                assertTrue(logRecord.resolveIdentifierString().startsWith("REST-"),
+                        "Expected REST prefix but got: " + logRecord.resolveIdentifierString());
             }
         }
 
@@ -63,9 +63,9 @@ class RestApiLogMessagesTest {
         @DisplayName("Should have non-blank templates")
         void shouldHaveNonBlankTemplates() {
             List<LogRecord> records = getLogRecords(RestApiLogMessages.INFO.class);
-            for (LogRecord record : records) {
-                assertFalse(record.getTemplate().isBlank(),
-                        "Blank template for: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : records) {
+                assertFalse(logRecord.getTemplate().isBlank(),
+                        "Blank template for: " + logRecord.resolveIdentifierString());
             }
         }
     }
@@ -79,9 +79,9 @@ class RestApiLogMessagesTest {
         void shouldHaveUniqueIdentifiers() {
             List<LogRecord> records = getLogRecords(RestApiLogMessages.WARN.class);
             Set<String> identifiers = new HashSet<>();
-            for (LogRecord record : records) {
-                assertTrue(identifiers.add(record.resolveIdentifierString()),
-                        "Duplicate WARN identifier: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : records) {
+                assertTrue(identifiers.add(logRecord.resolveIdentifierString()),
+                        "Duplicate WARN identifier: " + logRecord.resolveIdentifierString());
             }
         }
 
@@ -91,9 +91,9 @@ class RestApiLogMessagesTest {
             Set<String> infoIds = new HashSet<>();
             getLogRecords(RestApiLogMessages.INFO.class).forEach(r -> infoIds.add(r.resolveIdentifierString()));
 
-            for (LogRecord record : getLogRecords(RestApiLogMessages.WARN.class)) {
-                assertFalse(infoIds.contains(record.resolveIdentifierString()),
-                        "WARN identifier overlaps with INFO: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : getLogRecords(RestApiLogMessages.WARN.class)) {
+                assertFalse(infoIds.contains(logRecord.resolveIdentifierString()),
+                        "WARN identifier overlaps with INFO: " + logRecord.resolveIdentifierString());
             }
         }
     }
@@ -107,9 +107,9 @@ class RestApiLogMessagesTest {
         void shouldHaveUniqueIdentifiers() {
             List<LogRecord> records = getLogRecords(RestApiLogMessages.ERROR.class);
             Set<String> identifiers = new HashSet<>();
-            for (LogRecord record : records) {
-                assertTrue(identifiers.add(record.resolveIdentifierString()),
-                        "Duplicate ERROR identifier: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : records) {
+                assertTrue(identifiers.add(logRecord.resolveIdentifierString()),
+                        "Duplicate ERROR identifier: " + logRecord.resolveIdentifierString());
             }
         }
     }

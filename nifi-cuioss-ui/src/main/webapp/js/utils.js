@@ -869,7 +869,7 @@ export const t = (key, ...params) => {
         ?? TRANSLATIONS.en[key]
         ?? key;
     for (let i = 0; i < params.length; i++) {
-        text = text.replace(new RegExp(`\\{${i}\\}`, 'g'), params[i]);
+        text = text.replaceAll(`{${i}}`, params[i]);
     }
     return text;
 };

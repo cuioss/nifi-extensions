@@ -51,7 +51,7 @@ class ComponentConfigReaderRestTest {
     }
 
     @AfterAll
-    static void stopServer() throws Exception {
+    static void stopServer() {
         server.close();
     }
 
@@ -127,7 +127,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should return empty map for 404 response")
-        void shouldReturnEmptyFor404() throws Exception {
+        void shouldReturnEmptyFor404() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder().code(404).build());
 
@@ -139,7 +139,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should return empty map for 500 server error")
-        void shouldReturnEmptyFor500() throws Exception {
+        void shouldReturnEmptyFor500() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder().code(500).build());
 
@@ -151,7 +151,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should return empty map for invalid JSON response")
-        void shouldReturnEmptyForInvalidJson() throws Exception {
+        void shouldReturnEmptyForInvalidJson() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -166,7 +166,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should return empty map when component is missing from response")
-        void shouldReturnEmptyForMissingComponent() throws Exception {
+        void shouldReturnEmptyForMissingComponent() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -229,7 +229,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should resolve CS UUID from descriptors.allowableValues")
-        void shouldResolveCSFromDescriptors() throws Exception {
+        void shouldResolveCSFromDescriptors() {
             String processorId = UUID.randomUUID().toString();
             String csUuid = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
@@ -269,7 +269,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should skip null properties without identifiesControllerService descriptor")
-        void shouldSkipNonCSNullProperties() throws Exception {
+        void shouldSkipNonCSNullProperties() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -302,7 +302,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should handle null descriptors for null property values")
-        void shouldHandleNullDescriptors() throws Exception {
+        void shouldHandleNullDescriptors() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -329,7 +329,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should handle empty allowableValues array for CS reference")
-        void shouldHandleEmptyAllowableValues() throws Exception {
+        void shouldHandleEmptyAllowableValues() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -530,7 +530,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should handle missing properties in component.config")
-        void shouldHandleMissingProperties() throws Exception {
+        void shouldHandleMissingProperties() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -547,7 +547,7 @@ class ComponentConfigReaderRestTest {
 
         @Test
         @DisplayName("Should handle response with only non-null properties")
-        void shouldHandleAllNonNullProperties() throws Exception {
+        void shouldHandleAllNonNullProperties() {
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)

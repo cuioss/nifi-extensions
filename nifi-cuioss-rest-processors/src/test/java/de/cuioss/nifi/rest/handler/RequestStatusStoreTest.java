@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -132,9 +131,10 @@ class RequestStatusStoreTest {
 
         @Test
         @DisplayName("Should handle updateStatus for unknown traceId gracefully")
-        void shouldHandleUpdateStatusForUnknownTraceId() throws Exception {
+        void shouldHandleUpdateStatusForUnknownTraceId() {
             // Act & Assert — should not throw
-            store.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING);
+            assertDoesNotThrow(() ->
+                    store.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING));
         }
     }
 

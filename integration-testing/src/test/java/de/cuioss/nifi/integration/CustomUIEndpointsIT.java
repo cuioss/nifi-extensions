@@ -535,7 +535,7 @@ class CustomUIEndpointsIT {
                     .then()
                     .statusCode(200)
                     .contentType(ContentType.JSON)
-                    .body("routes.source", everyItem(isOneOf("external", "nifi", "both")));
+                    .body("routes.source", everyItem(oneOf("external", "nifi", "both")));
         }
 
         @Test

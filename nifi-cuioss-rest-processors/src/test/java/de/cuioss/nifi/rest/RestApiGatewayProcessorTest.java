@@ -299,7 +299,7 @@ class RestApiGatewayProcessorTest {
 
         @Test
         @DisplayName("Should log server started")
-        void shouldLogServerStarted() throws Exception {
+        void shouldLogServerStarted() {
             testRunner.run(1, false, true);
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO, "REST-1:");
         }

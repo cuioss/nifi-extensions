@@ -101,6 +101,7 @@ public class MetricsEndpointHandler extends AbstractManagementHandler {
         sendResponse(response, callback, PROMETHEUS_CONTENT_TYPE, sb.toString());
     }
 
+    @SuppressWarnings("java:S3457") // Prometheus text format requires literal \n, not platform-dependent %n
     private void appendTokenValidationMetrics(StringBuilder sb) {
         var counter = configService.getSecurityEventCounter();
         if (counter.isEmpty()) {

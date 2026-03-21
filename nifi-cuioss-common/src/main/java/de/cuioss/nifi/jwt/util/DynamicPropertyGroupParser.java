@@ -70,19 +70,16 @@ public class DynamicPropertyGroupParser {
 
         for (Map.Entry<String, String> entry : properties.entrySet()) {
             String propertyName = entry.getKey();
-            if (!propertyName.startsWith(prefix)) {
-                continue;
+            if (propertyName.startsWith(prefix)) {
+                String remainder = propertyName.substring(prefix.length());
+                int dotIndex = remainder.indexOf('.');
+                if (dotIndex > 0) {
+                    String groupName = remainder.substring(0, dotIndex);
+                    String property = remainder.substring(dotIndex + 1);
+                    groups.computeIfAbsent(groupName, k -> new HashMap<>())
+                            .put(property, entry.getValue());
+                }
             }
-            String remainder = propertyName.substring(prefix.length());
-            int dotIndex = remainder.indexOf('.');
-            if (dotIndex <= 0) {
-                // No dot found or dot is the first character — skip
-                continue;
-            }
-            String groupName = remainder.substring(0, dotIndex);
-            String property = remainder.substring(dotIndex + 1);
-            groups.computeIfAbsent(groupName, k -> new HashMap<>())
-                    .put(property, entry.getValue());
         }
 
         return groups;

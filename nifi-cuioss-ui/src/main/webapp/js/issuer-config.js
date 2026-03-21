@@ -136,10 +136,10 @@ const loadExistingIssuers = async (container, componentId) => {
 // ---------------------------------------------------------------------------
 
 /** Build JWKS type selector, standard fields, type toggle, test button. */
-const buildIssuerFields = (form, fields, idx, properties, issuerName) => {
+const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
     const jwksType = properties?.['jwks-type'] || 'url';
     const idPrefix = `field-jwks-type-${idx}`;
-    const iName = issuerName || '*';
+    const iName = issuerName;
 
     // JWKS type selector (with context help)
     const jwksTypeDiv = document.createElement('div');

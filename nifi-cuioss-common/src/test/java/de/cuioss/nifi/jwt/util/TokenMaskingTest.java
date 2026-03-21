@@ -19,6 +19,8 @@ package de.cuioss.nifi.jwt.util;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -60,43 +62,10 @@ class TokenMaskingTest {
     @DisplayName("Short Tokens (<=12 characters)")
     class ShortTokenTests {
 
-        @Test
-        @DisplayName("Should return *** for single character token")
-        void shouldMaskSingleCharToken() {
-            // Arrange
-            String token = "a";
-
-            // Act
-            String result = TokenMasking.maskToken(token);
-
-            // Assert
-            assertEquals("***", result);
-        }
-
-        @Test
-        @DisplayName("Should return *** for 8 character token")
-        void shouldMaskEightCharToken() {
-            // Arrange
-            String token = "12345678";
-
-            // Act
-            String result = TokenMasking.maskToken(token);
-
-            // Assert
-            assertEquals("***", result);
-        }
-
-        @Test
-        @DisplayName("Should return *** for exactly 12 character token")
-        void shouldMaskTwelveCharToken() {
-            // Arrange
-            String token = "123456789012";
-
-            // Act
-            String result = TokenMasking.maskToken(token);
-
-            // Assert
-            assertEquals("***", result);
+        @ParameterizedTest(name = "Should return *** for short token: \"{0}\"")
+        @ValueSource(strings = {"a", "12345678", "123456789012"})
+        void shouldMaskShortToken(String token) {
+            assertEquals("***", TokenMasking.maskToken(token));
         }
     }
 

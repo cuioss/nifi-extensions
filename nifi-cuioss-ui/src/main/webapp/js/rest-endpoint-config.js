@@ -79,7 +79,7 @@ export const init = async (element) => {
     exportSection.querySelector('.copy-properties-button').addEventListener('click', () => {
         const textarea = exportSection.querySelector('.property-export-textarea');
         const text = textarea.value;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
+        if (navigator.clipboard?.writeText) {
             navigator.clipboard.writeText(text).then(() => {
                 showCopyFeedback(exportSection);
             });
@@ -133,8 +133,8 @@ const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
     if (tracked.length === 0) return '';
     const methodSuffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
     if (mode === 'attachments') {
-        const min = parseInt(minCount, 10) || 0;
-        const max = parseInt(maxCount, 10) || 0;
+        const min = Number.parseInt(minCount, 10) || 0;
+        const max = Number.parseInt(maxCount, 10) || 0;
         const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
         return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')} + ${t('route.form.tracking.attachments')} (${bounds})${methodSuffix}</span>`;
     }
@@ -159,7 +159,7 @@ const detectSchemaMode = (schemaValue) => {
  */
 const getActiveSchemaValue = (form) => {
     const fileRadio = form.querySelector('.schema-mode-file');
-    if (fileRadio && fileRadio.checked) {
+    if (fileRadio?.checked) {
         return form.querySelector('.field-schema-file')?.value?.trim() || '';
     }
     return form.querySelector('.field-schema-inline')?.value?.trim() || '';
@@ -210,9 +210,9 @@ const renderGlobalSettings = (container, properties) => {
         const value = properties[key];
         let display;
         if (key === 'rest.gateway.ssl.context.service') {
-            display = (value && value.trim()) ? t('common.status.yes') : t('common.status.no');
+            display = value?.trim() ? t('common.status.yes') : t('common.status.no');
         } else if (key === 'rest.gateway.max.request.size') {
-            display = formatBytes(value ? parseInt(value, 10) : null);
+            display = formatBytes(value ? Number.parseInt(value, 10) : null);
         } else {
             display = value || t('common.na');
         }
@@ -256,7 +256,7 @@ const renderGlobalSettings = (container, properties) => {
 };
 
 const formatBytes = (bytes) => {
-    if (bytes == null || isNaN(bytes)) return 'N/A';
+    if (bytes == null || Number.isNaN(bytes)) return 'N/A';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1048576).toFixed(1)} MB`;
@@ -504,7 +504,7 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
 
     // Insert form after the table
     const table = mgmtEl.querySelector('.management-endpoints-table');
-    if (table && table.nextSibling) {
+    if (table?.nextSibling) {
         mgmtEl.insertBefore(form, table.nextSibling);
     } else {
         mgmtEl.appendChild(form);
@@ -591,14 +591,14 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         const loadGatewayConfig = async (retries = 1) => {
             try {
                 const gwConfig = await api.fetchGatewayApi('/config');
-                if (gwConfig && gwConfig.managementEndpoints) {
+                if (gwConfig?.managementEndpoints) {
                     renderManagementEndpoints(container, gwConfig.managementEndpoints, componentId);
                 }
                 // Use /config routes as authoritative source (includes external + NiFi routes)
-                if (gwConfig && gwConfig.routes) {
+                if (gwConfig?.routes) {
                     gwRoutes = gwConfig.routes;
                 }
-                if (gwConfig && gwConfig.attachmentsHardLimit > 0) {
+                if (gwConfig?.attachmentsHardLimit > 0) {
                     attachmentsHardLimit = gwConfig.attachmentsHardLimit;
                 }
             } catch {
@@ -917,7 +917,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     form.dataset.originalName = routeName || '';
 
     const enabledVal = properties?.enabled !== 'false';
-    const hasSchema = !!(properties?.schema && properties.schema.trim());
+    const hasSchema = !!properties?.schema?.trim();
 
     const rn = routeName || '*';
 
@@ -1422,8 +1422,8 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (trackingMode === 'attachments') {
-        const min = parseInt(f['attachments-min-count'], 10) || 0;
-        const max = parseInt(f['attachments-max-count'], 10) || 0;
+        const min = Number.parseInt(f['attachments-min-count'], 10) || 0;
+        const max = Number.parseInt(f['attachments-max-count'], 10) || 0;
         if (min < 0) return { isValid: false, error: new Error(t('route.validate.attachments.min.negative')) };
         if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
         if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
@@ -1450,9 +1450,9 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
     const trackingMode = (f['tracking-mode'] || 'none').toLowerCase();
     u[`${ROUTE_PREFIX}${name}.tracking-mode`] = trackingMode !== 'none' ? trackingMode : null;
-    u[`${ROUTE_PREFIX}${name}.attachments-min-count`] = trackingMode === 'attachments' && parseInt(f['attachments-min-count'], 10) > 0
+    u[`${ROUTE_PREFIX}${name}.attachments-min-count`] = trackingMode === 'attachments' && Number.parseInt(f['attachments-min-count'], 10) > 0
         ? f['attachments-min-count'] : null;
-    u[`${ROUTE_PREFIX}${name}.attachments-max-count`] = trackingMode === 'attachments' && parseInt(f['attachments-max-count'], 10) > 0
+    u[`${ROUTE_PREFIX}${name}.attachments-max-count`] = trackingMode === 'attachments' && Number.parseInt(f['attachments-max-count'], 10) > 0
         ? f['attachments-max-count'] : null;
     u[`${ROUTE_PREFIX}${name}.attachments-timeout`] = trackingMode === 'attachments' && f['attachments-timeout']
         && f['attachments-timeout'] !== '30 sec' ? f['attachments-timeout'] : null;
@@ -1816,7 +1816,7 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
 
     // Also close any open editor for this route
     const openForm = routesContainer.querySelector('.route-form');
-    if (openForm && openForm.dataset.originalName === routeName) {
+    if (openForm?.dataset.originalName === routeName) {
         openForm.remove();
     }
 

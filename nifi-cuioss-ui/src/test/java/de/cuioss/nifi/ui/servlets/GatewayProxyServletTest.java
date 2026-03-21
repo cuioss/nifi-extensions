@@ -23,6 +23,7 @@ import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -155,8 +156,8 @@ class GatewayProxyServletTest {
 
                     @Override
                     protected Map<String, String> resolveControllerServiceProperties(
-                            String csId, HttpServletRequest request) throws IOException {
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                            String csId, HttpServletRequest request) {
+                        if (gatewayFailing.get()) throw new UncheckedIOException(new IOException("Connection refused"));
                         return csProperties.get();
                     }
                 }), "/gateway/*"));

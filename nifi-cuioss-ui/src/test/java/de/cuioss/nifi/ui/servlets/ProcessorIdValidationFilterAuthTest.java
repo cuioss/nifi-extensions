@@ -32,6 +32,7 @@ import java.util.EnumSet;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
  * Tests for {@link ProcessorIdValidationFilter} with authenticated user context.
@@ -90,9 +91,11 @@ class ProcessorIdValidationFilterAuthTest {
 
     @Test
     @DisplayName("Should handle filter lifecycle methods")
-    void shouldHandleFilterLifecycle() throws Exception {
+    void shouldHandleFilterLifecycle() {
         ProcessorIdValidationFilter filter = new ProcessorIdValidationFilter();
-        filter.init(null);
-        filter.destroy();
+        assertDoesNotThrow(() -> {
+            filter.init(null);
+            filter.destroy();
+        });
     }
 }

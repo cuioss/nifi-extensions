@@ -129,7 +129,8 @@ export const createFormField = ({ container, idx, name, label, placeholder, valu
     if (!isTextArea) el.type = 'text';
     el.id = `field-${name}-${idx}`;
     el.name = name;
-    el.className = `field-${name} form-input${inputClass ? ` ${inputClass}` : ''}`;
+    const inputClassSuffix = inputClass ? ` ${inputClass}` : '';
+    el.className = `field-${name} form-input${inputClassSuffix}`;
     el.placeholder = placeholder || '';
     el.setAttribute('aria-label', label);
     if (isTextArea) {

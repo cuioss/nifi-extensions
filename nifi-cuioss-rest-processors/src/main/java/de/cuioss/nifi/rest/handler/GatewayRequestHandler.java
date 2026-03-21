@@ -227,10 +227,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
         AccessTokenContent token = ((AuthResult.Success) authResult).token();
 
         // 6. Authorization (shared — skipped when roles+scopes are empty)
-        if (token != null && hasAuthorizationRequirements(handler)) {
-            if (!authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
-                return;
-            }
+        if (token != null && hasAuthorizationRequirements(handler)
+                && !authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
+            return;
         }
         LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
 

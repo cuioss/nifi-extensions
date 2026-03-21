@@ -282,9 +282,14 @@ const displayResponse = (container, result) => {
     // Status
     const statusEl = display.querySelector('.response-status');
     const statusCode = result.status || 0;
-    const statusClass = statusCode >= 500 ? 'status-5xx'
-        : statusCode >= 400 ? 'status-4xx'
-            : 'status-2xx';
+    let statusClass;
+    if (statusCode >= 500) {
+        statusClass = 'status-5xx';
+    } else if (statusCode >= 400) {
+        statusClass = 'status-4xx';
+    } else {
+        statusClass = 'status-2xx';
+    }
     statusEl.className = `response-status ${statusClass}`;
     statusEl.textContent = t('tester.response.status', statusCode);
 
