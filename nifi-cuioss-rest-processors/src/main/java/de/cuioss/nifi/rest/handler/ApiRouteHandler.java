@@ -46,7 +46,8 @@ import java.util.stream.Collectors;
  */
 public class ApiRouteHandler implements EndpointHandler {
 
-    private record ResponseContext(Response response, Callback callback) { }
+    private record ResponseContext(Response response, Callback callback) {
+    }
 
     private static final CuiLogger LOGGER = new CuiLogger(ApiRouteHandler.class);
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
