@@ -38,7 +38,7 @@ import java.time.Instant;
  * @param attachmentsMinCount minimum attachments required before auto-transitioning to PROCESSED (0 = no auto-transition)
  * @param routeName           the route name that created this entry (for traceability)
  */
-public record RequestStatusEntry(
+record RequestStatusEntry(
 @NonNull String traceId,
 @NonNull RequestStatus status,
 @NonNull Instant acceptedAt,

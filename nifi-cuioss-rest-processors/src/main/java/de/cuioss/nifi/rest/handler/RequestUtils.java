@@ -23,7 +23,7 @@ import org.eclipse.jetty.server.Request;
  * Shared request utilities for endpoint handlers.
  */
 @UtilityClass
-public class RequestUtils {
+class RequestUtils {
 
     private static final String IPV4_LOOPBACK = "127.0.0.1";
     private static final String IPV6_LOOPBACK = "::1";

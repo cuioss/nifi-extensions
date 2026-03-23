@@ -30,7 +30,7 @@ import java.util.Map;
  * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
  * @param headers         the normalized header values (Authorization excluded, values sanitized)
  */
-public record SanitizedRequest(
+record SanitizedRequest(
 String path,
 Map<String, String> queryParameters,
 Map<String, String> headers) {

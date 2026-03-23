@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.StringReader;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -308,7 +309,7 @@ class ProblemDetailTest {
             assertTrue(ProblemDetail.TYPE_SERVICE_UNAVAILABLE.contains("#"));
             assertTrue(ProblemDetail.TYPE_INTERNAL_ERROR.contains("#"));
             // Verify all type URIs are distinct (RFC 9457 requirement)
-            var types = java.util.Set.of(
+            var types = Set.of(
                     ProblemDetail.TYPE_BAD_REQUEST, ProblemDetail.TYPE_UNAUTHORIZED,
                     ProblemDetail.TYPE_FORBIDDEN, ProblemDetail.TYPE_NOT_FOUND,
                     ProblemDetail.TYPE_METHOD_NOT_ALLOWED, ProblemDetail.TYPE_PAYLOAD_TOO_LARGE,

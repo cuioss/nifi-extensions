@@ -26,7 +26,7 @@ import java.util.Set;
  * identical across all management endpoints: GET-only, built-in, no authorization
  * requirements, no request body.
  */
-abstract class AbstractManagementHandler implements EndpointHandler {
+non-sealed abstract class AbstractManagementHandler implements EndpointHandler {
 
     private final boolean enabled;
     private final Set<AuthMode> authModes;

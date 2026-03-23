@@ -44,7 +44,7 @@ import java.util.Set;
  * <p>
  * Supports Prometheus (default) and JSON ({@code Accept: application/json}) output formats.
  */
-public class MetricsEndpointHandler extends AbstractManagementHandler {
+public final class MetricsEndpointHandler extends AbstractManagementHandler {
 
     static final String METRICS_PATH = "/metrics";
     private static final String PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8";
