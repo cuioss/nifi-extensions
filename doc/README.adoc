@@ -17,11 +17,16 @@ Step-by-step instructions for getting started and configuring the processors.
 * link:guides/QuickStart.adoc[Quick Start Guide]: RestApiGateway setup in under 5 minutes
 * link:guides/MultiIssuerJWTTokenAuthenticatorGuide.adoc[MultiIssuerJWTTokenAuthenticator Guide]: FlowFile-based JWT validation
 * link:guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough]: step-by-step UI configuration with troubleshooting
+* link:guides/AttachmentMergeGuide.adoc[Attachment Merge Guide]: attachment collection with request tracking
 * link:guides/BuildingGuide.adoc[Building Guide]: build, code quality, integration and E2E tests
 
 == Reference
 
 Property tables, configuration formats, and error types.
 
+* link:reference/README.adoc[Reference Overview]: index of all reference documents
 * link:reference/configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:reference/error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
+* link:reference/request-tracking-api.adoc[Request Tracking API]: tracking modes, status polling, chained requests
+* link:reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, component relationships
+* link:reference/attachments-api.adoc[Attachments API]: attachment upload, counting, and configuration

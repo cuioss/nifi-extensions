@@ -84,4 +84,4 @@ All cuioss repositories have branch protection on `main`. Direct pushes to `main
 
 ## Deep Reference
 
-See `agents.md` for detailed architecture, Maven profiles, step-by-step tasks (adding classes/components/tests), debugging instructions, and commonly modified files.
+See `doc/` for detailed architecture, configuration reference, guides, and step-by-step instructions. Key entry points: `doc/README.adoc` (documentation index), `doc/architecture/README.adoc` (module overview), `doc/reference/configuration.adoc` (all properties).

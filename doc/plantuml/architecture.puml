@@ -26,7 +26,11 @@ package "nifi-cuioss-processors" {
 package "nifi-cuioss-rest-processors" {
   [RestApiGateway\nProcessor] as Gateway
   [GatewayRequestHandler] as ReqHandler
-  [ManagementEndpoint\nHandler] as MgmtHandler
+  [ApiRouteHandler] as RouteHandler
+  [HealthEndpointHandler] as HealthHandler
+  [MetricsEndpointHandler] as MetricsHandler
+  [StatusEndpointHandler] as StatusHandler
+  [AttachmentsEndpointHandler] as AttachHandler
   [JettyServerManager] as JettyMgr
 }
 
@@ -65,7 +69,11 @@ Gateway --> JettyMgr : manages server
 JettyMgr --> Jetty : starts/stops
 
 ReqHandler --> AuthzValidator : authorizes
-ReqHandler --> MgmtHandler : /metrics endpoint
+ReqHandler --> RouteHandler : data routes
+ReqHandler --> HealthHandler : /health
+ReqHandler --> MetricsHandler : /metrics
+ReqHandler --> StatusHandler : /status
+ReqHandler --> AttachHandler : /attachments
 ReqHandler --> ClaimMapper : maps token claims
 
 TokenValidator --> TokenContent : returns result

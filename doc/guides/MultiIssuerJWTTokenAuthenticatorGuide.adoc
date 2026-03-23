@@ -175,8 +175,8 @@ Each identity provider is configured as dynamic properties on the `JwtIssuerConf
 |`api://my-service`
 
 |`issuer.<name>.name`
-|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required
-|`Primary Auth Server`
+|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required. *Warning*: This value becomes the `issuerIdentifier` used for token matching. If both `name` and `issuer` are set, `name` takes precedence. Use a URI matching the `iss` claim unless you have a specific reason not to.
+|`\https://auth.example.com/`
 
 |`issuer.<name>.issuer`
 |Issuer URI (must match the `iss` claim in the JWT)

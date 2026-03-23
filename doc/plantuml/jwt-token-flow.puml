@@ -9,20 +9,33 @@ start
 :FlowFile arrives with JWT token;
 
 partition "Token Extraction" {
-  :Extract token from configured location;
+  :Extract token from FlowFile attribute;
   note right
-    Source (configurable):
-    - Authorization header
-    - Custom header
-    - FlowFile content
+    Source: configurable attribute
+    (default: **jwt.token**)
   end note
 
   if (Token present?) then (yes)
     :Set **jwt.present** = true;
   else (no)
     :Set **jwt.present** = false;
+    if (Require Valid Token?) then (yes)
+      :Route to failure;
+      stop
+    else (no)
+      :Set **jwt.error.reason** = "No token provided";
+      :Route to success;
+      stop
+    endif
+  endif
+}
+
+partition "Size Check" {
+  if (Token size > maximum?) then (yes)
+    :Set error attributes;
     :Route to failure;
     stop
+  else (no)
   endif
 }
 
@@ -64,17 +77,12 @@ partition "Authorization Check" {
     - **jwt.scopes**
   end note
 
-  if (Authorization bypassed?) then (yes)
-    :Set **jwt.authorization.bypassed** = true;
+  if (Meets requirements?) then (yes)
     :Set **jwt.authorized** = true;
   else (no)
-    if (Meets requirements?) then (yes)
-      :Set **jwt.authorized** = true;
-    else (no)
-      :Set **jwt.authorized** = false;
-      :Route to failure;
-      stop
-    endif
+    :Set **jwt.authorized** = false;
+    :Route to failure;
+    stop
   endif
 }
 

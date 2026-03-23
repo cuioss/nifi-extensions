@@ -48,6 +48,8 @@ This project follows centralized coding standards from https://github.com/cuioss
 cd e-2-e-playwright && npm run playwright:test
 ----
 
+IMPORTANT: Maven integration tests (`./mvnw verify -Pintegration-tests`) manage their own Docker container lifecycle. If you have manually started containers via `run-and-deploy.sh`, stop them first (`cd integration-testing/src/main/docker && docker compose down -v`) to avoid port conflicts.
+
 See link:../../integration-testing/README.adoc[Integration Testing] and link:../../e-2-e-playwright/README.adoc[E2E Testing] for detailed instructions.
 
 == PlantUML Diagrams

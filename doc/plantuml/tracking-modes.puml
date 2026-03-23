@@ -29,7 +29,7 @@ note over Gateway : Notify signals Wait
 
 Client -> Gateway : POST /attachments/{traceId}
 Gateway --> Client : 202 (attachment accepted)
-note over Gateway : Wait releases parent\nstatus = PROCESSING
+note over Gateway : min count reached\nstatus = PROCESSED
 
 Client -> Gateway : POST /attachments/{traceId}
 Gateway --> Client : 409 (window closed)

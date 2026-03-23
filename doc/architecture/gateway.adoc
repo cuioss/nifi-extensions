@@ -60,6 +60,8 @@ Requests flow through up to three authentication layers depending on the entry p
                          |         |                     |
                          |         +--> /health          |
                          |         +--> /metrics         |
+                         |         +--> /status          |
+                         |         +--> /attachments     |
                          |         +--> /api/**          |
                          +-------------------------------+
 ----
@@ -80,6 +82,8 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 * `rest.gateway.management.health.auth-mode` (default: `local-only,bearer`)
 * `rest.gateway.management.metrics.auth-mode` (default: `local-only,bearer`)
+* `rest.gateway.management.status.auth-mode` (default: `local-only,bearer`)
+* `rest.gateway.management.attachments.auth-mode` (default: `local-only,bearer`)
 
 == Endpoint Authorization Matrix
 
@@ -146,6 +150,16 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |GET
 |Prometheus/JSON metrics from security event counters
 
+|`/status/{traceId}`
+|`local-only,bearer`
+|GET
+|Request tracking status polling (requires `DistributedMapCacheClient`)
+
+|`/attachments/{parentTraceId}`
+|`local-only,bearer`
+|POST
+|Attachment uploads for tracked requests (requires `tracking-mode=attachments`)
+
 |Data routes (`/api/**`)
 |`bearer` (per-route)
 |Per-route config
@@ -205,6 +219,21 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 |`jwt.content.<claim>`
 |Individual token claims mapped by `TokenClaimMapper` (standard claims excluded to avoid duplication)
+
+|`rest.trace.id`
+|Unique trace ID for tracked requests (set when `tracking-mode` is `simple` or `attachments`)
+
+|`rest.trace.accepted.at`
+|ISO-8601 timestamp when the tracked request was accepted
+
+|`rest.trace.parent.id`
+|Parent trace ID (set when client sends `X-Parent-Trace-Id` header)
+
+|`rest.trace.attachments.min.count`
+|Minimum attachment count from route configuration (set when `tracking-mode=attachments`)
+
+|`rest.trace.attachments.timeout`
+|Attachment window timeout from route configuration (set when `tracking-mode=attachments`)
 |===
 
 == RFC 9457 Error Types
@@ -218,7 +247,8 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |403 |Forbidden |Valid token but missing required roles for the matched route
 |404 |Not Found |No route configured for the requested path
 |405 |Method Not Allowed |Route exists but HTTP method not in allowed set; includes `Allow` header
-|413 |Payload Too Large |Request body exceeds `rest.gateway.max.request.size`
+|409 |Conflict |Attachment limit reached or attachment window closed
+|413 |Payload Too Large |Request body exceeds `rest.gateway.max.request.size` or per-route `restapi.<name>.max-request-size`
 |422 |Unprocessable Content |Request body fails JSON Schema validation
 |500 |Internal Server Error |Unexpected internal error
 |503 |Service Unavailable |Request queue is full (back-pressure)

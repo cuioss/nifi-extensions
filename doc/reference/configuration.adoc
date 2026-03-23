@@ -9,7 +9,7 @@ All configuration options for both processors and the shared Controller Service.
 
 image::configuration-overview.png[Configuration Overview Diagram, align="center"]
 
-== Controller Service Properties
+== Controller Service
 
 The `JwtIssuerConfigService` manages issuer configuration and token validation settings. Both processors reference the same CS instance.
 
@@ -71,8 +71,8 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |api://my-service
 
 |issuer.<name>.name
-|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required
-|Primary Auth Server
+|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required. *Warning*: This value becomes the `issuerIdentifier` used for token matching. If both `name` and `issuer` are set, `name` takes precedence. Use a URI matching the `iss` claim.
+|https://auth.example.com/
 
 |issuer.<name>.issuer
 |Issuer URI (must match the `iss` claim in the JWT)
@@ -207,6 +207,61 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |--
 |Comma-separated scopes required for `/metrics` access (only checked when auth-mode includes `bearer`)
 |No
+
+|rest.gateway.distributed-map-cache-client
+|--
+|Reference to a `DistributedMapCacheClient` for request tracking. Required when any route has `tracking-mode` other than `none`.
+|No
+
+|rest.gateway.management.status.enabled
+|true
+|Whether the `/status/{traceId}` management endpoint is active
+|No
+
+|rest.gateway.management.status.auth-mode
+|local-only,bearer
+|Authentication mode for `/status`: `bearer`, `none`, or `local-only` (comma-separated to combine)
+|No
+
+|rest.gateway.management.status.required-roles
+|--
+|Comma-separated roles required for `/status` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.status.required-scopes
+|--
+|Comma-separated scopes required for `/status` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.attachments.enabled
+|true
+|Whether the `/attachments/{parentTraceId}` endpoint is active
+|No
+
+|rest.gateway.management.attachments.auth-mode
+|local-only,bearer
+|Authentication mode for `/attachments`: `bearer`, `none`, or `local-only` (comma-separated to combine)
+|No
+
+|rest.gateway.management.attachments.required-roles
+|--
+|Comma-separated roles required for `/attachments` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.attachments.required-scopes
+|--
+|Comma-separated scopes required for `/attachments` access (only checked when auth-mode includes `bearer`)
+|No
+
+|rest.gateway.management.attachments.max-request-size
+|0
+|Per-endpoint body size limit for attachment uploads (0 = use global)
+|No
+
+|rest.gateway.management.attachments.hard-limit
+|20
+|Global ceiling for any route's `attachments-max-count`
+|No
 |===
 
 == Route Configuration via Dynamic Properties
@@ -228,6 +283,9 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |restapi.<name>.enabled |Whether the route is active (default: true) |false
 |restapi.<name>.schema |File path to JSON Schema for request body validation |./conf/schemas/user.json
 |restapi.<name>.tracking-mode |Tracking mode: `none` (default), `simple`, `attachments` (see link:attachments-api.adoc[Attachments API]) |simple
+|restapi.<name>.attachments-min-count |Minimum number of attachments required before auto-transition to `PROCESSED` (default: 0). Only relevant when `tracking-mode=attachments`. |2
+|restapi.<name>.attachments-max-count |Maximum number of attachments allowed; 0 = use global hard limit. Only relevant when `tracking-mode=attachments`. |5
+|restapi.<name>.attachments-timeout |Time window for attachment uploads (default: `30 sec`). Only relevant when `tracking-mode=attachments`. |60 sec
 |===
 
 === Multi-Route Configuration Example
@@ -262,12 +320,12 @@ image::configuration-properties.png[Configuration Properties Hierarchy, align="c
 
 [source,properties]
 ----
-jwt.validation.issuer.1.name=Primary Auth Server
+jwt.validation.issuer.1.issuer=https://auth.example.org/
 jwt.validation.issuer.1.enabled=true
 jwt.validation.issuer.1.jwks-url=https://auth.example.org/.well-known/jwks.json
 jwt.validation.issuer.1.audience=my-api
 
-jwt.validation.issuer.2.name=Secondary Auth Server
+jwt.validation.issuer.2.issuer=https://auth2.example.org/
 jwt.validation.issuer.2.enabled=false
 jwt.validation.issuer.2.jwks-url=https://auth2.example.org/.well-known/jwks.json
 jwt.validation.issuer.2.audience=my-secondary-api
@@ -282,11 +340,11 @@ NOTE: The YAML format uses `issuers` (plural, list syntax) while the properties 
 jwt:
   validation:
     issuers:
-      - name: "Primary Auth Server"
+      - issuer: "https://auth.example.org/"
         enabled: true
         jwks-url: "https://auth.example.org/.well-known/jwks.json"
         audience: "my-api"
-      - name: "Secondary Auth Server"
+      - issuer: "https://auth2.example.org/"
         enabled: false
         jwks-url: "https://auth2.example.org/.well-known/jwks.json"
         audience: "my-secondary-api"
