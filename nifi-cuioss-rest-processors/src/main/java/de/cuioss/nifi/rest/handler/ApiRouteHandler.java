@@ -150,7 +150,7 @@ public class ApiRouteHandler implements EndpointHandler {
             }
         }
 
-        if (!enqueueFlowFile(sanitized, token, body, request, method, path, traceId, parentTraceId,
+        if (!enqueueFlowFile(sanitized, token, body, request, traceId, parentTraceId,
                 response, callback)) {
             return;
         }
@@ -209,15 +209,14 @@ public class ApiRouteHandler implements EndpointHandler {
     }
 
     private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, String method, String path,
-            @Nullable String traceId, @Nullable String parentTraceId,
+            byte[] body, Request request, @Nullable String traceId, @Nullable String parentTraceId,
             Response response, Callback callback) {
         if (!route.createFlowFile()) {
             LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.name());
             return true;
         }
         var container = new HttpRequestContainer(
-                route.name(), method, path,
+                route.name(), request.getMethod(), sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
                 Request.getRemoteAddr(request),
                 body,
@@ -228,7 +227,7 @@ public class ApiRouteHandler implements EndpointHandler {
 
         if (!queue.offer(container)) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
-            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, Request.getRemoteAddr(request));
+            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), Request.getRemoteAddr(request));
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return false;

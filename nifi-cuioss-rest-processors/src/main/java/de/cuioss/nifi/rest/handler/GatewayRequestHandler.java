@@ -39,6 +39,8 @@ import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Optional;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -190,10 +192,11 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
 
         // 4. Body read + size check
-        byte[] body = readAndValidateBody(request, handler, method, path, response, callback);
-        if (body == null) {
+        Optional<byte[]> bodyOpt = readAndValidateBody(request, handler, method, path, response, callback);
+        if (bodyOpt.isEmpty()) {
             return;
         }
+        byte[] body = bodyOpt.get();
 
         // 5. Auth-mode dispatch
         AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
@@ -240,16 +243,15 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     /**
-     * Reads and validates the request body size. Returns null if body exceeds limit
+     * Reads and validates the request body size. Returns empty if body exceeds limit
      * (error response already sent).
      */
-    @Nullable
-    private byte[] readAndValidateBody(Request request, EndpointHandler handler,
+    private Optional<byte[]> readAndValidateBody(Request request, EndpointHandler handler,
             String method, String path,
             Response response, Callback callback) throws IOException {
         int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
         if (effectiveMaxSize <= 0) {
-            return EMPTY_BODY;
+            return Optional.of(EMPTY_BODY);
         }
         byte[] body = readBody(request, effectiveMaxSize);
         if (body.length > effectiveMaxSize) {
@@ -258,9 +260,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
             sendProblemResponse(response, callback,
                     ProblemDetail.payloadTooLarge(
                             "Request body size %d exceeds maximum %d bytes".formatted(body.length, effectiveMaxSize)));
-            return null;
+            return Optional.empty();
         }
-        return body;
+        return Optional.of(body);
     }
 
     /**

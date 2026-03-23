@@ -66,6 +66,7 @@ public class RouteConfigurationParser {
     static final String SUCCESS_OUTCOME_KEY = "success-outcome";
     /** Property key for FlowFile creation flag. */
     static final String CREATE_FLOWFILE_KEY = "create-flowfile";
+    private static final String FALSE_VALUE = "false";
     /** Property key for authentication mode. */
     static final String AUTH_MODE_KEY = "auth-mode";
     /** Property key for per-route maximum request body size. */
@@ -108,13 +109,13 @@ public class RouteConfigurationParser {
             return Optional.empty();
         }
 
-        boolean enabled = !"false".equalsIgnoreCase(routeProps.get(ENABLED_KEY));
+        boolean enabled = !FALSE_VALUE.equalsIgnoreCase(routeProps.get(ENABLED_KEY));
         Set<String> methods = parseHttpMethods(routeProps.get(METHODS_KEY));
         Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
         Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
         String schema = routeProps.get(SCHEMA_KEY);
         String successOutcome = resolveSuccessOutcome(routeProps, routeName);
-        boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
+        boolean createFlowFile = !FALSE_VALUE.equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
         Set<AuthMode> authModes = resolveAuthModes(routeName, routeProps.get(AUTH_MODE_KEY));
         int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
         TrackingMode trackingMode = parseTrackingMode(routeProps.get(TRACKING_MODE_KEY));
@@ -143,7 +144,7 @@ public class RouteConfigurationParser {
 
     private static String resolveSuccessOutcome(Map<String, String> routeProps, String routeName) {
         String successOutcome = routeProps.get(SUCCESS_OUTCOME_KEY);
-        boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
+        boolean createFlowFile = !FALSE_VALUE.equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
         if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
             return routeName;
         }

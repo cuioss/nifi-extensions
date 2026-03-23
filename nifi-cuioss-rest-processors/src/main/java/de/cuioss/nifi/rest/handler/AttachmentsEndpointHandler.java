@@ -49,6 +49,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class AttachmentsEndpointHandler implements EndpointHandler {
 
+    private record ResponseContext(Response response, Callback callback) { }
+
     private static final CuiLogger LOGGER = new CuiLogger(AttachmentsEndpointHandler.class);
     @SuppressWarnings("java:S1075") // URL path, not filesystem path
     static final String ATTACHMENTS_PATH = "/attachments";
@@ -186,7 +188,7 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             return;
         }
 
-        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, response, callback)) {
+        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, new ResponseContext(response, callback))) {
             return;
         }
 
@@ -285,8 +287,8 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
     }
 
     private boolean enqueueAttachment(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, String parentTraceId, String traceId,
-            Response response, Callback callback) {
+            byte[] body, Request request, String parentTraceId,
+            String traceId, ResponseContext responseCtx) {
         var container = new HttpRequestContainer(
                 ATTACHMENTS_ROUTE_NAME, "POST", sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
@@ -303,7 +305,7 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, "POST", sanitized.path(),
                     Request.getRemoteAddr(request));
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
-                    .sendResponse(response, callback);
+                    .sendResponse(responseCtx.response(), responseCtx.callback());
             return false;
         }
         return true;

@@ -96,8 +96,6 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
     private static final String KEY_USERNAME = "username";
-    @SuppressWarnings("java:S2068") // "password" is the OAuth 2.0 grant type name, not a credential
-    private static final String KEY_PASSWORD = "password";
     private static final String GRANT_TYPE_PASSWORD = "password";
     static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_PASSWORD, "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
@@ -629,7 +627,7 @@ public class GatewayProxyServlet extends HttpServlet {
         }
         if (GRANT_TYPE_PASSWORD.equals(grantType)) {
             params.put(KEY_USERNAME, requestBody.getString(KEY_USERNAME, ""));
-            params.put(KEY_PASSWORD, requestBody.getString(KEY_PASSWORD, ""));
+            params.put(GRANT_TYPE_PASSWORD, requestBody.getString(GRANT_TYPE_PASSWORD, ""));
         }
         if (!scope.isBlank()) {
             params.put("scope", scope);
@@ -969,34 +967,35 @@ public class GatewayProxyServlet extends HttpServlet {
         return value != null ? value : defaultValue;
     }
 
+    private record MgmtPropertyKeys(String enabled, String authMode, String roles, String scopes) { }
+
     private static JsonArrayBuilder buildManagementEndpointsArray(Map<String, String> props) {
         JsonArrayBuilder mgmtArray = Json.createArrayBuilder();
         mgmtArray.add(buildManagementEndpoint("health", "/health", "GET", props,
-                HEALTH_ENABLED_PROPERTY, HEALTH_AUTH_MODE_PROPERTY,
-                HEALTH_REQUIRED_ROLES_PROPERTY, HEALTH_REQUIRED_SCOPES_PROPERTY));
+                new MgmtPropertyKeys(HEALTH_ENABLED_PROPERTY, HEALTH_AUTH_MODE_PROPERTY,
+                        HEALTH_REQUIRED_ROLES_PROPERTY, HEALTH_REQUIRED_SCOPES_PROPERTY)));
         mgmtArray.add(buildManagementEndpoint("metrics", "/metrics", "GET", props,
-                METRICS_ENABLED_PROPERTY, METRICS_AUTH_MODE_PROPERTY,
-                METRICS_REQUIRED_ROLES_PROPERTY, METRICS_REQUIRED_SCOPES_PROPERTY));
+                new MgmtPropertyKeys(METRICS_ENABLED_PROPERTY, METRICS_AUTH_MODE_PROPERTY,
+                        METRICS_REQUIRED_ROLES_PROPERTY, METRICS_REQUIRED_SCOPES_PROPERTY)));
         mgmtArray.add(buildManagementEndpoint("status", "/status/{traceId}", "GET", props,
-                STATUS_ENABLED_PROPERTY, STATUS_AUTH_MODE_PROPERTY,
-                STATUS_REQUIRED_ROLES_PROPERTY, STATUS_REQUIRED_SCOPES_PROPERTY));
+                new MgmtPropertyKeys(STATUS_ENABLED_PROPERTY, STATUS_AUTH_MODE_PROPERTY,
+                        STATUS_REQUIRED_ROLES_PROPERTY, STATUS_REQUIRED_SCOPES_PROPERTY)));
         mgmtArray.add(buildManagementEndpoint("attachments", "/attachments/{parentTraceId}", "POST", props,
-                ATTACHMENTS_ENABLED_PROPERTY, ATTACHMENTS_AUTH_MODE_PROPERTY,
-                ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY));
+                new MgmtPropertyKeys(ATTACHMENTS_ENABLED_PROPERTY, ATTACHMENTS_AUTH_MODE_PROPERTY,
+                        ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY)));
         return mgmtArray;
     }
 
     private static JsonObjectBuilder buildManagementEndpoint(String name, String path, String method,
-            Map<String, String> props, String enabledKey, String authModeKey,
-            String rolesKey, String scopesKey) {
+            Map<String, String> props, MgmtPropertyKeys keys) {
         JsonObjectBuilder endpoint = Json.createObjectBuilder();
         endpoint.add("name", name);
         endpoint.add("path", path);
         endpoint.add(KEY_METHODS, Json.createArrayBuilder().add(method));
-        endpoint.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(prop(props, enabledKey, "true")));
-        endpoint.add(KEY_AUTH_MODE, prop(props, authModeKey, DEFAULT_AUTH_MODE));
-        endpoint.add(KEY_REQUIRED_ROLES, prop(props, rolesKey, ""));
-        endpoint.add(KEY_REQUIRED_SCOPES, prop(props, scopesKey, ""));
+        endpoint.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(prop(props, keys.enabled(), "true")));
+        endpoint.add(KEY_AUTH_MODE, prop(props, keys.authMode(), DEFAULT_AUTH_MODE));
+        endpoint.add(KEY_REQUIRED_ROLES, prop(props, keys.roles(), ""));
+        endpoint.add(KEY_REQUIRED_SCOPES, prop(props, keys.scopes(), ""));
         endpoint.add(KEY_BUILT_IN, true);
         return endpoint;
     }
