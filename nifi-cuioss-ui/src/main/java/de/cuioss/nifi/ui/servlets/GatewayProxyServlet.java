@@ -96,8 +96,8 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
     private static final String KEY_USERNAME = "username";
-    private static final String GRANT_TYPE_PASSWORD = "password";
-    static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_PASSWORD, "client_credentials");
+    private static final String GRANT_TYPE_ROPC = "password";
+    static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_ROPC, "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
@@ -503,7 +503,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            if (GRANT_TYPE_PASSWORD.equals(grantType)
+            if (GRANT_TYPE_ROPC.equals(grantType)
                     && requestBody.getString(KEY_USERNAME, "").isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Missing required field for password grant: username");
@@ -625,9 +625,9 @@ public class GatewayProxyServlet extends HttpServlet {
         if (!clientSecret.isBlank()) {
             params.put("client_secret", clientSecret);
         }
-        if (GRANT_TYPE_PASSWORD.equals(grantType)) {
+        if (GRANT_TYPE_ROPC.equals(grantType)) {
             params.put(KEY_USERNAME, requestBody.getString(KEY_USERNAME, ""));
-            params.put(GRANT_TYPE_PASSWORD, requestBody.getString(GRANT_TYPE_PASSWORD, ""));
+            params.put(GRANT_TYPE_ROPC, requestBody.getString(GRANT_TYPE_ROPC, ""));
         }
         if (!scope.isBlank()) {
             params.put("scope", scope);

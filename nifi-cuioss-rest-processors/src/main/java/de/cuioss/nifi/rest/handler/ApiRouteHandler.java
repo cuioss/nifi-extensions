@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
  */
 public class ApiRouteHandler implements EndpointHandler {
 
+    private record ResponseContext(Response response, Callback callback) { }
+
     private static final CuiLogger LOGGER = new CuiLogger(ApiRouteHandler.class);
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
 
@@ -150,8 +152,8 @@ public class ApiRouteHandler implements EndpointHandler {
             }
         }
 
-        if (!enqueueFlowFile(sanitized, token, body, request, traceId, parentTraceId,
-                response, callback)) {
+        if (!enqueueFlowFile(sanitized, token, body, request, traceId,
+                parentTraceId, new ResponseContext(response, callback))) {
             return;
         }
 
@@ -209,8 +211,8 @@ public class ApiRouteHandler implements EndpointHandler {
     }
 
     private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, @Nullable String traceId, @Nullable String parentTraceId,
-            Response response, Callback callback) {
+            byte[] body, Request request, @Nullable String traceId,
+            @Nullable String parentTraceId, ResponseContext responseCtx) {
         if (!route.createFlowFile()) {
             LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.name());
             return true;
@@ -229,7 +231,7 @@ public class ApiRouteHandler implements EndpointHandler {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), Request.getRemoteAddr(request));
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
-                    .sendResponse(response, callback);
+                    .sendResponse(responseCtx.response(), responseCtx.callback());
             return false;
         }
         return true;
