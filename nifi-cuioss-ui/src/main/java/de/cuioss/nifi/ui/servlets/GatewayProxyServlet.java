@@ -969,7 +969,8 @@ public class GatewayProxyServlet extends HttpServlet {
         return value != null ? value : defaultValue;
     }
 
-    private record MgmtPropertyKeys(String enabled, String authMode, String roles, String scopes) { }
+    private record MgmtPropertyKeys(String enabled, String authMode, String roles, String scopes) {
+    }
 
     private static JsonArrayBuilder buildManagementEndpointsArray(Map<String, String> props) {
         JsonArrayBuilder mgmtArray = Json.createArrayBuilder();

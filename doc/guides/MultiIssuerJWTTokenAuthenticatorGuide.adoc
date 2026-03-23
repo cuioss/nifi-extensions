@@ -117,87 +117,11 @@ Connect both relationships to downstream processors:
 
 == Controller Service Properties
 
-The `JwtIssuerConfigService` manages issuer configuration, JWKS key management, and token validation settings:
-
-[cols="2,1,1,4"]
-|===
-|Property |Default |Required |Description
-
-|JWKS Refresh Interval
-|`3600`
-|Yes
-|Seconds between JWKS key refreshes
-
-|JWKS Connection Timeout
-|`10`
-|Yes
-|Seconds before a JWKS endpoint request times out
-
-|Maximum Token Size
-|`16384`
-|Yes
-|Maximum JWT size in bytes (rejects oversized tokens)
-
-|Allowed Algorithms
-|Secure defaults
-|No
-|Comma-separated list of permitted signing algorithms. Defaults to RS256, RS384, RS512, ES256, ES384, ES512, PS256, PS384, PS512. The `none` algorithm is never allowed regardless of this setting.
-
-|Require HTTPS for JWKS URLs
-|`true`
-|Yes
-|Enforces HTTPS for JWKS endpoint URLs. Disable only for development.
-
-|Allow Private Network Addresses for JWKS
-|`false`
-|Yes
-|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development or trusted environments (e.g., Docker/Kubernetes deployments where the IdP runs on an internal network).
-|===
+See link:../reference/configuration.adoc#_controller_service_properties[Configuration Reference — Controller Service Properties] for the full property table (JWKS refresh, connection timeout, token size, allowed algorithms, HTTPS enforcement).
 
 == Issuer Configuration (CS Dynamic Properties)
 
-Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<name>.` (where `<name>` is any identifier string, e.g., `keycloak`, `auth0`, or numeric like `1`, `2`):
-
-[cols="2,3,1"]
-|===
-|Dynamic Property |Description |Example
-
-|`issuer.<name>.jwks-url`
-|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
-|`\https://auth.example.com/.well-known/jwks.json`
-
-|`issuer.<name>.enabled`
-|Enable or disable this issuer without removing the configuration
-|`true`
-
-|`issuer.<name>.audience`
-|Required `aud` claim for tokens from this issuer
-|`api://my-service`
-
-|`issuer.<name>.name`
-|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required
-|`Primary Auth Server`
-
-|`issuer.<name>.issuer`
-|Issuer URI (must match the `iss` claim in the JWT)
-|`\https://auth.example.com/`
-
-|`issuer.<name>.client-id`
-|Expected client ID claim for tokens from this issuer
-|`my-client-app`
-
-|`issuer.<name>.jwks-file`
-|File path to a local JWKS key file (alternative to `jwks-url`)
-|`/opt/nifi/conf/jwks.json`
-
-|`issuer.<name>.jwks-content`
-|Inline JWKS JSON content. *Not yet supported*, the backend logs a warning and skips issuers configured with this option. Use `jwks-url` or `jwks-file` instead.
-|`{"keys":[...]}`
-
-|`issuer.<name>.jwks-type`
-|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The `content` type is recognized but not yet supported.
-|`url`
-|===
+See link:../reference/configuration.adoc#_dynamic_properties_issuers[Configuration Reference — Dynamic Properties (Issuers)] for the full property table. Each identity provider is configured as dynamic properties on the `JwtIssuerConfigService` Controller Service with the prefix `issuer.<name>.<property>`.
 
 NOTE: Roles and scopes are configured at the **processor level** via the `Required Roles` and `Required Scopes` properties, not as per-issuer CS dynamic properties.
 
@@ -246,7 +170,7 @@ On successful validation the processor sets these attributes on the FlowFile:
 |Comma-separated roles from the token
 
 |`jwt.scopes`
-|Comma-separated scopes from the token
+|Comma-separated scopes from the token (omitted if token has no `scope` claim)
 
 |`jwt.groups`
 |Comma-separated groups from the token (omitted if empty)

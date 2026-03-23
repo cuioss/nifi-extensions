@@ -68,3 +68,6 @@ Both processors share JWT validation through a common `JwtIssuerConfigService` C
 * link:standards.adoc[Standards Compliance]
 * link:../reference/configuration.adoc[Configuration Reference]
 * link:../reference/error-reference.adoc[Error Reference]
+* link:../reference/request-tracking-api.adoc[Request Tracking API]
+* link:../reference/request-tracking-architecture.adoc[Request Tracking Architecture]
+* link:../reference/attachments-api.adoc[Attachments API]

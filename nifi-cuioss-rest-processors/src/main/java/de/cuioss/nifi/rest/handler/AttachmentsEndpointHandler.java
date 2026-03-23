@@ -49,7 +49,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class AttachmentsEndpointHandler implements EndpointHandler {
 
-    private record ResponseContext(Response response, Callback callback) { }
+    private record ResponseContext(Response response, Callback callback) {
+    }
 
     private static final CuiLogger LOGGER = new CuiLogger(AttachmentsEndpointHandler.class);
     @SuppressWarnings("java:S1075") // URL path, not filesystem path

@@ -1,0 +1,5 @@
+= nifi-cuioss-processors
+
+`MultiIssuerJWTTokenAuthenticator` -- FlowFile-based JWT validation processor that validates tokens from a configurable FlowFile attribute against multiple identity providers, routes to `success` or `authentication-failed`.
+
+See link:../doc/architecture/jwt-processor.adoc[JWT Processor Architecture] for the processing flow and attribute lifecycle, and link:../doc/reference/configuration.adoc[Configuration Reference] for property details.

@@ -1,5 +1,5 @@
 = nifi-cuioss-common
 
-Shared JWT infrastructure: `StandardJwtIssuerConfigService` implementation, configuration management (including `ConfigurationManager`, `IssuerConfigurationParser`, `IssuerPropertyDescriptorFactory`), and utilities (including `AuthorizationValidator`, `TokenClaimMapper`, `ErrorContext`, `TokenMasking`, and others).
+Shared JWT infrastructure: `StandardJwtIssuerConfigService` implementation, configuration management (`ConfigurationManager`, `IssuerConfigurationParser`, `IssuerPropertyDescriptorFactory`), authorization (`AuthorizationValidator`, `AuthorizationRequirements`), token utilities (`TokenClaimMapper`, `TokenMasking`, `ErrorContext`, `ProcessingError`), property parsing (`DynamicPropertyGroupParser`, `NiFiConfigReader`), and i18n (`I18nResolver`, `NiFiI18nResolver`).
 
 See link:../doc/architecture/README.adoc[Architecture Overview] for module relationships and link:../doc/architecture/jwt-processor.adoc[JWT Processor Architecture] for the Controller Service lifecycle.

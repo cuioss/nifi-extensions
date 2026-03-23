@@ -3,40 +3,65 @@
 !pragma layout smetana
 skinparam packageStyle rectangle
 
-title JWT Token Authenticator: Configuration Properties
+title JWT Configuration Properties
 
-package "jwt.validation" as jv {
-  class "Core Properties" as core {
-    token.location: AUTHORIZATION_HEADER|CUSTOM_HEADER|FLOW_FILE_CONTENT
-    token.header: Authorization
-    custom.header.name: X-Authorization
-    bearer.token.prefix: Bearer
-    require.valid.token: true|false
+package "Controller Service\n(JwtIssuerConfigService)" as cs {
+  class "CS Properties" as core {
     jwks.refresh.interval: 3600
+    jwks.connection.timeout: 10
     maximum.token.size: 16384
+    allowed.algorithms: RS256,ES256,...
+    require.https.for.jwks: true|false
   }
-  
+
   class "Issuer 1" as issuer1 {
-    <issuer-name>: URL
+    <issuer-name>.jwks-url: URL
     <issuer-name>.enabled: true|false
+    <issuer-name>.issuer: URI (must match iss claim)
     <issuer-name>.audience: api://my-service
-    <issuer-name>.scopes: read,write
-    <issuer-name>.roles: admin,user
+    <issuer-name>.client-id: my-client-app
   }
-  
+
   class "Issuer 2" as issuer2 {
-    <issuer-name>: URL
+    <issuer-name>.jwks-url: URL
     <issuer-name>.enabled: true|false
+    <issuer-name>.issuer: URI (must match iss claim)
     <issuer-name>.audience: api://other-service
-    <issuer-name>.scopes: read
-    <issuer-name>.roles: viewer
+    <issuer-name>.client-id: other-client
   }
 }
 
-note right of issuer1 
+package "Processor Properties" as proc {
+  class "MultiIssuerJWTTokenAuthenticator" as jwt_proc {
+    token.attribute: jwt.token
+    require.valid.token: true|false
+    required.roles: admin,user
+    required.scopes: read,write
+    cs.reference: JwtIssuerConfigService
+  }
+
+  class "RestApiGatewayProcessor" as gw_proc {
+    listening.port: 9443
+    listening.host: 0.0.0.0
+    ssl.context.service: SSLContextProvider
+    max.request.size: 1048576
+    request.queue.size: 50
+    cs.reference: JwtIssuerConfigService
+  }
+}
+
+note right of issuer1
   Dynamic properties:
   Multiple issuers can be configured
   with their own authentication rules
+end note
+
+note right of gw_proc
+  Routes configured via
+  dynamic properties:
+  restapi.<name>.path
+  restapi.<name>.methods
+  restapi.<name>.auth-mode
 end note
 
 @enduml

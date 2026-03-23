@@ -72,7 +72,7 @@ Only for routes with `tracking-mode=attachments`. The parent request is waiting 
 }
 ----
 
-While in this status, `POST /attachments/{traceId}` uploads are accepted. Once the minimum attachment count (`attachments-min-count`) is reached, the gateway automatically transitions the status to `PROCESSED`. Attachments are still accepted up to `attachments-max-count` even after this transition. The attachment window closes when the status is set to `PROCESSING`, `REJECTED`, or `ERROR` by downstream flow logic.
+While in this status, `POST /attachments/{traceId}` uploads are accepted. Once the minimum attachment count (`attachments-min-count`) is reached, the gateway automatically transitions the status to `PROCESSED`. Attachments are still accepted up to `attachments-max-count` even after this transition. The attachment window is open only while the status is `COLLECTING_ATTACHMENTS` or `PROCESSED`; it closes when the status transitions to `PROCESSING`, `REJECTED`, `ERROR`, or any other status set by downstream flow logic (409 Conflict).
 
 ==== PROCESSING
 

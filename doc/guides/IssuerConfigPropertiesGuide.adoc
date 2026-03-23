@@ -77,12 +77,18 @@ If the custom tab is not visible or not functioning properly, you can configure 
 
 . Open the Controller Service configuration, in the "Properties" tab click the "+" button to add a new property
 . Add properties in the format `issuer.<issuer-name>.<property-key>`:
-* `issuer.keycloak.issuer`: The URI of the token issuer
+* `issuer.keycloak.issuer`: Issuer URI (must match the `iss` claim in the JWT)
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests`
-* `issuer.keycloak.jwks-url`: The URL of the JWKS endpoint
+* `issuer.keycloak.jwks-url`: JWKS endpoint URL
 ** Example: `https://keycloak:8443/realms/oauth_integration_tests/protocol/openid-connect/certs`
-* `issuer.keycloak.audience` (optional): The expected audience claim value
-* `issuer.keycloak.client-id` (optional): The client ID for token validation
+* `issuer.keycloak.audience` (optional): Required `aud` claim value
+* `issuer.keycloak.client-id` (optional): Expected client ID claim
+* `issuer.keycloak.enabled` (optional): Set to `false` to disable without removing
+* `issuer.keycloak.name` (optional): Alternative issuer identifier; if both `name` and `issuer` are set, `name` takes precedence
+* `issuer.keycloak.jwks-file` (optional): File path to a local JWKS key file (alternative to `jwks-url`)
+* `issuer.keycloak.jwks-type` (optional): Explicit JWKS source type (`url` or `file`; auto-detected if omitted)
++
+See link:../reference/configuration.adoc#_dynamic_properties_issuers[Configuration Reference — Dynamic Properties] for the complete property list.
 . Click "Apply" to save the properties
 
 == Testing the Configuration

@@ -69,7 +69,7 @@ curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
   -d '{"file": "attachment-content"}' | jq .
 ----
 
-Response (202): accepted with its own `traceId` and `parentTraceId`.
+Response (202): accepted with its own `traceId` and a `_links.status` link.
 
 === 5. GET /status/{traceId} (after attachment submitted)
 
@@ -95,9 +95,9 @@ curl -sk -X POST https://localhost:9443/attachments/$TRACE_ID \
   -d '{"file": "over-limit"}' | jq .
 ----
 
-Response (409): `"Attachment limit reached"`.
+Response (409): `"Attachment limit reached: <max-count>"`.
 
-NOTE: If the parent status has transitioned to `PROCESSING`, `REJECTED`, or `ERROR` (e.g., by downstream NiFi flow logic), the attachment window closes and further uploads return 409 `"Attachment window closed"`.
+NOTE: If the parent status has transitioned to `PROCESSING`, `REJECTED`, or `ERROR` (e.g., by downstream NiFi flow logic), the attachment window closes and further uploads return 409 `"Attachment window closed — parent request is already being processed"`.
 
 == Status Lifecycle
 
@@ -141,11 +141,11 @@ The Wait processor holds the parent FlowFile until attachments arrive. The Notif
 
 | Wait
 | Target Signal Count
-| `${rest.trace.attachments.min.count:replaceEmpty('1')}`
+| `${rest.trace.attachments.min.count:ifEmpty('1')}`
 
 | Wait
 | Expiration Duration
-| `${rest.trace.attachments.timeout:replaceEmpty('30 sec')}`
+| `${rest.trace.attachments.timeout:ifEmpty('30 sec')}`
 
 | Notify
 | Signal ID

@@ -24,7 +24,7 @@ Content-Type: application/x-www-form-urlencoded;charset=UTF-8
 Request-Token: [CSRF token from __Secure-Request-Token cookie]
 Body: username=testUser&password=drowssap
 
-→ HTTP 201 Created
+→ HTTP 2xx (e.g. 201 Created)
 → Response Body: [JWT Token]
 
 GET /nifi-api/flow/current-user

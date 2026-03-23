@@ -27,7 +27,8 @@ package "RestApiGatewayProcessor\nProperties" as gw_config {
   [Listening Port / Host] as listen
   [SSL Context Service] as ssl
   [Max Request Size / Queue] as limits
-  [Management API Key] as mgmt_key
+  [Distributed Map Cache Client] as cache
+  [Management Endpoints\n(health, metrics, status,\nattachments)] as mgmt
   [CS Reference] as gw_cs_ref
   [Route Configuration\n(dynamic properties)] as routes
 }
@@ -41,9 +42,9 @@ gw_cs_ref --> cs_config : references
 
 note bottom of sources
   Precedence:
-  1. Static Config Files
+  1. Static Config Files (loaded first)
   2. Environment Variables
-  3. UI Configuration
+  3. NiFi UI (overrides at runtime)
 end note
 
 note right of routes
@@ -52,14 +53,15 @@ note right of routes
   restapi.<name>.methods
   restapi.<name>.required-roles
   restapi.<name>.required-scopes
+  restapi.<name>.tracking-mode
 end note
 
 note right of issuers
   Each issuer has:
   - JWKS URL
   - Audience
-  - Roles
-  - Scopes
+  - Issuer URI
+  - Client ID
 end note
 
 @enduml

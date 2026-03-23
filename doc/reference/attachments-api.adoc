@@ -190,7 +190,7 @@ Each attachment gets its own `traceId` for independent status tracking, linked t
 
 |409
 |Conflict
-|Parent request does not accept attachments (created by a `simple` route), or attachment limit reached
+|Parent request does not accept attachments (`attachmentsMaxCount` is 0), attachment window closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or attachment limit reached
 
 |503
 |Service Unavailable
@@ -261,6 +261,10 @@ These properties are only relevant when `tracking-mode=attachments` (see link:co
 |`restapi.<name>.attachments-max-count`
 |`0`
 |Maximum number of attachments allowed; 0 = use global hard limit
+
+|`restapi.<name>.attachments-timeout`
+|`30 sec`
+|Time window for attachment uploads; after expiry the attachment window closes
 |===
 
 === Processor Properties
@@ -284,6 +288,14 @@ These properties are only relevant when `tracking-mode=attachments` (see link:co
 |Attachments Hard Limit
 |`20`
 |Global ceiling for any route's `attachments-max-count`
+
+|Attachments Endpoint Required Roles
+|--
+|Comma-separated roles required for `/attachments` access (only checked when auth-mode includes `bearer`)
+
+|Attachments Endpoint Required Scopes
+|--
+|Comma-separated scopes required for `/attachments` access (only checked when auth-mode includes `bearer`)
 |===
 
 === Example

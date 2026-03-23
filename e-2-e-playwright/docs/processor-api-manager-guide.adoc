@@ -11,8 +11,8 @@ The `ProcessorApiManager` utility provides reliable, API-based management of pro
 Core methods (JWT processor):
 
 * *`ensureProcessorOnCanvas()`* — Ensures JWT processor is on canvas (adds if missing). Throws on failure.
-* *`verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()`* — Checks if the processor type is available
-* *`verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()`* — Checks if the processor is on the canvas
+* *`verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()`* — Returns `boolean`: whether the processor type is available
+* *`verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas()`* — Returns `{ exists: boolean, processor: object }`: whether the processor is on the canvas
 * *`addMultiIssuerJWTTokenAuthenticatorOnCanvas(position)`* — Adds the processor at specified position
 * *`removeMultiIssuerJWTTokenAuthenticatorFromCanvas()`* — Removes the processor from the canvas
 * *`startProcessor()`* / *`stopProcessor()`* — Start/stop the processor
@@ -112,9 +112,12 @@ If `verifyMultiIssuerJWTTokenAuthenticatorIsDeployed()` returns false:
 3. Check NiFi logs for deployment errors
 
 === Authentication Issues (401/403)
-1. Ensure proper authentication before API calls
-2. Check that the token is being passed correctly
+1. Ensure `AuthService.ensureReady()` completes before constructing `ProcessorApiManager`
+2. API calls use the page's browser context cookies — verify the session is still valid
 3. Verify user has permissions to manage processors
+
+=== Connection Deletion Fails (409 Conflict)
+The `removeConnectionsForProcessor()` method may return 409 if FlowFiles are queued. It automatically drops queued FlowFiles before retrying the delete. If the error persists, stop the processor first via `stopAllProcessors()`.
 
 === Self-Test
 

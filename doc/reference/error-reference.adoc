@@ -46,6 +46,11 @@ The `type` field links to this documentation page. Error responses are produced 
 |Valid token but missing required roles for the matched route
 |`Insufficient roles: Missing roles: [admin]`
 
+|409
+|Conflict
+|Returned by the `/attachments` endpoint when: (a) the parent route does not accept attachments (`attachmentsMaxCount` is 0), (b) the attachment window is closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or (c) the route's `attachments-max-count` is exceeded.
+|`Attachment limit reached: 5`
+
 |404
 |Not Found
 |No route configured for the requested path

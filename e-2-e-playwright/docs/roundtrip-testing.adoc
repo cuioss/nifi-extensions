@@ -63,7 +63,7 @@ See `CLAUDE.md` "Docker E2E Deployment" section or the `/deploy` skill for the f
 ./mvnw clean verify -pl e-2-e-playwright -Pintegration-tests -am
 ----
 
-Maven starts containers, runs all Playwright tests in a single invocation (auth-setup → self-tests → functional + accessibility in parallel), and stops containers afterward. Test results are stored under `target/test-results/`.
+Maven starts containers, runs all Playwright tests sequentially (auth-setup → self-tests → functional → accessibility), and stops containers afterward. Tests run with `workers: 1` since all tests share a single NiFi instance.
 
 ==== Direct Test Execution (for development)
 
@@ -86,17 +86,17 @@ npm run test:self
 
 Test artifacts are stored under `target/`:
 
-* `target/test-results/` — Per-test execution artifacts (browser.log, test-run.log, screenshots, video, trace.zip)
+* `target/test-results/` — Per-test execution artifacts (browser.log, test-run.log, trace.zip), with `screenshots/` and `videos/` subdirectories
 * `target/test-results.json` — JSON test results
 * `target/junit-results.xml` — JUnit XML results
 
 [source,bash]
 ----
 # Find errors in test logs
-grep -n "ERROR" target/test-results/*/browser.log
+find target/test-results -name 'browser.log' -exec grep -n 'ERROR' {} +
 
-# View screenshots from failed tests
-open target/test-results/*/*.png
+# View screenshots from failed tests (macOS: open, Linux: xdg-open)
+open target/test-results/screenshots/*.png
 
 # Analyze trace
 npx playwright show-trace target/test-results/*/trace.zip
