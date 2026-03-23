@@ -295,19 +295,22 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     private AttachmentsEndpointHandler createAttachmentsHandler(ProcessContext context,
             RequestStatusStore statusStore, GatewaySecurityEvents gatewaySecurityEvents) {
-        boolean attachmentsEnabled = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_ENABLED).asBoolean();
-        Set<AuthMode> attachmentsAuthModes = AuthMode.fromValues(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_AUTH_MODE).getValue());
-        Set<String> attachmentsRoles = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES).getValue());
-        Set<String> attachmentsScopes = parseCommaSeparated(context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES).getValue());
-        int attachmentsMaxRequestSize = context.getProperty(
-                RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE).asInteger();
-        return new AttachmentsEndpointHandler(statusStore, requestQueue,
-                attachmentsMaxRequestSize, attachmentsEnabled, attachmentsAuthModes,
-                attachmentsRoles, attachmentsScopes, gatewaySecurityEvents);
+        var config = AttachmentsEndpointHandler.Config.builder()
+                .statusStore(statusStore)
+                .queue(requestQueue)
+                .maxRequestSize(context.getProperty(
+                        RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE).asInteger())
+                .enabled(context.getProperty(
+                        RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_ENABLED).asBoolean())
+                .authModes(AuthMode.fromValues(context.getProperty(
+                        RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_AUTH_MODE).getValue()))
+                .requiredRoles(parseCommaSeparated(context.getProperty(
+                        RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES).getValue()))
+                .requiredScopes(parseCommaSeparated(context.getProperty(
+                        RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES).getValue()))
+                .gatewaySecurityEvents(gatewaySecurityEvents)
+                .build();
+        return new AttachmentsEndpointHandler(config);
     }
 
     private HealthEndpointHandler createHealthHandler(ProcessContext context) {
