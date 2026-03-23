@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.util;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import lombok.experimental.UtilityClass;
 
@@ -41,7 +41,7 @@ import java.util.*;
  * This class does <b>not</b> handle routing concerns ({@code jwt.present},
  * {@code jwt.authorized}) — those are the responsibility of the caller.
  *
- * @see JWTAttributes
+ * @see JwtAttributes
  * @see AuthorizationValidator
  */
 @UtilityClass
@@ -57,7 +57,7 @@ public class TokenClaimMapper {
 
     /**
      * Extracts claims from a validated {@link AccessTokenContent} into a flat
-     * string-to-string map using the attribute keys defined in {@link JWTAttributes}.
+     * string-to-string map using the attribute keys defined in {@link JwtAttributes}.
      * <p>
      * The returned map is mutable so callers can add additional attributes
      * (e.g., {@code jwt.present}, {@code jwt.authorized}) before applying them.
@@ -71,30 +71,30 @@ public class TokenClaimMapper {
         Map<String, String> attributes = new HashMap<>();
 
         // Validation timestamp
-        attributes.put(JWTAttributes.Token.VALIDATED_AT, Instant.now().toString());
+        attributes.put(JwtAttributes.Token.VALIDATED_AT, Instant.now().toString());
 
         // Standard claims
-        attributes.put(JWTAttributes.Token.SUBJECT, token.getSubject().orElse(""));
-        attributes.put(JWTAttributes.Token.ISSUER, token.getIssuer());
-        attributes.put(JWTAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
+        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubject().orElse(""));
+        attributes.put(JwtAttributes.Token.ISSUER, token.getIssuer());
+        attributes.put(JwtAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
 
         // Roles
         List<String> roles = token.getRoles();
         if (!roles.isEmpty()) {
-            attributes.put(JWTAttributes.Authorization.ROLES, String.join(",", roles));
+            attributes.put(JwtAttributes.Authorization.ROLES, String.join(",", roles));
         }
 
         // Groups
         List<String> groups = token.getGroups();
         if (!groups.isEmpty()) {
-            attributes.put(JWTAttributes.Authorization.GROUPS, String.join(",", groups));
+            attributes.put(JwtAttributes.Authorization.GROUPS, String.join(",", groups));
         }
 
         // Scopes (only if the claim exists)
         if (token.getClaims().containsKey("scope")) {
             List<String> scopes = token.getScopes();
             if (!scopes.isEmpty()) {
-                attributes.put(JWTAttributes.Authorization.SCOPES, String.join(",", scopes));
+                attributes.put(JwtAttributes.Authorization.SCOPES, String.join(",", scopes));
             }
         }
 
@@ -102,7 +102,7 @@ public class TokenClaimMapper {
         var tokenClaims = token.getClaims();
         for (var entry : tokenClaims.entrySet()) {
             if (!DEDICATED_CLAIM_KEYS.contains(entry.getKey())) {
-                attributes.put(JWTAttributes.Content.PREFIX + entry.getKey(),
+                attributes.put(JwtAttributes.Content.PREFIX + entry.getKey(),
                         entry.getValue().getOriginalString());
             }
         }

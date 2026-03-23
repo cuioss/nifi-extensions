@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
+import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
 /**
  * Servlet for JWT token verification using the OAuth-Sheriff library.

@@ -40,8 +40,6 @@ import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -356,22 +354,22 @@ public class GatewayRequestHandler extends Handler.Abstract {
         var requirements = new AuthorizationRequirements(true,
                 handler.requiredRoles(), handler.requiredScopes());
         var authResult = AuthorizationValidator.validate(token, requirements);
-        if (authResult.isAuthorized()) {
+        if (authResult.authorized()) {
             return true;
         }
         //noinspection DataFlowIssue
-        LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.getReason());
-        if (!authResult.getMissingScopes().isEmpty()) {
+        LOGGER.warn(RestApiLogMessages.WARN.AUTHZ_FAILED, method, path, remoteHost, authResult.reason());
+        if (!authResult.missingScopes().isEmpty()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_SCOPE_DENIED);
             response.getHeaders().put(WWW_AUTHENTICATE,
                     BEARER_INSUFFICIENT_SCOPE_TEMPLATE
                             .formatted(String.join(" ", handler.requiredScopes())));
             sendProblemResponse(response, callback,
-                    ProblemDetail.unauthorized("Insufficient scopes: " + authResult.getReason()));
+                    ProblemDetail.unauthorized("Insufficient scopes: " + authResult.reason()));
         } else {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_ROLE_DENIED);
             sendProblemResponse(response, callback,
-                    ProblemDetail.forbidden("Insufficient roles: " + authResult.getReason()));
+                    ProblemDetail.forbidden("Insufficient roles: " + authResult.reason()));
         }
         return false;
     }
@@ -433,10 +431,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     private static void sendProblemResponse(Response response, Callback callback, ProblemDetail problem) {
-        response.setStatus(problem.status());
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, ProblemDetail.CONTENT_TYPE);
-        byte[] body = problem.toJson().getBytes(StandardCharsets.UTF_8);
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, body.length);
-        response.write(true, ByteBuffer.wrap(body), callback);
+        problem.sendResponse(response, callback);
     }
 }

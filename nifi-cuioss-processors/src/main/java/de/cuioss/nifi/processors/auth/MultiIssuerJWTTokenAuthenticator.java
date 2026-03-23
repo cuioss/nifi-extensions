@@ -16,9 +16,9 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.JWTTranslationKeys;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
+import de.cuioss.nifi.jwt.JwtTranslationKeys;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.i18n.I18nResolver;
 import de.cuioss.nifi.jwt.i18n.NiFiI18nResolver;
@@ -50,8 +50,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
 
 /**
  * NiFi processor that validates JWT tokens from multiple issuers using a shared
@@ -75,12 +75,12 @@ import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships
                 description = "FlowFile attribute containing the raw JWT token (configurable via Token Attribute property)")
 })
 @WritesAttributes({
-        @WritesAttribute(attribute = JWTAttributes.Content.PREFIX + "*", description = "JWT token claims"),
-        @WritesAttribute(attribute = JWTAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
-        @WritesAttribute(attribute = JWTAttributes.Token.PRESENT, description = "Whether a JWT token is present"),
-        @WritesAttribute(attribute = JWTAttributes.Error.CODE, description = "Error code if validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.Error.REASON, description = "Error reason if validation failed"),
-        @WritesAttribute(attribute = JWTAttributes.Error.CATEGORY, description = "Error category if validation failed")
+        @WritesAttribute(attribute = JwtAttributes.Content.PREFIX + "*", description = "JWT token claims"),
+        @WritesAttribute(attribute = JwtAttributes.Token.VALIDATED_AT, description = "Timestamp when the token was validated"),
+        @WritesAttribute(attribute = JwtAttributes.Token.PRESENT, description = "Whether a JWT token is present"),
+        @WritesAttribute(attribute = JwtAttributes.Error.CODE, description = "Error code if validation failed"),
+        @WritesAttribute(attribute = JwtAttributes.Error.REASON, description = "Error reason if validation failed"),
+        @WritesAttribute(attribute = JwtAttributes.Error.CATEGORY, description = "Error category if validation failed")
 })
 @EqualsAndHashCode(callSuper = true)
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
@@ -137,7 +137,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         }
 
         processedFlowFilesCount.incrementAndGet();
-        if (processedFlowFilesCount.intValue() % JwtConstants.LOG_METRICS_INTERVAL == 0) {
+        if (processedFlowFilesCount.get() % JwtConstants.LOG_METRICS_INTERVAL == 0) {
             LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedFlowFilesCount);
         }
 
@@ -165,24 +165,24 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         AccessTokenContent accessToken = jwtConfigService.validateToken(token);
 
         Map<String, String> attributes = TokenClaimMapper.mapToAttributes(accessToken);
-        attributes.put(JWTAttributes.Token.PRESENT, "true");
+        attributes.put(JwtAttributes.Token.PRESENT, "true");
 
         if (authorizationRequirements.hasAuthorizationRequirements()) {
             AuthorizationValidator.AuthorizationResult authResult =
                     AuthorizationValidator.validate(accessToken, authorizationRequirements);
-            if (!authResult.isAuthorized()) {
+            if (!authResult.authorized()) {
                 //noinspection DataFlowIssue
                 LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED,
                         accessToken.getSubject().orElse("unknown"),
-                        accessToken.getIssuer(), authResult.getReason());
-                attributes.put(JWTAttributes.Authorization.AUTHORIZED, "false");
+                        accessToken.getIssuer(), authResult.reason());
+                attributes.put(JwtAttributes.Authorization.AUTHORIZED, "false");
                 flowFile = session.putAllAttributes(flowFile, attributes);
                 handleError(session, flowFile, "AUTH-010",
-                        "Authorization failed: " + authResult.getReason(),
+                        "Authorization failed: " + authResult.reason(),
                         "AUTHORIZATION_FAILED");
                 return;
             }
-            attributes.put(JWTAttributes.Authorization.AUTHORIZED, "true");
+            attributes.put(JwtAttributes.Authorization.AUTHORIZED, "true");
         }
 
         flowFile = session.putAllAttributes(flowFile, attributes);
@@ -197,7 +197,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         if (token.length() > maxTokenSize) {
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED, maxTokenSize);
             handleError(session, flowFile, "AUTH-003",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
+                    i18nResolver.getTranslatedString(JwtTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
                     "TOKEN_SIZE_VIOLATION");
             return false;
         }
@@ -213,14 +213,14 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         if (!requireValidToken) {
             LOGGER.info(AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED);
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JWTAttributes.Error.REASON, "No token provided");
-            attributes.put(JWTAttributes.Token.PRESENT, "false");
+            attributes.put(JwtAttributes.Error.REASON, "No token provided");
+            attributes.put(JwtAttributes.Token.PRESENT, "false");
             flowFile = session.putAllAttributes(flowFile, attributes);
             session.transfer(flowFile, Relationships.SUCCESS);
         } else {
             LOGGER.warn(AuthLogMessages.WARN.NO_TOKEN_FOUND, tokenAttributeName);
             handleError(session, flowFile, "AUTH-001",
-                    i18nResolver.getTranslatedString(JWTTranslationKeys.Error.NO_TOKEN_FOUND, tokenAttributeName),
+                    i18nResolver.getTranslatedString(JwtTranslationKeys.Error.NO_TOKEN_FOUND, tokenAttributeName),
                     "EXTRACTION_ERROR");
         }
     }
@@ -231,7 +231,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             TokenValidationException e) {
         LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
         String errorMessage = i18nResolver.getTranslatedString(
-                JWTTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
+                JwtTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
         String category = e.getCategory().name();
         String errorCode = mapValidationCategoryToErrorCode(category);
         handleError(session, flowFile, errorCode, errorMessage, category);
@@ -254,9 +254,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 .build();
 
         Map<String, String> attributes = new HashMap<>();
-        attributes.put(JWTAttributes.Error.CODE, error.getErrorCode());
-        attributes.put(JWTAttributes.Error.REASON, error.getErrorReason());
-        attributes.put(JWTAttributes.Error.CATEGORY, error.getErrorCategory());
+        attributes.put(JwtAttributes.Error.CODE, error.errorCode());
+        attributes.put(JwtAttributes.Error.REASON, error.errorReason());
+        attributes.put(JwtAttributes.Error.CATEGORY, error.errorCategory());
 
         flowFile = session.putAllAttributes(flowFile, attributes);
         session.transfer(flowFile, Relationships.AUTHENTICATION_FAILED);

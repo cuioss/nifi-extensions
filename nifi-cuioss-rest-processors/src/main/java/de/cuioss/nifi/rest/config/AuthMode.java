@@ -64,16 +64,6 @@ public enum AuthMode {
      * @throws IllegalArgumentException if value is non-blank but not a recognized auth mode
      */
     public static AuthMode fromValue(String value) {
-        return fromSingleValue(value);
-    }
-
-    /**
-     * Parses a single string value to an {@link AuthMode}, case-insensitive.
-     * Returns {@link #BEARER} for {@code null} or blank values.
-     *
-     * @throws IllegalArgumentException if value is non-blank but not a recognized auth mode
-     */
-    static AuthMode fromSingleValue(String value) {
         if (value == null || value.isBlank()) {
             return BEARER;
         }
@@ -88,7 +78,7 @@ public enum AuthMode {
 
     /**
      * Parses a comma-separated string of auth modes into a {@link Set}.
-     * Each token is parsed individually via {@link #fromSingleValue(String)}.
+     * Each token is parsed individually via {@link #fromValue(String)}.
      *
      * @param value comma-separated auth modes (e.g. {@code "local-only,bearer"})
      * @return unmodifiable set of parsed auth modes
@@ -103,7 +93,7 @@ public enum AuthMode {
             throw new IllegalArgumentException("Must provide at least one auth mode");
         }
         return parts.stream()
-                .map(AuthMode::fromSingleValue)
+                .map(AuthMode::fromValue)
                 .collect(Collectors.toUnmodifiableSet());
     }
 

@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.util;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
@@ -44,11 +44,11 @@ class TokenClaimMapperTest {
 
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertNotNull(attributes.get(JWTAttributes.Token.VALIDATED_AT),
+            assertNotNull(attributes.get(JwtAttributes.Token.VALIDATED_AT),
                     "validatedAt should be present");
-            assertEquals(token.getSubject().orElse(""), attributes.get(JWTAttributes.Token.SUBJECT));
-            assertEquals(token.getIssuer(), attributes.get(JWTAttributes.Token.ISSUER));
-            assertEquals(token.getExpirationTime().toString(), attributes.get(JWTAttributes.Token.EXPIRATION));
+            assertEquals(token.getSubject().orElse(""), attributes.get(JwtAttributes.Token.SUBJECT));
+            assertEquals(token.getIssuer(), attributes.get(JwtAttributes.Token.ISSUER));
+            assertEquals(token.getExpirationTime().toString(), attributes.get(JwtAttributes.Token.EXPIRATION));
         }
 
         @Test
@@ -59,7 +59,7 @@ class TokenClaimMapperTest {
 
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertNotNull(attributes.get(JWTAttributes.Token.SUBJECT));
+            assertNotNull(attributes.get(JwtAttributes.Token.SUBJECT));
         }
     }
 
@@ -78,7 +78,7 @@ class TokenClaimMapperTest {
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
             assertTrue(token.getRoles().contains("admin") || token.getRoles().contains("user")
-                    || attributes.containsKey(JWTAttributes.Authorization.ROLES),
+                    || attributes.containsKey(JwtAttributes.Authorization.ROLES),
                     "Roles should be mapped when present");
         }
 
@@ -92,9 +92,9 @@ class TokenClaimMapperTest {
 
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertTrue(attributes.containsKey(JWTAttributes.Authorization.SCOPES),
+            assertTrue(attributes.containsKey(JwtAttributes.Authorization.SCOPES),
                     "Scopes should be mapped when scope claim exists");
-            String scopes = attributes.get(JWTAttributes.Authorization.SCOPES);
+            String scopes = attributes.get(JwtAttributes.Authorization.SCOPES);
             assertTrue(scopes.contains("read") && scopes.contains("write"),
                     "Scopes should contain 'read' and 'write'");
         }
@@ -108,7 +108,7 @@ class TokenClaimMapperTest {
             // Default tokens from generator don't have scope claim
             if (!token.getClaims().containsKey("scope")) {
                 Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
-                assertNull(attributes.get(JWTAttributes.Authorization.SCOPES),
+                assertNull(attributes.get(JwtAttributes.Authorization.SCOPES),
                         "Scopes should not be present when no scope claim");
             }
         }
@@ -128,8 +128,8 @@ class TokenClaimMapperTest {
 
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertEquals("acme-corp", attributes.get(JWTAttributes.Content.PREFIX + "tenant-id"));
-            assertEquals("engineering", attributes.get(JWTAttributes.Content.PREFIX + "department"));
+            assertEquals("acme-corp", attributes.get(JwtAttributes.Content.PREFIX + "tenant-id"));
+            assertEquals("engineering", attributes.get(JwtAttributes.Content.PREFIX + "department"));
         }
 
         @Test
@@ -141,11 +141,11 @@ class TokenClaimMapperTest {
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
             // These keys should NOT appear with the content prefix
-            assertNull(attributes.get(JWTAttributes.Content.PREFIX + "sub"),
+            assertNull(attributes.get(JwtAttributes.Content.PREFIX + "sub"),
                     "sub should not be in custom claims");
-            assertNull(attributes.get(JWTAttributes.Content.PREFIX + "iss"),
+            assertNull(attributes.get(JwtAttributes.Content.PREFIX + "iss"),
                     "iss should not be in custom claims");
-            assertNull(attributes.get(JWTAttributes.Content.PREFIX + "exp"),
+            assertNull(attributes.get(JwtAttributes.Content.PREFIX + "exp"),
                     "exp should not be in custom claims");
         }
     }
@@ -175,9 +175,9 @@ class TokenClaimMapperTest {
 
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertNull(attributes.get(JWTAttributes.Token.PRESENT),
+            assertNull(attributes.get(JwtAttributes.Token.PRESENT),
                     "jwt.present is a routing concern, not a claim");
-            assertNull(attributes.get(JWTAttributes.Authorization.AUTHORIZED),
+            assertNull(attributes.get(JwtAttributes.Authorization.AUTHORIZED),
                     "jwt.authorized is an authorization concern, not a claim");
         }
     }

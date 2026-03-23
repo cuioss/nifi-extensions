@@ -16,15 +16,17 @@
 package de.cuioss.nifi.jwt.util;
 
 import lombok.Builder;
-import lombok.Value;
 
 /**
- * Value object representing a processing error with all necessary details.
+ * Immutable value object representing a processing error with all necessary details.
+ *
+ * @param errorCode     the error code identifier
+ * @param errorReason   the human-readable error reason
+ * @param errorCategory the error category for classification
  */
-@Value
 @Builder
-public class ProcessingError {
-    String errorCode;
-    String errorReason;
-    String errorCategory;
+public record ProcessingError(
+String errorCode,
+String errorReason,
+String errorCategory) {
 }

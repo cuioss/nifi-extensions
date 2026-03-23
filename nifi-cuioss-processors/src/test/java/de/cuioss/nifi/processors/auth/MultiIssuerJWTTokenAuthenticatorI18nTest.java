@@ -15,7 +15,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
 import org.apache.nifi.util.MockFlowFile;
@@ -28,8 +28,8 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -71,7 +71,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
                 Relationships.AUTHENTICATION_FAILED).getFirst();
 
-        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
+        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
         assertNotNull(errorReason, "Error reason should not be null");
         assertTrue(errorReason.contains("jwt.token") || errorReason.contains("Token") ||
                 errorReason.contains("token") || errorReason.contains("Kein"),
@@ -92,8 +92,8 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
                 Relationships.AUTHENTICATION_FAILED).getFirst();
 
-        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
-        String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
+        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
+        String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
 
         assertNotNull(errorReason, "Error reason should not be null");
         assertEquals("AUTH-003", errorCode, "Error code should be AUTH-003");
@@ -118,8 +118,8 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
         MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
                 Relationships.AUTHENTICATION_FAILED).getFirst();
 
-        String errorReason = flowFile.getAttribute(JWTAttributes.Error.REASON);
-        String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
+        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
+        String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
 
         assertNotNull(errorReason, "Error reason should not be null");
         assertNotNull(errorCode, "Error code should not be null");

@@ -18,7 +18,6 @@ package de.cuioss.nifi.jwt.util;
 
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import lombok.Builder;
-import lombok.Value;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
@@ -33,13 +32,20 @@ import java.util.*;
 @UtilityClass
 public class AuthorizationValidator {
 
-    @Value
+    /**
+     * Result of an authorization check.
+     *
+     * @param authorized    whether authorization succeeded
+     * @param reason        human-readable failure reason, or {@code null} if authorized
+     * @param missingScopes scopes required but not present in the token
+     * @param missingRoles  roles required but not present in the token
+     */
     @Builder
-    public static class AuthorizationResult {
-        boolean authorized;
-        @Nullable String reason;
-        Set<String> missingScopes;
-        Set<String> missingRoles;
+    public record AuthorizationResult(
+    boolean authorized,
+    @Nullable String reason,
+    Set<String> missingScopes,
+    Set<String> missingRoles) {
     }
 
     /**

@@ -16,10 +16,10 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
-import de.cuioss.nifi.jwt.JWTPropertyKeys;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
+import de.cuioss.nifi.jwt.JwtPropertyKeys;
 import de.cuioss.nifi.jwt.util.DynamicPropertyGroupParser;
 import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
@@ -45,8 +45,8 @@ public class IssuerConfigurationParser {
     private static final int DEFAULT_MAX_TOKEN_SIZE = 16384;
 
     private static final Set<String> SENSITIVE_KEYS = Set.of(
-            JWTPropertyKeys.Issuer.CLIENT_ID,
-            JWTPropertyKeys.Issuer.JWKS_CONTENT,
+            JwtPropertyKeys.Issuer.CLIENT_ID,
+            JwtPropertyKeys.Issuer.JWKS_CONTENT,
             "client-secret"
     );
 
@@ -149,7 +149,7 @@ public class IssuerConfigurationParser {
                         .build()
                         .with("issuerId", issuerId)
                         .with("issuerName", issuerProps.get("name"))
-                        .with("jwksUrl", issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL))
+                        .with("jwksUrl", issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL))
                         .buildMessage("Failed to create issuer configuration");
                 LOGGER.error(e, JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
                 LOGGER.debug(contextMessage);
@@ -189,11 +189,11 @@ public class IssuerConfigurationParser {
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
-        String audience = issuerProps.get(JWTPropertyKeys.Issuer.AUDIENCE);
+        String audience = issuerProps.get(JwtPropertyKeys.Issuer.AUDIENCE);
         if (audience != null && !audience.trim().isEmpty()) {
             builder.expectedAudience(audience.trim());
         }
-        String clientId = issuerProps.get(JWTPropertyKeys.Issuer.CLIENT_ID);
+        String clientId = issuerProps.get(JwtPropertyKeys.Issuer.CLIENT_ID);
         if (clientId != null && !clientId.trim().isEmpty()) {
             builder.expectedClientId(clientId.trim());
         }
@@ -203,7 +203,7 @@ public class IssuerConfigurationParser {
     private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
         String issuerName = issuerProps.get("name");
         if (issuerName == null || issuerName.trim().isEmpty()) {
-            issuerName = issuerProps.get(JWTPropertyKeys.Issuer.ISSUER_NAME);
+            issuerName = issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME);
         }
         if (issuerName == null || issuerName.trim().isEmpty()) {
             LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_NAME, sanitizeLogValue(issuerId));
@@ -213,7 +213,7 @@ public class IssuerConfigurationParser {
     }
 
     private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps) {
-        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
+        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
         if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
             return Optional.of(jwksUrl.trim());
         }
@@ -221,11 +221,11 @@ public class IssuerConfigurationParser {
         if (jwksUri != null && !jwksUri.trim().isEmpty()) {
             return Optional.of(jwksUri.trim());
         }
-        String jwksFile = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_FILE);
+        String jwksFile = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_FILE);
         if (jwksFile != null && !jwksFile.trim().isEmpty()) {
             return Optional.of(jwksFile.trim());
         }
-        String jwksContent = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_CONTENT);
+        String jwksContent = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_CONTENT);
         if (jwksContent != null && !jwksContent.trim().isEmpty()) {
             LOGGER.warn(JwtLogMessages.WARN.JWKS_CONTENT_NOT_SUPPORTED, sanitizeLogValue(issuerId));
             return Optional.empty();
@@ -235,11 +235,11 @@ public class IssuerConfigurationParser {
     }
 
     private static String resolveJwksType(Map<String, String> issuerProps) {
-        String explicitType = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_TYPE);
+        String explicitType = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_TYPE);
         if (explicitType != null && !explicitType.trim().isEmpty()) {
             return explicitType.trim().toLowerCase(Locale.ROOT);
         }
-        String jwksUrl = issuerProps.get(JWTPropertyKeys.Issuer.JWKS_URL);
+        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
         if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
             return "url";
         }
@@ -253,7 +253,7 @@ public class IssuerConfigurationParser {
     private static void applyGlobalJwksSettings(
             HttpJwksLoaderConfig.HttpJwksLoaderConfigBuilder builder,
             Map<String, String> globalProperties) {
-        String refreshInterval = globalProperties.get(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL);
+        String refreshInterval = globalProperties.get(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL);
         if (refreshInterval != null && !refreshInterval.isBlank()) {
             try {
                 builder.refreshIntervalSeconds(Integer.parseInt(refreshInterval));
@@ -262,7 +262,7 @@ public class IssuerConfigurationParser {
                         sanitizeLogValue(refreshInterval), "JWKS Refresh Interval", 3600);
             }
         }
-        String connectionTimeout = globalProperties.get(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT);
+        String connectionTimeout = globalProperties.get(JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT);
         if (connectionTimeout != null && !connectionTimeout.isBlank()) {
             try {
                 builder.connectTimeoutSeconds(Integer.parseInt(connectionTimeout));

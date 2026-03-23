@@ -38,6 +38,9 @@ Set<String> allowedAlgorithms,
 boolean requireHttpsForJwks) {
 
     public JwtAuthenticationConfig {
+        if (maxTokenSize <= 0) {
+            throw new IllegalArgumentException("maxTokenSize must be positive, got: " + maxTokenSize);
+        }
         allowedAlgorithms = allowedAlgorithms != null ? Set.copyOf(allowedAlgorithms) : Set.of();
     }
 }

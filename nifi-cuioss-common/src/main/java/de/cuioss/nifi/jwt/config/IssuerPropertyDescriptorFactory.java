@@ -22,8 +22,8 @@ import org.apache.nifi.processor.util.StandardValidators;
 
 import java.util.Objects;
 
-import static de.cuioss.nifi.jwt.JWTPropertyKeys.Issuer;
-import static de.cuioss.nifi.jwt.JWTTranslationKeys.Property;
+import static de.cuioss.nifi.jwt.JwtPropertyKeys.Issuer;
+import static de.cuioss.nifi.jwt.JwtTranslationKeys.Property;
 
 /**
  * Factory class for creating issuer-specific property descriptors.

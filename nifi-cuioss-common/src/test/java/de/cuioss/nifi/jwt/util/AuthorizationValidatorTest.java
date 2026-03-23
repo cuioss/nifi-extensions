@@ -79,10 +79,10 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
-            assertTrue(result.getMissingScopes().isEmpty());
-            assertTrue(result.getMissingRoles().isEmpty());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
+            assertTrue(result.missingScopes().isEmpty());
+            assertTrue(result.missingRoles().isEmpty());
         }
 
         @Test
@@ -98,8 +98,8 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
         }
     }
 
@@ -123,9 +123,9 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
-            assertTrue(result.getMissingRoles().isEmpty());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
+            assertTrue(result.missingRoles().isEmpty());
         }
 
         @Test
@@ -144,12 +144,12 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing roles"));
-            assertFalse(result.getMissingRoles().isEmpty());
-            assertTrue(result.getMissingRoles().contains("admin") ||
-                    result.getMissingRoles().contains("superuser"));
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing roles"));
+            assertFalse(result.missingRoles().isEmpty());
+            assertTrue(result.missingRoles().contains("admin") ||
+                    result.missingRoles().contains("superuser"));
         }
 
         @Test
@@ -168,9 +168,9 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing roles"));
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing roles"));
         }
     }
 
@@ -194,9 +194,9 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
-            assertTrue(result.getMissingScopes().isEmpty());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
+            assertTrue(result.missingScopes().isEmpty());
         }
 
         @Test
@@ -215,12 +215,12 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing scopes"));
-            assertFalse(result.getMissingScopes().isEmpty());
-            assertTrue(result.getMissingScopes().contains("write") ||
-                    result.getMissingScopes().contains("delete"));
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing scopes"));
+            assertFalse(result.missingScopes().isEmpty());
+            assertTrue(result.missingScopes().contains("write") ||
+                    result.missingScopes().contains("delete"));
         }
 
         @Test
@@ -237,9 +237,9 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing scopes"));
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing scopes"));
         }
     }
 
@@ -265,10 +265,10 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
-            assertTrue(result.getMissingRoles().isEmpty());
-            assertTrue(result.getMissingScopes().isEmpty());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
+            assertTrue(result.missingRoles().isEmpty());
+            assertTrue(result.missingScopes().isEmpty());
         }
 
         @Test
@@ -289,11 +289,11 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing scopes"));
-            assertTrue(result.getMissingRoles().isEmpty());
-            assertFalse(result.getMissingScopes().isEmpty());
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing scopes"));
+            assertTrue(result.missingRoles().isEmpty());
+            assertFalse(result.missingScopes().isEmpty());
         }
 
         @Test
@@ -314,11 +314,11 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing roles"));
-            assertFalse(result.getMissingRoles().isEmpty());
-            assertTrue(result.getMissingScopes().isEmpty());
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing roles"));
+            assertFalse(result.missingRoles().isEmpty());
+            assertTrue(result.missingScopes().isEmpty());
         }
 
         @Test
@@ -339,12 +339,12 @@ class AuthorizationValidatorTest {
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertNotNull(result.getReason());
-            assertTrue(result.getReason().contains("Missing scopes"));
-            assertTrue(result.getReason().contains("Missing roles"));
-            assertFalse(result.getMissingRoles().isEmpty());
-            assertFalse(result.getMissingScopes().isEmpty());
+            assertFalse(result.authorized());
+            assertNotNull(result.reason());
+            assertTrue(result.reason().contains("Missing scopes"));
+            assertTrue(result.reason().contains("Missing roles"));
+            assertFalse(result.missingRoles().isEmpty());
+            assertFalse(result.missingScopes().isEmpty());
         }
     }
 
@@ -364,10 +364,10 @@ class AuthorizationValidatorTest {
                     .build();
 
             // Assert
-            assertFalse(result.isAuthorized());
-            assertEquals("Test failure reason", result.getReason());
-            assertEquals(Set.of("write", "delete"), result.getMissingScopes());
-            assertEquals(Set.of("admin"), result.getMissingRoles());
+            assertFalse(result.authorized());
+            assertEquals("Test failure reason", result.reason());
+            assertEquals(Set.of("write", "delete"), result.missingScopes());
+            assertEquals(Set.of("admin"), result.missingRoles());
         }
 
         @Test
@@ -382,8 +382,8 @@ class AuthorizationValidatorTest {
                     .build();
 
             // Assert
-            assertTrue(result.isAuthorized());
-            assertNull(result.getReason());
+            assertTrue(result.authorized());
+            assertNull(result.reason());
         }
 
         @Test
