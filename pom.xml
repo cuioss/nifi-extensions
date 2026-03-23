@@ -77,10 +77,6 @@
             <name>Maven Central Releases</name>
             <url>https://central.sonatype.com/repository/maven-releases/</url>
         </repository>
-        <site>
-            <id>cuioss-home</id>
-            <url>https://cuioss.github.io/</url>
-        </site>
     </distributionManagement>
     <properties>
         <javaVersion>21</javaVersion>

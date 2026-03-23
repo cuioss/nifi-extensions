@@ -1,9 +1,0 @@
-= About
-
-Custom Apache NiFi processors for JWT authentication and REST API gateway functionality.
-
-The *RestApiGatewayProcessor* embeds a Jetty HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses. The *MultiIssuerJWTTokenAuthenticator* validates JWT tokens from FlowFile attributes against multiple issuers.
-
-Both processors share JWT validation through a common *JwtIssuerConfigService* Controller Service supporting automatic JWKS key refresh and caching.
-
-See the https://github.com/cuioss/nifi-extensions[project README] for installation, configuration, and documentation links.
