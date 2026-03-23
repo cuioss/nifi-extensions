@@ -96,6 +96,7 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
     private static final String KEY_USERNAME = "username";
+    @SuppressWarnings("java:S2068") // OAuth 2.0 ROPC grant type per RFC 6749 §4.3, not a credential
     private static final String GRANT_TYPE_ROPC = "password";
     static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_ROPC, "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
