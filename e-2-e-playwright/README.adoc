@@ -27,7 +27,7 @@ Packaging type is `pom` — this module is not consumed as a library dependency.
 e-2-e-playwright/
 ├── tests/                        # Test specifications (12 spec files)
 │   ├── self-*.spec.js            # Self-tests (framework validation)
-│   ├── 0x-*.spec.js              # Functional tests (processor features)
+│   ├── 01..07-*.spec.js           # Functional tests (processor features)
 │   └── accessibility-*.spec.js   # WCAG compliance tests
 ├── fixtures/                     # Playwright test fixtures
 │   ├── auth-fixtures.js          # Authentication fixtures

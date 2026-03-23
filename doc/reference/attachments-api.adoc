@@ -190,7 +190,7 @@ Each attachment gets its own `traceId` for independent status tracking, linked t
 
 |409
 |Conflict
-|Parent request does not accept attachments (created by a `simple` route), or attachment limit reached
+|Parent request does not accept attachments (`attachmentsMaxCount` is 0), attachment window closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or attachment limit reached
 
 |503
 |Service Unavailable

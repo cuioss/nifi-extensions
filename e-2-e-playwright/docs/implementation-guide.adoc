@@ -91,7 +91,7 @@ test('Processor management via API', async ({ page }) => {
 === Naming Convention
 
 * `self-*.spec.js` — Framework validation (prefixed `self-`)
-* `0x-*.spec.js` — Functional tests (numbered for execution order)
+* `01..07-*.spec.js` — Functional tests (numbered for execution order)
 * `accessibility-*.spec.js` — WCAG compliance tests
 
 === Test Categories

@@ -141,11 +141,11 @@ The Wait processor holds the parent FlowFile until attachments arrive. The Notif
 
 | Wait
 | Target Signal Count
-| `${rest.trace.attachments.min.count:replaceEmpty('1')}`
+| `${rest.trace.attachments.min.count:ifEmpty('1')}`
 
 | Wait
 | Expiration Duration
-| `${rest.trace.attachments.timeout:replaceEmpty('30 sec')}`
+| `${rest.trace.attachments.timeout:ifEmpty('30 sec')}`
 
 | Notify
 | Signal ID

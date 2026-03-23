@@ -48,7 +48,7 @@ The `type` field links to this documentation page. Error responses are produced 
 
 |409
 |Conflict
-|Attachment limit reached or attachment window closed. Returned by the `/attachments` endpoint when the route's `attachments-max-count` is exceeded or the parent request has already transitioned past `COLLECTING_ATTACHMENTS`.
+|Returned by the `/attachments` endpoint when: (a) the parent route does not accept attachments (`attachmentsMaxCount` is 0), (b) the attachment window is closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or (c) the route's `attachments-max-count` is exceeded.
 |`Attachment limit reached: 5`
 
 |404

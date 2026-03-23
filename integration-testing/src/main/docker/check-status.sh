@@ -293,7 +293,7 @@ check_status() {
         echo "  Keycloak: ${KEYCLOAK_URL}/"
         echo ""
         log_info "Default test credentials:"
-        echo "  NiFi:     admin / adminadminadmin"
+        echo "  NiFi:     testUser / drowssap"
         echo "  Keycloak: testUser / drowssap"
     fi
 
