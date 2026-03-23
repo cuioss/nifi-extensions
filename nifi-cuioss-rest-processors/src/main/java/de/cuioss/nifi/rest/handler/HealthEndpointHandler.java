@@ -34,7 +34,7 @@ import java.util.Set;
  * Built-in handler for the {@code /health} management endpoint.
  * Returns a JSON response with status and timestamp.
  */
-public class HealthEndpointHandler extends AbstractManagementHandler {
+public final class HealthEndpointHandler extends AbstractManagementHandler {
 
     static final String HEALTH_PATH = "/health";
     private static final String JSON_CONTENT_TYPE = "application/json";

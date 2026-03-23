@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Manages configuration loading from static files and environment variables.
@@ -226,35 +227,22 @@ public class ConfigurationManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private void processIssuerItem(Object item, int index) {
-        if (item instanceof Map) {
-            Map<String, Object> issuerConfig = (Map<String, Object>) item;
-            String issuerId = getIssuerId(issuerConfig, index);
-            storeIssuerProperties(issuerId, issuerConfig);
-        }
-    }
-
-    private void processIssuerList(List<?> list) {
-        for (int i = 0; i < list.size(); i++) {
-            processIssuerItem(list.get(i), i);
-        }
-    }
-
-    private void processGenericList(String key, List<?> list) {
-        String listValue = list.stream()
-                .filter(Objects::nonNull)
-                .map(Object::toString)
-                .reduce((a, b) -> a + "," + b)
-                .orElse("");
-        staticProperties.put(key, listValue);
-    }
-
     private void processList(String key, List<?> list) {
         if (isIssuerListKey(key)) {
-            processIssuerList(list);
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i) instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> issuerConfig = (Map<String, Object>) list.get(i);
+                    final String issuerId = getIssuerId(issuerConfig, i);
+                    storeIssuerProperties(issuerId, issuerConfig);
+                }
+            }
         } else {
-            processGenericList(key, list);
+            String listValue = list.stream()
+                    .filter(Objects::nonNull)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(","));
+            staticProperties.put(key, listValue);
         }
     }
 

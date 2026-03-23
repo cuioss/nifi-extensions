@@ -257,6 +257,31 @@ class ConfigurationManagerTest {
         }
 
         @Test
+        @DisplayName("Should skip non-map items in YAML issuers list")
+        void shouldSkipNonMapItemsInIssuersList(@TempDir Path tempDir) throws IOException {
+            // Arrange
+            Path confDir = createConfDir(tempDir);
+            Path configFile = confDir.resolve("cui-nifi-extensions.yml");
+            String content = """
+                    jwt:
+                      validation:
+                        issuers:
+                          - id: valid-issuer
+                            jwks-url: https://example.com/jwks
+                          - just-a-string-not-a-map
+                    """;
+            Files.writeString(configFile, content);
+
+            // Act
+            var configManager = new ConfigurationManager(basePath(tempDir));
+
+            // Assert — only the map item should be parsed; string item is silently skipped
+            List<String> issuerIds = configManager.getIssuerIds();
+            assertEquals(1, issuerIds.size());
+            assertTrue(issuerIds.contains("valid-issuer"));
+        }
+
+        @Test
         @DisplayName("Should handle empty YAML file and return false")
         void shouldHandleEmptyYamlFile(@TempDir Path tempDir) throws IOException {
             // Arrange

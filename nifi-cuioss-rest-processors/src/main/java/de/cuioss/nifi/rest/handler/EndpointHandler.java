@@ -33,7 +33,8 @@ import java.util.Set;
  * (sanitization, method check, auth-mode dispatch, authorization, body size check)
  * before delegating to {@link #process(SanitizedRequest, AccessTokenContent, byte[], Request, Response, Callback)}.
  */
-public interface EndpointHandler {
+public sealed interface EndpointHandler
+        permits AbstractManagementHandler, ApiRouteHandler, AttachmentsEndpointHandler {
 
     /** Human-readable name for logging and diagnostics. */
     String name();

@@ -40,7 +40,7 @@ import java.util.UUID;
  * Built-in handler for the {@code /status/{traceId}} management endpoint.
  * Returns the current processing status of an asynchronously tracked request.
  */
-public class StatusEndpointHandler extends AbstractManagementHandler {
+public final class StatusEndpointHandler extends AbstractManagementHandler {
 
     private static final CuiLogger LOGGER = new CuiLogger(StatusEndpointHandler.class);
     @SuppressWarnings("java:S1075") // URL path, not filesystem path

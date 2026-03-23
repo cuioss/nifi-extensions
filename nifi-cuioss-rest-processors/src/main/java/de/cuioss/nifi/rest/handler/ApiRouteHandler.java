@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * Handler for user-configured API routes. Wraps a {@link RouteConfiguration}
  * and implements schema validation, FlowFile enqueue, and response generation.
  */
-public class ApiRouteHandler implements EndpointHandler {
+public final class ApiRouteHandler implements EndpointHandler {
 
     private record ResponseContext(Response response, Callback callback) {
     }

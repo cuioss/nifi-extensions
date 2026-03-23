@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * on processor restart (documented limitation — worst case: allows slightly more
  * attachments than configured after restart).
  */
-public class AttachmentsEndpointHandler implements EndpointHandler {
+public final class AttachmentsEndpointHandler implements EndpointHandler {
 
     private record ResponseContext(Response response, Callback callback) {
     }
