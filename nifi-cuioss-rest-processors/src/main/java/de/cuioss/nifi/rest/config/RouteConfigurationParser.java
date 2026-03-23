@@ -94,66 +94,81 @@ public class RouteConfigurationParser {
 
         List<RouteConfiguration> routes = new ArrayList<>();
         for (Map.Entry<String, Map<String, String>> entry : groups.entrySet()) {
-            String routeName = entry.getKey();
-            Map<String, String> routeProps = entry.getValue();
-
-            String path = routeProps.get(PATH_KEY);
-            if (path == null || path.isBlank()) {
-                LOGGER.warn("Route '%s' has no path configured, skipping", routeName);
-                continue;
-            }
-
-            boolean enabled = !"false".equalsIgnoreCase(routeProps.get(ENABLED_KEY));
-            Set<String> methods = parseHttpMethods(routeProps.get(METHODS_KEY));
-            Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
-            Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
-            String schema = routeProps.get(SCHEMA_KEY);
-            String successOutcome = routeProps.get(SUCCESS_OUTCOME_KEY);
-            boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
-            if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
-                successOutcome = routeName;
-            }
-            String authModeRaw = routeProps.get(AUTH_MODE_KEY);
-            Set<AuthMode> authModes;
-            if (authModeRaw == null || authModeRaw.isBlank()) {
-                authModes = EnumSet.of(AuthMode.BEARER);
-            } else {
-                try {
-                    authModes = AuthMode.fromValues(authModeRaw);
-                } catch (IllegalArgumentException e) {
-                    LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
-                            routeName, authModeRaw, e.getMessage());
-                    authModes = EnumSet.of(AuthMode.BEARER);
-                }
-            }
-            int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
-            TrackingMode trackingMode = parseTrackingMode(routeProps.get(TRACKING_MODE_KEY));
-            int attachmentsMinCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MIN_COUNT_KEY), 0);
-            int attachmentsMaxCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MAX_COUNT_KEY), 0);
-            String attachmentsTimeout = trackingMode == TrackingMode.ATTACHMENTS
-                    ? parseAttachmentsTimeout(routeProps.get(ATTACHMENTS_TIMEOUT_KEY))
-                    : null;
-
-            if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
-                LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
-                        + "roles and scopes will be ignored", routeName);
-            }
-
-            routes.add(RouteConfiguration.builder()
-                    .name(routeName).path(path).enabled(enabled)
-                    .methods(methods).requiredRoles(roles).requiredScopes(scopes)
-                    .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
-                    .authModes(authModes).maxRequestSize(maxRequestSize)
-                    .trackingMode(trackingMode)
-                    .attachmentsMinCount(attachmentsMinCount)
-                    .attachmentsMaxCount(attachmentsMaxCount)
-                    .attachmentsTimeout(attachmentsTimeout)
-                    .build());
-            LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
-                    routeName, path, enabled, methods, authModes);
+            parseRouteGroup(entry.getKey(), entry.getValue())
+                    .ifPresent(routes::add);
         }
 
         return Collections.unmodifiableList(routes);
+    }
+
+    private static Optional<RouteConfiguration> parseRouteGroup(String routeName, Map<String, String> routeProps) {
+        String path = routeProps.get(PATH_KEY);
+        if (path == null || path.isBlank()) {
+            LOGGER.warn("Route '%s' has no path configured, skipping", routeName);
+            return Optional.empty();
+        }
+
+        boolean enabled = !"false".equalsIgnoreCase(routeProps.get(ENABLED_KEY));
+        Set<String> methods = parseHttpMethods(routeProps.get(METHODS_KEY));
+        Set<String> roles = parseCommaSeparated(routeProps.get(REQUIRED_ROLES_KEY));
+        Set<String> scopes = parseCommaSeparated(routeProps.get(REQUIRED_SCOPES_KEY));
+        String schema = routeProps.get(SCHEMA_KEY);
+        String successOutcome = resolveSuccessOutcome(routeProps, routeName);
+        boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
+        Set<AuthMode> authModes = resolveAuthModes(routeName, routeProps.get(AUTH_MODE_KEY));
+        int maxRequestSize = parsePositiveInt(routeProps.get(MAX_REQUEST_SIZE_KEY), 0);
+        TrackingMode trackingMode = parseTrackingMode(routeProps.get(TRACKING_MODE_KEY));
+        int attachmentsMinCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MIN_COUNT_KEY), 0);
+        int attachmentsMaxCount = parseNonNegativeInt(routeProps.get(ATTACHMENTS_MAX_COUNT_KEY), 0);
+        String attachmentsTimeout = trackingMode == TrackingMode.ATTACHMENTS
+                ? parseAttachmentsTimeout(routeProps.get(ATTACHMENTS_TIMEOUT_KEY))
+                : null;
+
+        warnIfNoneAuthWithRolesOrScopes(routeName, authModes, roles, scopes);
+
+        RouteConfiguration route = RouteConfiguration.builder()
+                .name(routeName).path(path).enabled(enabled)
+                .methods(methods).requiredRoles(roles).requiredScopes(scopes)
+                .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
+                .authModes(authModes).maxRequestSize(maxRequestSize)
+                .trackingMode(trackingMode)
+                .attachmentsMinCount(attachmentsMinCount)
+                .attachmentsMaxCount(attachmentsMaxCount)
+                .attachmentsTimeout(attachmentsTimeout)
+                .build();
+        LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
+                routeName, path, enabled, methods, authModes);
+        return Optional.of(route);
+    }
+
+    private static String resolveSuccessOutcome(Map<String, String> routeProps, String routeName) {
+        String successOutcome = routeProps.get(SUCCESS_OUTCOME_KEY);
+        boolean createFlowFile = !"false".equalsIgnoreCase(routeProps.get(CREATE_FLOWFILE_KEY));
+        if ((successOutcome == null || successOutcome.isBlank()) && createFlowFile) {
+            return routeName;
+        }
+        return successOutcome;
+    }
+
+    private static Set<AuthMode> resolveAuthModes(String routeName, String authModeRaw) {
+        if (authModeRaw == null || authModeRaw.isBlank()) {
+            return EnumSet.of(AuthMode.BEARER);
+        }
+        try {
+            return AuthMode.fromValues(authModeRaw);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
+                    routeName, authModeRaw, e.getMessage());
+            return EnumSet.of(AuthMode.BEARER);
+        }
+    }
+
+    private static void warnIfNoneAuthWithRolesOrScopes(String routeName, Set<AuthMode> authModes,
+            Set<String> roles, Set<String> scopes) {
+        if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
+            LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
+                    + "roles and scopes will be ignored", routeName);
+        }
     }
 
     private static Set<String> parseHttpMethods(String value) {

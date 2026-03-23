@@ -48,8 +48,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should throw NullPointerException for null properties")
         void shouldThrowNPEForNullProperties() {
+            var configManager = new ConfigurationManager();
             assertThrows(NullPointerException.class,
-                    () -> IssuerConfigurationParser.parseIssuerConfigs(null, new ConfigurationManager()));
+                    () -> IssuerConfigurationParser.parseIssuerConfigs(null, configManager));
         }
 
         @Test

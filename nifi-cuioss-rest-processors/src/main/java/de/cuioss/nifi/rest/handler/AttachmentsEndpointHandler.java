@@ -22,6 +22,7 @@ import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonException;
+import lombok.Builder;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -49,7 +50,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class AttachmentsEndpointHandler implements EndpointHandler {
 
     private static final CuiLogger LOGGER = new CuiLogger(AttachmentsEndpointHandler.class);
+    @SuppressWarnings("java:S1075") // URL path, not filesystem path
     static final String ATTACHMENTS_PATH = "/attachments";
+    @SuppressWarnings("java:S1075") // URL path, not filesystem path
     private static final String ATTACHMENTS_PATH_PREFIX = ATTACHMENTS_PATH + "/";
     private static final String JSON_CONTENT_TYPE = "application/json";
     public static final String ATTACHMENTS_ROUTE_NAME = "_attachments";
@@ -64,6 +67,32 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
     private final GatewaySecurityEvents gatewaySecurityEvents;
 
     private final ConcurrentHashMap<String, AtomicInteger> attachmentCounters = new ConcurrentHashMap<>();
+
+    /**
+     * Configuration holder for AttachmentsEndpointHandler construction parameters.
+     */
+    @Builder
+    public record Config(
+    RequestStatusStore statusStore,
+    BlockingQueue<HttpRequestContainer> queue,
+    int maxRequestSize,
+    boolean enabled,
+    Set<AuthMode> authModes,
+    Set<String> requiredRoles,
+    Set<String> requiredScopes,
+    GatewaySecurityEvents gatewaySecurityEvents) {
+    }
+
+    public AttachmentsEndpointHandler(Config config) {
+        this.statusStore = config.statusStore();
+        this.queue = config.queue();
+        this.maxRequestSize = config.maxRequestSize();
+        this.enabled = config.enabled();
+        this.authModes = config.authModes();
+        this.requiredRoles = config.requiredRoles();
+        this.requiredScopes = config.requiredScopes();
+        this.gatewaySecurityEvents = config.gatewaySecurityEvents();
+    }
 
     public AttachmentsEndpointHandler(RequestStatusStore statusStore,
             BlockingQueue<HttpRequestContainer> queue,
@@ -136,27 +165,54 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             @Nullable AccessTokenContent token,
             byte[] body,
             Request request, Response response, Callback callback) throws IOException {
-        String path = sanitized.path();
 
-        // Extract parentTraceId from path: /attachments/{parentTraceId}
-        if (!path.startsWith(ATTACHMENTS_PATH_PREFIX) || path.length() <= ATTACHMENTS_PATH_PREFIX.length()) {
-            ProblemDetail.badRequest("Missing parentTraceId in path. Expected: /attachments/{parentTraceId}")
-                    .sendResponse(response, callback);
+        Optional<String> parentTraceId = extractAndValidateParentTraceId(sanitized.path(), response, callback);
+        if (parentTraceId.isEmpty()) {
             return;
         }
 
-        String parentTraceId = path.substring(ATTACHMENTS_PATH_PREFIX.length());
+        Optional<RequestStatusEntry> parent = lookupAndValidateParent(parentTraceId.get(), response, callback);
+        if (parent.isEmpty()) {
+            return;
+        }
 
-        // Validate UUID format
+        Optional<Integer> attachmentCount = enforceAttachmentLimit(parentTraceId.get(), parent.get(), response, callback);
+        if (attachmentCount.isEmpty()) {
+            return;
+        }
+
+        String traceId = registerAttachment(parentTraceId.get(), attachmentCount.get(), parent.get(), response, callback);
+        if (traceId == null) {
+            return;
+        }
+
+        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, response, callback)) {
+            return;
+        }
+
+        autoTransitionToProcessedIfMinMet(parentTraceId.get(), parent.get(), attachmentCount.get());
+
+        sendAcceptedResponse(request, response, callback, traceId);
+    }
+
+    private Optional<String> extractAndValidateParentTraceId(String path, Response response, Callback callback) {
+        if (!path.startsWith(ATTACHMENTS_PATH_PREFIX) || path.length() <= ATTACHMENTS_PATH_PREFIX.length()) {
+            ProblemDetail.badRequest("Missing parentTraceId in path. Expected: /attachments/{parentTraceId}")
+                    .sendResponse(response, callback);
+            return Optional.empty();
+        }
+        String parentTraceId = path.substring(ATTACHMENTS_PATH_PREFIX.length());
         try {
             UUID.fromString(parentTraceId);
         } catch (IllegalArgumentException e) {
             ProblemDetail.badRequest("Invalid parentTraceId format. Expected UUID.")
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
+        return Optional.of(parentTraceId);
+    }
 
-        // Look up parent entry
+    private Optional<RequestStatusEntry> lookupAndValidateParent(String parentTraceId, Response response, Callback callback) {
         Optional<RequestStatusEntry> parentEntry;
         try {
             parentEntry = statusStore.getStatus(parentTraceId);
@@ -164,36 +220,38 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
-
         if (parentEntry.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.PARENT_TRACE_NOT_FOUND, parentTraceId);
             ProblemDetail.notFound("No parent request found for traceId: " + parentTraceId)
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
-
         RequestStatusEntry parent = parentEntry.get();
-
-        // Verify parent accepts attachments
         if (parent.attachmentsMaxCount() == 0) {
             LOGGER.warn(RestApiLogMessages.WARN.ATTACHMENTS_NOT_SUPPORTED, parentTraceId);
             ProblemDetail.conflict("Parent request does not accept attachments")
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
-
-        // Verify attachment window is still open (PROCESSED is allowed — auto-transitioned after min count met)
-        if (parent.status() != RequestStatus.COLLECTING_ATTACHMENTS && parent.status() != RequestStatus.PROCESSED) {
+        if (!isAttachmentWindowOpen(parent)) {
             LOGGER.warn("Attachment window closed for parentTraceId '%s' — status is %s",
                     parentTraceId, parent.status());
             ProblemDetail.conflict("Attachment window closed — parent request is already being processed")
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
+        return parentEntry;
+    }
 
-        // Enforce upper bound
+    private static boolean isAttachmentWindowOpen(RequestStatusEntry parent) {
+        return parent.status() == RequestStatus.COLLECTING_ATTACHMENTS
+                || parent.status() == RequestStatus.PROCESSED;
+    }
+
+    private Optional<Integer> enforceAttachmentLimit(String parentTraceId, RequestStatusEntry parent,
+            Response response, Callback callback) {
         int count = attachmentCounters
                 .computeIfAbsent(parentTraceId, k -> new AtomicInteger(0))
                 .incrementAndGet();
@@ -203,10 +261,14 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
                     parentTraceId, count - 1, parent.attachmentsMaxCount());
             ProblemDetail.conflict("Attachment limit reached: " + parent.attachmentsMaxCount())
                     .sendResponse(response, callback);
-            return;
+            return Optional.empty();
         }
+        return Optional.of(count);
+    }
 
-        // Generate trace ID for this attachment
+    @Nullable
+    private String registerAttachment(String parentTraceId, int count, RequestStatusEntry parent,
+            Response response, Callback callback) {
         String traceId = UUID.randomUUID().toString();
         try {
             statusStore.accept(traceId, parentTraceId);
@@ -215,13 +277,16 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
                     .sendResponse(response, callback);
-            return;
+            return null;
         }
-
         LOGGER.info(RestApiLogMessages.INFO.ATTACHMENT_ACCEPTED,
                 traceId, parentTraceId, count, parent.attachmentsMaxCount());
+        return traceId;
+    }
 
-        // Enqueue for FlowFile creation
+    private boolean enqueueAttachment(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
+            byte[] body, Request request, String parentTraceId, String traceId,
+            Response response, Callback callback) {
         var container = new HttpRequestContainer(
                 ATTACHMENTS_ROUTE_NAME, "POST", sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
@@ -239,11 +304,16 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
                     Request.getRemoteAddr(request));
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
-            return;
+            return false;
         }
+        return true;
+    }
 
-        // Auto-transition to PROCESSED when minimum attachment count is met
-        if (parent.status() == RequestStatus.COLLECTING_ATTACHMENTS && parent.attachmentsMinCount() > 0 && count >= parent.attachmentsMinCount()) {
+    private void autoTransitionToProcessedIfMinMet(String parentTraceId, RequestStatusEntry parent, int count) {
+        boolean shouldTransition = parent.status() == RequestStatus.COLLECTING_ATTACHMENTS
+                && parent.attachmentsMinCount() > 0
+                && count >= parent.attachmentsMinCount();
+        if (shouldTransition) {
             try {
                 statusStore.updateStatus(parentTraceId, RequestStatus.PROCESSED);
                 LOGGER.info(RestApiLogMessages.INFO.ATTACHMENTS_MIN_MET,
@@ -252,8 +322,9 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
                 LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             }
         }
+    }
 
-        // Build 202 response with HATEOAS links
+    private static void sendAcceptedResponse(Request request, Response response, Callback callback, String traceId) {
         String statusPath = "/status/" + traceId;
         byte[] responseBody = Json.createObjectBuilder()
                 .add("status", "accepted")
@@ -265,22 +336,24 @@ public class AttachmentsEndpointHandler implements EndpointHandler {
                 .toString()
                 .getBytes(StandardCharsets.UTF_8);
 
-        // Build Location header
-        var httpUri = request.getHttpURI();
-        String scheme = httpUri.getScheme();
-        String host = Request.getServerName(request);
-        int port = Request.getServerPort(request);
-        String locationUri;
-        if (("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443)) {
-            locationUri = "%s://%s/status/%s".formatted(scheme, host, traceId);
-        } else {
-            locationUri = "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
-        }
-
+        String locationUri = buildLocationUri(request, traceId);
         response.setStatus(202);
         response.getHeaders().put(HttpHeader.LOCATION, locationUri);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, JSON_CONTENT_TYPE);
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
         response.write(true, ByteBuffer.wrap(responseBody), callback);
+    }
+
+    private static String buildLocationUri(Request request, String traceId) {
+        var httpUri = request.getHttpURI();
+        String scheme = httpUri.getScheme();
+        String host = Request.getServerName(request);
+        int port = Request.getServerPort(request);
+        boolean isDefaultPort = ("http".equals(scheme) && port == 80)
+                || ("https".equals(scheme) && port == 443);
+        if (isDefaultPort) {
+            return "%s://%s/status/%s".formatted(scheme, host, traceId);
+        }
+        return "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
     }
 }

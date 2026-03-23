@@ -436,8 +436,8 @@ class RouteConfigurationParserTest {
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
             // Assert
-            assertThrows(UnsupportedOperationException.class,
-                    () -> routes.add(RouteConfiguration.builder().name("x").path("/x").build()));
+            var newRoute = RouteConfiguration.builder().name("x").path("/x").build();
+            assertThrows(UnsupportedOperationException.class, () -> routes.add(newRoute));
         }
     }
 

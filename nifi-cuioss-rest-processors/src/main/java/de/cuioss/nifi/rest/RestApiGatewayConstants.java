@@ -49,6 +49,7 @@ public final class RestApiGatewayConstants {
     public static final class Properties {
         private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
         private static final String BEARER_RELEVANCE_DESC = "Only relevant when auth-mode includes 'bearer'.";
+        private static final String FALSE_VALUE = "false";
 
         public static final PropertyDescriptor LISTENING_PORT = new PropertyDescriptor.Builder()
                 .name("rest.gateway.listening.port")
@@ -110,7 +111,7 @@ public final class RestApiGatewayConstants {
                 .description("Whether the /health management endpoint is active")
                 .required(false)
                 .defaultValue("true")
-                .allowableValues("true", "false")
+                .allowableValues("true", FALSE_VALUE)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_HEALTH_AUTH_MODE = new PropertyDescriptor.Builder()
@@ -148,7 +149,7 @@ public final class RestApiGatewayConstants {
                 .description("Whether the /metrics management endpoint is active")
                 .required(false)
                 .defaultValue("true")
-                .allowableValues("true", "false")
+                .allowableValues("true", FALSE_VALUE)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_METRICS_AUTH_MODE = new PropertyDescriptor.Builder()
@@ -195,7 +196,7 @@ public final class RestApiGatewayConstants {
                 .description("Whether the /status/{traceId} management endpoint is active")
                 .required(false)
                 .defaultValue("true")
-                .allowableValues("true", "false")
+                .allowableValues("true", FALSE_VALUE)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_STATUS_AUTH_MODE = new PropertyDescriptor.Builder()
@@ -230,7 +231,7 @@ public final class RestApiGatewayConstants {
                 .description("Whether the /attachments/{parentTraceId} endpoint is active")
                 .required(false)
                 .defaultValue("true")
-                .allowableValues("true", "false")
+                .allowableValues("true", FALSE_VALUE)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_AUTH_MODE = new PropertyDescriptor.Builder()

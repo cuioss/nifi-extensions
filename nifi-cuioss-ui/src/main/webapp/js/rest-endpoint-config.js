@@ -79,15 +79,9 @@ export const init = async (element) => {
     exportSection.querySelector('.copy-properties-button').addEventListener('click', () => {
         const textarea = exportSection.querySelector('.property-export-textarea');
         const text = textarea.value;
-        if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(text).then(() => {
-                showCopyFeedback(exportSection);
-            });
-        } else {
-            textarea.select();
-            document.execCommand('copy');
+        navigator.clipboard.writeText(text).then(() => {
             showCopyFeedback(exportSection);
-        }
+        });
     });
 
     // Refresh export content when panel is expanded
@@ -482,11 +476,11 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
         const scopesInput = fields.querySelector('.field-required-scopes');
         const rolesValue = rolesInput ? rolesInput.value.trim() : '';
         const scopesValue = scopesInput ? scopesInput.value.trim() : '';
-        saveManagementEndpoint(
-            ep, componentId, enabledCheckbox.checked, authModeValue,
+        saveManagementEndpoint({
+            ep, componentId, enabled: enabledCheckbox.checked, authModeValue,
             rolesValue, scopesValue,
-            form, tableRow, errorContainer
-        );
+            form, tableRow, errEl: errorContainer
+        });
     });
     actionsDiv.appendChild(saveBtn);
 
@@ -524,33 +518,58 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
  * @param {HTMLTableRowElement} tableRow  the table row to update
  * @param {HTMLElement} errEl  error container element
  */
-const saveManagementEndpoint = async (ep, componentId, enabled, authModeValue,
-    rolesValue, scopesValue,
-    form, tableRow, errEl) => {
-    const updates = {};
-    updates[`rest.gateway.management.${ep.name}.enabled`] = String(enabled);
-    updates[`rest.gateway.management.${ep.name}.auth-mode`] = authModeValue;
-    updates[`rest.gateway.management.${ep.name}.required-roles`] = rolesValue;
-    updates[`rest.gateway.management.${ep.name}.required-scopes`] = scopesValue;
+/**
+ * Apply management endpoint save result to the UI (update row, close form, refresh export).
+ * @param {HTMLTableRowElement} tableRow  the table row to update
+ * @param {boolean} enabled  new enabled state
+ * @param {string} authModeValue  comma-separated auth modes
+ * @param {string} rolesValue  comma-separated required roles
+ * @param {string} scopesValue  comma-separated required scopes
+ * @param {HTMLElement} form  the editor form element
+ */
+const applyManagementSave = (tableRow, enabled, authModeValue, rolesValue, scopesValue, form) => {
+    updateManagementTableRow(tableRow, enabled, authModeValue, rolesValue, scopesValue);
+    tableRow.classList.remove('hidden');
+    form.remove();
+    const rc = tableRow.closest('.route-config-editor')?.querySelector('.routes-container');
+    if (rc) refreshExportPanel(rc);
+};
 
-    if (componentId) {
-        try {
-            await api.updateComponentProperties(componentId, updates);
-            // Update the table row in-place
-            updateManagementTableRow(tableRow, enabled, authModeValue, rolesValue, scopesValue);
-            tableRow.classList.remove('hidden');
-            form.remove();
-            const rc = tableRow.closest('.route-config-editor')?.querySelector('.routes-container');
-            if (rc) refreshExportPanel(rc);
-        } catch (error) {
-            displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
-        }
-    } else {
-        updateManagementTableRow(tableRow, enabled, authModeValue, rolesValue, scopesValue);
-        tableRow.classList.remove('hidden');
-        form.remove();
-        const rc = tableRow.closest('.route-config-editor')?.querySelector('.routes-container');
-        if (rc) refreshExportPanel(rc);
+/**
+ * Save management endpoint changes via API.
+ *
+ * @param {Object} opts  save options
+ * @param {Object} opts.ep  original endpoint data
+ * @param {string} opts.componentId  NiFi processor component ID
+ * @param {boolean} opts.enabled  new enabled state
+ * @param {string} opts.authModeValue  comma-separated auth modes
+ * @param {string} opts.rolesValue  comma-separated required roles
+ * @param {string} opts.scopesValue  comma-separated required scopes
+ * @param {HTMLElement} opts.form  the editor form element
+ * @param {HTMLTableRowElement} opts.tableRow  the table row to update
+ * @param {HTMLElement} opts.errEl  error container element
+ */
+const saveManagementEndpoint = async ({
+    ep, componentId, enabled, authModeValue,
+    rolesValue, scopesValue, form, tableRow, errEl
+}) => {
+    const updates = {
+        [`rest.gateway.management.${ep.name}.enabled`]: String(enabled),
+        [`rest.gateway.management.${ep.name}.auth-mode`]: authModeValue,
+        [`rest.gateway.management.${ep.name}.required-roles`]: rolesValue,
+        [`rest.gateway.management.${ep.name}.required-scopes`]: scopesValue
+    };
+
+    if (!componentId) {
+        applyManagementSave(tableRow, enabled, authModeValue, rolesValue, scopesValue, form);
+        return;
+    }
+
+    try {
+        await api.updateComponentProperties(componentId, updates);
+        applyManagementSave(tableRow, enabled, authModeValue, rolesValue, scopesValue, form);
+    } catch (error) {
+        displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
     }
 };
 
@@ -647,8 +666,8 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
             'auth-mode': route.authMode || 'bearer',
             'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
             'tracking-mode': route.trackingMode || 'none',
-            'attachments-min-count': route.attachmentsMinCount != null ? String(route.attachmentsMinCount) : '',
-            'attachments-max-count': route.attachmentsMaxCount != null ? String(route.attachmentsMaxCount) : '',
+            'attachments-min-count': route.attachmentsMinCount == null ? '' : String(route.attachmentsMinCount),
+            'attachments-max-count': route.attachmentsMaxCount == null ? '' : String(route.attachmentsMaxCount),
             'attachments-timeout': route.attachmentsTimeout || '',
             _source: route.source || 'nifi'
         };
@@ -756,11 +775,11 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     // Connection column: show "—" when create-flowfile=false, custom badge when differs from name
     let outcomeCell;
-    if (!createFlowFileVal) {
-        outcomeCell = '<span class="empty-state">\u2014</span>';
-    } else {
+    if (createFlowFileVal) {
         const outcome = (props?.['success-outcome']?.trim()) || name;
         outcomeCell = sanitizeHtml(outcome);
+    } else {
+        outcomeCell = '<span class="empty-state">\u2014</span>';
     }
 
     const authMode = props?.['auth-mode'] || 'bearer';
@@ -817,11 +836,11 @@ const updateTableRow = (row, formData) => {
 
     // Connection column
     const createFlowFileVal = formData['create-flowfile'] !== false && formData['create-flowfile'] !== 'false';
-    if (!createFlowFileVal) {
-        cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
-    } else {
+    if (createFlowFileVal) {
         const outcome = formData['success-outcome']?.trim() || formData.routeName;
         cells[1].innerHTML = sanitizeHtml(outcome);
+    } else {
+        cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
     }
 
     const schemaBadge = formData.schema?.trim()
@@ -894,34 +913,11 @@ const createSection = (titleKey) => {
 };
 
 // ---------------------------------------------------------------------------
-// Inline editor
+// Inline editor — section builders
 // ---------------------------------------------------------------------------
 
-/**
- * Open an inline editor form below the table (or replacing a table row).
- * @param {HTMLElement} routesContainer  the .routes-container element
- * @param {string} routeName  existing route name, or '' for new route
- * @param {Object} properties  existing route properties, or {} for new route
- * @param {string} componentId  NiFi processor component ID
- * @param {HTMLTableRowElement|null} tableRow  the table row being edited, or null for new route
- */
-const openInlineEditor = (routesContainer, routeName, properties, componentId, tableRow) => {
-    // Close any existing editor first
-    closeActiveEditor(routesContainer);
-    // Re-hide the current row if editing an existing route
-    if (tableRow) tableRow.classList.add('hidden');
-
-    const idx = formCounter++;
-    const form = document.createElement('div');
-    form.className = 'route-form inline-edit';
-    form.dataset.originalName = routeName || '';
-
-    const enabledVal = properties?.enabled !== 'false';
-    const hasSchema = !!properties?.schema?.trim();
-
-    const rn = routeName || '*';
-
-    // ---- header (name + enabled) ----
+/** Build the header section (name + enabled checkbox) for the inline editor. */
+const buildEditorHeader = (idx, rn, routeName, enabledVal) => {
     const header = document.createElement('div');
     header.className = 'form-header';
 
@@ -967,28 +963,36 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
 
     header.appendChild(nameHelp.panel);
     header.appendChild(enabledHelp.panel);
-    form.appendChild(header);
+    return header;
+};
 
-    // ---- Section: Basic (path + methods) ----
-    const basicSection = createSection('route.form.section.basic');
-    const basicFields = document.createElement('div');
-    basicFields.className = 'form-fields';
-    basicSection.appendChild(basicFields);
-
-    addField({ container: basicFields, idx, name: 'path', label: t('route.form.path.label'),
+/** Build the Basic section (path + methods). */
+const buildBasicSection = (idx, rn, properties) => {
+    const section = createSection('route.form.section.basic');
+    const fields = document.createElement('div');
+    fields.className = 'form-fields';
+    section.appendChild(fields);
+    addField({
+        container: fields, idx, name: 'path',
+        label: t('route.form.path.label'),
         placeholder: t('route.form.path.placeholder'),
         value: properties?.path,
-        helpKey: 'contexthelp.route.path', propertyKey: `restapi.${rn}.path`,
-        currentValue: properties?.path });
-    createMethodChipInput({ container: basicFields, idx, value: properties?.methods });
+        helpKey: 'contexthelp.route.path',
+        propertyKey: `restapi.${rn}.path`,
+        currentValue: properties?.path
+    });
+    createMethodChipInput({
+        container: fields, idx, value: properties?.methods
+    });
+    return section;
+};
 
-    form.appendChild(basicSection);
-
-    // ---- Section: Authentication (auth-mode + roles/scopes) ----
-    const authSection = createSection('route.form.section.auth');
+/** Build the Authentication section (auth-mode + roles/scopes). */
+const buildAuthSection = (idx, rn, properties) => {
+    const section = createSection('route.form.section.auth');
     const authFields = document.createElement('div');
     authFields.className = 'form-fields';
-    authSection.appendChild(authFields);
+    section.appendChild(authFields);
 
     const currentAuthMode = properties?.['auth-mode'] || 'bearer';
     const authModeChip = createAuthModeChipInput({
@@ -998,74 +1002,55 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         currentValue: currentAuthMode
     });
 
-    addField({ container: authFields, idx, name: 'required-roles', label: t('route.form.roles.label'),
+    addField({
+        container: authFields, idx,
+        name: 'required-roles',
+        label: t('route.form.roles.label'),
         placeholder: t('route.form.roles.placeholder'),
         value: properties?.['required-roles'],
-        helpKey: 'contexthelp.route.roles', propertyKey: `restapi.${rn}.required-roles`,
-        currentValue: properties?.['required-roles'] });
-    addField({ container: authFields, idx, name: 'required-scopes', label: t('route.form.scopes.label'),
+        helpKey: 'contexthelp.route.roles',
+        propertyKey: `restapi.${rn}.required-roles`,
+        currentValue: properties?.['required-roles']
+    });
+    addField({
+        container: authFields, idx,
+        name: 'required-scopes',
+        label: t('route.form.scopes.label'),
         placeholder: t('route.form.scopes.placeholder'),
         value: properties?.['required-scopes'],
-        helpKey: 'contexthelp.route.scopes', propertyKey: `restapi.${rn}.required-scopes`,
-        currentValue: properties?.['required-scopes'] });
-
-    // Hide roles/scopes containers when bearer is not among selected auth modes
-    const rolesContainer = authFields.querySelector('.field-container-required-roles');
-    const scopesContainer = authFields.querySelector('.field-container-required-scopes');
-    const toggleRolesScopes = () => {
-        const modes = (authModeChip.getValue() || '').split(',').map((m) => m.trim());
-        const hasBearer = modes.includes('bearer');
-        if (rolesContainer) rolesContainer.classList.toggle('hidden', !hasBearer);
-        if (scopesContainer) scopesContainer.classList.toggle('hidden', !hasBearer);
-    };
-    // Listen for changes on the hidden field dispatched by the chip input
-    const authModeHidden = authFields.querySelector('.field-auth-mode');
-    if (authModeHidden) authModeHidden.addEventListener('change', toggleRolesScopes);
-    toggleRolesScopes();
-
-    form.appendChild(authSection);
-
-    // ---- Section: Tracking (tracking-mode + attachment bounds) ----
-    const trackingSection = createSection('route.form.section.tracking');
-
-    const trackingModeVal = properties?.['tracking-mode'] || 'none';
-    const trackingToggle = document.createElement('div');
-    trackingToggle.className = 'form-field field-container-tracking-mode';
-    const trackingLabel = document.createElement('label');
-    trackingLabel.className = 'tracking-mode-label';
-    trackingLabel.setAttribute('for', `tracking-mode-${idx}`);
-    trackingLabel.textContent = `${t('route.form.tracking.mode')} `;
-
-    const trackingSelect = document.createElement('select');
-    trackingSelect.id = `tracking-mode-${idx}`;
-    trackingSelect.className = 'tracking-mode-select';
-    trackingSelect.setAttribute('aria-label', t('route.form.tracking.mode'));
-    const modeOptions = [
-        { value: 'none', label: t('route.form.tracking.none') },
-        { value: 'simple', label: t('route.form.tracking.simple') },
-        { value: 'attachments', label: t('route.form.tracking.attachments') }
-    ];
-    for (const opt of modeOptions) {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        if (opt.value === trackingModeVal.toLowerCase()) option.selected = true;
-        trackingSelect.appendChild(option);
-    }
-    trackingLabel.appendChild(trackingSelect);
-
-    const trackingHelp = createContextHelp({
-        helpKey: 'contexthelp.route.tracking',
-        propertyKey: `restapi.${rn}.tracking-mode`,
-        currentValue: trackingModeVal
+        helpKey: 'contexthelp.route.scopes',
+        propertyKey: `restapi.${rn}.required-scopes`,
+        currentValue: properties?.['required-scopes']
     });
-    trackingLabel.appendChild(trackingHelp.button);
-    trackingToggle.appendChild(trackingLabel);
-    trackingToggle.appendChild(trackingHelp.panel);
 
-    // ---- conditional attachment bounds fields ----
-    const attachmentFields = document.createElement('div');
-    attachmentFields.className = 'attachment-bounds-fields';
+    const rolesContainer = authFields.querySelector(
+        '.field-container-required-roles');
+    const scopesContainer = authFields.querySelector(
+        '.field-container-required-scopes');
+    const toggleRolesScopes = () => {
+        const modes = (authModeChip.getValue() || '')
+            .split(',').map((m) => m.trim());
+        const hasBearer = modes.includes('bearer');
+        if (rolesContainer) {
+            rolesContainer.classList.toggle('hidden', !hasBearer);
+        }
+        if (scopesContainer) {
+            scopesContainer.classList.toggle('hidden', !hasBearer);
+        }
+    };
+    const authModeHidden = authFields.querySelector('.field-auth-mode');
+    if (authModeHidden) {
+        authModeHidden.addEventListener('change', toggleRolesScopes);
+    }
+    toggleRolesScopes();
+    return section;
+};
+
+/** Build the attachment bounds sub-fields (min, max, timeout). */
+const buildAttachmentBoundsFields = (properties) => {
+    const container = document.createElement('div');
+    container.className = 'attachment-bounds-fields';
+
     const minInput = document.createElement('input');
     minInput.type = 'number';
     minInput.className = 'field-attachments-min-count';
@@ -1090,27 +1075,30 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     maxLabel.appendChild(maxInput);
 
     const timeoutRaw = properties?.['attachments-timeout'] || '30 sec';
-    const timeoutMatch = timeoutRaw.match(/^(\d+)\s*(ms|sec|min|hr|day)$/i);
+    const timeoutMatch = timeoutRaw.match(
+        /^(\d+)\s*(ms|sec|min|hr|day)$/i);
     const timeoutNum = timeoutMatch ? timeoutMatch[1] : '30';
-    const timeoutUnit = timeoutMatch ? timeoutMatch[2].toLowerCase() : 'sec';
+    const timeoutUnit = timeoutMatch
+        ? timeoutMatch[2].toLowerCase() : 'sec';
 
     const timeoutInput = document.createElement('input');
     timeoutInput.type = 'number';
     timeoutInput.className = 'field-attachments-timeout-value';
     timeoutInput.min = '1';
     timeoutInput.value = timeoutNum;
-    timeoutInput.setAttribute('aria-label', t('route.form.attachments.timeout'));
+    timeoutInput.setAttribute('aria-label',
+        t('route.form.attachments.timeout'));
 
     const timeoutUnitSelect = document.createElement('select');
     timeoutUnitSelect.className = 'field-attachments-timeout-unit';
-    timeoutUnitSelect.setAttribute('aria-label', t('route.form.attachments.timeout') + ' unit');
-    const timeUnits = [
+    timeoutUnitSelect.setAttribute('aria-label',
+        t('route.form.attachments.timeout') + ' unit');
+    for (const tu of [
         { value: 'sec', label: 'sec' },
         { value: 'min', label: 'min' },
         { value: 'hr', label: 'hr' },
         { value: 'day', label: 'day' }
-    ];
-    for (const tu of timeUnits) {
+    ]) {
         const opt = document.createElement('option');
         opt.value = tu.value;
         opt.textContent = tu.label;
@@ -1124,33 +1112,85 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     timeoutLabel.appendChild(timeoutInput);
     timeoutLabel.appendChild(timeoutUnitSelect);
 
-    attachmentFields.appendChild(minLabel);
-    attachmentFields.appendChild(maxLabel);
-    attachmentFields.appendChild(timeoutLabel);
+    container.appendChild(minLabel);
+    container.appendChild(maxLabel);
+    container.appendChild(timeoutLabel);
+    return container;
+};
+
+/** Build the Tracking section (tracking-mode + attachment bounds). */
+const buildTrackingSection = (idx, rn, properties) => {
+    const section = createSection('route.form.section.tracking');
+    const trackingModeVal = properties?.['tracking-mode'] || 'none';
+
+    const trackingToggle = document.createElement('div');
+    trackingToggle.className = 'form-field field-container-tracking-mode';
+    const trackingLabel = document.createElement('label');
+    trackingLabel.className = 'tracking-mode-label';
+    trackingLabel.setAttribute('for', `tracking-mode-${idx}`);
+    trackingLabel.textContent = `${t('route.form.tracking.mode')} `;
+
+    const trackingSelect = document.createElement('select');
+    trackingSelect.id = `tracking-mode-${idx}`;
+    trackingSelect.className = 'tracking-mode-select';
+    trackingSelect.setAttribute('aria-label', t('route.form.tracking.mode'));
+    for (const opt of [
+        { value: 'none', label: t('route.form.tracking.none') },
+        { value: 'simple', label: t('route.form.tracking.simple') },
+        { value: 'attachments', label: t('route.form.tracking.attachments') }
+    ]) {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.textContent = opt.label;
+        if (opt.value === trackingModeVal.toLowerCase()) {
+            option.selected = true;
+        }
+        trackingSelect.appendChild(option);
+    }
+    trackingLabel.appendChild(trackingSelect);
+
+    const trackingHelp = createContextHelp({
+        helpKey: 'contexthelp.route.tracking',
+        propertyKey: `restapi.${rn}.tracking-mode`,
+        currentValue: trackingModeVal
+    });
+    trackingLabel.appendChild(trackingHelp.button);
+    trackingToggle.appendChild(trackingLabel);
+    trackingToggle.appendChild(trackingHelp.panel);
+
+    const attachmentFields = buildAttachmentBoundsFields(properties);
     trackingToggle.appendChild(attachmentFields);
 
     const toggleAttachmentFields = () => {
-        attachmentFields.classList.toggle('hidden', trackingSelect.value !== 'attachments');
+        attachmentFields.classList.toggle('hidden',
+            trackingSelect.value !== 'attachments');
     };
     trackingSelect.addEventListener('change', toggleAttachmentFields);
     toggleAttachmentFields();
 
-    trackingSection.appendChild(trackingToggle);
-    form.appendChild(trackingSection);
+    section.appendChild(trackingToggle);
+    return section;
+};
 
-    // ---- Section: Advanced (max-request-size, flowfile, schema) ----
-    const advancedSection = createSection('route.form.section.advanced');
-    const advancedFields = document.createElement('div');
-    advancedFields.className = 'form-fields';
-    advancedSection.appendChild(advancedFields);
+/** Collect connection names from route table rows (excluding one). */
+const collectExistingConnectionNames = (routesContainer, excludeRoute) => {
+    const names = [];
+    for (const r of routesContainer.querySelectorAll(
+        'tr[data-route-name]')) {
+        if (r.dataset.routeName === excludeRoute) continue;
+        const cell = r.querySelectorAll('td')[1];
+        if (!cell || cell.querySelector('.empty-state')) continue;
+        const textNode = Array.from(cell.childNodes)
+            .find((node) => node.nodeType === Node.TEXT_NODE);
+        const text = (textNode?.textContent || '').trim();
+        if (text && !names.includes(text)) names.push(text);
+    }
+    return names;
+};
 
-    // ---- max-request-size field ----
-    addField({ container: advancedFields, idx, name: 'max-request-size',
-        label: t('route.form.max.request.size.label'),
-        placeholder: t('route.form.max.request.size.placeholder'),
-        value: properties?.['max-request-size'] || '' });
-
-    // ---- create-flowfile checkbox + success-outcome field ----
+/** Build the flowfile toggle + success-outcome field. */
+const buildFlowFileFields = (section, idx, rn, properties,
+    routesContainer, routeName) => {
     const createFlowFileVal = properties?.['create-flowfile'] !== 'false';
     const flowFileToggle = document.createElement('div');
     flowFileToggle.className = 'form-field field-container-create-flowfile';
@@ -1173,32 +1213,21 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         currentValue: String(createFlowFileVal)
     });
     flowfileLabel.appendChild(flowfileHelp.button);
-
     flowFileToggle.appendChild(flowfileLabel);
     flowFileToggle.appendChild(flowfileHelp.panel);
-    advancedSection.appendChild(flowFileToggle);
+    section.appendChild(flowFileToggle);
+
+    const existingNames = collectExistingConnectionNames(
+        routesContainer, routeName);
+    const datalistOptions = existingNames
+        .map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
 
     const outcomeContainer = document.createElement('div');
-    outcomeContainer.className = `form-field field-container-success-outcome${createFlowFileVal ? '' : ' hidden'}`;
-
-    // Build datalist options from existing route connection names
-    const existingNames = [];
-    const allRows = routesContainer.querySelectorAll('tr[data-route-name]');
-    for (const r of allRows) {
-        if (r.dataset.routeName === routeName) continue; // exclude current route
-        const cell = r.querySelectorAll('td')[1];
-        if (!cell || cell.querySelector('.empty-state')) continue; // skip create-flowfile=false
-        const textNode = Array.from(cell.childNodes)
-            .find((node) => node.nodeType === Node.TEXT_NODE);
-        const text = (textNode?.textContent || '').trim();
-        if (text && !existingNames.includes(text)) existingNames.push(text);
-    }
-    const datalistOptions = existingNames.map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
-
+    outcomeContainer.className =
+        `form-field field-container-success-outcome${createFlowFileVal ? '' : ' hidden'}`;
     const outcomeLabel = document.createElement('label');
     outcomeLabel.setAttribute('for', `field-success-outcome-${idx}`);
     outcomeLabel.textContent = `${t('route.form.connection.label')}:`;
-
     const connectionHelp = createContextHelp({
         helpKey: 'contexthelp.route.connection',
         propertyKey: `restapi.${rn}.success-outcome`,
@@ -1212,10 +1241,12 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     outcomeInput.type = 'text';
     outcomeInput.id = `field-success-outcome-${idx}`;
     outcomeInput.name = 'success-outcome';
-    outcomeInput.className = 'field-success-outcome form-input route-config-field';
+    outcomeInput.className =
+        'field-success-outcome form-input route-config-field';
     outcomeInput.placeholder = t('route.form.connection.placeholder');
     outcomeInput.value = properties?.['success-outcome'] || routeName;
-    outcomeInput.setAttribute('aria-label', t('route.form.connection.label'));
+    outcomeInput.setAttribute('aria-label',
+        t('route.form.connection.label'));
     outcomeInput.setAttribute('list', `connection-names-${idx}`);
     outcomeContainer.appendChild(outcomeInput);
 
@@ -1223,19 +1254,16 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     datalist.id = `connection-names-${idx}`;
     datalist.innerHTML = datalistOptions;
     outcomeContainer.appendChild(datalist);
-    advancedSection.appendChild(outcomeContainer);
+    section.appendChild(outcomeContainer);
 
-    // Wire create-flowfile checkbox toggle
-    const createFlowFileCheckbox = flowFileToggle.querySelector('.create-flowfile-checkbox');
-    createFlowFileCheckbox.addEventListener('change', () => {
-        if (createFlowFileCheckbox.checked) {
-            outcomeContainer.classList.remove('hidden');
-        } else {
-            outcomeContainer.classList.add('hidden');
-        }
+    flowfileCheckbox.addEventListener('change', () => {
+        outcomeContainer.classList.toggle('hidden',
+            !flowfileCheckbox.checked);
     });
+};
 
-    // ---- schema validation toggle ----
+/** Build the schema validation toggle + inputs. */
+const buildSchemaFields = (section, idx, rn, properties, hasSchema) => {
     const schemaToggle = document.createElement('div');
     schemaToggle.className = 'form-field field-container-schema-toggle';
     const schemaLabel = document.createElement('label');
@@ -1247,7 +1275,8 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     schemaCheckboxEl.id = `schema-check-${idx}`;
     schemaCheckboxEl.className = 'schema-validation-checkbox';
     if (hasSchema) schemaCheckboxEl.checked = true;
-    schemaCheckboxEl.setAttribute('aria-label', 'Enable Schema Validation');
+    schemaCheckboxEl.setAttribute('aria-label',
+        'Enable Schema Validation');
     schemaLabel.appendChild(schemaCheckboxEl);
     schemaLabel.append(` ${t('route.form.schema.toggle')}`);
 
@@ -1257,15 +1286,13 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         currentValue: properties?.schema
     });
     schemaLabel.appendChild(schemaHelp.button);
-
     schemaToggle.appendChild(schemaLabel);
     schemaToggle.appendChild(schemaHelp.panel);
-    advancedSection.appendChild(schemaToggle);
+    section.appendChild(schemaToggle);
 
-    // ---- schema mode toggle + inputs (hidden by default unless route has schema) ----
     const schemaContainer = document.createElement('div');
-    schemaContainer.className = `form-field field-container-schema${hasSchema ? '' : ' hidden'}`;
-
+    schemaContainer.className =
+        `form-field field-container-schema${hasSchema ? '' : ' hidden'}`;
     const schemaVal = properties?.schema || '';
     const mode = detectSchemaMode(schemaVal);
     const fileVal = mode === 'file' ? schemaVal : '';
@@ -1298,14 +1325,14 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
                       rows="5" aria-label="Inline JSON Schema"
             >${sanitizeHtml(inlineVal)}</textarea>
         </div>`;
-    advancedSection.appendChild(schemaContainer);
+    section.appendChild(schemaContainer);
 
-    // Wire radio toggle
     const fileRadio = schemaContainer.querySelector('.schema-mode-file');
-    const inlineRadio = schemaContainer.querySelector('.schema-mode-inline');
+    const inlineRadio = schemaContainer.querySelector(
+        '.schema-mode-inline');
     const fileDiv = schemaContainer.querySelector('.schema-file-input');
-    const inlineDiv = schemaContainer.querySelector('.schema-inline-input');
-
+    const inlineDiv = schemaContainer.querySelector(
+        '.schema-inline-input');
     fileRadio.addEventListener('change', () => {
         fileDiv.classList.remove('hidden');
         inlineDiv.classList.add('hidden');
@@ -1314,53 +1341,102 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
         inlineDiv.classList.remove('hidden');
         fileDiv.classList.add('hidden');
     });
+    schemaCheckboxEl.addEventListener('change', () => {
+        schemaContainer.classList.toggle('hidden',
+            !schemaCheckboxEl.checked);
+    });
+};
 
-    // Wire schema checkbox toggle
-    const schemaCheckbox = schemaToggle.querySelector('.schema-validation-checkbox');
-    schemaCheckbox.addEventListener('change', () => {
-        if (schemaCheckbox.checked) {
-            schemaContainer.classList.remove('hidden');
-        } else {
-            schemaContainer.classList.add('hidden');
-        }
+/** Build the Advanced section (max-request-size, flowfile, schema). */
+const buildAdvancedSection = (idx, rn, properties,
+    routesContainer, routeName) => {
+    const section = createSection('route.form.section.advanced');
+    const advancedFields = document.createElement('div');
+    advancedFields.className = 'form-fields';
+    section.appendChild(advancedFields);
+
+    addField({
+        container: advancedFields, idx,
+        name: 'max-request-size',
+        label: t('route.form.max.request.size.label'),
+        placeholder: t('route.form.max.request.size.placeholder'),
+        value: properties?.['max-request-size'] || ''
     });
 
-    form.appendChild(advancedSection);
+    buildFlowFileFields(section, idx, rn, properties,
+        routesContainer, routeName);
+    buildSchemaFields(section, idx, rn, properties,
+        !!properties?.schema?.trim());
+    return section;
+};
 
-    // ---- error messages ----
+/** Build error container and action buttons (Save + Cancel). */
+const buildEditorActions = (form, componentId, tableRow,
+    routesContainer) => {
     const errorContainer = document.createElement('div');
     errorContainer.className = 'route-form-error-messages';
     errorContainer.setAttribute('role', 'alert');
     errorContainer.setAttribute('aria-live', 'assertive');
     form.appendChild(errorContainer);
 
-    // ---- action buttons: Save + Cancel ----
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'route-form-actions';
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'save-route-button';
-    saveBtn.innerHTML = `<i class="fa fa-check"></i> ${t('route.btn.save')}`;
+    saveBtn.innerHTML =
+        `<i class="fa fa-check"></i> ${t('route.btn.save')}`;
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
-        saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
+        saveRoute(form, errorContainer, componentId,
+            tableRow, routesContainer);
     });
     actionsDiv.appendChild(saveBtn);
 
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'cancel-route-button';
-    cancelBtn.innerHTML = `<i class="fa fa-times"></i> ${t('common.btn.cancel')}`;
+    cancelBtn.innerHTML =
+        `<i class="fa fa-times"></i> ${t('common.btn.cancel')}`;
     cancelBtn.addEventListener('click', () => {
-        if (tableRow) {
-            tableRow.classList.remove('hidden');
-        }
+        if (tableRow) tableRow.classList.remove('hidden');
         form.remove();
     });
     actionsDiv.appendChild(cancelBtn);
-
     form.appendChild(actionsDiv);
+};
 
-    // Insert form after the table
+// ---------------------------------------------------------------------------
+// Inline editor
+// ---------------------------------------------------------------------------
+
+/**
+ * Open an inline editor form below the table (or replacing a table row).
+ * @param {HTMLElement} routesContainer  the .routes-container element
+ * @param {string} routeName  existing route name, or '' for new route
+ * @param {Object} properties  existing route properties, or {} for new route
+ * @param {string} componentId  NiFi processor component ID
+ * @param {HTMLTableRowElement|null} tableRow  the table row being edited, or null for new route
+ */
+const openInlineEditor = (routesContainer, routeName, properties, componentId, tableRow) => {
+    closeActiveEditor(routesContainer);
+    if (tableRow) tableRow.classList.add('hidden');
+
+    const idx = formCounter++;
+    const form = document.createElement('div');
+    form.className = 'route-form inline-edit';
+    form.dataset.originalName = routeName || '';
+
+    const enabledVal = properties?.enabled !== 'false';
+    const rn = routeName || '*';
+
+    form.appendChild(buildEditorHeader(idx, rn, routeName, enabledVal));
+    form.appendChild(buildBasicSection(idx, rn, properties));
+    form.appendChild(buildAuthSection(idx, rn, properties));
+    form.appendChild(buildTrackingSection(idx, rn, properties));
+    form.appendChild(buildAdvancedSection(idx, rn, properties,
+        routesContainer, routeName));
+    buildEditorActions(form, componentId, tableRow, routesContainer);
+
     routesContainer.appendChild(form);
 };
 
@@ -1449,7 +1525,7 @@ const buildPropertyUpdates = (name, f) => {
     u[`${ROUTE_PREFIX}${name}.success-outcome`] = f['create-flowfile'] ? (f['success-outcome'] || name) : null;
     u[`${ROUTE_PREFIX}${name}.create-flowfile`] = f['create-flowfile'] === false ? 'false' : null;
     const trackingMode = (f['tracking-mode'] || 'none').toLowerCase();
-    u[`${ROUTE_PREFIX}${name}.tracking-mode`] = trackingMode !== 'none' ? trackingMode : null;
+    u[`${ROUTE_PREFIX}${name}.tracking-mode`] = trackingMode === 'none' ? null : trackingMode;
     u[`${ROUTE_PREFIX}${name}.attachments-min-count`] = trackingMode === 'attachments' && Number.parseInt(f['attachments-min-count'], 10) > 0
         ? f['attachments-min-count'] : null;
     u[`${ROUTE_PREFIX}${name}.attachments-max-count`] = trackingMode === 'attachments' && Number.parseInt(f['attachments-max-count'], 10) > 0
@@ -1699,63 +1775,69 @@ const showSaveSuccessBanner = (routesContainer) => {
  * @param {HTMLTableRowElement|null} tableRow  the table row being edited (null for new)
  * @param {HTMLElement} routesContainer  the .routes-container element
  */
-const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) => {
+/** Apply route save result to the UI (update or add row, close form). */
+const applyRouteSaveToUI = (form, formData, tableRow, routesContainer,
+    componentId, origin) => {
+    form.dataset.originalName = formData.routeName;
+    if (tableRow) {
+        if (origin) tableRow.dataset.origin = origin;
+        updateTableRow(tableRow, formData);
+        tableRow.classList.remove('hidden');
+    } else {
+        addRowToTable(routesContainer, formData, componentId, origin);
+    }
+    form.remove();
+    refreshExportPanel(routesContainer);
+    refreshConnectionMap(routesContainer);
+};
+
+/** If a route was renamed, mark old properties for deletion. */
+const collectRouteRenameCleanup = async (componentId, originalName,
+    updates) => {
+    const prefix = `${ROUTE_PREFIX}${originalName}.`;
+    try {
+        const res = await api.getComponentProperties(componentId);
+        const props = res.properties || {};
+        for (const key of Object.keys(props)) {
+            if (key.startsWith(prefix)) updates[key] = null;
+        }
+    } catch { /* ignore — old props will remain as orphans */ }
+};
+
+const saveRoute = async (form, errEl, componentId, tableRow,
+    routesContainer) => {
     const f = extractFormFields(form);
     const originalName = form.dataset.originalName || '';
     const v = validateFormData(f, routesContainer, originalName);
-    if (!v.isValid) { displayUiError(errEl, v.error, {}, 'routeConfigEditor.error.title'); return; }
-
-    const nameChanged = originalName && originalName !== f.routeName;
-
-    const updates = buildPropertyUpdates(f.routeName, f);
-
-    // If the route was renamed, clear old properties first
-    if (nameChanged) {
-        const prefix = `${ROUTE_PREFIX}${originalName}.`;
-        try {
-            const res = await api.getComponentProperties(componentId);
-            const props = res.properties || {};
-            for (const key of Object.keys(props)) {
-                if (key.startsWith(prefix)) updates[key] = null;
-            }
-        } catch { /* ignore — old props will remain as orphans */ }
+    if (!v.isValid) {
+        displayUiError(errEl, v.error, {},
+            'routeConfigEditor.error.title');
+        return;
     }
 
-    if (componentId) {
-        try {
-            await api.updateComponentProperties(componentId, updates);
-            form.dataset.originalName = f.routeName;
+    const nameChanged = originalName && originalName !== f.routeName;
+    const updates = buildPropertyUpdates(f.routeName, f);
 
-            if (tableRow) {
-                // Mark as persisted before updating (prevents 'modified' badge)
-                tableRow.dataset.origin = 'persisted';
-                updateTableRow(tableRow, f);
-                tableRow.classList.remove('hidden');
-            } else {
-                // New route — add a row to the table (persisted origin)
-                addRowToTable(routesContainer, f, componentId, 'persisted');
-            }
-            form.remove();
+    if (nameChanged) {
+        await collectRouteRenameCleanup(componentId, originalName,
+            updates);
+    }
 
-            showSaveSuccessBanner(routesContainer);
-            refreshExportPanel(routesContainer);
-            refreshConnectionMap(routesContainer);
-        } catch (error) {
-            displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
-        }
-    } else {
-        form.dataset.originalName = f.routeName;
-        if (tableRow) {
-            updateTableRow(tableRow, f);
-            tableRow.classList.remove('hidden');
-        } else {
-            addRowToTable(routesContainer, f, componentId);
-        }
-        form.remove();
-
+    if (!componentId) {
+        applyRouteSaveToUI(form, f, tableRow, routesContainer,
+            componentId);
         showInfoBanner(routesContainer);
-        refreshExportPanel(routesContainer);
-        refreshConnectionMap(routesContainer);
+        return;
+    }
+
+    try {
+        await api.updateComponentProperties(componentId, updates);
+        applyRouteSaveToUI(form, f, tableRow, routesContainer,
+            componentId, 'persisted');
+        showSaveSuccessBanner(routesContainer);
+    } catch (error) {
+        displayUiError(errEl, error, {},
+            'routeConfigEditor.error.saveFailedTitle');
     }
 };
 

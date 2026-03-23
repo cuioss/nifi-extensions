@@ -108,10 +108,11 @@ class JwtAuthenticationConfigTest {
             // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
+            var algorithms = config.allowedAlgorithms();
 
             // Act & Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> config.allowedAlgorithms().add("HS256"));
+                    () -> algorithms.add("HS256"));
         }
 
         @Test
@@ -120,10 +121,10 @@ class JwtAuthenticationConfigTest {
             // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
+            var algorithms = config.allowedAlgorithms();
 
             // Act & Assert
-            assertThrows(UnsupportedOperationException.class,
-                    () -> config.allowedAlgorithms().clear());
+            assertThrows(UnsupportedOperationException.class, algorithms::clear);
         }
 
         @Test
@@ -132,10 +133,11 @@ class JwtAuthenticationConfigTest {
             // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
+            var algorithms = config.allowedAlgorithms();
 
             // Act & Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> config.allowedAlgorithms().remove("RS256"));
+                    () -> algorithms.remove("RS256"));
         }
     }
 

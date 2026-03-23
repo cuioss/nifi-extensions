@@ -663,52 +663,59 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
 // Gateway save / remove
 // ---------------------------------------------------------------------------
 
+/** Apply issuer save result to the UI (update or add row, close form). */
+const applyIssuerSaveToUI = (form, formData, tableRow, issuersContainer, ctx) => {
+    form.dataset.originalName = formData.issuerName;
+    if (tableRow) {
+        updateIssuerTableRow(tableRow, formData);
+        tableRow.classList.remove('hidden');
+    } else {
+        addIssuerRowToTable(issuersContainer, formData, ctx);
+    }
+    form.remove();
+};
+
+/** If an issuer was renamed, mark old properties for deletion. */
+const collectRenameCleanup = async (ctx, originalName, updates) => {
+    try {
+        const res = await getProps(ctx);
+        const props = res.properties || {};
+        for (const key of Object.keys(props)) {
+            if (key.startsWith(`issuer.${originalName}.`)) {
+                updates[key] = null;
+            }
+        }
+    } catch (err) {
+        log.warn('Failed to clean up old properties after rename:', err);
+    }
+};
+
 const saveIssuerGateway = async (form, errEl, ctx, tableRow, issuersContainer) => {
     const f = extractFormFields(form);
     const originalName = form.dataset.originalName || '';
     const v = validateFormData(f);
-    if (!v.isValid) { displayUiError(errEl, v.error, {}, 'issuerConfigEditor.error.title'); return; }
+    if (!v.isValid) {
+        displayUiError(errEl, v.error, {}, 'issuerConfigEditor.error.title');
+        return;
+    }
 
     const nameChanged = originalName && originalName !== f.issuerName;
     const updates = buildPropertyUpdates(f.issuerName, f);
 
-    // If renamed, clear old properties
     if (nameChanged && ctx.componentId) {
-        try {
-            const res = await getProps(ctx);
-            const props = res.properties || {};
-            for (const key of Object.keys(props)) {
-                if (key.startsWith(`issuer.${originalName}.`)) updates[key] = null;
-            }
-        } catch (err) {
-            log.warn('Failed to clean up old properties after rename:', err);
-        }
+        await collectRenameCleanup(ctx, originalName, updates);
     }
 
-    if (ctx.componentId) {
-        try {
-            await updateProps(ctx, updates);
-            form.dataset.originalName = f.issuerName;
+    if (!ctx.componentId) {
+        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx);
+        return;
+    }
 
-            if (tableRow) {
-                updateIssuerTableRow(tableRow, f);
-                tableRow.classList.remove('hidden');
-            } else {
-                addIssuerRowToTable(issuersContainer, f, ctx);
-            }
-            form.remove();
-        } catch (error) {
-            displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
-        }
-    } else {
-        form.dataset.originalName = f.issuerName;
-        if (tableRow) {
-            updateIssuerTableRow(tableRow, f);
-            tableRow.classList.remove('hidden');
-        } else {
-            addIssuerRowToTable(issuersContainer, f, ctx);
-        }
-        form.remove();
+    try {
+        await updateProps(ctx, updates);
+        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx);
+    } catch (error) {
+        displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
     }
 };
 
@@ -753,6 +760,26 @@ const addIssuerRowToTable = (issuersContainer, formData, ctx) => {
     tbody.appendChild(row);
 };
 
+/** Show a message in the global error banner (if present). */
+const showGlobalBanner = (messageEl, fn) => {
+    if (!messageEl) return;
+    fn(messageEl);
+    messageEl.classList.remove('hidden');
+};
+
+/** Delete issuer properties from the backend. */
+const deleteIssuerProperties = async (ctx, issuerName) => {
+    const res = await getProps(ctx);
+    const props = res.properties || {};
+    const updates = {};
+    for (const key of Object.keys(props)) {
+        if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
+    }
+    if (Object.keys(updates).length > 0) {
+        await updateProps(ctx, updates);
+    }
+};
+
 const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
     row.remove();
 
@@ -761,31 +788,22 @@ const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
         openForm.remove();
     }
 
+    if (!issuerName) return;
+
     const globalErr = document.querySelector('.global-error-messages');
 
-    if (issuerName && ctx.componentId) {
-        try {
-            const res = await getProps(ctx);
-            const props = res.properties || {};
-            const updates = {};
-            for (const key of Object.keys(props)) {
-                if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
-            }
-            if (Object.keys(updates).length > 0) {
-                await updateProps(ctx, updates);
-            }
-            if (globalErr) {
-                displayUiSuccess(globalErr, t('issuer.remove.success', issuerName));
-                globalErr.classList.remove('hidden');
-            }
-        } catch (error) {
-            if (globalErr) {
-                displayUiError(globalErr, error, {}, 'issuerConfigEditor.error.removeFailedTitle');
-                globalErr.classList.remove('hidden');
-            }
-        }
-    } else if (issuerName && globalErr) {
-        displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
-        globalErr.classList.remove('hidden');
+    if (!ctx.componentId) {
+        showGlobalBanner(globalErr, (el) =>
+            displayUiSuccess(el, t('issuer.remove.success.standalone', issuerName)));
+        return;
+    }
+
+    try {
+        await deleteIssuerProperties(ctx, issuerName);
+        showGlobalBanner(globalErr, (el) =>
+            displayUiSuccess(el, t('issuer.remove.success', issuerName)));
+    } catch (error) {
+        showGlobalBanner(globalErr, (el) =>
+            displayUiError(el, error, {}, 'issuerConfigEditor.error.removeFailedTitle'));
     }
 };

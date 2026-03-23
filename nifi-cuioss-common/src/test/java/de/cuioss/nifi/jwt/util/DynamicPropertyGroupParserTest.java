@@ -127,8 +127,9 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should throw NullPointerException for null prefix")
         void shouldThrowNpeForNullPrefix() {
+            var properties = Map.<String, String>of();
             assertThrows(NullPointerException.class,
-                    () -> DynamicPropertyGroupParser.parse(null, Map.of()));
+                    () -> DynamicPropertyGroupParser.parse(null, properties));
         }
 
         @Test

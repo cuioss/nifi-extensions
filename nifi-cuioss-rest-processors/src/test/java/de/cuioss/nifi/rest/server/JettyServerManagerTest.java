@@ -97,8 +97,9 @@ class JettyServerManagerTest {
         void shouldRejectDoubleStart() {
             manager.start(0, echoHandler());
 
+            var handler = echoHandler();
             assertThrows(IllegalStateException.class,
-                    () -> manager.start(0, echoHandler()));
+                    () -> manager.start(0, handler));
         }
 
         @Test

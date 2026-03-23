@@ -172,16 +172,8 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         String path = sanitized.get().path();
 
-        // 2. Lookup handler by path (exact match first, then prefix match)
-        EndpointHandler handler = handlerMap.get(path);
-        if (handler == null) {
-            for (EndpointHandler h : handlerMap.values()) {
-                if (h.prefixMatch() && path.startsWith(h.path() + "/")) {
-                    handler = h;
-                    break;
-                }
-            }
-        }
+        // 2. Lookup handler
+        EndpointHandler handler = resolveHandler(path);
         if (handler == null || !handler.enabled()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
@@ -193,29 +185,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // 3. Method check
         if (!handler.methods().contains(method.toUpperCase(Locale.ROOT))) {
-            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.METHOD_NOT_ALLOWED);
-            LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, handler.name(), path);
-            response.getHeaders().put(HEADER_ALLOW, String.join(", ", handler.methods()));
-            sendProblemResponse(response, callback,
-                    ProblemDetail.methodNotAllowed(
-                            "Method %s not allowed on %s. Allowed: %s".formatted(
-                                    method, path, handler.methods())));
+            rejectMethod(handler, method, path, response, callback);
             return;
         }
 
-        // 4. Body read + size check (before auth to avoid wasting CPU on oversized payloads)
-        byte[] body = EMPTY_BODY;
-        int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
-        if (effectiveMaxSize > 0) {
-            body = readBody(request, effectiveMaxSize);
-            if (body.length > effectiveMaxSize) {
-                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
-                LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, effectiveMaxSize, method, path);
-                sendProblemResponse(response, callback,
-                        ProblemDetail.payloadTooLarge(
-                                "Request body size %d exceeds maximum %d bytes".formatted(body.length, effectiveMaxSize)));
-                return;
-            }
+        // 4. Body read + size check
+        byte[] body = readAndValidateBody(request, handler, method, path, response, callback);
+        if (body == null) {
+            return;
         }
 
         // 5. Auth-mode dispatch
@@ -235,6 +212,55 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // 7. Delegate to handler
         handler.process(sanitized.get(), token, body, request, response, callback);
+    }
+
+    @Nullable
+    private EndpointHandler resolveHandler(String path) {
+        EndpointHandler handler = handlerMap.get(path);
+        if (handler != null) {
+            return handler;
+        }
+        for (EndpointHandler h : handlerMap.values()) {
+            if (h.prefixMatch() && path.startsWith(h.path() + "/")) {
+                return h;
+            }
+        }
+        return null;
+    }
+
+    private void rejectMethod(EndpointHandler handler, String method, String path,
+            Response response, Callback callback) {
+        gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.METHOD_NOT_ALLOWED);
+        LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, handler.name(), path);
+        response.getHeaders().put(HEADER_ALLOW, String.join(", ", handler.methods()));
+        sendProblemResponse(response, callback,
+                ProblemDetail.methodNotAllowed(
+                        "Method %s not allowed on %s. Allowed: %s".formatted(
+                                method, path, handler.methods())));
+    }
+
+    /**
+     * Reads and validates the request body size. Returns null if body exceeds limit
+     * (error response already sent).
+     */
+    @Nullable
+    private byte[] readAndValidateBody(Request request, EndpointHandler handler,
+            String method, String path,
+            Response response, Callback callback) throws IOException {
+        int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
+        if (effectiveMaxSize <= 0) {
+            return EMPTY_BODY;
+        }
+        byte[] body = readBody(request, effectiveMaxSize);
+        if (body.length > effectiveMaxSize) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
+            LOGGER.warn(RestApiLogMessages.WARN.BODY_TOO_LARGE, body.length, effectiveMaxSize, method, path);
+            sendProblemResponse(response, callback,
+                    ProblemDetail.payloadTooLarge(
+                            "Request body size %d exceeds maximum %d bytes".formatted(body.length, effectiveMaxSize)));
+            return null;
+        }
+        return body;
     }
 
     /**

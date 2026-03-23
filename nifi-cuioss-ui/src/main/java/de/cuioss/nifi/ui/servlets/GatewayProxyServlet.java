@@ -95,8 +95,11 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
+    private static final String KEY_USERNAME = "username";
     @SuppressWarnings("java:S2068") // "password" is the OAuth 2.0 grant type name, not a credential
-    static final Set<String> ALLOWED_GRANT_TYPES = Set.of("password", "client_credentials");
+    private static final String KEY_PASSWORD = "password";
+    private static final String GRANT_TYPE_PASSWORD = "password";
+    static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_PASSWORD, "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
@@ -190,80 +193,15 @@ public class GatewayProxyServlet extends HttpServlet {
                 handleDiscoverTokenEndpoint(req, resp);
                 return;
             }
-
-            if (!"/test".equals(pathInfo)) {
-                LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                        pathInfo != null ? pathInfo : "null");
-                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Invalid path for POST");
+            if ("/test".equals(pathInfo)) {
+                handleTestRequest(req, resp);
                 return;
             }
 
-            String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-            if (processorId == null || processorId.isBlank()) {
-                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        MSG_MISSING_PROCESSOR_ID);
-                return;
-            }
-
-            JsonObject testRequest;
-            try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
-                testRequest = reader.readObject();
-            }
-
-            String path = testRequest.getString("path", "");
-            String method = testRequest.getString("method", "GET");
-            String body = testRequest.containsKey("body") && !testRequest.isNull("body")
-                    ? testRequest.getString("body") : null;
-
-            if (path.isEmpty()) {
-                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Missing 'path' in test request");
-                return;
-            }
-
-            int port = resolveGatewayPort(processorId, req);
-            String protocol = protocolCache.getOrDefault(processorId, "http");
-            String targetUrl = protocol + "://localhost:" + port + path;
-
-            // SSRF protection
-            if (!isLocalhostTarget(URI.create(targetUrl))) {
-                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, targetUrl);
-                sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                        "Only localhost targets allowed");
-                return;
-            }
-
-            // Extract headers from test request
-            Map<String, String> headers = new HashMap<>();
-            if (testRequest.containsKey(KEY_HEADERS) && !testRequest.isNull(KEY_HEADERS)) {
-                JsonObject hdrs = testRequest.getJsonObject(KEY_HEADERS);
-                for (String key : hdrs.keySet()) {
-                    headers.put(key, hdrs.getString(key, ""));
-                }
-            }
-
-            GatewayResponse gatewayResp = executeGatewayRequest(
-                    targetUrl, method, headers, body);
-
-            // Wrap gateway response for frontend
-            JsonObjectBuilder result = Json.createObjectBuilder()
-                    .add("status", gatewayResp.statusCode())
-                    .add("body", gatewayResp.body() != null ? gatewayResp.body() : "");
-
-            JsonObjectBuilder respHeaders = Json.createObjectBuilder();
-            if (gatewayResp.headers() != null) {
-                gatewayResp.headers().forEach(respHeaders::add);
-            }
-            result.add(KEY_HEADERS, respHeaders);
-
-            resp.setContentType(CONTENT_TYPE_JSON);
-            resp.setCharacterEncoding(CHARSET_UTF8);
-            resp.setStatus(HttpServletResponse.SC_OK);
-
-            try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-                writer.writeObject(result.build());
-            }
+            LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
+                    pathInfo != null ? pathInfo : "null");
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid path for POST");
 
         } catch (JsonException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
@@ -274,6 +212,78 @@ public class GatewayProxyServlet extends HttpServlet {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
+        }
+    }
+
+    private void handleTestRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String processorId = req.getHeader(PROCESSOR_ID_HEADER);
+        if (processorId == null || processorId.isBlank()) {
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    MSG_MISSING_PROCESSOR_ID);
+            return;
+        }
+
+        JsonObject testRequest;
+        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
+            testRequest = reader.readObject();
+        }
+
+        String path = testRequest.getString("path", "");
+        String method = testRequest.getString("method", "GET");
+        String body = testRequest.containsKey("body") && !testRequest.isNull("body")
+                ? testRequest.getString("body") : null;
+
+        if (path.isEmpty()) {
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Missing 'path' in test request");
+            return;
+        }
+
+        int port = resolveGatewayPort(processorId, req);
+        String protocol = protocolCache.getOrDefault(processorId, "http");
+        String targetUrl = protocol + "://localhost:" + port + path;
+
+        // SSRF protection
+        if (!isLocalhostTarget(URI.create(targetUrl))) {
+            LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, targetUrl);
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Only localhost targets allowed");
+            return;
+        }
+
+        Map<String, String> headers = extractTestHeaders(testRequest);
+        GatewayResponse gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
+        writeTestResponse(resp, gatewayResp);
+    }
+
+    private static Map<String, String> extractTestHeaders(JsonObject testRequest) {
+        Map<String, String> headers = new HashMap<>();
+        if (testRequest.containsKey(KEY_HEADERS) && !testRequest.isNull(KEY_HEADERS)) {
+            JsonObject hdrs = testRequest.getJsonObject(KEY_HEADERS);
+            for (String key : hdrs.keySet()) {
+                headers.put(key, hdrs.getString(key, ""));
+            }
+        }
+        return headers;
+    }
+
+    private void writeTestResponse(HttpServletResponse resp, GatewayResponse gatewayResp) throws IOException {
+        JsonObjectBuilder result = Json.createObjectBuilder()
+                .add("status", gatewayResp.statusCode())
+                .add("body", gatewayResp.body() != null ? gatewayResp.body() : "");
+
+        JsonObjectBuilder respHeaders = Json.createObjectBuilder();
+        if (gatewayResp.headers() != null) {
+            gatewayResp.headers().forEach(respHeaders::add);
+        }
+        result.add(KEY_HEADERS, respHeaders);
+
+        resp.setContentType(CONTENT_TYPE_JSON);
+        resp.setCharacterEncoding(CHARSET_UTF8);
+        resp.setStatus(HttpServletResponse.SC_OK);
+
+        try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
+            writer.writeObject(result.build());
         }
     }
 
@@ -495,8 +505,8 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            if ("password".equals(grantType)
-                    && requestBody.getString("username", "").isBlank()) {
+            if (GRANT_TYPE_PASSWORD.equals(grantType)
+                    && requestBody.getString(KEY_USERNAME, "").isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Missing required field for password grant: username");
                 return;
@@ -617,9 +627,9 @@ public class GatewayProxyServlet extends HttpServlet {
         if (!clientSecret.isBlank()) {
             params.put("client_secret", clientSecret);
         }
-        if ("password".equals(grantType)) {
-            params.put("username", requestBody.getString("username", ""));
-            params.put("password", requestBody.getString("password", ""));
+        if (GRANT_TYPE_PASSWORD.equals(grantType)) {
+            params.put(KEY_USERNAME, requestBody.getString(KEY_USERNAME, ""));
+            params.put(KEY_PASSWORD, requestBody.getString(KEY_PASSWORD, ""));
         }
         if (!scope.isBlank()) {
             params.put("scope", scope);
@@ -910,47 +920,43 @@ public class GatewayProxyServlet extends HttpServlet {
         routeObj.add(KEY_METHODS, buildStringArray(routeProps.get(KEY_METHODS)));
         routeObj.add(KEY_REQUIRED_ROLES, buildStringArray(routeProps.get("required-roles")));
         routeObj.add(KEY_REQUIRED_SCOPES, buildStringArray(routeProps.get("required-scopes")));
-        String schema = routeProps.get("schema");
-        if (schema != null && !schema.isBlank()) {
-            routeObj.add("schema", schema);
-        }
+        addNonBlankString(routeObj, "schema", routeProps.get("schema"));
+        addSuccessOutcome(routeObj, routeName, routeProps);
+        routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
+                routeProps.getOrDefault("create-flowfile", "true")));
+        routeObj.add(KEY_AUTH_MODE, routeProps.getOrDefault("auth-mode", "bearer"));
+        addOptionalInt(routeObj, "maxRequestSize", routeProps.get("max-request-size"));
+        routeObj.add("trackingMode", routeProps.getOrDefault("tracking-mode", "none"));
+        addOptionalInt(routeObj, "attachmentsMinCount", routeProps.get("attachments-min-count"));
+        addOptionalInt(routeObj, "attachmentsMaxCount", routeProps.get("attachments-max-count"));
+        return routeObj;
+    }
+
+    private static void addSuccessOutcome(JsonObjectBuilder routeObj, String routeName,
+            Map<String, String> routeProps) {
         String successOutcome = routeProps.get("success-outcome");
         if (successOutcome != null && !successOutcome.isBlank()) {
             routeObj.add("successOutcome", successOutcome);
         } else if (!FALSE_STRING.equalsIgnoreCase(routeProps.getOrDefault("create-flowfile", "true"))) {
             routeObj.add("successOutcome", routeName);
         }
-        routeObj.add("createFlowFile", !FALSE_STRING.equalsIgnoreCase(
-                routeProps.getOrDefault("create-flowfile", "true")));
-        String authMode = routeProps.getOrDefault("auth-mode", "bearer");
-        routeObj.add(KEY_AUTH_MODE, authMode);
-        String maxReqSize = routeProps.get("max-request-size");
-        if (maxReqSize != null && !maxReqSize.isBlank()) {
-            try {
-                routeObj.add("maxRequestSize", Integer.parseInt(maxReqSize.strip()));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Ignoring invalid non-numeric max-request-size value: '%s'", maxReqSize);
-            }
+    }
+
+    private static void addNonBlankString(JsonObjectBuilder obj, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            obj.add(key, value);
         }
-        String trackingMode = routeProps.getOrDefault("tracking-mode", "none");
-        routeObj.add("trackingMode", trackingMode);
-        String attachmentsMinCount = routeProps.get("attachments-min-count");
-        if (attachmentsMinCount != null && !attachmentsMinCount.isBlank()) {
-            try {
-                routeObj.add("attachmentsMinCount", Integer.parseInt(attachmentsMinCount.strip()));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Ignoring invalid non-numeric attachments-min-count value: '%s'", attachmentsMinCount);
-            }
+    }
+
+    private static void addOptionalInt(JsonObjectBuilder obj, String key, String value) {
+        if (value == null || value.isBlank()) {
+            return;
         }
-        String attachmentsMaxCount = routeProps.get("attachments-max-count");
-        if (attachmentsMaxCount != null && !attachmentsMaxCount.isBlank()) {
-            try {
-                routeObj.add("attachmentsMaxCount", Integer.parseInt(attachmentsMaxCount.strip()));
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Ignoring invalid non-numeric attachments-max-count value: '%s'", attachmentsMaxCount);
-            }
+        try {
+            obj.add(key, Integer.parseInt(value.strip()));
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Ignoring invalid non-numeric %s value: '%s'", key, value);
         }
-        return routeObj;
     }
 
     /**
@@ -965,56 +971,34 @@ public class GatewayProxyServlet extends HttpServlet {
 
     private static JsonArrayBuilder buildManagementEndpointsArray(Map<String, String> props) {
         JsonArrayBuilder mgmtArray = Json.createArrayBuilder();
-
-        JsonObjectBuilder health = Json.createObjectBuilder();
-        health.add("name", "health");
-        health.add("path", "/health");
-        health.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
-        health.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
-                prop(props, HEALTH_ENABLED_PROPERTY, "true")));
-        health.add(KEY_AUTH_MODE, prop(props, HEALTH_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
-        health.add(KEY_REQUIRED_ROLES, prop(props, HEALTH_REQUIRED_ROLES_PROPERTY, ""));
-        health.add(KEY_REQUIRED_SCOPES, prop(props, HEALTH_REQUIRED_SCOPES_PROPERTY, ""));
-        health.add(KEY_BUILT_IN, true);
-        mgmtArray.add(health);
-
-        JsonObjectBuilder metrics = Json.createObjectBuilder();
-        metrics.add("name", "metrics");
-        metrics.add("path", "/metrics");
-        metrics.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
-        metrics.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
-                prop(props, METRICS_ENABLED_PROPERTY, "true")));
-        metrics.add(KEY_AUTH_MODE, prop(props, METRICS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
-        metrics.add(KEY_REQUIRED_ROLES, prop(props, METRICS_REQUIRED_ROLES_PROPERTY, ""));
-        metrics.add(KEY_REQUIRED_SCOPES, prop(props, METRICS_REQUIRED_SCOPES_PROPERTY, ""));
-        metrics.add(KEY_BUILT_IN, true);
-        mgmtArray.add(metrics);
-
-        JsonObjectBuilder status = Json.createObjectBuilder();
-        status.add("name", "status");
-        status.add("path", "/status/{traceId}");
-        status.add(KEY_METHODS, Json.createArrayBuilder().add("GET"));
-        status.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
-                prop(props, STATUS_ENABLED_PROPERTY, "true")));
-        status.add(KEY_AUTH_MODE, prop(props, STATUS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
-        status.add(KEY_REQUIRED_ROLES, prop(props, STATUS_REQUIRED_ROLES_PROPERTY, ""));
-        status.add(KEY_REQUIRED_SCOPES, prop(props, STATUS_REQUIRED_SCOPES_PROPERTY, ""));
-        status.add(KEY_BUILT_IN, true);
-        mgmtArray.add(status);
-
-        JsonObjectBuilder attachments = Json.createObjectBuilder();
-        attachments.add("name", "attachments");
-        attachments.add("path", "/attachments/{parentTraceId}");
-        attachments.add(KEY_METHODS, Json.createArrayBuilder().add("POST"));
-        attachments.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(
-                prop(props, ATTACHMENTS_ENABLED_PROPERTY, "true")));
-        attachments.add(KEY_AUTH_MODE, prop(props, ATTACHMENTS_AUTH_MODE_PROPERTY, DEFAULT_AUTH_MODE));
-        attachments.add(KEY_REQUIRED_ROLES, prop(props, ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ""));
-        attachments.add(KEY_REQUIRED_SCOPES, prop(props, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY, ""));
-        attachments.add(KEY_BUILT_IN, true);
-        mgmtArray.add(attachments);
-
+        mgmtArray.add(buildManagementEndpoint("health", "/health", "GET", props,
+                HEALTH_ENABLED_PROPERTY, HEALTH_AUTH_MODE_PROPERTY,
+                HEALTH_REQUIRED_ROLES_PROPERTY, HEALTH_REQUIRED_SCOPES_PROPERTY));
+        mgmtArray.add(buildManagementEndpoint("metrics", "/metrics", "GET", props,
+                METRICS_ENABLED_PROPERTY, METRICS_AUTH_MODE_PROPERTY,
+                METRICS_REQUIRED_ROLES_PROPERTY, METRICS_REQUIRED_SCOPES_PROPERTY));
+        mgmtArray.add(buildManagementEndpoint("status", "/status/{traceId}", "GET", props,
+                STATUS_ENABLED_PROPERTY, STATUS_AUTH_MODE_PROPERTY,
+                STATUS_REQUIRED_ROLES_PROPERTY, STATUS_REQUIRED_SCOPES_PROPERTY));
+        mgmtArray.add(buildManagementEndpoint("attachments", "/attachments/{parentTraceId}", "POST", props,
+                ATTACHMENTS_ENABLED_PROPERTY, ATTACHMENTS_AUTH_MODE_PROPERTY,
+                ATTACHMENTS_REQUIRED_ROLES_PROPERTY, ATTACHMENTS_REQUIRED_SCOPES_PROPERTY));
         return mgmtArray;
+    }
+
+    private static JsonObjectBuilder buildManagementEndpoint(String name, String path, String method,
+            Map<String, String> props, String enabledKey, String authModeKey,
+            String rolesKey, String scopesKey) {
+        JsonObjectBuilder endpoint = Json.createObjectBuilder();
+        endpoint.add("name", name);
+        endpoint.add("path", path);
+        endpoint.add(KEY_METHODS, Json.createArrayBuilder().add(method));
+        endpoint.add(KEY_ENABLED, !FALSE_STRING.equalsIgnoreCase(prop(props, enabledKey, "true")));
+        endpoint.add(KEY_AUTH_MODE, prop(props, authModeKey, DEFAULT_AUTH_MODE));
+        endpoint.add(KEY_REQUIRED_ROLES, prop(props, rolesKey, ""));
+        endpoint.add(KEY_REQUIRED_SCOPES, prop(props, scopesKey, ""));
+        endpoint.add(KEY_BUILT_IN, true);
+        return endpoint;
     }
 
     private static JsonArrayBuilder buildStringArray(String commaSeparated) {

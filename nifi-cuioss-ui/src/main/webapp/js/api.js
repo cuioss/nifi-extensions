@@ -466,7 +466,7 @@ export const getProcessorProperties = (processorId) =>
 
 /** @deprecated Use updateComponentProperties instead */
 export const updateProcessorProperties = async (processorId, properties) => {
-    const proc = await getProcessorProperties(processorId);
+    const proc = await request('GET', `/nifi-api/processors/${processorId}`);
     return request('PUT', `/nifi-api/processors/${processorId}`, {
         revision: proc.revision,
         component: { id: processorId, config: { properties } }

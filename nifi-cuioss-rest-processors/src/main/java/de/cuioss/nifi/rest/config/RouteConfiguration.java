@@ -85,6 +85,11 @@ int attachmentsMaxCount,
         requiredScopes = requiredScopes != null ? Set.copyOf(requiredScopes) : Set.of();
         authModes = authModes != null && !authModes.isEmpty() ? Set.copyOf(authModes) : EnumSet.of(AuthMode.BEARER);
         trackingMode = trackingMode != null ? trackingMode : TrackingMode.NONE;
+        validateAttachmentSettings(trackingMode, attachmentsMinCount, attachmentsMaxCount, attachmentsTimeout);
+    }
+
+    private static void validateAttachmentSettings(TrackingMode trackingMode,
+            int attachmentsMinCount, int attachmentsMaxCount, String attachmentsTimeout) {
         if (trackingMode != TrackingMode.ATTACHMENTS && (attachmentsMinCount != 0 || attachmentsMaxCount != 0)) {
             throw new IllegalArgumentException(
                     "attachmentsMinCount/attachmentsMaxCount can only be set when trackingMode is ATTACHMENTS");

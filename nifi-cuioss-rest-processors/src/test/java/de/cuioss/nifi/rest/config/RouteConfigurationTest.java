@@ -77,33 +77,33 @@ class RouteConfigurationTest {
                     .method("GET").requiredRole("admin").requiredScope("read")
                     .build();
 
-            assertThrows(UnsupportedOperationException.class,
-                    () -> route.methods().add("POST"));
-            assertThrows(UnsupportedOperationException.class,
-                    () -> route.requiredRoles().add("user"));
-            assertThrows(UnsupportedOperationException.class,
-                    () -> route.requiredScopes().add("write"));
+            var methods = route.methods();
+            var roles = route.requiredRoles();
+            var scopes = route.requiredScopes();
+            assertThrows(UnsupportedOperationException.class, () -> methods.add("POST"));
+            assertThrows(UnsupportedOperationException.class, () -> roles.add("user"));
+            assertThrows(UnsupportedOperationException.class, () -> scopes.add("write"));
         }
 
         @Test
         @DisplayName("Should reject null name")
         void shouldRejectNullName() {
-            assertThrows(NullPointerException.class,
-                    () -> RouteConfiguration.builder().name(null).path("/api/health").build());
+            var builder = RouteConfiguration.builder();
+            assertThrows(NullPointerException.class, () -> builder.name(null));
         }
 
         @Test
         @DisplayName("Should reject null path")
         void shouldRejectNullPath() {
-            assertThrows(NullPointerException.class,
-                    () -> RouteConfiguration.builder().name("health").path(null).build());
+            var builder = RouteConfiguration.builder().name("health");
+            assertThrows(NullPointerException.class, () -> builder.path(null));
         }
 
         @Test
         @DisplayName("Should reject blank path")
         void shouldRejectBlankPath() {
-            assertThrows(IllegalArgumentException.class,
-                    () -> RouteConfiguration.builder().name("health").path("  ").build());
+            var builder = RouteConfiguration.builder().name("health").path("  ");
+            assertThrows(IllegalArgumentException.class, builder::build);
         }
 
         @Test
@@ -310,31 +310,31 @@ class RouteConfigurationTest {
         @Test
         @DisplayName("Should reject bounds when mode is not ATTACHMENTS")
         void shouldRejectBoundsWhenNotAttachments() {
-            assertThrows(IllegalArgumentException.class, () ->
-                    RouteConfiguration.builder()
-                            .name("data").path("/api/data")
-                            .trackingMode(TrackingMode.SIMPLE)
-                            .attachmentsMinCount(1).build());
+            var builder = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.SIMPLE)
+                    .attachmentsMinCount(1);
+            assertThrows(IllegalArgumentException.class, builder::build);
         }
 
         @Test
         @DisplayName("Should reject negative min count")
         void shouldRejectNegativeMinCount() {
-            assertThrows(IllegalArgumentException.class, () ->
-                    RouteConfiguration.builder()
-                            .name("data").path("/api/data")
-                            .trackingMode(TrackingMode.ATTACHMENTS)
-                            .attachmentsMinCount(-1).build());
+            var builder = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS)
+                    .attachmentsMinCount(-1);
+            assertThrows(IllegalArgumentException.class, builder::build);
         }
 
         @Test
         @DisplayName("Should reject min > max when both set")
         void shouldRejectMinExceedingMax() {
-            assertThrows(IllegalArgumentException.class, () ->
-                    RouteConfiguration.builder()
-                            .name("data").path("/api/data")
-                            .trackingMode(TrackingMode.ATTACHMENTS)
-                            .attachmentsMinCount(5).attachmentsMaxCount(3).build());
+            var builder = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.ATTACHMENTS)
+                    .attachmentsMinCount(5).attachmentsMaxCount(3);
+            assertThrows(IllegalArgumentException.class, builder::build);
         }
 
         @Test
@@ -371,11 +371,11 @@ class RouteConfigurationTest {
         @Test
         @DisplayName("Should reject attachments timeout when mode is not ATTACHMENTS")
         void shouldRejectTimeoutWhenNotAttachments() {
-            assertThrows(IllegalArgumentException.class, () ->
-                    RouteConfiguration.builder()
-                            .name("data").path("/api/data")
-                            .trackingMode(TrackingMode.SIMPLE)
-                            .attachmentsTimeout("30 sec").build());
+            var builder = RouteConfiguration.builder()
+                    .name("data").path("/api/data")
+                    .trackingMode(TrackingMode.SIMPLE)
+                    .attachmentsTimeout("30 sec");
+            assertThrows(IllegalArgumentException.class, builder::build);
         }
     }
 }

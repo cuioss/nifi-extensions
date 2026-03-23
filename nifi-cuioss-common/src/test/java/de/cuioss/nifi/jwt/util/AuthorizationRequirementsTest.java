@@ -126,10 +126,11 @@ class AuthorizationRequirementsTest {
         void shouldReturnImmutableRolesSet() {
             // Arrange
             var requirements = new AuthorizationRequirements(true, Set.of("role1"), Set.of());
+            var roles = requirements.requiredRoles();
 
             // Act & Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> requirements.requiredRoles().add("newRole"),
+                    () -> roles.add("newRole"),
                     "Returned roles set should be immutable");
         }
 
@@ -138,10 +139,11 @@ class AuthorizationRequirementsTest {
         void shouldReturnImmutableScopesSet() {
             // Arrange
             var requirements = new AuthorizationRequirements(true, Set.of(), Set.of("scope1"));
+            var scopes = requirements.requiredScopes();
 
             // Act & Assert
             assertThrows(UnsupportedOperationException.class,
-                    () -> requirements.requiredScopes().add("newScope"),
+                    () -> scopes.add("newScope"),
                     "Returned scopes set should be immutable");
         }
     }

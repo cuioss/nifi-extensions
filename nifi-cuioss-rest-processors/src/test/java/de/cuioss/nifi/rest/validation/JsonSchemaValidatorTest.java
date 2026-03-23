@@ -219,17 +219,19 @@ class JsonSchemaValidatorTest {
         @DisplayName("Should throw for missing schema file")
         void shouldThrowForMissingSchemaFile() {
             Path nonExistent = tempDir.resolve("non-existent.json");
+            var schemas = Map.of("users", nonExistent.toString());
 
             assertThrows(IllegalStateException.class,
-                    () -> new JsonSchemaValidator(Map.of("users", nonExistent.toString())));
+                    () -> new JsonSchemaValidator(schemas));
         }
 
         @Test
         @DisplayName("Should throw for invalid file path characters")
         void shouldThrowForInvalidFilePath() {
             // A string with null character is invalid on all OSes
+            var schemas = Map.of("users", "invalid\0path.json");
             assertThrows(IllegalStateException.class,
-                    () -> new JsonSchemaValidator(Map.of("users", "invalid\0path.json")));
+                    () -> new JsonSchemaValidator(schemas));
         }
 
         @Test
