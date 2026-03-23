@@ -65,39 +65,27 @@ const initTabs = () => {
 // Tab visibility by component type
 // ---------------------------------------------------------------------------
 
+/** Toggle visibility + active state on a set of elements. */
+const setTabGroupVisibility = (elements, visible) => {
+    for (const el of elements) {
+        el.classList.toggle('hidden', !visible);
+        if (!visible) el.classList.remove('active');
+    }
+};
+
 /**
  * Shows/hides tabs based on detected component type.
- * JWT tabs for CS/Processor, gateway tabs for RestApiGateway.
- *
  * @param {boolean} isGateway  true if component is RestApiGatewayProcessor
  */
 const configureTabsForType = (isGateway) => {
-    const jwtElements = document.querySelectorAll('.jwt-tab');
-    const gatewayElements = document.querySelectorAll('.gateway-tab');
+    setTabGroupVisibility(document.querySelectorAll('.jwt-tab'), !isGateway);
+    setTabGroupVisibility(document.querySelectorAll('.gateway-tab'), isGateway);
 
     if (isGateway) {
-        // Hide JWT tabs, show gateway tabs
-        for (const el of jwtElements) {
-            el.classList.add('hidden');
-            el.classList.remove('active');
-        }
-        for (const el of gatewayElements) {
-            el.classList.remove('hidden');
-        }
-        // Activate first gateway tab
         const firstGwTab = document.querySelector('.tab-item.gateway-tab');
         const firstGwPane = document.getElementById('endpoint-config');
         if (firstGwTab) firstGwTab.classList.add('active');
         if (firstGwPane) firstGwPane.classList.add('active');
-    } else {
-        // Show JWT tabs (default), hide gateway tabs
-        for (const el of jwtElements) {
-            el.classList.remove('hidden');
-        }
-        for (const el of gatewayElements) {
-            el.classList.add('hidden');
-            el.classList.remove('active');
-        }
     }
 
     // Toggle help sections by component type
@@ -113,43 +101,55 @@ const configureTabsForType = (isGateway) => {
 // Component initialisation
 // ---------------------------------------------------------------------------
 
+/** Detect whether the component is a gateway processor. */
+const detectIsGateway = async (componentId) => {
+    if (!componentId) return false;
+    try {
+        const { componentClass } = await detectComponentType(componentId);
+        const isGw = componentClass?.includes('RestApiGateway') || false;
+        log.info(`Detected component type: ${isGw ? 'Gateway' : 'JWT'}`);
+        return isGw;
+    } catch (err) {
+        log.warn('Component type detection failed, defaulting to JWT view:',
+            err.message);
+        return false;
+    }
+};
+
+/** Initialise gateway-specific tabs. */
+const initGatewayTabs = async (componentId) => {
+    const endpointConfigEl = document.getElementById('endpoint-config');
+    if (endpointConfigEl) initEndpointConfig(endpointConfigEl);
+
+    const endpointTesterEl = document.getElementById('endpoint-tester');
+    if (endpointTesterEl) initEndpointTester(endpointTesterEl);
+
+    await initGatewayIssuerTabs(componentId);
+};
+
+/** Initialise JWT/CS-specific tabs. */
+const initJwtTabs = () => {
+    const issuerEl = document.getElementById('issuer-config');
+    if (issuerEl) initIssuerConfig(issuerEl);
+
+    const tokenEl = document.getElementById('token-verification');
+    if (tokenEl) initTokenVerifier(tokenEl);
+};
+
 const initComponents = async () => {
     const componentId = getComponentId();
-    let isGateway = false;
-
-    if (componentId) {
-        try {
-            const { componentClass } = await detectComponentType(componentId);
-            isGateway = componentClass?.includes('RestApiGateway') || false;
-            log.info(`Detected component type: ${isGateway ? 'Gateway' : 'JWT'}`);
-        } catch (err) {
-            log.warn('Component type detection failed, defaulting to JWT view:', err.message);
-        }
-    }
+    const isGateway = await detectIsGateway(componentId);
 
     configureTabsForType(isGateway);
 
     if (isGateway) {
-        const endpointConfigEl = document.getElementById('endpoint-config');
-        if (endpointConfigEl) initEndpointConfig(endpointConfigEl);
-
-        const endpointTesterEl = document.getElementById('endpoint-tester');
-        if (endpointTesterEl) initEndpointTester(endpointTesterEl);
-
-        // Resolve JWT Config Service for issuer config and token verification
-        await initGatewayIssuerTabs(componentId);
+        await initGatewayTabs(componentId);
     } else {
-        const issuerEl = document.getElementById('issuer-config');
-        if (issuerEl) initIssuerConfig(issuerEl);
-
-        const tokenEl = document.getElementById('token-verification');
-        if (tokenEl) initTokenVerifier(tokenEl);
+        initJwtTabs();
     }
 
     const metricsEl = document.getElementById('metrics');
     if (metricsEl) initMetrics(metricsEl, isGateway);
-
-    // Help tab is static HTML in index.html — nothing to initialise.
 };
 
 // ---------------------------------------------------------------------------

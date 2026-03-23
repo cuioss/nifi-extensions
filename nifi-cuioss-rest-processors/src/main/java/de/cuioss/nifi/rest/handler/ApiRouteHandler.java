@@ -46,6 +46,8 @@ import java.util.stream.Collectors;
  */
 public class ApiRouteHandler implements EndpointHandler {
 
+    private record ResponseContext(Response response, Callback callback) { }
+
     private static final CuiLogger LOGGER = new CuiLogger(ApiRouteHandler.class);
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
 
@@ -133,25 +135,8 @@ public class ApiRouteHandler implements EndpointHandler {
         String method = request.getMethod();
         String path = sanitized.path();
 
-        // Schema validation (if configured and body is non-empty)
-        if (schemaValidator != null && route.hasSchemaValidation()) {
-            List<SchemaViolation> violations = schemaValidator.validate(route.name(), body);
-            if (!violations.isEmpty()) {
-                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.SCHEMA_VALIDATION_FAILED);
-                int maxLogViolations = 5;
-                String violationSummary = violations.stream()
-                        .limit(maxLogViolations)
-                        .map(v -> v.pointer() + ": " + v.message())
-                        .collect(Collectors.joining("; "));
-                if (violations.size() > maxLogViolations) {
-                    violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
-                }
-                LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
-                ProblemDetail.validationError(
-                        "Request body failed JSON Schema validation", violations)
-                        .sendResponse(response, callback);
-                return;
-            }
+        if (!validateSchema(body, response, callback)) {
+            return;
         }
 
         // Determine if this is a tracked body method
@@ -162,42 +147,14 @@ public class ApiRouteHandler implements EndpointHandler {
         if (tracked) {
             traceId = UUID.randomUUID().toString();
             parentTraceId = sanitized.headers().get(X_PARENT_TRACE_ID);
-            try {
-                if (route.trackingMode() == TrackingMode.ATTACHMENTS) {
-                    statusStore.collectingAttachments(traceId, parentTraceId, route.name(), route.attachmentsMaxCount(), route.attachmentsMinCount());
-                } else {
-                    statusStore.accept(traceId, parentTraceId);
-                }
-            } catch (IOException e) {
-                LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
-                ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
-                        .sendResponse(response, callback);
+            if (!registerTracking(traceId, parentTraceId, response, callback)) {
                 return;
             }
-            LOGGER.info(RestApiLogMessages.INFO.REQUEST_TRACKED, traceId, route.name());
         }
 
-        // FlowFile enqueue
-        if (route.createFlowFile()) {
-            var container = new HttpRequestContainer(
-                    route.name(), method, path,
-                    sanitized.queryParameters(), sanitized.headers(),
-                    Request.getRemoteAddr(request),
-                    body,
-                    request.getHeaders().get(HttpHeader.CONTENT_TYPE),
-                    token,
-                    traceId,
-                    parentTraceId);
-
-            if (!queue.offer(container)) {
-                gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
-                LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, method, path, Request.getRemoteAddr(request));
-                ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
-                        .sendResponse(response, callback);
-                return;
-            }
-        } else {
-            LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.name());
+        if (!enqueueFlowFile(sanitized, token, body, request, traceId,
+                parentTraceId, new ResponseContext(response, callback))) {
+            return;
         }
 
         // Success response
@@ -208,6 +165,76 @@ public class ApiRouteHandler implements EndpointHandler {
         } else {
             sendSuccessResponse(response, callback, method);
         }
+    }
+
+    private boolean validateSchema(byte[] body, Response response, Callback callback) {
+        if (schemaValidator == null || !route.hasSchemaValidation()) {
+            return true;
+        }
+        List<SchemaViolation> violations = schemaValidator.validate(route.name(), body);
+        if (violations.isEmpty()) {
+            return true;
+        }
+        gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.SCHEMA_VALIDATION_FAILED);
+        int maxLogViolations = 5;
+        String violationSummary = violations.stream()
+                .limit(maxLogViolations)
+                .map(v -> v.pointer() + ": " + v.message())
+                .collect(Collectors.joining("; "));
+        if (violations.size() > maxLogViolations) {
+            violationSummary += " ... and %d more".formatted(violations.size() - maxLogViolations);
+        }
+        LOGGER.warn(RestApiLogMessages.WARN.VALIDATION_FAILED, route.name(), violationSummary);
+        ProblemDetail.validationError(
+                "Request body failed JSON Schema validation", violations)
+                .sendResponse(response, callback);
+        return false;
+    }
+
+    private boolean registerTracking(String traceId, @Nullable String parentTraceId,
+            Response response, Callback callback) {
+        try {
+            if (route.trackingMode() == TrackingMode.ATTACHMENTS) {
+                statusStore.collectingAttachments(traceId, parentTraceId, route.name(),
+                        route.attachmentsMaxCount(), route.attachmentsMinCount());
+            } else {
+                statusStore.accept(traceId, parentTraceId);
+            }
+        } catch (IOException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+            ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
+                    .sendResponse(response, callback);
+            return false;
+        }
+        LOGGER.info(RestApiLogMessages.INFO.REQUEST_TRACKED, traceId, route.name());
+        return true;
+    }
+
+    private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
+            byte[] body, Request request, @Nullable String traceId,
+            @Nullable String parentTraceId, ResponseContext responseCtx) {
+        if (!route.createFlowFile()) {
+            LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.name());
+            return true;
+        }
+        var container = new HttpRequestContainer(
+                route.name(), request.getMethod(), sanitized.path(),
+                sanitized.queryParameters(), sanitized.headers(),
+                Request.getRemoteAddr(request),
+                body,
+                request.getHeaders().get(HttpHeader.CONTENT_TYPE),
+                token,
+                traceId,
+                parentTraceId);
+
+        if (!queue.offer(container)) {
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
+            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), Request.getRemoteAddr(request));
+            ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
+                    .sendResponse(responseCtx.response(), responseCtx.callback());
+            return false;
+        }
+        return true;
     }
 
     private static void sendSuccessResponse(Response response, Callback callback, String method) {

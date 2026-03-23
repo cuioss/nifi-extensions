@@ -43,8 +43,10 @@ import java.util.UUID;
 public class StatusEndpointHandler extends AbstractManagementHandler {
 
     private static final CuiLogger LOGGER = new CuiLogger(StatusEndpointHandler.class);
+    @SuppressWarnings("java:S1075") // URL path, not filesystem path
     static final String STATUS_PATH = "/status";
     private static final String JSON_CONTENT_TYPE = "application/json";
+    @SuppressWarnings("java:S1075") // URL path, not filesystem path
     private static final String STATUS_PATH_PREFIX = STATUS_PATH + "/";
 
     private final RequestStatusStore statusStore;

@@ -479,60 +479,62 @@ const handleDiscoverTokenEndpoint = async (container) => {
     }
 };
 
+/** Validate token fetch form fields, marking errors. Returns payload or null. */
+const validateTokenFetchFields = (container) => {
+    const q = (sel) => container.querySelector(sel);
+    const tokenEndpointUrl = q('.token-endpoint-url').value.trim();
+    const grantType = q('.grant-type-selector').value;
+    const clientId = q('.tf-client-id').value.trim();
+    const clientSecret = q('.tf-client-secret').value;
+    const scope = q('.tf-scope').value.trim();
+
+    let hasErrors = false;
+    const markRequired = (selector) => {
+        markFieldError(container, selector);
+        hasErrors = true;
+    };
+
+    if (!tokenEndpointUrl) markRequired('.token-endpoint-url');
+    if (!clientId) markRequired('.tf-client-id');
+
+    const payload = {
+        tokenEndpointUrl, grantType, clientId, clientSecret, scope
+    };
+
+    if (grantType === 'password') {
+        payload.username = q('.tf-username').value.trim();
+        payload.password = q('.tf-password').value;
+        if (!payload.username) markRequired('.tf-username');
+        if (!payload.password) markRequired('.tf-password');
+    } else if (grantType === 'client_credentials' && !clientSecret) {
+        markRequired('.tf-client-secret');
+    }
+
+    return hasErrors ? null : payload;
+};
+
+/** Apply a successful token fetch result to the UI. */
+const applyTokenFetchSuccess = (container, statusEl, result) => {
+    container.querySelector('.token-input').value = result.access_token;
+    const expiresIn = result.expires_in;
+    statusEl.textContent = t('tester.token.fetch.success',
+        expiresIn || '?');
+    statusEl.className = 'token-fetch-status success';
+    if (expiresIn) startExpiryCountdown(statusEl, expiresIn);
+};
+
 const handleFetchToken = async (container) => {
     clearInputErrors(container);
     stopExpiryCountdown();
 
-    const tokenEndpointUrl = container.querySelector('.token-endpoint-url').value.trim();
-    const grantType = container.querySelector('.grant-type-selector').value;
-    const clientId = container.querySelector('.tf-client-id').value.trim();
-    const clientSecret = container.querySelector('.tf-client-secret').value;
-    const scope = container.querySelector('.tf-scope').value.trim();
     const statusEl = container.querySelector('.token-fetch-status');
     const fetchBtn = container.querySelector('.fetch-token-btn');
 
-    let hasErrors = false;
-
-    if (!tokenEndpointUrl) {
-        markFieldError(container, '.token-endpoint-url');
-        hasErrors = true;
-    }
-
-    if (!clientId) {
-        markFieldError(container, '.tf-client-id');
-        hasErrors = true;
-    }
-
-    let username, password;
-    if (grantType === 'password') {
-        username = container.querySelector('.tf-username').value.trim();
-        password = container.querySelector('.tf-password').value;
-        if (!username) {
-            markFieldError(container, '.tf-username');
-            hasErrors = true;
-        }
-        if (!password) {
-            markFieldError(container, '.tf-password');
-            hasErrors = true;
-        }
-    } else if (grantType === 'client_credentials') {
-        if (!clientSecret) {
-            markFieldError(container, '.tf-client-secret');
-            hasErrors = true;
-        }
-    }
-
-    if (hasErrors) {
+    const payload = validateTokenFetchFields(container);
+    if (!payload) {
         statusEl.textContent = t('tester.token.fetch.error.missing.fields');
         statusEl.className = 'token-fetch-status error';
         return;
-    }
-
-    const payload = { tokenEndpointUrl, grantType, clientId, clientSecret, scope };
-
-    if (grantType === 'password') {
-        payload.username = username;
-        payload.password = password;
     }
 
     fetchBtn.disabled = true;
@@ -542,19 +544,8 @@ const handleFetchToken = async (container) => {
 
     try {
         const result = await fetchOAuthToken(payload);
-
         if (result.access_token) {
-            container.querySelector('.token-input').value = result.access_token;
-            const expiresIn = result.expires_in;
-            const expiresMsg = expiresIn
-                ? t('tester.token.fetch.success', expiresIn)
-                : t('tester.token.fetch.success', '?');
-            statusEl.textContent = expiresMsg;
-            statusEl.className = 'token-fetch-status success';
-
-            if (expiresIn) {
-                startExpiryCountdown(statusEl, expiresIn);
-            }
+            applyTokenFetchSuccess(container, statusEl, result);
         } else {
             const errorMsg = result.error || 'No access_token in response';
             statusEl.textContent = t('tester.token.fetch.error', errorMsg);
@@ -577,6 +568,6 @@ const escapeHtml = (str) => {
 };
 
 const escapeAttr = (str) => {
-    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(str).replaceAll('&', '&amp;').replaceAll('"', '&quot;')
+        .replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 };

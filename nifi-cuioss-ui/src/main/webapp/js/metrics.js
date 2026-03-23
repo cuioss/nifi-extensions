@@ -199,7 +199,7 @@ const refreshMetrics = async () => {
 // ---------------------------------------------------------------------------
 
 const formatCounterName = (key) =>
-    key.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    key.replaceAll(/[_-]/g, ' ').replaceAll(/\b\w/g, (c) => c.toUpperCase());
 
 /**
  * Render a counter grid with optional known-key expansion.
@@ -302,66 +302,66 @@ const triggerDownload = (content, mimeType, filename) => {
     globalThis.URL.revokeObjectURL(url);
 };
 
-const handleGatewayExport = (format) => {
-    const data = lastMetricsData || {};
-    const ts = new Date().toISOString();
+const exportAsJson = (data) => ({
+    content: JSON.stringify({ timestamp: new Date().toISOString(), ...data }, null, 2),
+    mimeType: 'application/json',
+    filename: `gateway-metrics-${Date.now()}.json`
+});
 
-    let content, mimeType, filename;
-    switch (format) {
-        case 'json':
-            content = JSON.stringify({ timestamp: ts, ...data }, null, 2);
-            mimeType = 'application/json';
-            filename = `gateway-metrics-${Date.now()}.json`;
-            break;
-        case 'csv': {
-            let csv = 'Category,Metric,Value\n';
-            for (const [category, counters] of Object.entries(data)) {
-                if (typeof counters !== 'object' || counters === null) continue;
-                for (const [key, value] of Object.entries(counters)) {
-                    csv += `${category},${key},${value}\n`;
-                }
-            }
-            content = csv;
-            mimeType = 'text/csv';
-            filename = `gateway-metrics-${Date.now()}.csv`;
-            break;
+const exportAsCsv = (data) => {
+    let csv = 'Category,Metric,Value\n';
+    for (const [category, counters] of Object.entries(data)) {
+        if (typeof counters !== 'object' || counters === null) continue;
+        for (const [key, value] of Object.entries(counters)) {
+            csv += `${category},${key},${value}\n`;
         }
-        case 'prometheus': {
-            let output = '';
-            if (data.tokenValidation) {
-                output += '# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n';
-                output += '# TYPE nifi_jwt_validations_total counter\n';
-                for (const [key, value] of Object.entries(data.tokenValidation)) {
-                    output += 'nifi_jwt_validations_total'
-                        + `{result="${sanitizeHtml(key)}"} ${value}\n`;
-                }
-                output += '\n';
-            }
-            if (data.httpSecurity) {
-                output += '# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)\n';
-                output += '# TYPE nifi_gateway_http_security_events_total counter\n';
-                for (const [key, value] of Object.entries(data.httpSecurity)) {
-                    output += 'nifi_gateway_http_security_events_total'
-                        + `{type="${sanitizeHtml(key)}"} ${value}\n`;
-                }
-                output += '\n';
-            }
-            if (data.gatewayEvents) {
-                output += '# HELP nifi_gateway_events_total Application-level gateway events\n';
-                output += '# TYPE nifi_gateway_events_total counter\n';
-                for (const [key, value] of Object.entries(data.gatewayEvents)) {
-                    output += `nifi_gateway_events_total{type="${sanitizeHtml(key)}"} ${value}\n`;
-                }
-                output += '\n';
-            }
-            content = output;
-            mimeType = 'text/plain';
-            filename = `gateway-metrics-${Date.now()}.txt`;
-            break;
-        }
-        default:
-            return;
     }
+    return { content: csv, mimeType: 'text/csv',
+        filename: `gateway-metrics-${Date.now()}.csv` };
+};
 
+/** Format a single Prometheus counter section. */
+const formatPrometheusSection = (metricName, helpText, counters, labelName) => {
+    let output = `# HELP ${metricName} ${helpText}\n`;
+    output += `# TYPE ${metricName} counter\n`;
+    for (const [key, value] of Object.entries(counters)) {
+        output += `${metricName}{${labelName}="${sanitizeHtml(key)}"} ${value}\n`;
+    }
+    return output + '\n';
+};
+
+const exportAsPrometheus = (data) => {
+    let output = '';
+    if (data.tokenValidation) {
+        output += formatPrometheusSection('nifi_jwt_validations_total',
+            'Token validation events (oauth-sheriff)',
+            data.tokenValidation, 'result');
+    }
+    if (data.httpSecurity) {
+        output += formatPrometheusSection(
+            'nifi_gateway_http_security_events_total',
+            'Transport-level security events (cui-http)',
+            data.httpSecurity, 'type');
+    }
+    if (data.gatewayEvents) {
+        output += formatPrometheusSection('nifi_gateway_events_total',
+            'Application-level gateway events',
+            data.gatewayEvents, 'type');
+    }
+    return { content: output, mimeType: 'text/plain',
+        filename: `gateway-metrics-${Date.now()}.txt` };
+};
+
+const EXPORT_FORMATTERS = {
+    json: exportAsJson,
+    csv: exportAsCsv,
+    prometheus: exportAsPrometheus
+};
+
+const handleGatewayExport = (format) => {
+    const formatter = EXPORT_FORMATTERS[format];
+    if (!formatter) return;
+    const data = lastMetricsData || {};
+    const { content, mimeType, filename } = formatter(data);
     triggerDownload(content, mimeType, filename);
 };

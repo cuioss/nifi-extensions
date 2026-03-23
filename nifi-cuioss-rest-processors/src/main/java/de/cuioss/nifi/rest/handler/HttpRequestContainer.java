@@ -77,18 +77,22 @@ byte[] body,
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof HttpRequestContainer that)) return false;
-        return Objects.equals(routeName, that.routeName)
-                && Objects.equals(method, that.method)
-                && Objects.equals(requestUri, that.requestUri)
-                && Objects.equals(queryParameters, that.queryParameters)
-                && Objects.equals(headers, that.headers)
-                && Objects.equals(remoteHost, that.remoteHost)
-                && Arrays.equals(body, that.body)
-                && Objects.equals(contentType, that.contentType)
-                && Objects.equals(token, that.token)
-                && Objects.equals(traceId, that.traceId)
-                && Objects.equals(parentTraceId, that.parentTraceId);
+        if (!(o instanceof HttpRequestContainer(
+                var thatRouteName, var thatMethod, var thatRequestUri,
+                var thatQueryParameters, var thatHeaders, var thatRemoteHost,
+                var thatBody, var thatContentType, var thatToken,
+                var thatTraceId, var thatParentTraceId))) return false;
+        return Objects.equals(routeName, thatRouteName)
+                && Objects.equals(method, thatMethod)
+                && Objects.equals(requestUri, thatRequestUri)
+                && Objects.equals(queryParameters, thatQueryParameters)
+                && Objects.equals(headers, thatHeaders)
+                && Objects.equals(remoteHost, thatRemoteHost)
+                && Arrays.equals(body, thatBody)
+                && Objects.equals(contentType, thatContentType)
+                && Objects.equals(token, thatToken)
+                && Objects.equals(traceId, thatTraceId)
+                && Objects.equals(parentTraceId, thatParentTraceId);
     }
 
     @Override

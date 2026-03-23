@@ -84,10 +84,12 @@ class HttpRequestContainerTest {
                     "127.0.0.1", null, null, token, null, null);
 
             // Assert
+            var queryParams = container.queryParameters();
+            var headers = container.headers();
             assertThrows(UnsupportedOperationException.class,
-                    () -> container.queryParameters().put("new", "entry"));
+                    () -> queryParams.put("new", "entry"));
             assertThrows(UnsupportedOperationException.class,
-                    () -> container.headers().put("New-Header", "value"));
+                    () -> headers.put("New-Header", "value"));
         }
 
         @Test
