@@ -227,13 +227,14 @@ public class ConfigurationManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void processList(String key, List<?> list) {
         if (isIssuerListKey(key)) {
             for (int i = 0; i < list.size(); i++) {
-                if (list.get(i) instanceof Map<?, ?> issuerConfig) {
-                    String issuerId = getIssuerId((Map<String, Object>) issuerConfig, i);
-                    storeIssuerProperties(issuerId, (Map<String, Object>) issuerConfig);
+                if (list.get(i) instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> issuerConfig = (Map<String, Object>) list.get(i);
+                    final String issuerId = getIssuerId(issuerConfig, i);
+                    storeIssuerProperties(issuerId, issuerConfig);
                 }
             }
         } else {
