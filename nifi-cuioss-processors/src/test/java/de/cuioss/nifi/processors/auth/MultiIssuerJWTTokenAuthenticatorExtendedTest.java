@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -42,8 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
@@ -100,8 +100,8 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Token.PRESENT, "true");
-            flowFile.assertAttributeExists(JWTAttributes.Token.VALIDATED_AT);
+            flowFile.assertAttributeEquals(JwtAttributes.Token.PRESENT, "true");
+            flowFile.assertAttributeExists(JwtAttributes.Token.VALIDATED_AT);
         }
 
         @Test
@@ -116,9 +116,9 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
 
-            flowFile.assertAttributeExists(JWTAttributes.Token.SUBJECT);
-            flowFile.assertAttributeEquals(JWTAttributes.Token.ISSUER, TestTokenHolder.TEST_ISSUER);
-            flowFile.assertAttributeExists(JWTAttributes.Token.EXPIRATION);
+            flowFile.assertAttributeExists(JwtAttributes.Token.SUBJECT);
+            flowFile.assertAttributeEquals(JwtAttributes.Token.ISSUER, TestTokenHolder.TEST_ISSUER);
+            flowFile.assertAttributeExists(JwtAttributes.Token.EXPIRATION);
         }
 
         @Test
@@ -133,7 +133,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Content.PREFIX + "tenant-id", "acme-corp");
+            flowFile.assertAttributeEquals(JwtAttributes.Content.PREFIX + "tenant-id", "acme-corp");
         }
     }
 
@@ -151,7 +151,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeNotExists(JWTAttributes.Authorization.AUTHORIZED);
+            flowFile.assertAttributeNotExists(JwtAttributes.Authorization.AUTHORIZED);
         }
 
         @Test
@@ -167,7 +167,7 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Authorization.AUTHORIZED, "true");
+            flowFile.assertAttributeEquals(JwtAttributes.Authorization.AUTHORIZED, "true");
         }
     }
 

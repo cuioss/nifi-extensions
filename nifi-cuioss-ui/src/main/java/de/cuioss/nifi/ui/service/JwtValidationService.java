@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-import static de.cuioss.nifi.ui.util.TokenMasking.maskToken;
+import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
 /**
  * Service for JWT token validation using the OAuth-Sheriff library.

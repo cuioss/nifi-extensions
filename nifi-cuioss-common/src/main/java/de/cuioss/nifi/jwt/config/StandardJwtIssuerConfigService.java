@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
@@ -78,7 +78,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     private static final String BOOLEAN_FALSE = "false";
 
     static final PropertyDescriptor JWKS_REFRESH_INTERVAL = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
+            .name(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL)
             .displayName("JWKS Refresh Interval")
             .description("Interval in seconds for refreshing JWKS keys")
             .required(true)
@@ -87,7 +87,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .build();
 
     static final PropertyDescriptor MAXIMUM_TOKEN_SIZE = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
+            .name(JwtAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE)
             .displayName("Maximum Token Size")
             .description("Maximum token size in bytes")
             .required(true)
@@ -96,7 +96,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .build();
 
     static final PropertyDescriptor ALLOWED_ALGORITHMS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
+            .name(JwtAttributes.Properties.Validation.ALLOWED_ALGORITHMS)
             .displayName("Allowed Algorithms")
             .description("Comma-separated list of allowed JWT signing algorithms. " +
                     "The 'none' algorithm is never allowed regardless of this setting.")
@@ -106,7 +106,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .build();
 
     static final PropertyDescriptor REQUIRE_HTTPS_FOR_JWKS = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS)
+            .name(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS)
             .displayName("Require HTTPS for JWKS URLs")
             .description("Whether to require HTTPS for JWKS URLs. Strongly recommended for production.")
             .required(true)
@@ -115,7 +115,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .build();
 
     static final PropertyDescriptor JWKS_CONNECTION_TIMEOUT = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT)
+            .name(JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT)
             .displayName("JWKS Connection Timeout")
             .description("Timeout in seconds for JWKS endpoint connections")
             .required(true)
@@ -124,7 +124,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .build();
 
     static final PropertyDescriptor JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES = new PropertyDescriptor.Builder()
-            .name(JWTAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES)
+            .name(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES)
             .displayName("Allow Private Network Addresses for JWKS")
             .description("When true, allows JWKS URLs that resolve to private/loopback network addresses. "
                     + "Enable this when the IdP (e.g. Keycloak) runs on an internal network. "
@@ -206,7 +206,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
                     .build();
 
             LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED, issuerConfigs.size());
-        } catch (IllegalStateException | IllegalArgumentException | NullPointerException e) {
+        } catch (IllegalStateException | IllegalArgumentException e) {
             LOGGER.error(e, JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED, e.getMessage());
             throw new IllegalStateException("Failed to enable JwtIssuerConfigService", e);
         } finally {

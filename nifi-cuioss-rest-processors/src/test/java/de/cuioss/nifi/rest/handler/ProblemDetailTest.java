@@ -296,17 +296,25 @@ class ProblemDetailTest {
         }
 
         @Test
-        @DisplayName("All type URIs should end with .adoc")
-        void allTypeUrisShouldEndWithAdoc() {
-            assertTrue(ProblemDetail.TYPE_BAD_REQUEST.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_UNAUTHORIZED.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_FORBIDDEN.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_NOT_FOUND.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_METHOD_NOT_ALLOWED.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_PAYLOAD_TOO_LARGE.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_VALIDATION_ERROR.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_SERVICE_UNAVAILABLE.endsWith(".adoc"));
-            assertTrue(ProblemDetail.TYPE_INTERNAL_ERROR.endsWith(".adoc"));
+        @DisplayName("All type URIs should contain distinct anchors for RFC 9457 compliance")
+        void allTypeUrisShouldContainDistinctAnchors() {
+            assertTrue(ProblemDetail.TYPE_BAD_REQUEST.contains("#"));
+            assertTrue(ProblemDetail.TYPE_UNAUTHORIZED.contains("#"));
+            assertTrue(ProblemDetail.TYPE_FORBIDDEN.contains("#"));
+            assertTrue(ProblemDetail.TYPE_NOT_FOUND.contains("#"));
+            assertTrue(ProblemDetail.TYPE_METHOD_NOT_ALLOWED.contains("#"));
+            assertTrue(ProblemDetail.TYPE_PAYLOAD_TOO_LARGE.contains("#"));
+            assertTrue(ProblemDetail.TYPE_VALIDATION_ERROR.contains("#"));
+            assertTrue(ProblemDetail.TYPE_SERVICE_UNAVAILABLE.contains("#"));
+            assertTrue(ProblemDetail.TYPE_INTERNAL_ERROR.contains("#"));
+            // Verify all type URIs are distinct (RFC 9457 requirement)
+            var types = java.util.Set.of(
+                    ProblemDetail.TYPE_BAD_REQUEST, ProblemDetail.TYPE_UNAUTHORIZED,
+                    ProblemDetail.TYPE_FORBIDDEN, ProblemDetail.TYPE_NOT_FOUND,
+                    ProblemDetail.TYPE_METHOD_NOT_ALLOWED, ProblemDetail.TYPE_PAYLOAD_TOO_LARGE,
+                    ProblemDetail.TYPE_VALIDATION_ERROR, ProblemDetail.TYPE_SERVICE_UNAVAILABLE,
+                    ProblemDetail.TYPE_INTERNAL_ERROR);
+            assertEquals(9, types.size(), "All type URIs must be distinct");
         }
     }
 }

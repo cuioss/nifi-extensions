@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
@@ -38,8 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Properties;
-import static de.cuioss.nifi.processors.auth.JWTProcessorConstants.Relationships;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
+import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -93,8 +93,8 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Error.REASON);
-            flowFile.assertAttributeExists(JWTAttributes.Error.CODE);
+            flowFile.assertAttributeExists(JwtAttributes.Error.REASON);
+            flowFile.assertAttributeExists(JwtAttributes.Error.CODE);
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
                     AuthLogMessages.INFO.PROCESSOR_INITIALIZED.resolveIdentifierString());
@@ -115,7 +115,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Token extracted from custom attribute, CS rejects → AUTHENTICATION_FAILED
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            String errorCode = flowFile.getAttribute(JWTAttributes.Error.CODE);
+            String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
             assertNotNull(errorCode);
             assertNotEquals("AUTH-001", errorCode,
                     "Token should have been read from custom attribute; AUTH-001 means no token found");
@@ -140,10 +140,10 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Token.PRESENT, "true");
-            flowFile.assertAttributeExists(JWTAttributes.Token.VALIDATED_AT);
-            flowFile.assertAttributeEquals(JWTAttributes.Token.ISSUER, TestTokenHolder.TEST_ISSUER);
-            flowFile.assertAttributeExists(JWTAttributes.Token.SUBJECT);
+            flowFile.assertAttributeEquals(JwtAttributes.Token.PRESENT, "true");
+            flowFile.assertAttributeExists(JwtAttributes.Token.VALIDATED_AT);
+            flowFile.assertAttributeEquals(JwtAttributes.Token.ISSUER, TestTokenHolder.TEST_ISSUER);
+            flowFile.assertAttributeExists(JwtAttributes.Token.SUBJECT);
         }
 
         @Test
@@ -160,7 +160,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            assertNotNull(flowFile.getAttribute(JWTAttributes.Error.CODE));
+            assertNotNull(flowFile.getAttribute(JwtAttributes.Error.CODE));
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
                     AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
@@ -176,7 +176,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            assertEquals("AUTH-003", flowFile.getAttribute(JWTAttributes.Error.CODE));
+            assertEquals("AUTH-003", flowFile.getAttribute(JwtAttributes.Error.CODE));
         }
 
         @Test
@@ -201,7 +201,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Token.PRESENT, "false");
+            flowFile.assertAttributeEquals(JwtAttributes.Token.PRESENT, "false");
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
                     AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED.resolveIdentifierString());
@@ -237,7 +237,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeEquals(JWTAttributes.Authorization.AUTHORIZED, "true");
+            flowFile.assertAttributeEquals(JwtAttributes.Authorization.AUTHORIZED, "true");
         }
 
         @Test
@@ -251,7 +251,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
-            flowFile.assertAttributeNotExists(JWTAttributes.Authorization.AUTHORIZED);
+            flowFile.assertAttributeNotExists(JwtAttributes.Authorization.AUTHORIZED);
         }
 
         @Test
@@ -298,7 +298,7 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             // Token will be extracted but fail validation (not size-related)
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            assertNotEquals("AUTH-003", flowFile.getAttribute(JWTAttributes.Error.CODE),
+            assertNotEquals("AUTH-003", flowFile.getAttribute(JwtAttributes.Error.CODE),
                     "Normal-sized token should not trigger size violation");
         }
     }
@@ -317,9 +317,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Error.REASON);
-            flowFile.assertAttributeExists(JWTAttributes.Error.CODE);
-            flowFile.assertAttributeExists(JWTAttributes.Error.CATEGORY);
+            flowFile.assertAttributeExists(JwtAttributes.Error.REASON);
+            flowFile.assertAttributeExists(JwtAttributes.Error.CODE);
+            flowFile.assertAttributeExists(JwtAttributes.Error.CATEGORY);
         }
 
         @Test
@@ -332,8 +332,8 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
-            flowFile.assertAttributeExists(JWTAttributes.Error.REASON);
-            flowFile.assertAttributeExists(JWTAttributes.Error.CODE);
+            flowFile.assertAttributeExists(JwtAttributes.Error.REASON);
+            flowFile.assertAttributeExists(JwtAttributes.Error.CODE);
         }
     }
 }

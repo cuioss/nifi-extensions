@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
 import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
@@ -391,7 +391,7 @@ class IssuerConfigurationParserTest {
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "7200");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "7200");
             ConfigurationManager configManager = new ConfigurationManager();
 
             // Act
@@ -408,7 +408,7 @@ class IssuerConfigurationParserTest {
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JWTAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "invalid");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "invalid");
             ConfigurationManager configManager = new ConfigurationManager();
 
             // Act
@@ -426,7 +426,7 @@ class IssuerConfigurationParserTest {
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JWTAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT, "invalid");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT, "invalid");
             ConfigurationManager configManager = new ConfigurationManager();
 
             // Act

@@ -26,7 +26,7 @@ import lombok.experimental.UtilityClass;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 @UtilityClass
-public final class JWTAttributes {
+public final class JwtAttributes {
 
     /**
      * Basic JWT token attributes.
@@ -114,7 +114,7 @@ public final class JWTAttributes {
         /**
          * Whether the configuration was refreshed.
          */
-        public static final String REFRESHED = "jwt.Config.refreshed";
+        public static final String REFRESHED = "jwt.config.refreshed";
     }
 
     /**

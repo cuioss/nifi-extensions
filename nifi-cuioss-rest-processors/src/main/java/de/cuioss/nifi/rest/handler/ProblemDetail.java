@@ -68,18 +68,18 @@ int status,
             "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc";
 
     // --- Error type URIs (stable, documentation-linked) ---
-    // All error types now point to the consolidated error reference document.
+    // Each type URI is an anchored link to the consolidated error reference document.
 
-    static final String TYPE_BAD_REQUEST = ERROR_DOC_BASE;
-    static final String TYPE_UNAUTHORIZED = ERROR_DOC_BASE;
-    static final String TYPE_FORBIDDEN = ERROR_DOC_BASE;
-    static final String TYPE_NOT_FOUND = ERROR_DOC_BASE;
-    static final String TYPE_METHOD_NOT_ALLOWED = ERROR_DOC_BASE;
-    static final String TYPE_PAYLOAD_TOO_LARGE = ERROR_DOC_BASE;
-    static final String TYPE_VALIDATION_ERROR = ERROR_DOC_BASE;
-    static final String TYPE_CONFLICT = ERROR_DOC_BASE;
-    static final String TYPE_SERVICE_UNAVAILABLE = ERROR_DOC_BASE;
-    static final String TYPE_INTERNAL_ERROR = ERROR_DOC_BASE;
+    static final String TYPE_BAD_REQUEST = ERROR_DOC_BASE + "#bad-request";
+    static final String TYPE_UNAUTHORIZED = ERROR_DOC_BASE + "#unauthorized";
+    static final String TYPE_FORBIDDEN = ERROR_DOC_BASE + "#forbidden";
+    static final String TYPE_NOT_FOUND = ERROR_DOC_BASE + "#not-found";
+    static final String TYPE_METHOD_NOT_ALLOWED = ERROR_DOC_BASE + "#method-not-allowed";
+    static final String TYPE_PAYLOAD_TOO_LARGE = ERROR_DOC_BASE + "#payload-too-large";
+    static final String TYPE_VALIDATION_ERROR = ERROR_DOC_BASE + "#validation-error";
+    static final String TYPE_CONFLICT = ERROR_DOC_BASE + "#conflict";
+    static final String TYPE_SERVICE_UNAVAILABLE = ERROR_DOC_BASE + "#service-unavailable";
+    static final String TYPE_INTERNAL_ERROR = ERROR_DOC_BASE + "#internal-error";
 
     // --- Title constants ---
 

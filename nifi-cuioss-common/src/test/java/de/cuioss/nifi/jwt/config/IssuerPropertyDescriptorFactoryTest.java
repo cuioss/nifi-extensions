@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.nifi.jwt.JWTPropertyKeys;
+import de.cuioss.nifi.jwt.JwtPropertyKeys;
 import de.cuioss.nifi.jwt.i18n.I18nResolver;
 import de.cuioss.nifi.jwt.i18n.NiFiI18nResolver;
 import org.apache.nifi.components.PropertyDescriptor;
@@ -69,7 +69,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.JWKS_TYPE, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.JWKS_TYPE, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -90,7 +90,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, "issuer", JWTPropertyKeys.Issuer.JWKS_TYPE, "Type");
+                    name, "issuer", JwtPropertyKeys.Issuer.JWKS_TYPE, "Type");
 
             // Assert
             var allowableValues = descriptor.getAllowableValues();
@@ -117,7 +117,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.JWKS_URL, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.JWKS_URL, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -144,7 +144,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.JWKS_FILE, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.JWKS_FILE, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -170,7 +170,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.JWKS_CONTENT, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.JWKS_CONTENT, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -196,7 +196,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.ISSUER_NAME, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.ISSUER_NAME, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -222,7 +222,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.AUDIENCE, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.AUDIENCE, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -248,7 +248,7 @@ class IssuerPropertyDescriptorFactoryTest {
 
             // Act
             PropertyDescriptor descriptor = factory.createDescriptor(
-                    name, issuerName, JWTPropertyKeys.Issuer.CLIENT_ID, displayName);
+                    name, issuerName, JwtPropertyKeys.Issuer.CLIENT_ID, displayName);
 
             // Assert
             assertNotNull(descriptor, "Descriptor should not be null");
@@ -336,13 +336,13 @@ class IssuerPropertyDescriptorFactoryTest {
         @DisplayName("All descriptors should be dynamic")
         void allDescriptorsShouldBeDynamic() {
             // Arrange & Act
-            var jwksType = factory.createDescriptor("n1", "i", JWTPropertyKeys.Issuer.JWKS_TYPE, "d");
-            var jwksUrl = factory.createDescriptor("n2", "i", JWTPropertyKeys.Issuer.JWKS_URL, "d");
-            var jwksFile = factory.createDescriptor("n3", "i", JWTPropertyKeys.Issuer.JWKS_FILE, "d");
-            var jwksContent = factory.createDescriptor("n4", "i", JWTPropertyKeys.Issuer.JWKS_CONTENT, "d");
-            var issuerName = factory.createDescriptor("n5", "i", JWTPropertyKeys.Issuer.ISSUER_NAME, "d");
-            var audience = factory.createDescriptor("n6", "i", JWTPropertyKeys.Issuer.AUDIENCE, "d");
-            var clientId = factory.createDescriptor("n7", "i", JWTPropertyKeys.Issuer.CLIENT_ID, "d");
+            var jwksType = factory.createDescriptor("n1", "i", JwtPropertyKeys.Issuer.JWKS_TYPE, "d");
+            var jwksUrl = factory.createDescriptor("n2", "i", JwtPropertyKeys.Issuer.JWKS_URL, "d");
+            var jwksFile = factory.createDescriptor("n3", "i", JwtPropertyKeys.Issuer.JWKS_FILE, "d");
+            var jwksContent = factory.createDescriptor("n4", "i", JwtPropertyKeys.Issuer.JWKS_CONTENT, "d");
+            var issuerName = factory.createDescriptor("n5", "i", JwtPropertyKeys.Issuer.ISSUER_NAME, "d");
+            var audience = factory.createDescriptor("n6", "i", JwtPropertyKeys.Issuer.AUDIENCE, "d");
+            var clientId = factory.createDescriptor("n7", "i", JwtPropertyKeys.Issuer.CLIENT_ID, "d");
             var defaultDesc = factory.createDescriptor("n8", "i", "unknown", "d");
 
             // Assert
@@ -360,13 +360,13 @@ class IssuerPropertyDescriptorFactoryTest {
         @DisplayName("All descriptors should not be required")
         void allDescriptorsShouldNotBeRequired() {
             // Arrange & Act
-            var jwksType = factory.createDescriptor("n1", "i", JWTPropertyKeys.Issuer.JWKS_TYPE, "d");
-            var jwksUrl = factory.createDescriptor("n2", "i", JWTPropertyKeys.Issuer.JWKS_URL, "d");
-            var jwksFile = factory.createDescriptor("n3", "i", JWTPropertyKeys.Issuer.JWKS_FILE, "d");
-            var jwksContent = factory.createDescriptor("n4", "i", JWTPropertyKeys.Issuer.JWKS_CONTENT, "d");
-            var issuerName = factory.createDescriptor("n5", "i", JWTPropertyKeys.Issuer.ISSUER_NAME, "d");
-            var audience = factory.createDescriptor("n6", "i", JWTPropertyKeys.Issuer.AUDIENCE, "d");
-            var clientId = factory.createDescriptor("n7", "i", JWTPropertyKeys.Issuer.CLIENT_ID, "d");
+            var jwksType = factory.createDescriptor("n1", "i", JwtPropertyKeys.Issuer.JWKS_TYPE, "d");
+            var jwksUrl = factory.createDescriptor("n2", "i", JwtPropertyKeys.Issuer.JWKS_URL, "d");
+            var jwksFile = factory.createDescriptor("n3", "i", JwtPropertyKeys.Issuer.JWKS_FILE, "d");
+            var jwksContent = factory.createDescriptor("n4", "i", JwtPropertyKeys.Issuer.JWKS_CONTENT, "d");
+            var issuerName = factory.createDescriptor("n5", "i", JwtPropertyKeys.Issuer.ISSUER_NAME, "d");
+            var audience = factory.createDescriptor("n6", "i", JwtPropertyKeys.Issuer.AUDIENCE, "d");
+            var clientId = factory.createDescriptor("n7", "i", JwtPropertyKeys.Issuer.CLIENT_ID, "d");
 
             // Assert
             assertFalse(jwksType.isRequired(), "JWKS_TYPE should not be required");

@@ -39,9 +39,9 @@ class ProcessingErrorTest {
                     .build();
 
             // Assert
-            assertEquals("AUTH_001", error.getErrorCode());
-            assertEquals("Invalid token signature", error.getErrorReason());
-            assertEquals("AUTHENTICATION", error.getErrorCategory());
+            assertEquals("AUTH_001", error.errorCode());
+            assertEquals("Invalid token signature", error.errorReason());
+            assertEquals("AUTHENTICATION", error.errorCategory());
         }
 
         @Test
@@ -55,9 +55,9 @@ class ProcessingErrorTest {
                     .build();
 
             // Assert
-            assertNull(error.getErrorCode());
-            assertNull(error.getErrorReason());
-            assertNull(error.getErrorCategory());
+            assertNull(error.errorCode());
+            assertNull(error.errorReason());
+            assertNull(error.errorCategory());
         }
 
         @Test
@@ -70,9 +70,9 @@ class ProcessingErrorTest {
                     .build();
 
             // Assert
-            assertEquals("TOKEN_EXPIRED", error.getErrorCode());
-            assertEquals("The access token has expired", error.getErrorReason());
-            assertNull(error.getErrorCategory());
+            assertEquals("TOKEN_EXPIRED", error.errorCode());
+            assertEquals("The access token has expired", error.errorReason());
+            assertNull(error.errorCategory());
         }
     }
 
@@ -246,7 +246,7 @@ class ProcessingErrorTest {
                     .build();
 
             // Act & Assert
-            assertEquals("TEST_CODE", error.getErrorCode());
+            assertEquals("TEST_CODE", error.errorCode());
         }
 
         @Test
@@ -258,7 +258,7 @@ class ProcessingErrorTest {
                     .build();
 
             // Act & Assert
-            assertEquals("Test reason message", error.getErrorReason());
+            assertEquals("Test reason message", error.errorReason());
         }
 
         @Test
@@ -270,7 +270,7 @@ class ProcessingErrorTest {
                     .build();
 
             // Act & Assert
-            assertEquals("VALIDATION", error.getErrorCategory());
+            assertEquals("VALIDATION", error.errorCategory());
         }
     }
 }

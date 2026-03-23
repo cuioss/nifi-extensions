@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.processors.auth;
 
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import lombok.experimental.UtilityClass;
@@ -34,7 +34,7 @@ import org.apache.nifi.processor.util.StandardValidators;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  */
 @UtilityClass
-public final class JWTProcessorConstants {
+public final class JwtProcessorConstants {
 
     /** Default FlowFile attribute name for the raw JWT token. */
     public static final String DEFAULT_TOKEN_ATTRIBUTE = "jwt.token";
@@ -85,7 +85,7 @@ public final class JWTProcessorConstants {
          * The FlowFile attribute name containing the raw JWT token.
          */
         public static final PropertyDescriptor TOKEN_ATTRIBUTE = new PropertyDescriptor.Builder()
-                .name(JWTAttributes.Properties.Validation.TOKEN_ATTRIBUTE)
+                .name(JwtAttributes.Properties.Validation.TOKEN_ATTRIBUTE)
                 .displayName("Token Attribute")
                 .description("The FlowFile attribute name containing the raw JWT token")
                 .required(true)

@@ -22,7 +22,7 @@ import de.cuioss.http.security.core.HttpSecurityValidator;
 import de.cuioss.http.security.exceptions.UrlSecurityException;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
-import de.cuioss.nifi.jwt.JWTAttributes;
+import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
@@ -333,7 +333,7 @@ public class JwksValidationServlet extends HttpServlet {
                     processorProperties, configReader, req);
 
             String value = csProperties.get(
-                    JWTAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
             return "true".equalsIgnoreCase(value);
         } catch (IllegalArgumentException e) {
             LOGGER.debug("Could not resolve allow-private-addresses config: %s", e.getMessage());
