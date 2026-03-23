@@ -22,11 +22,11 @@ Step-by-step instructions for getting started and configuring the processors.
 
 == Reference
 
-Property tables, configuration formats, and error types.
+Property tables, configuration formats, error types, request tracking, and attachment handling.
 
 * link:reference/README.adoc[Reference Overview]: index of all reference documents
 * link:reference/configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:reference/error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
-* link:reference/request-tracking-api.adoc[Request Tracking API]: tracking modes, status polling, chained requests
-* link:reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, component relationships
-* link:reference/attachments-api.adoc[Attachments API]: attachment upload, counting, and configuration
+* link:reference/request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
+* link:reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
+* link:reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement

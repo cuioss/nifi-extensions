@@ -17,10 +17,10 @@
 |Token structure validation via OAuth-Sheriff
 
 |https://www.rfc-editor.org/rfc/rfc7515[RFC 7515]: JSON Web Signature (JWS)
-|Signature validation supporting RS256/384/512, ES256/384/512, PS256/384/512
+|Signature validation via OAuth-Sheriff supporting RS256/384/512, ES256/384/512, PS256/384/512
 
 |https://www.rfc-editor.org/rfc/rfc7517[RFC 7517]: JSON Web Key (JWK)
-|JWKS key retrieval with periodic refresh and caching
+|JWKS key retrieval via OAuth-Sheriff with periodic refresh and caching
 
 |https://www.rfc-editor.org/rfc/rfc6749[RFC 6749]: The OAuth 2.0 Authorization Framework
 |Bearer token extraction, scope and role-based authorization

@@ -234,3 +234,4 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 * xref:processor-api-manager-guide.adoc[Processor API Manager Guide] — REST API processor management
 * xref:accessibility-testing-guide.adoc[Accessibility Testing Guide] — WCAG compliance testing
 * xref:roundtrip-testing.adoc[Roundtrip Testing Guide] — Development workflow
+* xref:test-logging.adoc[Test Logging Architecture] — Logging infrastructure and artifact generation
