@@ -74,9 +74,9 @@ public class TokenClaimMapper {
         attributes.put(JwtAttributes.Token.VALIDATED_AT, Instant.now().toString());
 
         // Standard claims
-        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubject().orElse(""));
+        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubjectOption().orElse(""));
         attributes.put(JwtAttributes.Token.ISSUER, token.getIssuer());
-        attributes.put(JwtAttributes.Token.EXPIRATION, token.getExpirationTime().toString());
+        attributes.put(JwtAttributes.Token.EXPIRATION, token.getExpirationDateTime().toString());
 
         // Roles
         List<String> roles = token.getRoles();
@@ -85,7 +85,7 @@ public class TokenClaimMapper {
         }
 
         // Groups
-        List<String> groups = token.getGroups();
+        var groups = token.getGroups();
         if (!groups.isEmpty()) {
             attributes.put(JwtAttributes.Authorization.GROUPS, String.join(",", groups));
         }
