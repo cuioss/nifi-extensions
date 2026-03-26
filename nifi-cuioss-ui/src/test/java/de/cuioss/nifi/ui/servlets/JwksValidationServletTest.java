@@ -812,6 +812,102 @@ class JwksValidationServletTest {
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("status 503"));
         }
+
+        @Test
+        @DisplayName("Should validate JWKS URL end-to-end with valid content via servlet")
+        void shouldValidateJwksUrlEndToEnd() throws Exception {
+            // Arrange — mock NiFi config that returns allowPrivateAddresses=true
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> props = Map.of(
+                    "jwt.validation.jwks.allow.private.network.addresses", "true");
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(props)
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            String jwksUrl = mockServer.url("/.well-known/jwks.json").toString();
+
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                             new JwksValidationServlet());
+                     ctx.addServlet(holder, URL_ENDPOINT);
+                 })) {
+                // Act — with allowPrivateAddresses=true, SSRF is bypassed for localhost
+                serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", processorId)
+                        .body("""
+                                {"jwksUrl":"%s","processorId":"%s"}"""
+                                .formatted(jwksUrl, processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200)
+                        .body("valid", equalTo(true))
+                        .body("keyCount", equalTo(1));
+            }
+        }
+
+        @Test
+        @DisplayName("Should reject oversized JWKS URL response end-to-end via servlet")
+        void shouldRejectOversizedResponseEndToEnd() throws Exception {
+            // Arrange — mock config allowing private addresses
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> props = Map.of(
+                    "jwt.validation.jwks.allow.private.network.addresses", "true");
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(props)
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            String jwksUrl = mockServer.url("/.well-known/jwks.json").toString();
+
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                             new JwksValidationServlet());
+                     ctx.addServlet(holder, URL_ENDPOINT);
+                 })) {
+                // Act
+                serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", processorId)
+                        .body("""
+                                {"jwksUrl":"%s","processorId":"%s"}"""
+                                .formatted(jwksUrl, processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200)
+                        .body("valid", equalTo(false))
+                        .body("error", containsString("exceeds maximum size limit"));
+            }
+        }
     }
 
     /**
