@@ -144,6 +144,12 @@ public final class UILogMessages {
                 .identifier(114)
                 .template("Invalid grant type requested: %s")
                 .build();
+
+        public static final LogRecord JWKS_RESPONSE_TOO_LARGE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(115)
+                .template("JWKS response body exceeds size limit for URL: %s")
+                .build();
     }
 
     public static final class ERROR {

@@ -16,10 +16,13 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.client.result.HttpResult;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
 import org.apache.nifi.web.ComponentDetails;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.apache.nifi.web.NiFiWebRequestContext;
@@ -34,6 +37,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.InetAddress;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -647,6 +651,262 @@ class JwksValidationServletTest {
 
             // Assert — blank value is skipped, returns processor properties
             assertEquals(processorProps, result);
+        }
+    }
+
+    @Nested
+    @DisplayName("Response Size Limit Tests")
+    class ResponseSizeLimitTests {
+
+        private static MockWebServer mockServer;
+
+        @BeforeAll
+        static void startMockServer() throws Exception {
+            mockServer = new MockWebServer();
+            mockServer.start();
+        }
+
+        @AfterAll
+        static void stopMockServer() {
+            if (mockServer != null) {
+                mockServer.close();
+            }
+        }
+
+        @Test
+        @DisplayName("Should reject JWKS response exceeding 1 MB size limit")
+        void shouldRejectOversizedResponse() throws Exception {
+            // Arrange — response body > 1 MB
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
+        }
+
+        @Test
+        @DisplayName("Should accept JWKS response within 1 MB size limit")
+        void shouldAcceptResponseWithinSizeLimit() throws Exception {
+            // Arrange — valid JWKS content well under 1 MB
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertTrue(result.isSuccess());
+            assertTrue(result.getContent().isPresent());
+            assertEquals(validJwks, result.getContent().get());
+        }
+
+        @Test
+        @DisplayName("Should return failure for non-200 HTTP status")
+        void shouldReturnFailureForNon200Status() throws Exception {
+            // Arrange
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(404)
+                    .body("Not Found")
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("status 404"));
+        }
+
+        @Test
+        @DisplayName("Should accept response via resolved address within size limit")
+        void shouldAcceptResponseViaResolvedAddress() throws Exception {
+            // Arrange
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertTrue(result.isSuccess());
+            assertTrue(result.getContent().isPresent());
+            assertEquals(validJwks, result.getContent().get());
+        }
+
+        @Test
+        @DisplayName("Should reject oversized response via resolved address")
+        void shouldRejectOversizedResponseViaResolvedAddress() throws Exception {
+            // Arrange
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
+        }
+
+        @Test
+        @DisplayName("Should return failure for non-200 status via resolved address")
+        void shouldReturnFailureForNon200ViaResolvedAddress() throws Exception {
+            // Arrange
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(503)
+                    .body("Service Unavailable")
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("status 503"));
+        }
+
+        @Test
+        @DisplayName("Should validate JWKS URL end-to-end with valid content via servlet")
+        void shouldValidateJwksUrlEndToEnd() throws Exception {
+            // Arrange — mock NiFi config that returns allowPrivateAddresses=true
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> props = Map.of(
+                    "jwt.validation.jwks.allow.private.network.addresses", "true");
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(props)
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            String jwksUrl = mockServer.url("/.well-known/jwks.json").toString();
+
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                             new JwksValidationServlet());
+                     ctx.addServlet(holder, URL_ENDPOINT);
+                 })) {
+                // Act — with allowPrivateAddresses=true, SSRF is bypassed for localhost
+                serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", processorId)
+                        .body("""
+                                {"jwksUrl":"%s","processorId":"%s"}"""
+                                .formatted(jwksUrl, processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200)
+                        .body("valid", equalTo(true))
+                        .body("keyCount", equalTo(1));
+            }
+        }
+
+        @Test
+        @DisplayName("Should reject oversized JWKS URL response end-to-end via servlet")
+        void shouldRejectOversizedResponseEndToEnd() throws Exception {
+            // Arrange — mock config allowing private addresses
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> props = Map.of(
+                    "jwt.validation.jwks.allow.private.network.addresses", "true");
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(props)
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            String jwksUrl = mockServer.url("/.well-known/jwks.json").toString();
+
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                             new JwksValidationServlet());
+                     ctx.addServlet(holder, URL_ENDPOINT);
+                 })) {
+                // Act
+                serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", processorId)
+                        .body("""
+                                {"jwksUrl":"%s","processorId":"%s"}"""
+                                .formatted(jwksUrl, processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200)
+                        .body("valid", equalTo(false))
+                        .body("error", containsString("exceeds maximum size limit"));
+            }
         }
     }
 
