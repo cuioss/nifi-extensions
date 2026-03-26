@@ -397,7 +397,7 @@ public class JwksValidationServlet extends HttpServlet {
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
-    private HttpResult<String> fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
+    HttpResult<String> fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
             InetAddress resolvedAddress) throws IOException, InterruptedException {
         // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
         URI ipBasedUri;

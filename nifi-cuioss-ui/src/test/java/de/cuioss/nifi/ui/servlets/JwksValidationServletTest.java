@@ -37,6 +37,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.InetAddress;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -737,6 +738,79 @@ class JwksValidationServletTest {
             assertFalse(result.isSuccess());
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("status 404"));
+        }
+
+        @Test
+        @DisplayName("Should accept response via resolved address within size limit")
+        void shouldAcceptResponseViaResolvedAddress() throws Exception {
+            // Arrange
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertTrue(result.isSuccess());
+            assertTrue(result.getContent().isPresent());
+            assertEquals(validJwks, result.getContent().get());
+        }
+
+        @Test
+        @DisplayName("Should reject oversized response via resolved address")
+        void shouldRejectOversizedResponseViaResolvedAddress() throws Exception {
+            // Arrange
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
+        }
+
+        @Test
+        @DisplayName("Should return failure for non-200 status via resolved address")
+        void shouldReturnFailureForNon200ViaResolvedAddress() throws Exception {
+            // Arrange
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(503)
+                    .body("Service Unavailable")
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            URI uri = URI.create(mockServer.url("/jwks").toString());
+            InetAddress resolved = InetAddress.getByName(uri.getHost());
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
+                    uri.toString(), uri, resolved);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("status 503"));
         }
     }
 
