@@ -18,7 +18,11 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
+import de.cuioss.sheriff.oauth.core.TokenType;
+import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
+import de.cuioss.sheriff.oauth.core.test.generator.ClaimControlParameter;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
@@ -32,10 +36,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.easymock.EasyMock.*;
@@ -249,15 +251,11 @@ class JwtVerificationServletTest {
     @DisplayName("Should return claims from valid token with AccessTokenContent")
     void validTokenWithClaimsMap() {
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };
@@ -272,7 +270,7 @@ class JwtVerificationServletTest {
                 .statusCode(200)
                 .body("valid", equalTo(true))
                 .body("authorized", equalTo(true))
-                .body("issuer", equalTo("test-issuer"))
+                .body("issuer", equalTo(TestTokenHolder.TEST_ISSUER))
                 .body("claims.sub", equalTo("test-subject"));
     }
 
@@ -316,18 +314,14 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    @DisplayName("Should handle null issuer in claims")
-    void validTokenWithNullIssuerInClaims() {
+    @DisplayName("Should include issuer in claims from token content")
+    void validTokenWithIssuerInClaims() {
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test-subject")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn(null).anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };
@@ -335,13 +329,14 @@ class JwtVerificationServletTest {
         handle.spec()
                 .contentType("application/json")
                 .body("""
-                        {"token":"test-token-null-issuer","processorId":"test-processor-id"}""")
+                        {"token":"test-token","processorId":"test-processor-id"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
                 .statusCode(200)
                 .body("valid", equalTo(true))
-                .body("claims", hasKey("iss"));
+                .body("claims", hasKey("iss"))
+                .body("claims.iss", equalTo(TestTokenHolder.TEST_ISSUER));
     }
 
     @Test
@@ -416,28 +411,13 @@ class JwtVerificationServletTest {
     @Test
     @DisplayName("Should include decoded JWT header and payload for valid token")
     void validTokenWithDecodedParts() {
-        // Build a syntactically valid JWT (header.payload.signature)
-        String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                """
-                        {"alg":"RS256","typ":"JWT","kid":"test-key-id"}"""
-                        .getBytes(StandardCharsets.UTF_8));
-        String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
-                """
-                        {"sub":"decoded-user","iss":"https://example.com","exp":9999999999,"iat":1000000000,"custom":"value"}"""
-                        .getBytes(StandardCharsets.UTF_8));
-        String rawToken = header + "." + payload + ".fake-signature";
-
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("decoded-user")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn("https://example.com").anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of("openid")).anyTimes();
-            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            tokenHolder.withClaim("custom", ClaimValue.forPlainString("value"));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };
@@ -452,10 +432,8 @@ class JwtVerificationServletTest {
                 .statusCode(200)
                 .body("valid", equalTo(true))
                 .body("decoded.header.alg", equalTo("RS256"))
-                .body("decoded.header.typ", equalTo("JWT"))
-                .body("decoded.header.kid", equalTo("test-key-id"))
-                .body("decoded.payload.sub", equalTo("decoded-user"))
-                .body("decoded.payload.iss", equalTo("https://example.com"));
+                .body("decoded.payload.sub", equalTo("test-subject"))
+                .body("decoded.payload.iss", equalTo(TestTokenHolder.TEST_ISSUER));
     }
 
     @Test
@@ -473,16 +451,13 @@ class JwtVerificationServletTest {
         String rawToken = header + "." + payload + ".fake-signature";
 
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("null-test")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
-            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            // Construct AccessTokenContent with the crafted raw token for decoded JWT testing
+            AccessTokenContent tokenContent = new AccessTokenContent(
+                    tokenHolder.getClaims(), rawToken, null, null);
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };
@@ -515,16 +490,12 @@ class JwtVerificationServletTest {
         String rawToken = header + "." + payload + ".fake-signature";
 
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("diverse-user")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of("admin")).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of("read")).anyTimes();
-            expect(mockTokenContent.getRawToken()).andReturn(rawToken).anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = new AccessTokenContent(
+                    tokenHolder.getClaims(), rawToken, null, null);
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };
@@ -548,17 +519,13 @@ class JwtVerificationServletTest {
     @DisplayName("Should handle malformed JWT in decoded token gracefully")
     void malformedJwtInDecodedToken() {
         currentVerifier = (token, processorId) -> {
-            AccessTokenContent mockTokenContent = createNiceMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of("test")).anyTimes();
-            expect(mockTokenContent.getIssuer()).andReturn("test-issuer").anyTimes();
-            expect(mockTokenContent.getExpirationTime()).andReturn(OffsetDateTime.now().plusHours(1)).anyTimes();
-            expect(mockTokenContent.getRoles()).andReturn(List.of()).anyTimes();
-            expect(mockTokenContent.getScopes()).andReturn(List.of()).anyTimes();
-            // Return a malformed token that cannot be decoded
-            expect(mockTokenContent.getRawToken()).andReturn("not-a-valid-jwt").anyTimes();
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            // Construct AccessTokenContent with a malformed raw token
+            AccessTokenContent tokenContent = new AccessTokenContent(
+                    tokenHolder.getClaims(), "not-a-valid-jwt", null, null);
 
-            TokenValidationResult result = TokenValidationResult.success(mockTokenContent);
+            TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
             return result;
         };

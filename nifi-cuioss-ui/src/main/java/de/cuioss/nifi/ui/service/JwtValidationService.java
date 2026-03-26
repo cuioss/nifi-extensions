@@ -369,9 +369,9 @@ public class JwtValidationService {
                 Map<String, Object> claims = new HashMap<>();
 
                 // Add token identity information
-                claims.put("sub", tokenContent.getSubject().orElse(""));
+                claims.put("sub", tokenContent.getSubjectOption().orElse(""));
                 claims.put("iss", tokenContent.getIssuer());
-                claims.put("exp", tokenContent.getExpirationTime().toString());
+                claims.put("exp", tokenContent.getExpirationDateTime().toString());
 
                 // Add roles as a list if available
                 List<String> tokenRoles = tokenContent.getRoles();

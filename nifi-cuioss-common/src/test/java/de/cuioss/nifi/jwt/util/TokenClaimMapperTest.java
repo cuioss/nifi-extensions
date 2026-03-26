@@ -46,9 +46,9 @@ class TokenClaimMapperTest {
 
             assertNotNull(attributes.get(JwtAttributes.Token.VALIDATED_AT),
                     "validatedAt should be present");
-            assertEquals(token.getSubject().orElse(""), attributes.get(JwtAttributes.Token.SUBJECT));
+            assertEquals(token.getSubjectOption().orElse(""), attributes.get(JwtAttributes.Token.SUBJECT));
             assertEquals(token.getIssuer(), attributes.get(JwtAttributes.Token.ISSUER));
-            assertEquals(token.getExpirationTime().toString(), attributes.get(JwtAttributes.Token.EXPIRATION));
+            assertEquals(token.getExpirationDateTime().toString(), attributes.get(JwtAttributes.Token.EXPIRATION));
         }
 
         @Test

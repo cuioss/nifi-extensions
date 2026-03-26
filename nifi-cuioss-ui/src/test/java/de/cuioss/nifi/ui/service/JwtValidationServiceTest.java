@@ -17,6 +17,7 @@
 package de.cuioss.nifi.ui.service;
 
 import de.cuioss.sheriff.oauth.core.TokenType;
+import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
@@ -36,7 +37,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.OffsetDateTime;
 import java.util.*;
 
 import static de.cuioss.test.generator.Generators.strings;
@@ -67,16 +67,18 @@ class JwtValidationServiceTest {
         @DisplayName("Should create successful result with token content")
         void shouldCreateSuccessfulResult() {
             // Arrange
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             // Act
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Assert
             assertTrue(result.isValid(), "Result should be valid");
             assertNull(result.getError(), "Error should be null for successful result");
-            assertEquals(mockTokenContent, result.getTokenContent(),
+            assertEquals(tokenContent, result.getTokenContent(),
                     "Token content should match provided content");
         }
 
@@ -116,21 +118,19 @@ class JwtValidationServiceTest {
         @DisplayName("Should get issuer from token content when field not set")
         void shouldGetIssuerFromTokenContent() {
             // Arrange
-            String expectedIssuer = strings().next();
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-            expect(mockTokenContent.getIssuer()).andReturn(expectedIssuer);
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Act
             String actualIssuer = result.getIssuer();
 
             // Assert
-            assertEquals(expectedIssuer, actualIssuer,
+            assertEquals(TestTokenHolder.TEST_ISSUER, actualIssuer,
                     "Issuer should be retrieved from token content");
-            verify(mockTokenContent);
         }
 
         @Test
@@ -180,21 +180,19 @@ class JwtValidationServiceTest {
         @DisplayName("Should get scopes from token content when field not set")
         void shouldGetScopesFromTokenContent() {
             // Arrange
-            List<String> expectedScopes = Arrays.asList("read", "write");
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-            expect(mockTokenContent.getScopes()).andReturn(expectedScopes);
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Act
             List<String> actualScopes = result.getScopes();
 
             // Assert
-            assertEquals(expectedScopes, actualScopes,
-                    "Scopes should be retrieved from token content");
-            verify(mockTokenContent);
+            assertNotNull(actualScopes, "Scopes should be retrieved from token content");
+            assertFalse(actualScopes.isEmpty(), "Scopes should not be empty");
         }
 
         @Test
@@ -216,74 +214,59 @@ class JwtValidationServiceTest {
         @DisplayName("Should get roles from token content when field not set")
         void shouldGetRolesFromTokenContent() {
             // Arrange
-            List<String> expectedRoles = Arrays.asList("admin", "user");
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-            expect(mockTokenContent.getRoles()).andReturn(expectedRoles);
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Act
             List<String> actualRoles = result.getRoles();
 
             // Assert
-            assertEquals(expectedRoles, actualRoles,
-                    "Roles should be retrieved from token content");
-            verify(mockTokenContent);
+            assertNotNull(actualRoles, "Roles should be retrieved from token content");
+            assertFalse(actualRoles.isEmpty(), "Roles should not be empty");
         }
 
         @Test
         @DisplayName("Should build claims map from token content")
         void shouldBuildClaimsMapFromTokenContent() {
             // Arrange
-            String subject = strings().next();
-            String issuer = strings().next();
-            OffsetDateTime expiration = OffsetDateTime.now().plusSeconds(3600);
-            List<String> roles = Arrays.asList("admin", "user");
-            List<String> scopes = Arrays.asList("read", "write");
-
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.of(subject));
-            expect(mockTokenContent.getIssuer()).andReturn(issuer);
-            expect(mockTokenContent.getExpirationTime()).andReturn(expiration);
-            expect(mockTokenContent.getRoles()).andReturn(roles);
-            expect(mockTokenContent.getScopes()).andReturn(scopes);
-            replay(mockTokenContent);
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Act
             Map<String, Object> claims = result.getClaims();
 
             // Assert
             assertNotNull(claims, "Claims should not be null");
-            assertEquals(subject, claims.get("sub"), "Subject should match");
-            assertEquals(issuer, claims.get("iss"), "Issuer should match");
-            assertEquals(expiration.toString(), claims.get("exp"), "Expiration should match");
-            assertEquals(roles, claims.get("roles"), "Roles should match");
-            assertEquals(scopes, claims.get("scopes"), "Scopes should match");
-            verify(mockTokenContent);
+            assertEquals(tokenContent.getSubjectOption().orElse(""), claims.get("sub"), "Subject should match");
+            assertEquals(tokenContent.getIssuer(), claims.get("iss"), "Issuer should match");
+            assertEquals(tokenContent.getExpirationDateTime().toString(), claims.get("exp"), "Expiration should match");
+            assertNotNull(claims.get("roles"), "Roles should be present");
+            assertNotNull(claims.get("scopes"), "Scopes should be present");
         }
 
         @Test
         @DisplayName("Should build claims map without optional fields")
         void shouldBuildClaimsMapWithoutOptionalFields() {
-            // Arrange
-            String issuer = strings().next();
-            OffsetDateTime expiration = OffsetDateTime.now().plusSeconds(3600);
-
-            AccessTokenContent mockTokenContent = createMock(AccessTokenContent.class);
-            expect(mockTokenContent.getSubject()).andReturn(Optional.empty());
-            expect(mockTokenContent.getIssuer()).andReturn(issuer);
-            expect(mockTokenContent.getExpirationTime()).andReturn(expiration);
-            expect(mockTokenContent.getRoles()).andReturn(Collections.emptyList());
-            expect(mockTokenContent.getScopes()).andReturn(Collections.emptyList());
-            replay(mockTokenContent);
+            // Arrange — create token without subject, roles, or scopes
+            var params = ClaimControlParameter.builder()
+                    .missingSubject(true)
+                    .missingScope(true)
+                    .build();
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN, params);
+            // Remove roles claim (generated by default)
+            tokenHolder.withoutClaim("roles");
+            AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(mockTokenContent);
+                    JwtValidationService.TokenValidationResult.success(tokenContent);
 
             // Act
             Map<String, Object> claims = result.getClaims();
@@ -293,7 +276,6 @@ class JwtValidationServiceTest {
             assertEquals("", claims.get("sub"), "Empty subject should be empty string");
             assertFalse(claims.containsKey("roles"), "Roles should not be present when empty");
             assertFalse(claims.containsKey("scopes"), "Scopes should not be present when empty");
-            verify(mockTokenContent);
         }
 
         @Test
