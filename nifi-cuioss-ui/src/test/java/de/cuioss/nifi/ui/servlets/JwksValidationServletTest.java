@@ -667,7 +667,9 @@ class JwksValidationServletTest {
 
         @AfterAll
         static void stopMockServer() {
-            mockServer.close();
+            if (mockServer != null) {
+                mockServer.close();
+            }
         }
 
         @Test
