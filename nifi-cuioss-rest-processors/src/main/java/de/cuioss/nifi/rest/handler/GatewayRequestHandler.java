@@ -296,8 +296,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
                     ProblemDetail.unauthorized("This endpoint requires local access or Bearer token"));
             return new AuthResult.ErrorSent();
         }
-        // Fallback — empty set is prevented by AuthMode.fromValues() validation;
-        // this path is unreachable under normal operation
+        // Defensive fallback -- unreachable when AuthMode.fromValues() ensures a non-empty set
         return requireBearerToken(request, response, callback, method, path, remoteHost);
     }
 

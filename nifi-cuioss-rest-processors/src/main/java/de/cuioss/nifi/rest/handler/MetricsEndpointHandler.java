@@ -119,6 +119,7 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
         sb.append('\n');
     }
 
+    @SuppressWarnings("java:S3457") // Prometheus text format requires literal \n, not platform-dependent %n
     private void appendHttpSecurityMetrics(StringBuilder sb) {
         var counts = httpSecurityEvents.getAllCounts();
         sb.append("# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)\n");

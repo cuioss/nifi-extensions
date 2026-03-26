@@ -654,9 +654,8 @@ class ConfigurationManagerTest {
                     FileTime.from(Instant.now().plusSeconds(1)));
 
             // Act — poll until the modification is detected
-            // loadConfiguration() clears properties before loading;
-            // YAMLException is caught internally in loadConfigurationFile(),
-            // so checkAndReloadConfiguration() returns true (reload completed)
+            // Reload completes (returns true) even though YAML is invalid,
+            // because the exception is caught internally and properties are cleared
             await().atMost(2, SECONDS)
                     .until(configManager::checkAndReloadConfiguration);
 

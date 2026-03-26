@@ -97,21 +97,6 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
         this.gatewaySecurityEvents = config.gatewaySecurityEvents();
     }
 
-    public AttachmentsEndpointHandler(RequestStatusStore statusStore,
-            BlockingQueue<HttpRequestContainer> queue,
-            int maxRequestSize,
-            boolean enabled, Set<AuthMode> authModes,
-            Set<String> requiredRoles, Set<String> requiredScopes,
-            GatewaySecurityEvents gatewaySecurityEvents) {
-        this.statusStore = statusStore;
-        this.queue = queue;
-        this.maxRequestSize = maxRequestSize;
-        this.enabled = enabled;
-        this.authModes = authModes;
-        this.requiredRoles = requiredRoles;
-        this.requiredScopes = requiredScopes;
-        this.gatewaySecurityEvents = gatewaySecurityEvents;
-    }
 
     @Override
     public String name() {

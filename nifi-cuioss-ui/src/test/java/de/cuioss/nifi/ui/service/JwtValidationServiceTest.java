@@ -17,7 +17,6 @@
 package de.cuioss.nifi.ui.service;
 
 import de.cuioss.sheriff.oauth.core.TokenType;
-import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
