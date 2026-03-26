@@ -76,7 +76,7 @@
     display: block;
 }
 
-.collapsible-content h5 {
+.collapsible-content h4 {
     margin-top: 20px;
     margin-bottom: 10px;
     color: var(--text-primary, #333);

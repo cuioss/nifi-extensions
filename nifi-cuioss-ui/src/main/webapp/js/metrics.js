@@ -59,7 +59,7 @@ const metricsFooterHtml = () => `
         </span>
     </div>
     <div id="export-options" class="export-options" data-testid="export-options">
-        <h5>${t('metrics.export.heading')}</h5>
+        <h3>${t('metrics.export.heading')}</h3>
         <button class="btn btn-small" data-format="csv"
                 data-testid="export-csv">CSV</button>
         <button class="btn btn-small" data-format="json"
@@ -79,21 +79,21 @@ const buildGatewayTemplate = () => `
         ${metricsHeaderHtml(t('metrics.gateway.heading'))}
 
         <div class="gateway-metrics-section" data-testid="token-validation-metrics">
-            <h4>${t('metrics.section.token.validation')}</h4>
+            <h3>${t('metrics.section.token.validation')}</h3>
             <div class="metrics-grid" id="token-validation-grid">
                 <div class="no-data">${t('common.loading')}</div>
             </div>
         </div>
 
         <div class="gateway-metrics-section" data-testid="http-security-metrics">
-            <h4>${t('metrics.section.http.security')}</h4>
+            <h3>${t('metrics.section.http.security')}</h3>
             <div class="metrics-grid" id="http-security-grid">
                 <div class="no-data">${t('common.loading')}</div>
             </div>
         </div>
 
         <div class="gateway-metrics-section" data-testid="gateway-events-metrics">
-            <h4>${t('metrics.section.gateway.events')}</h4>
+            <h3>${t('metrics.section.gateway.events')}</h3>
             <div class="metrics-grid" id="gateway-events-grid">
                 <div class="no-data">${t('common.loading')}</div>
             </div>
@@ -232,7 +232,7 @@ const renderCounterGrid = (containerId, counters, allKeys) => {
         merged.map(([key, value]) => {
             const cls = value > 0 ? 'metric-card metric-card--active' : 'metric-card metric-card--zero';
             return `<div class="${cls}">
-            <h5>${sanitizeHtml(formatCounterName(key))}</h5>
+            <h4>${sanitizeHtml(formatCounterName(key))}</h4>
             <div class="metric-value">${formatNumber(value)}</div>
         </div>`;
         }).join('');

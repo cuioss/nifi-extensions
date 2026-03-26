@@ -56,7 +56,7 @@
     color: var(--text-secondary, #666);
 }
 
-.metric-card h5 {
+.metric-card h4 {
     margin: 0 0 4px 0;
     font-size: 12px;
     font-weight: 600;
@@ -100,7 +100,7 @@
     margin-bottom: 24px;
 }
 
-.gateway-metrics-section h4 {
+.gateway-metrics-section h3 {
     margin: 0 0 8px 0;
     font-size: 15px;
     color: var(--text-primary, #333);
@@ -298,7 +298,7 @@
     display: block;
 }
 
-.export-options h5 {
+.export-options h3 {
     margin: 0 0 10px 0;
 }
 

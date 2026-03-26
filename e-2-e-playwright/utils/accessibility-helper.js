@@ -31,7 +31,13 @@ function createAxeBuilder(pageOrFrame, selector = null) {
         .withTags(WCAG_TAGS)
         .disableRules(DISABLED_RULES);
     if (selector) {
-        builder.include(selector);
+        if (isFrame) {
+            // Element lives inside an iframe — use nested frame selector
+            // so axe-core scans inside the frame, not the parent page
+            builder.include({ fromFrames: ["iframe", selector] });
+        } else {
+            builder.include(selector);
+        }
     }
     return builder;
 }

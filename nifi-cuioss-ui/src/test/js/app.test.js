@@ -56,9 +56,9 @@ const FULL_DOM = `
                 <div id="metrics" class="tab-pane" role="tabpanel"></div>
                 <div id="help" class="tab-pane" role="tabpanel">
                     <div class="help-sections">
-                        <h4 class="collapsible-header active">
+                        <h3 class="collapsible-header active">
                             <i class="fa fa-chevron-down"></i> Getting Started
-                        </h4>
+                        </h3>
                         <div class="collapsible-content show">Content</div>
                     </div>
                 </div>
