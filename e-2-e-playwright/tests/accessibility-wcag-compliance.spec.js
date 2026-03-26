@@ -143,11 +143,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Component-level accessibility checks", async ({ page }, testInfo) => {
-        // KNOWN ISSUE: Configuration Form has a pre-existing accessibility violation.
-        // Previously silently swallowed via expect(true).toBe(true).
-        // Now properly asserted — remove test.fail() when the issue is resolved.
-        test.fail();
-
         // Get the custom UI frame once
         const customUIFrame = await navigateToJWTAuthenticatorUI(
             page,
@@ -418,11 +413,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Screen reader compatibility", async ({ page }, testInfo) => {
-        // KNOWN ISSUE: Custom UI has heading level skip (e.g. h1 → h4).
-        // Previously hidden because the test ran on `page` (NiFi chrome) instead of `customUIFrame`.
-        // Now correctly detected — remove test.fail() when the heading hierarchy is fixed.
-        test.fail();
-
         const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
 
         await test.step("Check heading hierarchy", async () => {
