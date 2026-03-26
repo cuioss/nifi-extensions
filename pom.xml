@@ -106,7 +106,7 @@
         <!-- Sonatype -->
 
         <!-- OpenRewrite -->
-        <open.rewrite.maven.plugin.version>6.33.0</open.rewrite.maven.plugin.version>
+        <open.rewrite.maven.plugin.version>6.34.0</open.rewrite.maven.plugin.version>
         <rewrite-testing-frameworks.version>3.30.0</rewrite-testing-frameworks.version>
         <rewrite-migrate-java.version>3.30.0</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2026-03-20T11:57:55Z</project.build.outputTimestamp>
