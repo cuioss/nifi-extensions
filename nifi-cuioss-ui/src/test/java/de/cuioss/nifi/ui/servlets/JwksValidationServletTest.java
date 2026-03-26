@@ -16,10 +16,13 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.client.result.HttpResult;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
 import org.apache.nifi.web.ComponentDetails;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.apache.nifi.web.NiFiWebRequestContext;
@@ -647,6 +650,91 @@ class JwksValidationServletTest {
 
             // Assert — blank value is skipped, returns processor properties
             assertEquals(processorProps, result);
+        }
+    }
+
+    @Nested
+    @DisplayName("Response Size Limit Tests")
+    class ResponseSizeLimitTests {
+
+        private static MockWebServer mockServer;
+
+        @BeforeAll
+        static void startMockServer() throws Exception {
+            mockServer = new MockWebServer();
+            mockServer.start();
+        }
+
+        @AfterAll
+        static void stopMockServer() {
+            mockServer.close();
+        }
+
+        @Test
+        @DisplayName("Should reject JWKS response exceeding 1 MB size limit")
+        void shouldRejectOversizedResponse() throws Exception {
+            // Arrange — response body > 1 MB
+            String oversizedBody = "x".repeat(1024 * 1024 + 1);
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(oversizedBody)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
+        }
+
+        @Test
+        @DisplayName("Should accept JWKS response within 1 MB size limit")
+        void shouldAcceptResponseWithinSizeLimit() throws Exception {
+            // Arrange — valid JWKS content well under 1 MB
+            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(validJwks)
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertTrue(result.isSuccess());
+            assertTrue(result.getContent().isPresent());
+            assertEquals(validJwks, result.getContent().get());
+        }
+
+        @Test
+        @DisplayName("Should return failure for non-200 HTTP status")
+        void shouldReturnFailureForNon200Status() throws Exception {
+            // Arrange
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(404)
+                    .body("Not Found")
+                    .build());
+
+            JwksValidationServlet servlet = new JwksValidationServlet();
+            String url = mockServer.url("/jwks").toString();
+
+            // Act
+            HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
+
+            // Assert
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorMessage().isPresent());
+            assertTrue(result.getErrorMessage().get().contains("status 404"));
         }
     }
 

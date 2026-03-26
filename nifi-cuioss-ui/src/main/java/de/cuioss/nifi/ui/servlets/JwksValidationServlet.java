@@ -17,6 +17,8 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.http.client.handler.HttpHandler;
+import de.cuioss.http.client.result.HttpErrorCategory;
+import de.cuioss.http.client.result.HttpResult;
 import de.cuioss.http.security.config.SecurityConfiguration;
 import de.cuioss.http.security.core.HttpSecurityValidator;
 import de.cuioss.http.security.exceptions.UrlSecurityException;
@@ -35,6 +37,7 @@ import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.URI;
@@ -43,6 +46,7 @@ import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -77,6 +81,9 @@ public class JwksValidationServlet extends HttpServlet {
 
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
+
+    /** Maximum response body size for JWKS URL fetching: 1 MB */
+    private static final int MAX_RESPONSE_BODY_SIZE = 1024 * 1024;
 
     /** Default base path for JWKS files when no NiFi properties are available. */
     @SuppressWarnings("java:S1075") // Intentional NiFi deployment default constant
@@ -234,15 +241,15 @@ public class JwksValidationServlet extends HttpServlet {
             // services because Java's HttpClient restricts the Host header, so the server
             // receives the IP as hostname instead of the original. Since the admin has
             // explicitly trusted private addresses, DNS rebinding protection is unnecessary.
-            String content;
-            if (allowPrivateAddresses) {
-                content = fetchJwksContentByOriginalUrl(jwksUrl);
-            } else {
-                content = fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
+            HttpResult<String> fetchResult = allowPrivateAddresses
+                    ? fetchJwksContentByOriginalUrl(jwksUrl)
+                    : fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
+
+            if (!fetchResult.isSuccess()) {
+                return JwksValidationResult.failure(
+                        fetchResult.getErrorMessage().orElse("Failed to fetch JWKS content"));
             }
-            if (content == null) {
-                return JwksValidationResult.failure("Failed to fetch JWKS content");
-            }
+            String content = fetchResult.getContent().orElseThrow();
 
             // Validate content as JWKS
             return validateAndReturnResult(content, jwksUrl);
@@ -386,11 +393,11 @@ public class JwksValidationServlet extends HttpServlet {
      * @param jwksUrl          Original URL (for logging and Host header)
      * @param originalUri      Parsed URI of the original URL
      * @param resolvedAddress  Pre-validated IP address to connect to
-     * @return JWKS content, or null if fetch failed
+     * @return {@link HttpResult} containing JWKS content on success, or failure details
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
-    private String fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
+    private HttpResult<String> fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
             InetAddress resolvedAddress) throws IOException, InterruptedException {
         // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
         URI ipBasedUri;
@@ -400,7 +407,8 @@ public class JwksValidationServlet extends HttpServlet {
                     port, originalUri.getPath(), originalUri.getQuery(), null);
         } catch (URISyntaxException e) {
             LOGGER.warn(UILogMessages.WARN.JWKS_IP_URI_CONSTRUCTION_FAILED, jwksUrl);
-            return null;
+            return HttpResult.failure("Failed to construct IP-based URI", e,
+                    HttpErrorCategory.CONFIGURATION_ERROR);
         }
 
         HttpHandler httpHandler = HttpHandler.builder()
@@ -416,15 +424,9 @@ public class JwksValidationServlet extends HttpServlet {
                     .GET()
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                String error = "JWKS URL returned status %d".formatted(response.statusCode());
-                LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
-                return null;
-            }
-
-            return response.body();
+            HttpResponse<InputStream> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
+            return readSizeLimitedBody(response, jwksUrl);
         }
     }
 
@@ -434,11 +436,11 @@ public class JwksValidationServlet extends HttpServlet {
      * DNS rebinding protection is unnecessary when private addresses are trusted.
      *
      * @param jwksUrl Original JWKS URL
-     * @return JWKS content, or null if fetch failed
+     * @return {@link HttpResult} containing JWKS content on success, or failure details
      * @throws IOException if HTTP request fails
      * @throws InterruptedException if HTTP request is interrupted
      */
-    private String fetchJwksContentByOriginalUrl(String jwksUrl)
+    HttpResult<String> fetchJwksContentByOriginalUrl(String jwksUrl)
             throws IOException, InterruptedException {
         HttpHandler httpHandler = HttpHandler.builder()
                 .uri(jwksUrl)
@@ -452,15 +454,37 @@ public class JwksValidationServlet extends HttpServlet {
                     .GET()
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<InputStream> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
+            return readSizeLimitedBody(response, jwksUrl);
+        }
+    }
 
-            if (response.statusCode() != 200) {
-                String error = "JWKS URL returned status %d".formatted(response.statusCode());
-                LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, error);
-                return null;
+    /**
+     * Reads the response body with a size limit to prevent OOM from oversized responses.
+     *
+     * @param response HTTP response with an InputStream body
+     * @param url      Original URL for logging
+     * @return {@link HttpResult} containing the body string on success, or failure details
+     * @throws IOException if reading the response body fails
+     */
+    private HttpResult<String> readSizeLimitedBody(HttpResponse<InputStream> response, String url)
+            throws IOException {
+        if (response.statusCode() != 200) {
+            String error = "JWKS URL returned status %d".formatted(response.statusCode());
+            LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, url, error);
+            return HttpResult.failure(error, null, HttpErrorCategory.SERVER_ERROR);
+        }
+
+        try (InputStream body = response.body()) {
+            byte[] bytes = body.readNBytes(MAX_RESPONSE_BODY_SIZE + 1);
+            if (bytes.length > MAX_RESPONSE_BODY_SIZE) {
+                LOGGER.warn(UILogMessages.WARN.JWKS_RESPONSE_TOO_LARGE, url);
+                return HttpResult.failure("JWKS response exceeds maximum size limit of 1 MB",
+                        null, HttpErrorCategory.INVALID_CONTENT);
             }
-
-            return response.body();
+            return HttpResult.success(new String(bytes, StandardCharsets.UTF_8), null,
+                    response.statusCode());
         }
     }
 
