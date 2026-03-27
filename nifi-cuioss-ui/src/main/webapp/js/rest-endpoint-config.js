@@ -647,6 +647,15 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
 };
 
 /**
+ * Convert a value that may be an array or string to a comma-separated string.
+ * @param {*} value  the value to normalize
+ * @param {string} [fallback='']  default if value is falsy
+ * @returns {string}
+ */
+const toCommaSeparated = (value, fallback = '') =>
+    Array.isArray(value) ? value.join(',') : (value || fallback);
+
+/**
  * Convert gateway /config route array to the route map format used by the UI.
  * Each route includes a _source field indicating its origin.
  * @param {Array} gwRoutes  routes array from /config response
@@ -659,10 +668,10 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
         const name = route.name;
         routes[name] = {
             path: route.path || '',
-            methods: Array.isArray(route.methods) ? route.methods.join(',') : (route.methods || ''),
+            methods: toCommaSeparated(route.methods),
             enabled: route.enabled === false ? 'false' : 'true',
-            'required-roles': Array.isArray(route.requiredRoles) ? route.requiredRoles.join(',') : (route.requiredRoles || ''),
-            'required-scopes': Array.isArray(route.requiredScopes) ? route.requiredScopes.join(',') : (route.requiredScopes || ''),
+            'required-roles': toCommaSeparated(route.requiredRoles),
+            'required-scopes': toCommaSeparated(route.requiredScopes),
             'auth-mode': route.authMode || 'bearer',
             'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
             'tracking-mode': route.trackingMode || 'none',
@@ -1474,6 +1483,25 @@ const extractFormFields = (form) => {
     };
 };
 
+/**
+ * Validate attachment-specific form fields.
+ * @param {Object} f  form data
+ * @returns {{isValid: boolean, error?: Error}|null} validation result or null if valid
+ */
+const validateAttachments = (f) => {
+    const min = Number.parseInt(f['attachments-min-count'], 10) || 0;
+    const max = Number.parseInt(f['attachments-max-count'], 10) || 0;
+    if (min < 0) return { isValid: false, error: new Error(t('route.validate.attachments.min.negative')) };
+    if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
+    if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
+    if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
+    const timeoutValue = Number.parseInt(f['attachments-timeout'], 10);
+    if (Number.isNaN(timeoutValue) || timeoutValue < 1) {
+        return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
+    }
+    return null;
+};
+
 const validateFormData = (f, routesContainer, originalName) => {
     if (!f.routeName) return { isValid: false, error: new Error(t('route.validate.name.required')) };
     if (!/^[a-zA-Z0-9_-]+$/.test(f.routeName)) {
@@ -1498,16 +1526,8 @@ const validateFormData = (f, routesContainer, originalName) => {
         }
     }
     if (trackingMode === 'attachments') {
-        const min = Number.parseInt(f['attachments-min-count'], 10) || 0;
-        const max = Number.parseInt(f['attachments-max-count'], 10) || 0;
-        if (min < 0) return { isValid: false, error: new Error(t('route.validate.attachments.min.negative')) };
-        if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
-        if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
-        if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
-        const timeoutValue = Number.parseInt(f['attachments-timeout'], 10);
-        if (Number.isNaN(timeoutValue) || timeoutValue < 1) {
-            return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
-        }
+        const result = validateAttachments(f);
+        if (result) return result;
     }
     return { isValid: true };
 };
@@ -1540,6 +1560,87 @@ const buildPropertyUpdates = (name, f) => {
 // ---------------------------------------------------------------------------
 
 /**
+ * Extract route data from a summary table row's DOM cells.
+ * @param {HTMLTableRowElement} row
+ * @returns {{name: string, prefix: string, pathText: string, methods: string,
+ *            authModeValue: string, enabled: boolean, hasSchemaBadge: boolean,
+ *            outcomeDash: boolean, outcomeText: string}}
+ */
+const extractRowData = (row) => {
+    const name = row.dataset.routeName;
+    const origin = row.dataset.origin || 'persisted';
+    const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
+    const cells = row.querySelectorAll('td');
+    // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=authmode, 5=enabled, 6=actions
+    const pathCell = cells[2];
+    const pathText = pathCell
+        ? Array.from(pathCell.childNodes)
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.textContent.trim())
+            .filter(Boolean)
+            .join('') || ''
+        : '';
+    const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
+    const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
+    const rawAuthMode = row.dataset.authMode || 'bearer';
+    return {
+        name,
+        prefix,
+        pathText,
+        methods,
+        authModeValue: rawAuthMode === 'bearer' ? '' : rawAuthMode,
+        enabled: cells[5]?.textContent?.trim() === t('common.status.enabled'),
+        hasSchemaBadge: !!cells[2]?.querySelector('.schema-badge'),
+        outcomeDash: !!cells[1]?.querySelector('.empty-state'),
+        outcomeText: cells[1]?.textContent?.trim() || ''
+    };
+};
+
+/**
+ * Build export lines for a single route.
+ * @param {{name: string, prefix: string, pathText: string, methods: string,
+ *          authModeValue: string, enabled: boolean, hasSchemaBadge: boolean,
+ *          outcomeDash: boolean, outcomeText: string}} data
+ * @param {Object|undefined} props  row._routeProps
+ * @returns {string[]}
+ */
+const buildRouteExportLines = (data, props) => {
+    const { name, prefix, pathText, methods, authModeValue, enabled,
+        hasSchemaBadge, outcomeDash, outcomeText } = data;
+    const lines = [];
+    const p = `${prefix}${ROUTE_PREFIX}${name}`;
+
+    lines.push(`${p}.path = ${pathText}`);
+    if (methods) lines.push(`${p}.methods = ${methods}`);
+    if (authModeValue) lines.push(`${p}.auth-mode = ${authModeValue}`);
+    if (!enabled) lines.push(`${p}.enabled = false`);
+
+    if (outcomeDash) {
+        lines.push(`${p}.create-flowfile = false`);
+    } else if (outcomeText) {
+        lines.push(`${p}.success-outcome = ${outcomeText}`);
+    }
+
+    if (hasSchemaBadge) {
+        lines.push(`${p}.schema = <see processor properties>`);
+    }
+
+    const trackingMode = props?.['tracking-mode'];
+    if (trackingMode && trackingMode !== 'none') {
+        lines.push(`${p}.tracking-mode = ${trackingMode}`);
+        if (trackingMode === 'attachments') {
+            const minCount = props?.['attachments-min-count'];
+            if (minCount && minCount !== '0') lines.push(`${p}.attachments-min-count = ${minCount}`);
+            const maxCount = props?.['attachments-max-count'];
+            if (maxCount && maxCount !== '0') lines.push(`${p}.attachments-max-count = ${maxCount}`);
+            const timeout = props?.['attachments-timeout'];
+            if (timeout && timeout !== '30 sec') lines.push(`${p}.attachments-timeout = ${timeout}`);
+        }
+    }
+    return lines;
+};
+
+/**
  * Build property export text from current route table state.
  * @param {HTMLElement} routesContainer  the .routes-container element
  * @returns {string} property lines
@@ -1548,69 +1649,8 @@ const buildExportText = (routesContainer) => {
     const rows = routesContainer.querySelectorAll('tr[data-route-name]');
     const lines = [];
     for (const row of rows) {
-        const name = row.dataset.routeName;
-        const origin = row.dataset.origin || 'persisted';
-        const prefix = (origin === 'new' || origin === 'modified') ? '# [session-only] ' : '';
-        const cells = row.querySelectorAll('td');
-        // cells: 0=name, 1=connection, 2=path(+badge), 3=methods, 4=authmode, 5=enabled, 6=actions
-        // Extract only the path text, excluding badge elements (schema-badge, tracking-badge)
-        const pathCell = cells[2];
-        const pathText = pathCell
-            ? Array.from(pathCell.childNodes)
-                .filter((n) => n.nodeType === Node.TEXT_NODE)
-                .map((n) => n.textContent.trim())
-                .filter(Boolean)
-                .join('') || ''
-            : '';
-        const methodBadges = cells[3]?.querySelectorAll('.method-badge') || [];
-        const methods = Array.from(methodBadges).map((b) => b.textContent.trim()).join(',');
-        const rawAuthMode = row.dataset.authMode || 'bearer';
-        // If only 'bearer' is selected, treat as default (omit from export)
-        const authModeValue = rawAuthMode === 'bearer' ? '' : rawAuthMode;
-        const enabled = cells[5]?.textContent?.trim() === t('common.status.enabled');
-        const hasSchemaBadge = !!cells[2]?.querySelector('.schema-badge');
-        const outcomeDash = !!cells[1]?.querySelector('.empty-state');
-
-        lines.push(`${prefix}${ROUTE_PREFIX}${name}.path = ${pathText}`);
-        if (methods) lines.push(`${prefix}${ROUTE_PREFIX}${name}.methods = ${methods}`);
-        if (authModeValue) {
-            lines.push(`${prefix}${ROUTE_PREFIX}${name}`
-                + `.auth-mode = ${authModeValue}`);
-        }
-        if (!enabled) lines.push(`${prefix}${ROUTE_PREFIX}${name}.enabled = false`);
-        if (outcomeDash) {
-            lines.push(`${prefix}${ROUTE_PREFIX}${name}.create-flowfile = false`);
-        } else {
-            const outcomeText = cells[1]?.textContent?.trim() || '';
-            if (outcomeText) {
-                lines.push(`${prefix}${ROUTE_PREFIX}${name}`
-                    + `.success-outcome = ${outcomeText}`);
-            }
-        }
-        if (hasSchemaBadge) {
-            // Schema value is not stored in the table; it was saved to properties
-            lines.push(`${prefix}${ROUTE_PREFIX}${name}.schema = <see processor properties>`);
-        }
-        // Tracking properties (from stored props on the row)
-        const props = row._routeProps;
-        const trackingMode = props?.['tracking-mode'];
-        if (trackingMode && trackingMode !== 'none') {
-            lines.push(`${prefix}${ROUTE_PREFIX}${name}.tracking-mode = ${trackingMode}`);
-            if (trackingMode === 'attachments') {
-                const minCount = props?.['attachments-min-count'];
-                if (minCount && minCount !== '0') {
-                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-min-count = ${minCount}`);
-                }
-                const maxCount = props?.['attachments-max-count'];
-                if (maxCount && maxCount !== '0') {
-                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-max-count = ${maxCount}`);
-                }
-                const timeout = props?.['attachments-timeout'];
-                if (timeout && timeout !== '30 sec') {
-                    lines.push(`${prefix}${ROUTE_PREFIX}${name}.attachments-timeout = ${timeout}`);
-                }
-            }
-        }
+        const data = extractRowData(row);
+        lines.push(...buildRouteExportLines(data, row._routeProps));
     }
     return lines.join('\n');
 };

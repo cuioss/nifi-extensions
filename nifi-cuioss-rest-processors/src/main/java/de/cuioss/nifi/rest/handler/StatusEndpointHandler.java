@@ -80,7 +80,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
             Request request, Response response, Callback callback) throws IOException {
         String path = sanitized.path();
 
-        // Extract traceId from path: /status/{traceId}
+        // The path segment after the status prefix is the traceId
         if (!path.startsWith(STATUS_PATH_PREFIX) || path.length() <= STATUS_PATH_PREFIX.length()) {
             ProblemDetail.badRequest("Missing traceId in path. Expected: /status/{traceId}")
                     .sendResponse(response, callback);

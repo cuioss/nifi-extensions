@@ -96,9 +96,16 @@ class AttachmentsEndpointHandlerTest {
                 null, gatewaySecurityEvents, statusStore));
 
         // Attachments endpoint
-        handlers.add(new AttachmentsEndpointHandler(statusStore, queue, 0,
-                true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
-                Set.of(), Set.of(), gatewaySecurityEvents));
+        handlers.add(new AttachmentsEndpointHandler(AttachmentsEndpointHandler.Config.builder()
+                .statusStore(statusStore)
+                .queue(queue)
+                .maxRequestSize(0)
+                .enabled(true)
+                .authModes(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER))
+                .requiredRoles(Set.of())
+                .requiredScopes(Set.of())
+                .gatewaySecurityEvents(gatewaySecurityEvents)
+                .build()));
 
         // Status endpoint (for verifying parentTraceId)
         handlers.add(new StatusEndpointHandler(statusStore, true,
