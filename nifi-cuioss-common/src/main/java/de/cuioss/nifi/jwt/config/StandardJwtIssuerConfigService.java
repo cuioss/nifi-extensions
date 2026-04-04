@@ -101,7 +101,7 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
             .description("Comma-separated list of allowed JWT signing algorithms. " +
                     "The 'none' algorithm is never allowed regardless of this setting.")
             .required(false)
-            .defaultValue(String.join(",", SignatureAlgorithmPreferences.getDefaultPreferredAlgorithms()))
+            .defaultValue(String.join(",", new SignatureAlgorithmPreferences().getPreferredAlgorithms()))
             .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 

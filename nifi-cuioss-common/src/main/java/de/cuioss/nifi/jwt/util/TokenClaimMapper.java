@@ -74,7 +74,7 @@ public class TokenClaimMapper {
         attributes.put(JwtAttributes.Token.VALIDATED_AT, Instant.now().toString());
 
         // Standard claims
-        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubjectOption().orElse(""));
+        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubject().orElse(""));
         attributes.put(JwtAttributes.Token.ISSUER, token.getIssuer());
         attributes.put(JwtAttributes.Token.EXPIRATION, token.getExpirationDateTime().toString());
 

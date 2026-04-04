@@ -173,7 +173,7 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             if (!authResult.authorized()) {
                 //noinspection DataFlowIssue
                 LOGGER.warn(AuthLogMessages.WARN.AUTHORIZATION_FAILED,
-                        accessToken.getSubjectOption().orElse("unknown"),
+                        accessToken.getSubject().orElse("unknown"),
                         accessToken.getIssuer(), authResult.reason());
                 attributes.put(JwtAttributes.Authorization.AUTHORIZED, "false");
                 flowFile = session.putAllAttributes(flowFile, attributes);

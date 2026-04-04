@@ -279,11 +279,11 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         try {
-            var decoded = DECODE_PARSER.decode(tokenContent.getRawToken(), false);
+            var decoded = DECODE_PARSER.decode(tokenContent.getRawToken());
 
             builder.add("decoded", Json.createObjectBuilder()
-                    .add("header", jwtHeaderToJson(decoded.getHeader()))
-                    .add("payload", mapToJsonObject(decoded.getBody().data())));
+                    .add("header", jwtHeaderToJson(decoded.header()))
+                    .add("payload", mapToJsonObject(decoded.body().data())));
         } catch (TokenValidationException e) {
             LOGGER.debug("Failed to decode JWT parts for UI display: %s", e.getMessage());
         }
@@ -296,14 +296,10 @@ public class JwtVerificationServlet extends HttpServlet {
         header.getAlg().ifPresent(v -> builder.add("alg", v));
         header.getTyp().ifPresent(v -> builder.add("typ", v));
         header.getKid().ifPresent(v -> builder.add("kid", v));
-        header.getJku().ifPresent(v -> builder.add("jku", v));
         header.getJwk().ifPresent(v -> builder.add("jwk", v));
-        header.getX5u().ifPresent(v -> builder.add("x5u", v));
-        header.getX5c().ifPresent(v -> builder.add("x5c", v));
-        header.getX5t().ifPresent(v -> builder.add("x5t", v));
-        header.getX5tS256().ifPresent(v -> builder.add("x5t#S256", v));
-        header.getCty().ifPresent(v -> builder.add("cty", v));
-        header.getCrit().ifPresent(v -> builder.add("crit", v));
+        if (header.cty() != null) {
+            builder.add("cty", header.cty());
+        }
         return builder.build();
     }
 
