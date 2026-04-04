@@ -455,7 +455,7 @@ class JwtVerificationServletTest {
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             // Construct AccessTokenContent with the crafted raw token for decoded JWT testing
             AccessTokenContent tokenContent = new AccessTokenContent(
-                    tokenHolder.getClaims(), rawToken, null, null);
+                    tokenHolder.getClaims(), rawToken);
 
             TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
@@ -493,7 +493,7 @@ class JwtVerificationServletTest {
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = new AccessTokenContent(
-                    tokenHolder.getClaims(), rawToken, null, null);
+                    tokenHolder.getClaims(), rawToken);
 
             TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);
@@ -523,7 +523,7 @@ class JwtVerificationServletTest {
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             // Construct AccessTokenContent with a malformed raw token
             AccessTokenContent tokenContent = new AccessTokenContent(
-                    tokenHolder.getClaims(), "not-a-valid-jwt", null, null);
+                    tokenHolder.getClaims(), "not-a-valid-jwt");
 
             TokenValidationResult result = TokenValidationResult.success(tokenContent);
             result.setAuthorized(true);

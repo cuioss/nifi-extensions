@@ -192,6 +192,8 @@ public class IssuerConfigurationParser {
         String audience = issuerProps.get(JwtPropertyKeys.Issuer.AUDIENCE);
         if (audience != null && !audience.trim().isEmpty()) {
             builder.expectedAudience(audience.trim());
+        } else {
+            builder.audienceValidationDisabled(true);
         }
         String clientId = issuerProps.get(JwtPropertyKeys.Issuer.CLIENT_ID);
         if (clientId != null && !clientId.trim().isEmpty()) {

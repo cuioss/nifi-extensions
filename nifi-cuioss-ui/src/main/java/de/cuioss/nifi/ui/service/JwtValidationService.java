@@ -369,7 +369,7 @@ public class JwtValidationService {
                 Map<String, Object> claims = new HashMap<>();
 
                 // Add token identity information
-                claims.put("sub", tokenContent.getSubjectOption().orElse(""));
+                claims.put("sub", tokenContent.getSubject().orElse(""));
                 claims.put("iss", tokenContent.getIssuer());
                 claims.put("exp", tokenContent.getExpirationDateTime().toString());
 

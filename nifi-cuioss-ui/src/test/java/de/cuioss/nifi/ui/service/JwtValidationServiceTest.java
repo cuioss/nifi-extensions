@@ -244,7 +244,7 @@ class JwtValidationServiceTest {
 
             // Assert
             assertNotNull(claims, "Claims should not be null");
-            assertEquals(tokenContent.getSubjectOption().orElse(""), claims.get("sub"), "Subject should match");
+            assertEquals(tokenContent.getSubject().orElse(""), claims.get("sub"), "Subject should match");
             assertEquals(tokenContent.getIssuer(), claims.get("iss"), "Issuer should match");
             assertEquals(tokenContent.getExpirationDateTime().toString(), claims.get("exp"), "Expiration should match");
             assertNotNull(claims.get("roles"), "Roles should be present");
