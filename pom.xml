@@ -108,7 +108,7 @@
         <!-- OpenRewrite -->
         <open.rewrite.maven.plugin.version>6.35.1</open.rewrite.maven.plugin.version>
         <rewrite-testing-frameworks.version>3.33.0</rewrite-testing-frameworks.version>
-        <rewrite-migrate-java.version>3.31.1</rewrite-migrate-java.version>
+        <rewrite-migrate-java.version>3.31.3</rewrite-migrate-java.version>
         <project.build.outputTimestamp>2026-03-20T11:57:55Z</project.build.outputTimestamp>
 
         <!-- Frontend Maven Plugin -->
