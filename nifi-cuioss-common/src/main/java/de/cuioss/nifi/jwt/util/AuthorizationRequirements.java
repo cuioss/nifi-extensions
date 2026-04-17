@@ -22,7 +22,6 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -126,7 +125,7 @@ Set<String> requiredScopes) {
 
     private static Set<String> parseCommaSeparated(@Nullable String value) {
         if (value == null || value.isBlank()) {
-            return Collections.emptySet();
+            return Set.of();
         }
         return Arrays.stream(value.split(","))
                 .map(String::trim)
