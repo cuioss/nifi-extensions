@@ -1615,6 +1615,13 @@ const buildRouteExportLines = (data, props) => {
     if (authModeValue) lines.push(`${p}.auth-mode = ${authModeValue}`);
     if (!enabled) lines.push(`${p}.enabled = false`);
 
+    const requiredRoles = props?.['required-roles'];
+    if (requiredRoles) lines.push(`${p}.required-roles = ${requiredRoles}`);
+    const requiredScopes = props?.['required-scopes'];
+    if (requiredScopes) lines.push(`${p}.required-scopes = ${requiredScopes}`);
+    const maxRequestSize = props?.['max-request-size'];
+    if (maxRequestSize) lines.push(`${p}.max-request-size = ${maxRequestSize}`);
+
     if (outcomeDash) {
         lines.push(`${p}.create-flowfile = false`);
     } else if (outcomeText) {
@@ -1907,7 +1914,11 @@ const addRowToTable = (routesContainer, formData, componentId, origin = 'new') =
         'max-request-size': formData['max-request-size'] || '',
         schema: formData.schema,
         'success-outcome': formData['success-outcome'] || '',
-        'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true'
+        'create-flowfile': formData['create-flowfile'] === false ? 'false' : 'true',
+        'tracking-mode': formData['tracking-mode'] || 'none',
+        'attachments-min-count': formData['attachments-min-count'] || '',
+        'attachments-max-count': formData['attachments-max-count'] || '',
+        'attachments-timeout': formData['attachments-timeout'] || ''
     };
     const row = createTableRow(formData.routeName, props, componentId, routesContainer, origin);
     tbody.appendChild(row);

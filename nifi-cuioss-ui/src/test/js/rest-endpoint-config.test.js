@@ -1338,6 +1338,84 @@ describe('rest-endpoint-config', () => {
         expect(textarea.value).toContain('success-outcome = api-data');
     });
 
+    it('should include required-roles in export text when route has them', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Trigger export refresh by saving the data route (index 1 — has required-roles="admin")
+        container.querySelectorAll('.edit-route-button')[1].click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.data.required-roles = admin');
+    });
+
+    it('should include required-scopes in export text when route has them', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        container.querySelectorAll('.edit-route-button')[1].click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.data.required-scopes = read,write');
+    });
+
+    it('should include max-request-size in export text when route has it', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: {
+                ...SAMPLE_PROPERTIES,
+                'restapi.data.max-request-size': '2097152'
+            },
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        container.querySelectorAll('.edit-route-button')[1].click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.data.max-request-size = 2097152');
+    });
+
+    it('should omit required-roles/required-scopes/max-request-size in export when empty', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // health route (index 0) has empty required-roles and required-scopes
+        container.querySelector('.edit-route-button').click();
+        container.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        const healthLines = textarea.value.split('\n').filter((l) => l.startsWith('restapi.health.'));
+        for (const line of healthLines) {
+            expect(line).not.toContain('.required-roles');
+            expect(line).not.toContain('.required-scopes');
+            expect(line).not.toContain('.max-request-size');
+        }
+    });
+
     // -----------------------------------------------------------------------
     // Management endpoint export
     // -----------------------------------------------------------------------
@@ -2671,6 +2749,84 @@ describe('rest-endpoint-config', () => {
 
         // Badge should now appear
         expect(dataRow.querySelector('.tracking-badge')).not.toBeNull();
+    });
+
+    it('should persist tracking-mode in export when creating a new route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add new route via "add route" button
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'new-tracked';
+        form.querySelector('.field-path').value = '/api/new-tracked';
+        form.querySelector('.field-methods').value = 'POST';
+        form.querySelector('.tracking-mode-select').value = 'simple';
+
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.new-tracked.tracking-mode = simple');
+    });
+
+    it('should retain tracking-mode in dropdown when reopening a newly created route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add new route with tracking-mode=simple
+        container.querySelector('.add-route-button').click();
+        let form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'new-tracked';
+        form.querySelector('.field-path').value = '/api/new-tracked';
+        form.querySelector('.field-methods').value = 'POST';
+        form.querySelector('.tracking-mode-select').value = 'simple';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Reopen the newly-created route for editing
+        const newRow = container.querySelector('tr[data-route-name="new-tracked"]');
+        newRow.querySelector('.edit-route-button').click();
+        form = container.querySelector('.route-form');
+
+        expect(form.querySelector('.tracking-mode-select').value).toBe('simple');
+    });
+
+    it('should persist attachments bounds in export when creating a new route', async () => {
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        // Add new route with tracking-mode=attachments + bounds
+        container.querySelector('.add-route-button').click();
+        const form = container.querySelector('.route-form');
+        form.querySelector('.route-name').value = 'new-attached';
+        form.querySelector('.field-path').value = '/api/new-attached';
+        form.querySelector('.field-methods').value = 'POST';
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-min-count').value = '2';
+        form.querySelector('.field-attachments-max-count').value = '4';
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        const textarea = container.querySelector('.property-export-textarea');
+        expect(textarea.value).toContain('restapi.new-attached.tracking-mode = attachments');
+        expect(textarea.value).toContain('restapi.new-attached.attachments-min-count = 2');
+        expect(textarea.value).toContain('restapi.new-attached.attachments-max-count = 4');
     });
 
     it('should show attachment bounds fields only when mode is attachments', async () => {
