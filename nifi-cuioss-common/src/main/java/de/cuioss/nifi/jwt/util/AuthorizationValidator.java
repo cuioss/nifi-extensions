@@ -21,7 +21,10 @@ import lombok.Builder;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Validates JWT token authorization using the oauth-sheriff API
@@ -64,7 +67,7 @@ public class AuthorizationValidator {
         if (!requirements.hasAuthorizationRequirements()) {
             return AuthorizationResult.builder()
                     .authorized(true)
-                    .missingScopes(Collections.emptySet()).missingRoles(Collections.emptySet())
+                    .missingScopes(Set.of()).missingRoles(Set.of())
                     .build();
         }
 
@@ -75,9 +78,9 @@ public class AuthorizationValidator {
         boolean hasRoleReqs = !requiredRoles.isEmpty();
 
         Set<String> missingScopes = hasScopeReqs
-                ? token.determineMissingScopes(requiredScopes) : Collections.emptySet();
+                ? token.determineMissingScopes(requiredScopes) : Set.of();
         Set<String> missingRoles = hasRoleReqs
-                ? token.determineMissingRoles(requiredRoles) : Collections.emptySet();
+                ? token.determineMissingRoles(requiredRoles) : Set.of();
 
         boolean scopesOk = !hasScopeReqs || missingScopes.isEmpty();
         boolean rolesOk = !hasRoleReqs || missingRoles.isEmpty();

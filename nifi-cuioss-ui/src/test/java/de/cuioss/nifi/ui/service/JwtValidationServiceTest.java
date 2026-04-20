@@ -391,7 +391,7 @@ class JwtValidationServiceTest {
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
                     .type("SomeProcessor")
-                    .properties(Collections.emptyMap())
+                    .properties(Map.of())
                     .build();
 
             expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
