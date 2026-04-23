@@ -126,7 +126,7 @@
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>6.0.3</version.junit.jupiter>
-        <version.lombok>1.18.44</version.lombok>
+        <version.lombok>1.18.46</version.lombok>
         <version.parsson>1.1.7</version.parsson>
         <version.snakeyaml>2.6</version.snakeyaml>
         <version.easymock>5.6.0</version.easymock>
