@@ -2,4 +2,6 @@
 
 `RestApiGatewayProcessor` -- self-contained REST API gateway embedding Jetty 12 with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses.
 
-See link:../doc/architecture/gateway.adoc[Gateway Architecture] for the request pipeline, auth layers, and metrics, and link:../doc/reference/configuration.adoc[Configuration Reference] for route and property details.
+Routes support exact paths, prefix matching, and `{placeholder}` templates that capture path parameters (for example `/api/users/{id}`); matched placeholders are exposed on the FlowFile as `rest.api.pathparam.<name>` attributes.
+
+See link:../doc/architecture/gateway.adoc[Gateway Architecture] for the request pipeline, route resolution and match precedence, auth layers, and metrics, and link:../doc/reference/configuration.adoc[Configuration Reference] for route and property details including link:../doc/reference/configuration.adoc#path-parameter-routes[path-parameter routes].
