@@ -283,7 +283,8 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
                 traceId,
-                parentTraceId);
+                parentTraceId,
+                sanitized.pathParameters());
 
         if (!queue.offer(container)) {
             attachmentCounters.get(parentTraceId).decrementAndGet();

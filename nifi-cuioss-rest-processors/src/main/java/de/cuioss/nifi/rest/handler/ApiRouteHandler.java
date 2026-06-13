@@ -226,7 +226,8 @@ public final class ApiRouteHandler implements EndpointHandler {
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
                 traceId,
-                parentTraceId);
+                parentTraceId,
+                sanitized.pathParameters());
 
         if (!queue.offer(container)) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
