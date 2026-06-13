@@ -1,0 +1,219 @@
+{
+  "plan": {
+    "effort": "level-3",
+    "open_in_ide": true,
+    "coverage": {
+      "thoroughness": "inherit",
+      "scope": "inherit"
+    },
+    "phase-1-init": {
+      "branch_strategy": "feature",
+      "use_worktree": true,
+      "effort": "level-3",
+      "init_without_asking": true,
+      "deep_lane": "auto",
+      "escalation": "auto"
+    },
+    "phase-2-refine": {
+      "confidence_threshold": 95,
+      "compatibility": "breaking",
+      "simplicity": "lean",
+      "effort": "level-3",
+      "revalidation": "auto"
+    },
+    "phase-3-outline": {
+      "plan_without_asking": false,
+      "qgate": "auto",
+      "effort": "level-4"
+    },
+    "phase-4-plan": {
+      "execute_without_asking": true,
+      "effort": "level-3"
+    },
+    "phase-5-execute": {
+      "commit_and_push": true,
+      "max_iterations": 5,
+      "per_deliverable_build": "compile+scoped-test",
+      "per_task_budget_reserve_tokens": "50K",
+      "steps": [
+        "default:quality_check",
+        "default:build_verify"
+      ],
+      "effort": {
+        "default": "level-4",
+        "verification-feedback": "level-3"
+      }
+    },
+    "phase-6-finalize": {
+      "max_iterations": 3,
+      "review_bot_buffer_seconds": 180,
+      "pr_merge_strategy": "squash",
+      "finalize_without_asking": true,
+      "loop_back_without_asking": false,
+      "auto_merge_after_ci": true,
+      "self_review": "auto",
+      "qgate": "auto",
+      "plugin_doctor": "auto",
+      "simplify": "auto",
+      "checks_wait_timeout_seconds": 600,
+      "auto_rebase_threshold": "no_overlap_only",
+      "drop_review_on_scope_gate": false,
+      "steps": [
+        "default:pre-push-quality-gate",
+        "default:finalize-step-simplify",
+        "default:finalize-step-whole-tree-gate",
+        "default:commit-push",
+        "default:create-pr",
+        "default:ci-verify",
+        "default:automated-review",
+        "default:sonar-roundtrip",
+        "default:lessons-capture",
+        "default:branch-cleanup",
+        "default:record-metrics",
+        "default:finalize-step-print-phase-breakdown",
+        "default:archive-plan"
+      ],
+      "effort": {
+        "default": "level-3",
+        "verification-feedback": "level-3",
+        "post-run-review": "level-4"
+      }
+    }
+  },
+  "build": {
+    "queue": {
+      "max_slots": 5,
+      "max_retries": 10,
+      "upper_limit_seconds": 600
+    },
+    "map": {
+      "java": [
+        {
+          "glob": "*/src/main/*.java",
+          "role": "production",
+          "build_class": "compile"
+        },
+        {
+          "glob": "*/src/test/*.java",
+          "role": "test",
+          "build_class": "module-tests"
+        },
+        {
+          "glob": "pom.xml",
+          "role": "config",
+          "build_class": "verify"
+        }
+      ],
+      "javascript": [
+        {
+          "glob": "*.js",
+          "role": "production",
+          "build_class": "compile"
+        },
+        {
+          "glob": "*.spec.js",
+          "role": "test",
+          "build_class": "module-tests"
+        },
+        {
+          "glob": "*.test.js",
+          "role": "test",
+          "build_class": "module-tests"
+        },
+        {
+          "glob": "package.json",
+          "role": "config",
+          "build_class": "verify"
+        }
+      ]
+    }
+  },
+  "project": {
+    "default_base_branch": "main",
+    "working_prefixes": [
+      "feature/",
+      "fix/",
+      "chore/"
+    ]
+  },
+  "providers": [
+    {
+      "skill_name": "plan-marshall:workflow-integration-sonar",
+      "category": "other",
+      "description": "SonarCloud/SonarQube code analysis platform",
+      "url": "https://sonarcloud.io"
+    },
+    {
+      "skill_name": "plan-marshall:workflow-integration-github",
+      "category": "ci",
+      "verify_command": "gh auth status",
+      "description": "GitHub CI provider via gh CLI — PRs, issues, CI status, reviews",
+      "url": "https://api.github.com"
+    },
+    {
+      "skill_name": "plan-marshall:workflow-integration-git",
+      "category": "version-control",
+      "verify_command": "git config user.name",
+      "description": "Git version control via git CLI — commit, push, branch operations",
+      "url": "https://github.com/cuioss/nifi-extensions.git"
+    }
+  ],
+  "skill_domains": {
+    "system": {
+      "defaults": [],
+      "optionals": [],
+      "execute_task_skills": {
+        "documentation": "plan-marshall:execute-task",
+        "implementation": "plan-marshall:execute-task",
+        "module_testing": "plan-marshall:execute-task"
+      }
+    },
+    "java": {
+      "bundle": "pm-dev-java",
+      "workflow_skill_extensions": {
+        "triage": "pm-dev-java:ext-triage-java"
+      }
+    },
+    "java-cui": {
+      "bundle": "pm-dev-java-cui"
+    },
+    "javascript": {
+      "bundle": "pm-dev-frontend",
+      "workflow_skill_extensions": {
+        "triage": "pm-dev-frontend:ext-triage-js"
+      }
+    },
+    "documentation": {
+      "bundle": "pm-documents",
+      "workflow_skill_extensions": {
+        "triage": "pm-documents:ext-triage-docs"
+      },
+      "project_skills": [
+        "project:update-guide-screenshots"
+      ]
+    },
+    "general-dev": {
+      "bundle": "plan-marshall"
+    },
+    "active_profiles": [
+      "implementation",
+      "module_testing",
+      "quality"
+    ]
+  },
+  "system": {
+    "retention": {
+      "logs_days": 1,
+      "archived_plans_days": 5,
+      "lessons_superseded_days": 0,
+      "temp_on_maintenance": true
+    }
+  },
+  "credentials_config": {
+    "plan-marshall:workflow-integration-sonar": {
+      "url": "https://sonarcloud.io",
+      "organization": "cuioss-github",
+      "project_key": "cuioss_nifi-extensions"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "best_practices": [],
+  "insights": [],
+  "internal_dependencies": [
+    "nifi-cuioss-api",
+    "nifi-cuioss-common"
+  ],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "UI servlets validate tokens and read issuer config via the shared JWT API and infrastructure",
+  "key_packages": {
+    "de.cuioss.nifi.ui.service": {
+      "description": "JwtValidationService backing the UI's token verification and JWKS endpoint testing features."
+    },
+    "de.cuioss.nifi.ui.servlets": {
+      "description": "Backend servlets and filters: JwksValidationServlet, JwtVerificationServlet, ComponentInfoServlet, GatewayProxyServlet, plus SecurityHeadersFilter and ProcessorIdValidationFilter."
+    },
+    "de.cuioss.nifi.ui.util": {
+      "description": "ComponentConfigReader and UI utilities for reading processor/controller-service configuration exposed to the UI."
+    }
+  },
+  "purpose": "runtime",
+  "purpose_reasoning": "war providing the runtime web UI entry point served inside NiFi",
+  "responsibility": "Web configuration UI packaged as a WAR: Java servlets and filters (JWKS/JWT verification, component-info, gateway proxy, security headers, processor-id validation) backing the JavaScript configuration front-end for the processors.",
+  "responsibility_reasoning": "inferred from source (packaging=war, servlets package) + project README",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:dev-general-module-testing"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JUnit 5 testing patterns with AAA structure, coverage analysis, and assertion standards",
+          "skill": "pm-dev-java:junit-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JavaDoc documentation standards including class, method, and code example patterns",
+          "skill": "pm-dev-java:javadoc"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
+  "tips": []
+}

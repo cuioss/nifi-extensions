@@ -1,0 +1,46 @@
+{
+  "best_practices": [],
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "",
+  "key_packages": {
+    "doc.architecture": {
+      "description": "Architecture overviews: module relationships, gateway request pipeline, JWT processor lifecycle, and standards compliance."
+    },
+    "doc.plantuml": {
+      "description": "PlantUML diagram sources and generation script for architecture and request-tracking diagrams."
+    },
+    "doc.reference": {
+      "description": "Reference material: property tables, configuration formats, RFC 9457 error types, and request-tracking/attachments API specs."
+    }
+  },
+  "purpose": "runtime",
+  "purpose_reasoning": "documentation-only module, no compiled artifact; closest non-code role",
+  "responsibility": "Project documentation set in AsciiDoc covering architecture overviews, processor selection guides, configuration/error/request-tracking reference, and PlantUML diagram generation.",
+  "responsibility_reasoning": "README (doc/README.adoc)",
+  "skills_by_profile": {
+    "documentation": {
+      "defaults": [
+        {
+          "description": "AsciiDoc formatting, validation, link verification, and template creation",
+          "skill": "pm-documents:ref-asciidoc"
+        },
+        {
+          "description": "Content quality, tone analysis, organization standards, and review orchestration",
+          "skill": "pm-documents:ref-documentation"
+        },
+        {
+          "description": "Narrative styles for technical documentation \u2014 tone, voice, and arc per surface (concept pages, user guides, spec references)",
+          "skill": "pm-documents:ref-narrative-styles"
+        },
+        {
+          "description": "SVG diagram authoring standards \u2014 visual language, theme handling, AsciiDoc embedding, per-diagram-type patterns",
+          "skill": "pm-documents:ref-svg-diagrams"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
+  "tips": []
+}

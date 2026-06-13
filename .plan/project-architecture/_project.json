@@ -1,0 +1,24 @@
+{
+  "description": "Custom Apache NiFi extensions providing a self-contained REST API gateway (RestApiGatewayProcessor) with an embedded Jetty server, route-based dispatching and per-route JWT authorization, plus a MultiIssuerJWTTokenAuthenticator for FlowFile-based JWT validation. Both share JWT validation via a common JwtIssuerConfigService controller service supporting multiple identity providers (Keycloak, Entra ID, Auth0), shipped as NiFi NAR bundles with a web-based configuration UI.",
+  "description_reasoning": "README.adoc + doc/README.adoc",
+  "extensions_used": [
+    "plan-marshall",
+    "pm-documents"
+  ],
+  "modules": {
+    "documentation": {},
+    "e-2-e-playwright-maven": {},
+    "e-2-e-playwright-npm": {},
+    "integration-testing": {},
+    "nifi-cuioss-api": {},
+    "nifi-cuioss-api-nar": {},
+    "nifi-cuioss-common": {},
+    "nifi-cuioss-nar": {},
+    "nifi-cuioss-processors": {},
+    "nifi-cuioss-rest-processors": {},
+    "nifi-cuioss-ui-maven": {},
+    "nifi-cuioss-ui-npm": {},
+    "nifi-extensions": {}
+  },
+  "name": "nifi-extensions"
+}
