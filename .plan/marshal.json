@@ -212,7 +212,7 @@
   "credentials_config": {
     "plan-marshall:workflow-integration-sonar": {
       "url": "https://sonarcloud.io",
-      "organization": "cuioss",
+      "organization": "cuioss-github",
       "project_key": "cuioss_nifi-extensions"
     }
   }
