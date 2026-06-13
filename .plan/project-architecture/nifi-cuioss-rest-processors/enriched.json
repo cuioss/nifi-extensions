@@ -1,0 +1,95 @@
+{
+  "best_practices": [],
+  "insights": [],
+  "internal_dependencies": [
+    "nifi-cuioss-api",
+    "nifi-cuioss-common"
+  ],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "Reuses JwtIssuerConfigService API and shared JWT/authorization utilities for per-route auth",
+  "key_packages": {
+    "de.cuioss.nifi.rest": {
+      "description": "RestApiGatewayProcessor entry point with gateway constants, FlowFile attributes, and log messages."
+    },
+    "de.cuioss.nifi.rest.config": {
+      "description": "Gateway configuration model: RouteConfiguration and its parser, AuthMode, and TrackingMode enums driving per-route behavior."
+    },
+    "de.cuioss.nifi.rest.handler": {
+      "description": "HTTP request handling pipeline: route dispatch (ApiRouteHandler), management endpoints (health/metrics/status/attachments), RFC 9457 ProblemDetail, request sanitization, and async request-status tracking store."
+    },
+    "de.cuioss.nifi.rest.server": {
+      "description": "Embedded Jetty lifecycle management (JettyServerManager) hosting the gateway HTTP server inside the processor."
+    }
+  },
+  "purpose": "library",
+  "purpose_reasoning": "jar of NiFi processor + embedded-server code, bundled into nifi-cuioss-nar",
+  "responsibility": "Hosts the RestApiGatewayProcessor: a self-contained REST API gateway embedding a Jetty 12 server with route-based dispatching, per-route JWT authorization, RFC 9457 error responses, request-tracking/attachment handling, and management endpoints (/metrics, /health, /status).",
+  "responsibility_reasoning": "README (nifi-cuioss-rest-processors/README.adoc) + gateway.adoc",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:dev-general-module-testing"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JUnit 5 testing patterns with AAA structure, coverage analysis, and assertion standards",
+          "skill": "pm-dev-java:junit-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JavaDoc documentation standards including class, method, and code example patterns",
+          "skill": "pm-dev-java:javadoc"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
+  "tips": []
+}

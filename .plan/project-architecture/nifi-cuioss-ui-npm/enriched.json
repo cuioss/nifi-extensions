@@ -1,0 +1,75 @@
+{
+  "best_practices": [],
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [
+    "jest",
+    "eslint"
+  ],
+  "key_dependencies_reasoning": "Jest unit tests and ESLint quality gates for the JavaScript UI",
+  "key_packages": {
+    "src.main.webapp.js": {
+      "description": "UI front-end modules: app bootstrap, issuer-config editor, chip inputs (auth-mode/method), endpoint/JWKS tester, REST endpoint config, metrics, context-help, and the api client."
+    }
+  },
+  "purpose": "runtime",
+  "purpose_reasoning": "browser runtime UI assets served inside NiFi; sibling of the WAR module",
+  "responsibility": "JavaScript front-end of the NiFi processor configuration UI: issuer-config editor, chip inputs, JWKS/endpoint testers, metrics view, and context help, built and unit-tested (Jest) with ESLint/Stylelint, then packaged into the UI WAR.",
+  "responsibility_reasoning": "inferred from source (src/main/webapp/js, package.json scripts)",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        }
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:dev-general-module-testing"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "JavaScript unit testing with Jest, DOM testing, mocking, async patterns",
+          "skill": "pm-dev-frontend:jest-testing"
+        }
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
+  "tips": []
+}

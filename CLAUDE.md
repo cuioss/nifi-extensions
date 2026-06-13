@@ -13,20 +13,15 @@ Custom Apache NiFi processors for JWT authentication and validation with a web-b
 
 ## Build Commands
 
-```bash
-./mvnw clean install                                    # Full build + tests
-./mvnw -Ppre-commit clean install -DskipTests           # Pre-commit quality checks (MANDATORY before commits)
-./mvnw clean verify -Psonar                             # SonarQube analysis
-./mvnw verify -Pintegration-tests -pl integration-testing -am  # Java integration tests (Docker)
-./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am    # E2E Playwright tests (Docker)
+**Never hard-code build tool commands** (`./mvnw`, `npm run`, …). Invoke builds via the canonical plan-marshall executor commands below so module/profile resolution stays correct. Always use a 10-minute Bash timeout (`600000` ms) for build commands, and analyze each build's TOON result (`status`, `errors[N]{file,line,message,category}`, `log_file`) rather than scanning raw stdout.
 
-# Frontend (from nifi-cuioss-ui/)
-npm test                                                # Jest tests
-npm run lint                                            # ESLint check
-
-# E2E (from e-2-e-playwright/)
-npm run playwright:test                                 # Playwright tests
-```
+- **Compile:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "compile"`
+- **Quality gate:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Psonar"`
+- **Full verify:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify"`
+- **Integration tests:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests"`
+- **Coverage:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pcoverage"`
+- **Module tests (e-2-e-playwright-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=e-2-e-playwright"` — only on e-2-e-playwright-npm
+- **Module tests (nifi-cuioss-ui-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=nifi-cuioss-ui"` — only on nifi-cuioss-ui-npm
 
 ## Docker E2E Deployment
 
@@ -85,3 +80,8 @@ All cuioss repositories have branch protection on `main`. Direct pushes to `main
 ## Deep Reference
 
 See `doc/` for detailed architecture, configuration reference, guides, and step-by-step instructions. Key entry points: `doc/README.adoc` (documentation index), `doc/architecture/README.adoc` (module overview), `doc/reference/configuration.adoc` (all properties).
+
+## Tool Usage
+
+- Use proper tools (Edit, Read, Write) instead of shell commands (echo, cat)
+- Never use Bash for file operations (find, grep, cat, ls) — use Glob, Read, Grep tools instead

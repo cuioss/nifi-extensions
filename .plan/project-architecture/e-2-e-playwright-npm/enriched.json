@@ -1,0 +1,82 @@
+{
+  "best_practices": [],
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [
+    "@playwright/test",
+    "@axe-core/playwright",
+    "eslint"
+  ],
+  "key_dependencies_reasoning": "Playwright drives browser E2E; axe-core powers WCAG accessibility checks",
+  "key_packages": {
+    "fixtures": {
+      "description": "Playwright test fixtures for authentication and shared test setup."
+    },
+    "tests": {
+      "description": "Playwright spec files covering configuration/JWKS/token-verification/metrics/help/gateway tabs, context help, WCAG compliance, and self-tests."
+    },
+    "utils": {
+      "description": "Test support utilities: auth/keycloak token services, processor API manager, navigation helpers, accessibility helper, and critical-error detection."
+    }
+  },
+  "purpose": "integration-tests",
+  "purpose_reasoning": "only test specs and test utilities, no shipped artifact",
+  "responsibility": "Playwright end-to-end and WCAG accessibility test suite validating JWT processor behavior, custom UI components/tabs, and login against a live NiFi + Keycloak environment.",
+  "responsibility_reasoning": "README (e-2-e-playwright/README.adoc) + tests/ specs",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        }
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:dev-general-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:dev-general-module-testing"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "JavaScript unit testing with Jest, DOM testing, mocking, async patterns",
+          "skill": "pm-dev-frontend:jest-testing"
+        }
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:dev-agent-behavior-rules"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:dev-general-code-quality"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
+  "tips": []
+}

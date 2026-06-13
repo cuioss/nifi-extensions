@@ -34,9 +34,9 @@ jest_stdout.log
 !.claude/skills/
 
 # Planning system (managed by /marshall-steward)
+# Runtime state (plans, run-configuration, lessons-learned, memory, logs — managed by plan-marshall)
 .plan/*
 !.plan/marshal.json
 !.plan/project-structure.json
-
-# Planning system (managed by /marshall-steward)
 !.plan/project-architecture/
+.plan/local/worktrees/
