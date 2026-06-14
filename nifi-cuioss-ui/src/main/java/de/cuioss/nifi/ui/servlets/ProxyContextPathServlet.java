@@ -69,7 +69,7 @@ public class ProxyContextPathServlet extends HttpServlet {
     private static final String HEADER_FORWARDED = "Forwarded";
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         String contextPath = normalize(resolveRawPrefix(req));
 
         var json = Json.createObjectBuilder()
@@ -79,8 +79,13 @@ public class ProxyContextPathServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
         resp.setStatus(HttpServletResponse.SC_OK);
+        // Handle the response-write IOException here rather than letting it
+        // propagate out of the servlet method (which would leak a stack trace to
+        // the client and trip SonarCloud rule java:S1989).
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(json);
+        } catch (IOException e) {
+            LOGGER.warn(e, "Failed to write proxy context-path response");
         }
     }
 
