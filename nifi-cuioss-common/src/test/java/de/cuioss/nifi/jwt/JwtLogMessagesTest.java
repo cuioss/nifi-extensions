@@ -15,115 +15,64 @@
  */
 package de.cuioss.nifi.jwt;
 
+import de.cuioss.tools.logging.LogRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("JwtLogMessages")
 class JwtLogMessagesTest {
+
+    private static final String EXPECTED_PREFIX = "JWT";
+
+    private static void assertWellFormed(LogRecord record) {
+        assertAll("LogRecord is well-formed",
+                () -> assertNotNull(record, "LogRecord should be defined"),
+                () -> assertNotNull(record.getTemplate(), "Template should be defined"),
+                () -> assertFalseBlank(record.getTemplate()),
+                () -> assertTrue(record.resolveIdentifierString().startsWith(EXPECTED_PREFIX + "-"),
+                        "Resolved identifier should carry the JWT prefix"));
+    }
+
+    private static void assertFalseBlank(String template) {
+        assertTrue(template != null && !template.isBlank(), "Template should not be blank");
+    }
 
     @Nested
     @DisplayName("INFO LogRecords")
     class InfoLogRecordsTest {
 
-        @Test
-        @DisplayName("Should initialize CONFIG_LOADED LogRecord")
-        void shouldInitializeConfigLoaded() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.CONFIG_LOADED);
+        static Stream<Arguments> infoRecords() {
+            return Stream.of(
+                    Arguments.of("CONFIG_LOADED", JwtLogMessages.INFO.CONFIG_LOADED),
+                    Arguments.of("NO_EXTERNAL_CONFIG", JwtLogMessages.INFO.NO_EXTERNAL_CONFIG),
+                    Arguments.of("CONFIG_FILE_RELOADING", JwtLogMessages.INFO.CONFIG_FILE_RELOADING),
+                    Arguments.of("NO_CONFIG_FILE", JwtLogMessages.INFO.NO_CONFIG_FILE),
+                    Arguments.of("LOADED_PROPERTIES_CONFIG", JwtLogMessages.INFO.LOADED_PROPERTIES_CONFIG),
+                    Arguments.of("LOADED_YAML_CONFIG", JwtLogMessages.INFO.LOADED_YAML_CONFIG),
+                    Arguments.of("LOADING_EXTERNAL_CONFIGS", JwtLogMessages.INFO.LOADING_EXTERNAL_CONFIGS),
+                    Arguments.of("CREATED_ISSUER_CONFIG_FOR", JwtLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR),
+                    Arguments.of("ISSUER_DISABLED", JwtLogMessages.INFO.ISSUER_DISABLED),
+                    Arguments.of("TOKEN_VALIDATOR_INITIALIZED", JwtLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED),
+                    Arguments.of("CONTROLLER_SERVICE_ENABLED", JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED),
+                    Arguments.of("CONTROLLER_SERVICE_DISABLED", JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED),
+                    Arguments.of("METRICS_SNAPSHOT_CREATED", JwtLogMessages.INFO.METRICS_SNAPSHOT_CREATED),
+                    Arguments.of("VALIDATION_SUCCESS", JwtLogMessages.INFO.VALIDATION_SUCCESS));
         }
 
-        @Test
-        @DisplayName("Should initialize NO_EXTERNAL_CONFIG LogRecord")
-        void shouldInitializeNoExternalConfig() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.NO_EXTERNAL_CONFIG);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONFIG_FILE_RELOADING LogRecord")
-        void shouldInitializeConfigFileReloading() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.CONFIG_FILE_RELOADING);
-        }
-
-        @Test
-        @DisplayName("Should initialize NO_CONFIG_FILE LogRecord")
-        void shouldInitializeNoConfigFile() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.NO_CONFIG_FILE);
-        }
-
-        @Test
-        @DisplayName("Should initialize LOADED_PROPERTIES_CONFIG LogRecord")
-        void shouldInitializeLoadedPropertiesConfig() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.LOADED_PROPERTIES_CONFIG);
-        }
-
-        @Test
-        @DisplayName("Should initialize LOADED_YAML_CONFIG LogRecord")
-        void shouldInitializeLoadedYamlConfig() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.LOADED_YAML_CONFIG);
-        }
-
-        @Test
-        @DisplayName("Should initialize LOADING_EXTERNAL_CONFIGS LogRecord")
-        void shouldInitializeLoadingExternalConfigs() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.LOADING_EXTERNAL_CONFIGS);
-        }
-
-        @Test
-        @DisplayName("Should initialize CREATED_ISSUER_CONFIG_FOR LogRecord")
-        void shouldInitializeCreatedIssuerConfigFor() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.CREATED_ISSUER_CONFIG_FOR);
-        }
-
-        @Test
-        @DisplayName("Should initialize ISSUER_DISABLED LogRecord")
-        void shouldInitializeIssuerDisabled() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.ISSUER_DISABLED);
-        }
-
-        @Test
-        @DisplayName("Should initialize TOKEN_VALIDATOR_INITIALIZED LogRecord")
-        void shouldInitializeTokenValidatorInitialized() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.TOKEN_VALIDATOR_INITIALIZED);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONTROLLER_SERVICE_ENABLED LogRecord")
-        void shouldInitializeControllerServiceEnabled() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.CONTROLLER_SERVICE_ENABLED);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONTROLLER_SERVICE_DISABLED LogRecord")
-        void shouldInitializeControllerServiceDisabled() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
-        }
-
-        @Test
-        @DisplayName("Should initialize METRICS_SNAPSHOT_CREATED LogRecord")
-        void shouldInitializeMetricsSnapshotCreated() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.METRICS_SNAPSHOT_CREATED);
-        }
-
-        @Test
-        @DisplayName("Should initialize VALIDATION_SUCCESS LogRecord")
-        void shouldInitializeValidationSuccess() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.INFO.VALIDATION_SUCCESS);
+        @ParameterizedTest(name = "INFO.{0} should be a well-formed LogRecord")
+        @MethodSource("infoRecords")
+        @DisplayName("Should define well-formed INFO LogRecords")
+        void shouldDefineWellFormedInfoRecord(String name, LogRecord record) {
+            assertWellFormed(record);
         }
     }
 
@@ -131,74 +80,26 @@ class JwtLogMessagesTest {
     @DisplayName("WARN LogRecords")
     class WarnLogRecordsTest {
 
-        @Test
-        @DisplayName("Should initialize AUTHORIZATION_BYPASS_SECURITY_WARNING LogRecord")
-        void shouldInitializeAuthorizationBypassSecurityWarning() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.AUTHORIZATION_BYPASS_SECURITY_WARNING);
+        static Stream<Arguments> warnRecords() {
+            return Stream.of(
+                    Arguments.of("AUTHORIZATION_BYPASS_SECURITY_WARNING",
+                            JwtLogMessages.WARN.AUTHORIZATION_BYPASS_SECURITY_WARNING),
+                    Arguments.of("INVALID_CONFIG_VALUE", JwtLogMessages.WARN.INVALID_CONFIG_VALUE),
+                    Arguments.of("ISSUER_NO_NAME", JwtLogMessages.WARN.ISSUER_NO_NAME),
+                    Arguments.of("JWKS_CONTENT_NOT_SUPPORTED", JwtLogMessages.WARN.JWKS_CONTENT_NOT_SUPPORTED),
+                    Arguments.of("ISSUER_NO_JWKS_SOURCE", JwtLogMessages.WARN.ISSUER_NO_JWKS_SOURCE),
+                    Arguments.of("CONFIG_FILE_NOT_FOUND", JwtLogMessages.WARN.CONFIG_FILE_NOT_FOUND),
+                    Arguments.of("UNSUPPORTED_CONFIG_FORMAT", JwtLogMessages.WARN.UNSUPPORTED_CONFIG_FORMAT),
+                    Arguments.of("YAML_EMPTY_OR_INVALID", JwtLogMessages.WARN.YAML_EMPTY_OR_INVALID),
+                    Arguments.of("NO_VALID_ISSUER_CONFIGS", JwtLogMessages.WARN.NO_VALID_ISSUER_CONFIGS),
+                    Arguments.of("TOKEN_VALIDATION_FAILED", JwtLogMessages.WARN.TOKEN_VALIDATION_FAILED));
         }
 
-        @Test
-        @DisplayName("Should initialize INVALID_CONFIG_VALUE LogRecord")
-        void shouldInitializeInvalidConfigValue() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.INVALID_CONFIG_VALUE);
-        }
-
-        @Test
-        @DisplayName("Should initialize ISSUER_NO_NAME LogRecord")
-        void shouldInitializeIssuerNoName() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.ISSUER_NO_NAME);
-        }
-
-        @Test
-        @DisplayName("Should initialize JWKS_CONTENT_NOT_SUPPORTED LogRecord")
-        void shouldInitializeJwksContentNotSupported() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.JWKS_CONTENT_NOT_SUPPORTED);
-        }
-
-        @Test
-        @DisplayName("Should initialize ISSUER_NO_JWKS_SOURCE LogRecord")
-        void shouldInitializeIssuerNoJwksSource() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.ISSUER_NO_JWKS_SOURCE);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONFIG_FILE_NOT_FOUND LogRecord")
-        void shouldInitializeConfigFileNotFound() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.CONFIG_FILE_NOT_FOUND);
-        }
-
-        @Test
-        @DisplayName("Should initialize UNSUPPORTED_CONFIG_FORMAT LogRecord")
-        void shouldInitializeUnsupportedConfigFormat() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.UNSUPPORTED_CONFIG_FORMAT);
-        }
-
-        @Test
-        @DisplayName("Should initialize YAML_EMPTY_OR_INVALID LogRecord")
-        void shouldInitializeYamlEmptyOrInvalid() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.YAML_EMPTY_OR_INVALID);
-        }
-
-        @Test
-        @DisplayName("Should initialize NO_VALID_ISSUER_CONFIGS LogRecord")
-        void shouldInitializeNoValidIssuerConfigs() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.NO_VALID_ISSUER_CONFIGS);
-        }
-
-        @Test
-        @DisplayName("Should initialize TOKEN_VALIDATION_FAILED LogRecord")
-        void shouldInitializeTokenValidationFailed() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.WARN.TOKEN_VALIDATION_FAILED);
+        @ParameterizedTest(name = "WARN.{0} should be a well-formed LogRecord")
+        @MethodSource("warnRecords")
+        @DisplayName("Should define well-formed WARN LogRecords")
+        void shouldDefineWellFormedWarnRecord(String name, LogRecord record) {
+            assertWellFormed(record);
         }
     }
 
@@ -206,46 +107,22 @@ class JwtLogMessagesTest {
     @DisplayName("ERROR LogRecords")
     class ErrorLogRecordsTest {
 
-        @Test
-        @DisplayName("Should initialize CONFIG_RELOAD_FAILED LogRecord")
-        void shouldInitializeConfigReloadFailed() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.CONFIG_RELOAD_FAILED);
+        static Stream<Arguments> errorRecords() {
+            return Stream.of(
+                    Arguments.of("CONFIG_RELOAD_FAILED", JwtLogMessages.ERROR.CONFIG_RELOAD_FAILED),
+                    Arguments.of("CONFIG_FILE_IO_ERROR", JwtLogMessages.ERROR.CONFIG_FILE_IO_ERROR),
+                    Arguments.of("CONFIG_FILE_PARSE_ERROR", JwtLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR),
+                    Arguments.of("ISSUER_CONFIG_PARSE_ERROR", JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR),
+                    Arguments.of("TOKEN_VALIDATION_ERROR", JwtLogMessages.ERROR.TOKEN_VALIDATION_ERROR),
+                    Arguments.of("CONTROLLER_SERVICE_ENABLE_FAILED",
+                            JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED));
         }
 
-        @Test
-        @DisplayName("Should initialize CONFIG_FILE_IO_ERROR LogRecord")
-        void shouldInitializeConfigFileIoError() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.CONFIG_FILE_IO_ERROR);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONFIG_FILE_PARSE_ERROR LogRecord")
-        void shouldInitializeConfigFileParseError() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.CONFIG_FILE_PARSE_ERROR);
-        }
-
-        @Test
-        @DisplayName("Should initialize ISSUER_CONFIG_PARSE_ERROR LogRecord")
-        void shouldInitializeIssuerConfigParseError() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
-        }
-
-        @Test
-        @DisplayName("Should initialize TOKEN_VALIDATION_ERROR LogRecord")
-        void shouldInitializeTokenValidationError() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.TOKEN_VALIDATION_ERROR);
-        }
-
-        @Test
-        @DisplayName("Should initialize CONTROLLER_SERVICE_ENABLE_FAILED LogRecord")
-        void shouldInitializeControllerServiceEnableFailed() {
-            // Act & Assert
-            assertNotNull(JwtLogMessages.ERROR.CONTROLLER_SERVICE_ENABLE_FAILED);
+        @ParameterizedTest(name = "ERROR.{0} should be a well-formed LogRecord")
+        @MethodSource("errorRecords")
+        @DisplayName("Should define well-formed ERROR LogRecords")
+        void shouldDefineWellFormedErrorRecord(String name, LogRecord record) {
+            assertWellFormed(record);
         }
     }
 }
