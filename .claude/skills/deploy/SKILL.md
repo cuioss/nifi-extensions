@@ -70,7 +70,6 @@ Runs the `integration-testing` module's Java Failsafe ITs (e.g. `RestApiGatewayI
 
 - `-pl integration-testing -am` is **mandatory** — the `-am` (also-make) is required because the `integration-testing` test sources depend on the `nifi-cuioss-common` test-jar, which is only built when the reactor is also-made.
 - The `integration-tests` profile **manages its own container lifecycle**: `deploy-and-start.sh` auto-stops the same-project `docker` stack (`docker compose down -v`) before building and starting fresh NiFi+Keycloak containers, and `cleanup-containers` tears them down on completion. **No explicit pre-flight stop is needed here** — the profile already reuses the existing Docker primitives.
-- The only residual hazard is concurrent invocation: do **NOT** run `/deploy` and a Maven IT run at the same time (both bind the same host ports — Keycloak `9085`/`9086`, NiFi `9095`).
 
 #### stop
 ```bash
