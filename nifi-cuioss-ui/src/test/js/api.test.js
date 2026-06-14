@@ -872,6 +872,21 @@ describe('getProxyContextPath', () => {
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
+    test('deduplicates concurrent first calls into a single fetch', async () => {
+        mockJsonResponse({ contextPath: '/my-app/ui' });
+
+        // Several entry points priming the cache at once on page load: the
+        // in-flight promise is shared, so the servlet is hit at most once.
+        const [a, b, c] = await Promise.all([
+            getProxyContextPath(), getProxyContextPath(), getProxyContextPath()
+        ]);
+
+        expect(a).toBe('/my-app/ui');
+        expect(b).toBe('/my-app/ui');
+        expect(c).toBe('/my-app/ui');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
     test('falls back to empty prefix when the servlet returns a non-OK response', async () => {
         mockErrorResponse(503, 'Service Unavailable');
 

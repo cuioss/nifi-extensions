@@ -113,8 +113,10 @@ public class ProxyContextPathServlet extends HttpServlet {
 
     /**
      * Normalizes a raw prefix to exactly one leading slash and no trailing slash.
-     * Returns an empty string when the value is absent, blank, or carries control
-     * characters (CR/LF or other), guarding against header injection.
+     * Returns an empty string when the value is absent, blank, carries control
+     * characters (CR/LF or other), starts with {@code //} (protocol-relative), or
+     * contains a backslash — guarding against header and protocol-relative URL
+     * injection.
      *
      * <p>Package-private so the injection guard and normalization rules can be
      * unit-tested directly: a real HTTP round-trip sanitizes control characters
@@ -131,6 +133,15 @@ public class ProxyContextPathServlet extends HttpServlet {
         }
         if (containsControlCharacter(trimmed)) {
             LOGGER.warn("Rejecting proxy context path with control characters: %s", trimmed);
+            return "";
+        }
+        // Reject protocol-relative values ("//host") and backslashes (which some
+        // browsers normalize to "/"). Otherwise a value such as "//attacker.com"
+        // would compose into "//attacker.com/nifi-api/..." in the browser — a
+        // protocol-relative URL that exfiltrates the request (with its CSRF token
+        // and processor-id headers) to an attacker-controlled host.
+        if (trimmed.startsWith("//") || trimmed.contains("\\")) {
+            LOGGER.warn("Rejecting proxy context path to prevent protocol-relative URL injection: %s", trimmed);
             return "";
         }
         String withLeadingSlash = trimmed.startsWith("/") ? trimmed : "/" + trimmed;

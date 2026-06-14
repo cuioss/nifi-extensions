@@ -243,5 +243,21 @@ class ProxyContextPathServletTest {
             assertEquals("/clean/app", normalized,
                     "A value free of control characters must be preserved");
         }
+
+        @Test
+        @DisplayName("Rejects a protocol-relative value starting with double slashes")
+        void rejectsProtocolRelativeDoubleSlash() {
+            assertEquals("", ProxyContextPathServlet.normalize("//attacker.com"),
+                    "A '//host' value must be rejected to prevent protocol-relative URL injection");
+        }
+
+        @Test
+        @DisplayName("Rejects values carrying a backslash")
+        void rejectsBackslash() {
+            assertEquals("", ProxyContextPathServlet.normalize("\\\\attacker.com"),
+                    "A leading backslash sequence must be rejected");
+            assertEquals("", ProxyContextPathServlet.normalize("/\\attacker.com"),
+                    "An embedded backslash must be rejected (browsers may normalize it to '/')");
+        }
     }
 }

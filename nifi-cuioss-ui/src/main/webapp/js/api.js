@@ -34,6 +34,12 @@ const COMPONENT_TYPES = {
 let _proxyContextPath = null;
 
 /**
+ * In-flight resolution promise, deduplicating concurrent first-call fetches.
+ * `null` when no fetch is pending. Cleared once the resolution settles.
+ */
+let _proxyContextPathPromise = null;
+
+/**
  * Resolve and cache the reverse-proxy context path prefix.
  *
  * Browser JavaScript cannot read the proxy headers (X-ProxyContextPath /
@@ -45,27 +51,37 @@ let _proxyContextPath = null;
  * return the cached value without re-fetching. Any failure (servlet
  * unreachable, non-OK response, malformed body) resolves to an empty string,
  * caching it so a flaky servlet does not trigger a fetch on every API call.
- * Once resolved, `nifiApiUrl()` reads the cached value synchronously.
+ * Concurrent first calls (several API entry points priming the cache at once on
+ * page load) share a single in-flight fetch via `_proxyContextPathPromise`, so
+ * the servlet is hit at most once. Once resolved, `nifiApiUrl()` reads the
+ * cached value synchronously.
  *
  * @returns {Promise<string>}  the normalized prefix (e.g. '/my-app/ui'), or ''
  */
 export const getProxyContextPath = async () => {
     if (_proxyContextPath !== null) return _proxyContextPath;
-    try {
-        const res = await fetch(PROXY_CONTEXT_PATH_URL, { credentials: 'same-origin' });
-        if (!res.ok) {
-            log.warn(`Proxy context-path servlet returned HTTP ${res.status}; using empty prefix`);
+    if (_proxyContextPathPromise) return _proxyContextPathPromise;
+
+    _proxyContextPathPromise = (async () => {
+        try {
+            const res = await fetch(PROXY_CONTEXT_PATH_URL, { credentials: 'same-origin' });
+            if (!res.ok) {
+                log.warn(`Proxy context-path servlet returned HTTP ${res.status}; using empty prefix`);
+                _proxyContextPath = '';
+            } else {
+                const data = await res.json();
+                _proxyContextPath = typeof data?.contextPath === 'string' ? data.contextPath : '';
+            }
+        } catch (e) {
+            log.warn('Failed to resolve proxy context path; using empty prefix:', e);
             _proxyContextPath = '';
-            return _proxyContextPath;
+        } finally {
+            _proxyContextPathPromise = null;
         }
-        const data = await res.json();
-        _proxyContextPath = typeof data?.contextPath === 'string' ? data.contextPath : '';
         return _proxyContextPath;
-    } catch (e) {
-        log.warn('Failed to resolve proxy context path; using empty prefix:', e);
-        _proxyContextPath = '';
-        return _proxyContextPath;
-    }
+    })();
+
+    return _proxyContextPathPromise;
 };
 
 /**
@@ -81,8 +97,8 @@ export const getProxyContextPath = async () => {
  */
 const nifiApiUrl = (absolutePath) => `${_proxyContextPath || ''}${absolutePath}`;
 
-/** Reset the cached proxy context path. Useful for testing. */
-const resetProxyContextPath = () => { _proxyContextPath = null; };
+/** Reset the cached proxy context path (and any in-flight fetch). Useful for testing. */
+const resetProxyContextPath = () => { _proxyContextPath = null; _proxyContextPathPromise = null; };
 
 /** Cached component detection results keyed by component ID. */
 const _componentInfoCache = new Map();
