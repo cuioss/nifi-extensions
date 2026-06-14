@@ -137,7 +137,7 @@ class JettyServerManagerTest {
 
             HttpClient client = HttpClient.newHttpClient();
             var response = client.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + manager.getPort() + "/test"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -176,7 +176,7 @@ class JettyServerManagerTest {
 
             HttpClient client = HttpClient.newHttpClient();
             var response = client.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + manager.getPort() + "/test"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -220,7 +220,7 @@ class JettyServerManagerTest {
             HttpClient client = HttpClient.newHttpClient();
 
             assertThrows(Exception.class, () -> client.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + manager.getPort() + "/test"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString()));
         }

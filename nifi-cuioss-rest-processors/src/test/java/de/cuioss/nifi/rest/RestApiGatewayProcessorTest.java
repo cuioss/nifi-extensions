@@ -149,7 +149,7 @@ class RestApiGatewayProcessorTest {
 
             // Send HTTP request
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -181,7 +181,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/users"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/users"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"test\"}"))
@@ -210,14 +210,14 @@ class RestApiGatewayProcessorTest {
 
             // Send to health
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
             // Send to users
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/users"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/users"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -241,7 +241,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
                             .GET().build(), // No Authorization header
                     HttpResponse.BodyHandlers.ofString());
 
@@ -264,7 +264,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -283,7 +283,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health?page=1&limit=10"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health?page=1&limit=10"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -302,7 +302,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/users/42/orders/7"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/users/42/orders/7"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -321,7 +321,7 @@ class RestApiGatewayProcessorTest {
             int port = getServerPort();
 
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -369,7 +369,7 @@ class RestApiGatewayProcessorTest {
                 int port = processor.serverManager.getPort();
 
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/external"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/external"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -409,14 +409,14 @@ class RestApiGatewayProcessorTest {
 
                 // Both routes should work
                 var externalResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/external"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/external"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, externalResponse.statusCode());
 
                 var nifiResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/nifi-route"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/nifi-route"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -455,7 +455,7 @@ class RestApiGatewayProcessorTest {
 
                 // GET should NOT work (NiFi override says POST only)
                 var getResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/myroute"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/myroute"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -463,7 +463,7 @@ class RestApiGatewayProcessorTest {
 
                 // POST should work
                 var postResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/myroute"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/myroute"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
                                 .POST(HttpRequest.BodyPublishers.ofString("{}"))
@@ -497,7 +497,7 @@ class RestApiGatewayProcessorTest {
                 int port = processor.serverManager.getPort();
 
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/nifionly"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/nifionly"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
