@@ -23,6 +23,7 @@ import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -30,7 +31,9 @@ import java.util.Map;
 
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Test class for internationalization aspects of {@link MultiIssuerJWTTokenAuthenticator}.
@@ -59,69 +62,64 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
                         "Token validation failed"));
     }
 
-    @Test
-    @DisplayName("Test internationalized error message for missing token")
-    void internationalizedErrorMessageForMissingToken() {
-        testRunner.enqueue("test data");
-
+    private MockFlowFile runAndGetFailedFlowFile() {
         testRunner.run();
 
         testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
-
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).getFirst();
-
-        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
-        assertNotNull(errorReason, "Error reason should not be null");
-        assertTrue(errorReason.contains("jwt.token") || errorReason.contains("Token") ||
-                errorReason.contains("token") || errorReason.contains("Kein"),
-                "Error message should reference the token attribute or mention token");
+        return testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
     }
 
-    @Test
-    @DisplayName("Test internationalized error message for token size limit")
-    void internationalizedErrorMessageForTokenSizeLimit() {
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put(TOKEN_ATTR, "X".repeat(20000));
-        testRunner.enqueue("test data", attributes);
+    @Nested
+    @DisplayName("Internationalized Error Messages")
+    class InternationalizedErrorMessageTests {
 
-        testRunner.run();
+        @Test
+        @DisplayName("Should reference the token attribute when no token is present")
+        void shouldReferenceTokenAttributeWhenMissingToken() {
+            testRunner.enqueue("test data");
 
-        testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            MockFlowFile flowFile = runAndGetFailedFlowFile();
 
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).getFirst();
+            String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
+            assertNotNull(errorReason, "Error reason should be present");
+            assertTrue(errorReason.contains("jwt.token") || errorReason.contains("Token")
+                            || errorReason.contains("token") || errorReason.contains("Kein"),
+                    "Error message should reference the token attribute or mention token");
+        }
 
-        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
-        String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
+        @Test
+        @DisplayName("Should report the size limit when token exceeds maximum size")
+        void shouldReportSizeLimitWhenTokenTooLarge() {
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put(TOKEN_ATTR, "X".repeat(20000));
+            testRunner.enqueue("test data", attributes);
 
-        assertNotNull(errorReason, "Error reason should not be null");
-        assertEquals("AUTH-003", errorCode, "Error code should be AUTH-003");
-        // Check for size limit - could be formatted as "16384" or "16.384" depending on locale
-        assertTrue(errorReason.contains("16384") || errorReason.contains("16.384"),
-                "Error message should contain the size limit");
-    }
+            MockFlowFile flowFile = runAndGetFailedFlowFile();
 
-    @Test
-    @DisplayName("Test internationalized error message for malformed token")
-    void internationalizedErrorMessageForMalformedToken() {
-        // BeforeEach already configures validation failure — "malformedtoken" will
-        // pass through to TokenValidator which throws TokenValidationException
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put(TOKEN_ATTR, "malformedtoken");
-        testRunner.enqueue("test data", attributes);
+            String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
+            String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
+            assertEquals("AUTH-003", errorCode, "Error code should signal oversized token");
+            assertNotNull(errorReason, "Error reason should be present");
+            // Size limit may be formatted as "16384" or "16.384" depending on locale
+            assertTrue(errorReason.contains("16384") || errorReason.contains("16.384"),
+                    "Error message should contain the size limit");
+        }
 
-        testRunner.run();
+        @Test
+        @DisplayName("Should populate error reason and code for a malformed token")
+        void shouldPopulateErrorForMalformedToken() {
+            // BeforeEach already configures validation failure — "malformedtoken" passes
+            // through to TokenValidator which throws TokenValidationException
+            Map<String, String> attributes = new HashMap<>();
+            attributes.put(TOKEN_ATTR, "malformedtoken");
+            testRunner.enqueue("test data", attributes);
 
-        testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            MockFlowFile flowFile = runAndGetFailedFlowFile();
 
-        MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(
-                Relationships.AUTHENTICATION_FAILED).getFirst();
-
-        String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
-        String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
-
-        assertNotNull(errorReason, "Error reason should not be null");
-        assertNotNull(errorCode, "Error code should not be null");
+            String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
+            String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
+            assertNotNull(errorReason, "Error reason should be present");
+            assertNotNull(errorCode, "Error code should be present");
+        }
     }
 }

@@ -40,13 +40,16 @@ import java.util.Map;
 
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Test class for {@link MultiIssuerJWTTokenAuthenticator}.
  * Tests processor behavior with a mock {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService}.
  */
 @EnableTestLogger
+@DisplayName("Tests for MultiIssuerJWTTokenAuthenticator")
 class MultiIssuerJWTTokenAuthenticatorTest {
 
     private static final String CS_ID = "jwt-config";

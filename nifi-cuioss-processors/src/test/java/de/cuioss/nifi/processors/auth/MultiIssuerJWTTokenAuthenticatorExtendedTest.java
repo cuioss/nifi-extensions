@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  * and authorization logic with representative token content.
  */
 @EnableTestLogger
+@DisplayName("Extended Tests for MultiIssuerJWTTokenAuthenticator")
 class MultiIssuerJWTTokenAuthenticatorExtendedTest {
 
     private static final String CS_ID = "jwt-config";
@@ -75,12 +76,11 @@ class MultiIssuerJWTTokenAuthenticatorExtendedTest {
         testRunner.setProperty(Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
     }
 
-    private MockFlowFile enqueueWithToken(String token) {
+    private void enqueueWithToken(String token) {
         Map<String, String> attributes = new HashMap<>();
         attributes.put(TOKEN_ATTR, token);
         testRunner.enqueue("test data", attributes);
         testRunner.run();
-        return null; // Caller retrieves from relationship
     }
 
     @Nested
