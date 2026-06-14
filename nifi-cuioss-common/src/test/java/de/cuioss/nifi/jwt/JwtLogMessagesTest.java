@@ -37,13 +37,10 @@ class JwtLogMessagesTest {
         assertAll("LogRecord is well-formed",
                 () -> assertNotNull(record, "LogRecord should be defined"),
                 () -> assertNotNull(record.getTemplate(), "Template should be defined"),
-                () -> assertFalseBlank(record.getTemplate()),
+                () -> assertTrue(record.getTemplate() != null && !record.getTemplate().isBlank(),
+                        "Template should not be blank"),
                 () -> assertTrue(record.resolveIdentifierString().startsWith(EXPECTED_PREFIX + "-"),
                         "Resolved identifier should carry the JWT prefix"));
-    }
-
-    private static void assertFalseBlank(String template) {
-        assertTrue(template != null && !template.isBlank(), "Template should not be blank");
     }
 
     @Nested
