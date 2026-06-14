@@ -19,6 +19,7 @@ package de.cuioss.nifi.rest.config;
 import de.cuioss.tools.logging.CuiLogger;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,17 +101,25 @@ public final class RoutePattern {
         List<String> names = new ArrayList<>();
         int index = 0;
         int length = template.length();
+        StringBuilder literal = new StringBuilder();
         while (index < length) {
             char current = template.charAt(index);
             if (current == '{') {
+                if (!literal.isEmpty()) {
+                    regex.append(Pattern.quote(literal.toString()));
+                    literal.setLength(0);
+                }
                 index = appendPlaceholder(template, index, regex, names);
             } else if (current == '}') {
                 throw new IllegalArgumentException(
                         "Unbalanced '}' in path template at index " + index + ": " + template);
             } else {
-                regex.append(Pattern.quote(String.valueOf(current)));
+                literal.append(current);
                 index++;
             }
+        }
+        if (!literal.isEmpty()) {
+            regex.append(Pattern.quote(literal.toString()));
         }
         Pattern compiled = Pattern.compile(regex.toString());
         LOGGER.debug("Compiled route template '%s' to regex '%s' with parameters %s",
@@ -139,9 +148,10 @@ public final class RoutePattern {
             throw new IllegalArgumentException(
                     "Empty parameter name in path template: " + template);
         }
-        if (!name.matches("[A-Za-z][A-Za-z0-9_]*")) {
+        if (!name.matches("[A-Za-z][A-Za-z0-9]*")) {
             throw new IllegalArgumentException(
-                    "Invalid parameter name '" + name + "' in path template: " + template);
+                    "Invalid parameter name '" + name + "' in path template: " + template
+                            + " (parameter names must be alphanumeric and start with a letter)");
         }
         if (names.contains(name)) {
             throw new IllegalArgumentException(
@@ -211,7 +221,7 @@ public final class RoutePattern {
         for (String name : parameterNames) {
             parameters.put(name, matcher.group(name));
         }
-        return Optional.of(Map.copyOf(parameters));
+        return Optional.of(Collections.unmodifiableMap(parameters));
     }
 
     /**

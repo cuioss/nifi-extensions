@@ -247,6 +247,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
      */
     @Nullable
     private ResolvedRoute resolveHandler(String path) {
+        if (path == null) {
+            return null;
+        }
         EndpointHandler exact = handlerMap.get(path);
         if (exact != null) {
             return new ResolvedRoute(exact, Map.of());

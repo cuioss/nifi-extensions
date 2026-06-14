@@ -298,6 +298,16 @@ class RoutePatternTest {
         }
 
         @Test
+        @DisplayName("Should reject a parameter name containing underscore")
+        void shouldRejectUnderscoreInName() {
+            var exception = assertThrows(IllegalArgumentException.class,
+                    () -> RoutePattern.compile("/api/{user_id}/status"),
+                    "Parameter name with underscore should be rejected (Java named groups disallow underscores)");
+            assertTrue(exception.getMessage().contains("Invalid parameter name"),
+                    "Message should describe the invalid name");
+        }
+
+        @Test
         @DisplayName("Should reject an empty constraint")
         void shouldRejectEmptyConstraint() {
             var exception = assertThrows(IllegalArgumentException.class,
