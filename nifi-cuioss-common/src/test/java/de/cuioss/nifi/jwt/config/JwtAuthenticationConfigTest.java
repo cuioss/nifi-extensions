@@ -35,16 +35,13 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should create record with valid values")
         void shouldCreateWithValidValues() {
-            // Arrange
             int maxTokenSize = 4096;
             Set<String> algorithms = Set.of("RS256", "RS384", "RS512");
             boolean requireHttps = true;
 
-            // Act
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     maxTokenSize, algorithms, requireHttps);
 
-            // Assert
             assertEquals(maxTokenSize, config.maxTokenSize());
             assertEquals(algorithms, config.allowedAlgorithms());
             assertEquals(requireHttps, config.requireHttpsForJwks());
@@ -53,19 +50,16 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should create defensive copy of allowed algorithms")
         void shouldCreateDefensiveCopyOfAlgorithms() {
-            // Arrange
             Set<String> originalSet = new HashSet<>();
             originalSet.add("RS256");
             originalSet.add("RS512");
 
-            // Act
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, originalSet, true);
 
             // Modify original set
             originalSet.add("HS256");
 
-            // Assert
             assertEquals(2, config.allowedAlgorithms().size());
             assertTrue(config.allowedAlgorithms().contains("RS256"));
             assertTrue(config.allowedAlgorithms().contains("RS512"));
@@ -76,11 +70,9 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should handle null algorithms as empty set")
         void shouldHandleNullAlgorithms() {
-            // Act
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, null, true);
 
-            // Assert
             assertNotNull(config.allowedAlgorithms());
             assertTrue(config.allowedAlgorithms().isEmpty());
         }
@@ -88,11 +80,9 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should handle empty algorithms set")
         void shouldHandleEmptyAlgorithmsSet() {
-            // Act
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of(), false);
 
-            // Assert
             assertNotNull(config.allowedAlgorithms());
             assertTrue(config.allowedAlgorithms().isEmpty());
         }
@@ -105,12 +95,10 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should return unmodifiable algorithms set")
         void shouldReturnUnmodifiableAlgorithmsSet() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
             var algorithms = config.allowedAlgorithms();
 
-            // Act & Assert
             assertThrows(UnsupportedOperationException.class,
                     () -> algorithms.add("HS256"));
         }
@@ -118,24 +106,20 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should not allow clearing algorithms set")
         void shouldNotAllowClearingAlgorithmsSet() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
             var algorithms = config.allowedAlgorithms();
 
-            // Act & Assert
             assertThrows(UnsupportedOperationException.class, algorithms::clear);
         }
 
         @Test
         @DisplayName("Should not allow removing from algorithms set")
         void shouldNotAllowRemovingFromAlgorithmsSet() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
             var algorithms = config.allowedAlgorithms();
 
-            // Act & Assert
             assertThrows(UnsupportedOperationException.class,
                     () -> algorithms.remove("RS256"));
         }
@@ -148,26 +132,21 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should return correct maxTokenSize")
         void shouldReturnCorrectMaxTokenSize() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     8192, Set.of("RS256"), true);
 
-            // Act & Assert
             assertEquals(8192, config.maxTokenSize());
         }
 
         @Test
         @DisplayName("Should return correct allowedAlgorithms")
         void shouldReturnCorrectAllowedAlgorithms() {
-            // Arrange
             Set<String> algorithms = Set.of("RS256", "RS384", "RS512", "ES256");
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     4096, algorithms, true);
 
-            // Act
             Set<String> result = config.allowedAlgorithms();
 
-            // Assert
             assertEquals(4, result.size());
             assertTrue(result.contains("RS256"));
             assertTrue(result.contains("RS384"));
@@ -178,22 +157,18 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should return correct requireHttpsForJwks when true")
         void shouldReturnTrueForRequireHttps() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
 
-            // Act & Assert
             assertTrue(config.requireHttpsForJwks());
         }
 
         @Test
         @DisplayName("Should return correct requireHttpsForJwks when false")
         void shouldReturnFalseForRequireHttps() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), false);
 
-            // Act & Assert
             assertFalse(config.requireHttpsForJwks());
         }
     }
@@ -205,13 +180,11 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should be equal when all fields match")
         void shouldBeEqualWhenAllFieldsMatch() {
-            // Arrange
             JwtAuthenticationConfig config1 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
             JwtAuthenticationConfig config2 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256", "RS512"), true);
 
-            // Act & Assert
             assertEquals(config1, config2);
             assertEquals(config1.hashCode(), config2.hashCode());
         }
@@ -219,61 +192,51 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should not be equal when maxTokenSize differs")
         void shouldNotBeEqualWhenMaxTokenSizeDiffers() {
-            // Arrange
             JwtAuthenticationConfig config1 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
             JwtAuthenticationConfig config2 = new JwtAuthenticationConfig(
                     4096, Set.of("RS256"), true);
 
-            // Act & Assert
             assertNotEquals(config1, config2);
         }
 
         @Test
         @DisplayName("Should not be equal when allowedAlgorithms differs")
         void shouldNotBeEqualWhenAllowedAlgorithmsDiffers() {
-            // Arrange
             JwtAuthenticationConfig config1 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
             JwtAuthenticationConfig config2 = new JwtAuthenticationConfig(
                     2048, Set.of("RS512"), true);
 
-            // Act & Assert
             assertNotEquals(config1, config2);
         }
 
         @Test
         @DisplayName("Should not be equal when requireHttpsForJwks differs")
         void shouldNotBeEqualWhenRequireHttpsDiffers() {
-            // Arrange
             JwtAuthenticationConfig config1 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
             JwtAuthenticationConfig config2 = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), false);
 
-            // Act & Assert
             assertNotEquals(config1, config2);
         }
 
         @Test
         @DisplayName("Should be equal to itself")
         void shouldBeEqualToItself() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
 
-            // Act & Assert
             assertEquals(config, config);
         }
 
         @Test
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, Set.of("RS256"), true);
 
-            // Act & Assert
             assertNotEquals(null, config);
         }
     }
@@ -285,14 +248,11 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should include all fields in toString")
         void shouldIncludeAllFieldsInToString() {
-            // Arrange
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     4096, Set.of("RS256", "ES256"), true);
 
-            // Act
             String result = config.toString();
 
-            // Assert
             assertTrue(result.contains("4096"));
             assertTrue(result.contains("RS256") || result.contains("ES256"));
             assertTrue(result.contains("true"));

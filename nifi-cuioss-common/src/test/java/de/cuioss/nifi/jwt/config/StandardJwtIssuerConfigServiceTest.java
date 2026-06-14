@@ -75,22 +75,18 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should return all 6 property descriptors")
         void shouldReturnAllPropertyDescriptors() throws Exception {
-            // Arrange
             TestRunner runner = TestRunners.newTestRunner(StubProcessor.class);
             StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
             runner.addControllerService(CS_ID, service);
 
-            // Act
             List<PropertyDescriptor> descriptors = service.getSupportedPropertyDescriptors();
 
-            // Assert
             assertEquals(6, descriptors.size());
         }
 
         @Test
         @DisplayName("Should include JWKS Refresh Interval property")
         void shouldIncludeJwksRefreshInterval() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.JWKS_REFRESH_INTERVAL);
             assertEquals("3600", StandardJwtIssuerConfigService.JWKS_REFRESH_INTERVAL.getDefaultValue());
             assertTrue(StandardJwtIssuerConfigService.JWKS_REFRESH_INTERVAL.isRequired());
@@ -99,7 +95,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should include Maximum Token Size property")
         void shouldIncludeMaximumTokenSize() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.MAXIMUM_TOKEN_SIZE);
             assertEquals("16384", StandardJwtIssuerConfigService.MAXIMUM_TOKEN_SIZE.getDefaultValue());
             assertTrue(StandardJwtIssuerConfigService.MAXIMUM_TOKEN_SIZE.isRequired());
@@ -108,7 +103,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should include Allowed Algorithms property")
         void shouldIncludeAllowedAlgorithms() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.ALLOWED_ALGORITHMS);
             assertNotNull(StandardJwtIssuerConfigService.ALLOWED_ALGORITHMS.getDefaultValue());
             assertFalse(StandardJwtIssuerConfigService.ALLOWED_ALGORITHMS.isRequired());
@@ -117,7 +111,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should include Require HTTPS for JWKS property")
         void shouldIncludeRequireHttps() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.REQUIRE_HTTPS_FOR_JWKS);
             assertEquals("true", StandardJwtIssuerConfigService.REQUIRE_HTTPS_FOR_JWKS.getDefaultValue());
             assertTrue(StandardJwtIssuerConfigService.REQUIRE_HTTPS_FOR_JWKS.isRequired());
@@ -126,7 +119,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should include JWKS Connection Timeout property")
         void shouldIncludeJwksConnectionTimeout() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT);
             assertEquals("10", StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT.getDefaultValue());
             assertTrue(StandardJwtIssuerConfigService.JWKS_CONNECTION_TIMEOUT.isRequired());
@@ -135,7 +127,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should include Allow Private Network Addresses property with false default")
         void shouldIncludeAllowPrivateNetworkAddresses() {
-            // Assert
             assertNotNull(StandardJwtIssuerConfigService.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
             assertEquals("false",
                     StandardJwtIssuerConfigService.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES.getDefaultValue());
@@ -157,11 +148,9 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should return dynamic descriptor for issuer-prefixed property")
         void shouldReturnDynamicDescriptorForIssuerPrefix() {
-            // Act
             PropertyDescriptor descriptor = service.getSupportedDynamicPropertyDescriptor(
                     JwtConstants.ISSUER_PREFIX + "myIssuer.jwksUrl");
 
-            // Assert
             assertNotNull(descriptor);
             assertTrue(descriptor.isDynamic());
             assertEquals("Issuer configuration property", descriptor.getDescription());
@@ -170,10 +159,8 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should return dynamic descriptor for non-issuer property")
         void shouldReturnDynamicDescriptorForNonIssuerProperty() {
-            // Act
             PropertyDescriptor descriptor = service.getSupportedDynamicPropertyDescriptor("custom.property");
 
-            // Assert
             assertNotNull(descriptor);
             assertTrue(descriptor.isDynamic());
             assertEquals("Dynamic property", descriptor.getDescription());
@@ -194,7 +181,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should throw NullPointerException when token is null")
         void shouldThrowNpeWhenTokenNull() {
-            // Act & Assert
             assertThrows(NullPointerException.class,
                     () -> service.validateToken(null));
         }
@@ -202,7 +188,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should throw IllegalStateException when validating token before enable")
         void shouldThrowIseWhenNotEnabled() {
-            // Act & Assert
             IllegalStateException exception = assertThrows(IllegalStateException.class,
                     () -> service.validateToken("some.jwt.token"));
             assertTrue(exception.getMessage().contains("not enabled"));
@@ -211,7 +196,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should throw IllegalStateException when getting auth config before enable")
         void shouldThrowIseForAuthConfigWhenNotEnabled() {
-            // Act & Assert
             IllegalStateException exception = assertThrows(IllegalStateException.class,
                     () -> service.getAuthenticationConfig());
             assertTrue(exception.getMessage().contains("not enabled"));
@@ -220,7 +204,6 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should return empty Optional for security counter before enable")
         void shouldReturnEmptyCounterWhenNotEnabled() {
-            // Act & Assert
             assertTrue(service.getSecurityEventCounter().isEmpty());
         }
     }
@@ -236,7 +219,6 @@ class StandardJwtIssuerConfigServiceTest {
             // (onEnabled requires dsl-json ServiceLoader not available in test)
             StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
 
-            // Act
             service.onDisabled();
 
             // Assert — should be in clean disabled state

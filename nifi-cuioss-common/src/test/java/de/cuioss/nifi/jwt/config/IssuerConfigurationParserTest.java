@@ -56,14 +56,11 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should return empty list for empty properties")
         void shouldReturnEmptyListForEmptyProperties() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertTrue(configs.isEmpty(), "Should return empty list for empty properties");
         }
     }
@@ -75,16 +72,13 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should create IssuerConfig from UI property with JWKS URL")
         void shouldCreateIssuerConfigWithJwksUrl() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             IssuerConfig config = configs.getFirst();
             assertEquals("TestIssuer", config.getIssuerIdentifier());
@@ -102,10 +96,8 @@ class IssuerConfigurationParserTest {
             properties.put("issuer.test.jwks-file", jwksFile.toString());
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertEquals("TestIssuer", configs.getFirst().getIssuerIdentifier());
         }
@@ -113,32 +105,26 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should skip disabled issuer")
         void shouldSkipDisabledIssuer() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put("issuer.test.enabled", "false");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertTrue(configs.isEmpty(), "Disabled issuer should be skipped");
         }
 
         @Test
         @DisplayName("Should skip issuer with missing name")
         void shouldSkipIssuerWithMissingName() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertTrue(configs.isEmpty(), "Issuer without name should be skipped");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "no name");
         }
@@ -146,15 +132,12 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should skip issuer with missing JWKS source")
         void shouldSkipIssuerWithMissingJwksSource() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertTrue(configs.isEmpty(), "Issuer without JWKS source should be skipped");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "JWKS");
         }
@@ -162,17 +145,14 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should set audience when present")
         void shouldSetAudience() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put("issuer.test.audience", "test-audience");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertTrue(configs.getFirst().getExpectedAudience().contains("test-audience"),
                     "Expected audience should contain 'test-audience'");
@@ -181,17 +161,14 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should set client ID when present")
         void shouldSetClientId() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put("issuer.test.client-id", "test-client");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertTrue(configs.getFirst().getExpectedClientId().contains("test-client"),
                     "Expected client ID should contain 'test-client'");
@@ -210,26 +187,21 @@ class IssuerConfigurationParserTest {
             properties.put("issuer.test3.jwks-url", "https://example3.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(3, configs.size());
         }
 
         @Test
         @DisplayName("Should use issuer key as fallback name")
         void shouldUseIssuerPropertyAsFallbackName() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.issuer", "FallbackIssuerName");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertEquals("FallbackIssuerName", configs.getFirst().getIssuerIdentifier());
         }
@@ -237,16 +209,13 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should resolve jwksUri as alternative URL key")
         void shouldResolveJwksUri() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwksUri", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertEquals("TestIssuer", configs.getFirst().getIssuerIdentifier());
         }
@@ -254,16 +223,13 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should warn when jwks-content is used")
         void shouldWarnOnJwksContent() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-content", "{\"keys\":[]}");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertTrue(configs.isEmpty(), "JWKS content is not yet supported");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "not yet supported");
         }
@@ -276,17 +242,14 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should use explicit JWKS URL type when specified")
         void shouldUseExplicitUrlType() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put("issuer.test.jwks-type", "url");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertNotNull(configs.getFirst().getJwksLoader());
         }
@@ -294,23 +257,19 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should infer URL type from jwks-url property")
         void shouldInferUrlTypeFromJwksUrl() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
         }
 
         @Test
         @DisplayName("Should infer file type from jwks-file property")
         void shouldInferFileTypeFromJwksFile(@TempDir Path tempDir) throws IOException {
-            // Arrange
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
             Map<String, String> properties = new HashMap<>();
@@ -318,10 +277,8 @@ class IssuerConfigurationParserTest {
             properties.put("issuer.test.jwks-file", jwksFile.toString());
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
         }
     }
@@ -333,28 +290,22 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should parse valid max token size")
         void shouldParseValidMaxTokenSize() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("Maximum Token Size", "32768");
 
-            // Act
             ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
 
-            // Assert
             assertEquals(32768, config.getMaxTokenSize());
         }
 
         @Test
         @DisplayName("Should use default for invalid max token size")
         void shouldUseDefaultForInvalidMaxTokenSize() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("Maximum Token Size", "not-a-number");
 
-            // Act
             ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
 
-            // Assert
             assertEquals(16384, config.getMaxTokenSize());
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "not-a-number");
         }
@@ -362,13 +313,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should use default when max token size key missing")
         void shouldUseDefaultWhenKeyMissing() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
 
-            // Act
             ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
 
-            // Assert
             assertEquals(16384, config.getMaxTokenSize());
         }
 
@@ -387,34 +335,28 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should apply valid JWKS refresh interval")
         void shouldApplyValidRefreshInterval() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "7200");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size(), "Should create one issuer config");
         }
 
         @Test
         @DisplayName("Should log warning for invalid refresh interval")
         void shouldLogWarningForInvalidRefreshInterval() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "invalid");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "invalid");
         }
@@ -422,17 +364,14 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should log warning for invalid connection timeout")
         void shouldLogWarningForInvalidConnectionTimeout() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             properties.put(JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT, "invalid");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "invalid");
         }
@@ -445,7 +384,6 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should load issuers from ConfigurationManager")
         void shouldLoadIssuersFromConfigManager(@TempDir Path tempDir) throws IOException {
-            // Arrange
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Path configFile = confDir.resolve("cui-nifi-extensions.properties");
@@ -458,10 +396,8 @@ class IssuerConfigurationParserTest {
             ConfigurationManager configManager = new ConfigurationManager(tempDir.toString() + "/");
             Map<String, String> properties = new HashMap<>();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
             assertEquals("External Issuer", configs.getFirst().getIssuerIdentifier());
         }
@@ -469,7 +405,6 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should merge UI and external configurations")
         void shouldMergeUIAndExternalConfigs(@TempDir Path tempDir) throws IOException {
-            // Arrange
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Path configFile = confDir.resolve("cui-nifi-extensions.properties");
@@ -484,41 +419,33 @@ class IssuerConfigurationParserTest {
             properties.put("issuer.ui1.name", "UI Issuer");
             properties.put("issuer.ui1.jwks-url", "https://ui.com/jwks");
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(2, configs.size());
         }
 
         @Test
         @DisplayName("Should handle ConfigurationManager with no config loaded")
         void shouldHandleConfigManagerWithNoConfig() {
-            // Arrange
             ConfigurationManager configManager = new ConfigurationManager();
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
-            // Assert
             assertEquals(1, configs.size());
         }
 
         @Test
         @DisplayName("Should handle null ConfigurationManager")
         void shouldHandleNullConfigManager() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
-            // Assert
             assertEquals(1, configs.size());
         }
     }
@@ -530,18 +457,15 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should apply ParserConfig when provided")
         void shouldApplyParserConfig() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
             ParserConfig parserConfig = ParserConfig.builder().maxTokenSize(32768).build();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(
                     properties, configManager, parserConfig);
 
-            // Assert
             assertEquals(1, configs.size());
             assertNotNull(configs.getFirst().getJwksLoader());
         }
@@ -549,17 +473,14 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should work without ParserConfig")
         void shouldWorkWithoutParserConfig() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "https://example.com/jwks");
             ConfigurationManager configManager = new ConfigurationManager();
 
-            // Act
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(
                     properties, configManager, null);
 
-            // Assert
             assertEquals(1, configs.size());
         }
     }
