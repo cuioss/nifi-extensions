@@ -53,14 +53,11 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should store and retrieve ACCEPTED entry")
         void shouldStoreAndRetrieveAcceptedEntry() throws Exception {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
 
-            // Act
             store.accept(traceId, null);
             var result = store.getStatus(traceId);
 
-            // Assert
             assertTrue(result.isPresent());
             assertEquals(traceId, result.get().traceId());
             assertEquals(RequestStatus.ACCEPTED, result.get().status());
@@ -70,15 +67,12 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should store with parentTraceId")
         void shouldStoreWithParentTraceId() throws Exception {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             String parentTraceId = UUID.randomUUID().toString();
 
-            // Act
             store.accept(traceId, parentTraceId);
             var result = store.getStatus(traceId);
 
-            // Assert
             assertTrue(result.isPresent());
             assertEquals(parentTraceId, result.get().parentTraceId());
         }
@@ -86,24 +80,19 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should return empty for unknown traceId")
         void shouldReturnEmptyForUnknownTraceId() throws Exception {
-            // Act
             var result = store.getStatus(UUID.randomUUID().toString());
 
-            // Assert
             assertTrue(result.isEmpty());
         }
 
         @Test
         @DisplayName("Should store COLLECTING_ATTACHMENTS entry")
         void shouldStoreCollectingAttachmentsEntry() throws Exception {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
 
-            // Act
             store.collectingAttachments(traceId, null, "upload", 5, 1);
             var result = store.getStatus(traceId);
 
-            // Assert
             assertTrue(result.isPresent());
             assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, result.get().status());
             assertEquals("upload", result.get().routeName());
@@ -113,15 +102,12 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should update status preserving other fields")
         void shouldUpdateStatusPreservingOtherFields() throws Exception {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             store.collectingAttachments(traceId, null, "upload", 5, 1);
 
-            // Act
             store.updateStatus(traceId, RequestStatus.PROCESSING);
             var result = store.getStatus(traceId);
 
-            // Assert
             assertTrue(result.isPresent());
             assertEquals(RequestStatus.PROCESSING, result.get().status());
             assertEquals("upload", result.get().routeName());
@@ -145,29 +131,23 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should serialize string key correctly")
         void shouldSerializeStringKey() throws Exception {
-            // Arrange
             String key = "test-key";
             var out = new ByteArrayOutputStream();
 
-            // Act
             RequestStatusStore.STRING_SERIALIZER.serialize(key, out);
 
-            // Assert
             assertEquals(key, out.toString(StandardCharsets.UTF_8));
         }
 
         @Test
         @DisplayName("Should serialize and deserialize entry round-trip")
         void shouldSerializeDeserializeEntryRoundTrip() throws Exception {
-            // Arrange
             var entry = RequestStatusEntry.accepted(UUID.randomUUID().toString(), null);
             var out = new ByteArrayOutputStream();
 
-            // Act
             RequestStatusStore.ENTRY_SERIALIZER.serialize(entry, out);
             var deserialized = RequestStatusStore.ENTRY_DESERIALIZER.deserialize(out.toByteArray());
 
-            // Assert
             assertNotNull(deserialized);
             assertEquals(entry.traceId(), deserialized.traceId());
             assertEquals(entry.status(), deserialized.status());
@@ -176,20 +156,16 @@ class RequestStatusStoreTest {
         @Test
         @DisplayName("Should return null for empty byte array")
         void shouldReturnNullForEmptyBytes() throws Exception {
-            // Act
             var result = RequestStatusStore.ENTRY_DESERIALIZER.deserialize(new byte[0]);
 
-            // Assert
             assertNull(result);
         }
 
         @Test
         @DisplayName("Should return null for null byte array")
         void shouldReturnNullForNullBytes() throws Exception {
-            // Act
             var result = RequestStatusStore.ENTRY_DESERIALIZER.deserialize(null);
 
-            // Assert
             assertNull(result);
         }
     }

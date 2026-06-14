@@ -130,12 +130,10 @@ class StatusEndpointHandlerTest {
             String traceId = UUID.randomUUID().toString();
             statusStore.accept(traceId, null);
 
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/status/" + traceId)).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Assert
             assertEquals(200, response.statusCode());
             assertTrue(response.headers().firstValue("Content-Type")
                     .orElse("").contains("application/json"));
@@ -150,17 +148,14 @@ class StatusEndpointHandlerTest {
         @Test
         @DisplayName("Should return parentTraceId when present")
         void shouldReturnParentTraceId() throws Exception {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             String parentTraceId = UUID.randomUUID().toString();
             statusStore.accept(traceId, parentTraceId);
 
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/status/" + traceId)).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Assert
             assertEquals(200, response.statusCode());
             JsonObject json = Json.createReader(new StringReader(response.body())).readObject();
             assertEquals(parentTraceId, json.getString("parentTraceId"));
@@ -169,12 +164,10 @@ class StatusEndpointHandlerTest {
         @Test
         @DisplayName("Should return 404 for unknown traceId")
         void shouldReturn404ForUnknownTraceId() throws Exception {
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/status/" + UUID.randomUUID())).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Assert
             assertEquals(404, response.statusCode());
             assertTrue(response.body().contains("Not Found"));
         }
@@ -182,12 +175,10 @@ class StatusEndpointHandlerTest {
         @Test
         @DisplayName("Should return 400 for invalid UUID format")
         void shouldReturn400ForInvalidUuid() throws Exception {
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/status/not-a-uuid")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Assert
             assertEquals(400, response.statusCode());
             assertTrue(response.body().contains("Invalid traceId format"));
         }
@@ -213,7 +204,6 @@ class StatusEndpointHandlerTest {
         @Test
         @DisplayName("Should return 202 with traceId and Location for tracked POST")
         void shouldReturnTrackedResponseForPost() throws Exception {
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/api/orders"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
@@ -222,7 +212,6 @@ class StatusEndpointHandlerTest {
                             .build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Assert
             assertEquals(202, response.statusCode());
 
             // Verify Location header
@@ -282,10 +271,8 @@ class StatusEndpointHandlerTest {
         @Test
         @DisplayName("Should pass X-Parent-Trace-Id to status entry")
         void shouldPassParentTraceId() throws Exception {
-            // Arrange
             String parentTraceId = UUID.randomUUID().toString();
 
-            // Act
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/api/orders"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
