@@ -218,11 +218,13 @@ public class ConfigurationManager {
     }
 
     private String getIssuerId(Map<String, Object> issuerConfig, int index) {
-        if (issuerConfig.containsKey("id")) {
-            return issuerConfig.get("id").toString();
+        Object id = issuerConfig.get("id");
+        if (id != null) {
+            return id.toString();
         }
-        if (issuerConfig.containsKey("name")) {
-            return issuerConfig.get("name").toString();
+        Object name = issuerConfig.get("name");
+        if (name != null) {
+            return name.toString();
         }
         return String.valueOf(index);
     }
