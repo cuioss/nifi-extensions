@@ -65,16 +65,13 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should create successful result with token content")
         void shouldCreateSuccessfulResult() {
-            // Arrange
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            // Act
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Assert
             assertTrue(result.isValid(), "Result should be valid");
             assertNull(result.getError(), "Error should be null for successful result");
             assertEquals(tokenContent, result.getTokenContent(),
@@ -84,14 +81,11 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should create failure result with error message")
         void shouldCreateFailureResult() {
-            // Arrange
             String errorMessage = strings().next();
 
-            // Act
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure(errorMessage);
 
-            // Assert
             assertFalse(result.isValid(), "Result should be invalid");
             assertEquals(errorMessage, result.getError(),
                     "Error message should match provided message");
@@ -101,22 +95,18 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should get issuer from field when set")
         void shouldGetIssuerFromField() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(null);
             String issuer = strings().next();
 
-            // Act
             result.setIssuer(issuer);
 
-            // Assert
             assertEquals(issuer, result.getIssuer(), "Issuer should match set value");
         }
 
         @Test
         @DisplayName("Should get issuer from token content when field not set")
         void shouldGetIssuerFromTokenContent() {
-            // Arrange
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
@@ -124,10 +114,8 @@ class JwtValidationServiceTest {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Act
             String actualIssuer = result.getIssuer();
 
-            // Assert
             assertEquals(TestTokenHolder.TEST_ISSUER, actualIssuer,
                     "Issuer should be retrieved from token content");
         }
@@ -135,50 +123,40 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should return null issuer when neither field nor token content available")
         void shouldReturnNullIssuerWhenNotAvailable() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
 
-            // Act
             String issuer = result.getIssuer();
 
-            // Assert
             assertNull(issuer, "Issuer should be null when not available");
         }
 
         @Test
         @DisplayName("Should set and get authorized flag")
         void shouldSetAndGetAuthorized() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(null);
 
-            // Act
             result.setAuthorized(true);
 
-            // Assert
             assertTrue(result.isAuthorized(), "Authorized flag should be true");
         }
 
         @Test
         @DisplayName("Should set and get scopes from field")
         void shouldSetAndGetScopesFromField() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(null);
             List<String> scopes = Arrays.asList("read", "write");
 
-            // Act
             result.setScopes(scopes);
 
-            // Assert
             assertEquals(scopes, result.getScopes(), "Scopes should match set value");
         }
 
         @Test
         @DisplayName("Should get scopes from token content when field not set")
         void shouldGetScopesFromTokenContent() {
-            // Arrange
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
@@ -186,10 +164,8 @@ class JwtValidationServiceTest {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Act
             List<String> actualScopes = result.getScopes();
 
-            // Assert
             assertNotNull(actualScopes, "Scopes should be retrieved from token content");
             assertFalse(actualScopes.isEmpty(), "Scopes should not be empty");
         }
@@ -197,22 +173,18 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should set and get roles from field")
         void shouldSetAndGetRolesFromField() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(null);
             List<String> roles = Arrays.asList("admin", "user");
 
-            // Act
             result.setRoles(roles);
 
-            // Assert
             assertEquals(roles, result.getRoles(), "Roles should match set value");
         }
 
         @Test
         @DisplayName("Should get roles from token content when field not set")
         void shouldGetRolesFromTokenContent() {
-            // Arrange
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
@@ -220,10 +192,8 @@ class JwtValidationServiceTest {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Act
             List<String> actualRoles = result.getRoles();
 
-            // Assert
             assertNotNull(actualRoles, "Roles should be retrieved from token content");
             assertFalse(actualRoles.isEmpty(), "Roles should not be empty");
         }
@@ -231,7 +201,6 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should build claims map from token content")
         void shouldBuildClaimsMapFromTokenContent() {
-            // Arrange
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
@@ -239,10 +208,8 @@ class JwtValidationServiceTest {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Act
             Map<String, Object> claims = result.getClaims();
 
-            // Assert
             assertNotNull(claims, "Claims should not be null");
             assertEquals(tokenContent.getSubject().orElse(""), claims.get("sub"), "Subject should match");
             assertEquals(tokenContent.getIssuer(), claims.get("iss"), "Issuer should match");
@@ -267,10 +234,8 @@ class JwtValidationServiceTest {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.success(tokenContent);
 
-            // Act
             Map<String, Object> claims = result.getClaims();
 
-            // Assert
             assertNotNull(claims, "Claims should not be null");
             assertEquals("", claims.get("sub"), "Empty subject should be empty string");
             assertFalse(claims.containsKey("roles"), "Roles should not be present when empty");
@@ -296,14 +261,11 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should return empty map when token content is null")
         void shouldReturnEmptyMapWhenTokenContentIsNull() {
-            // Arrange
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
 
-            // Act
             Map<String, Object> claims = result.getClaims();
 
-            // Assert
             assertNotNull(claims, "Claims should not be null");
             assertTrue(claims.isEmpty(), "Claims should be empty when token content is null");
         }
@@ -335,13 +297,11 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should reject null processor ID")
         void shouldRejectNullProcessorId() {
-            // Arrange
             NiFiWebConfigurationContext mockContext = createMock(NiFiWebConfigurationContext.class);
             JwtValidationService service = new JwtValidationService(mockContext);
             HttpServletRequest mockRequest = createNiceMock(HttpServletRequest.class);
             replay(mockRequest);
 
-            // Act & Assert
             assertThrows(NullPointerException.class,
                     () -> service.verifyToken("some-token", null, mockRequest),
                     "Should throw NullPointerException for null processorId");
@@ -368,7 +328,6 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should throw IllegalArgumentException when component not found")
         void shouldThrowWhenComponentNotFound() {
-            // Arrange
             String processorId = UUID.randomUUID().toString();
             expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
                     .andThrow(new ResourceNotFoundException("Processor not found"));
@@ -376,7 +335,6 @@ class JwtValidationServiceTest {
                     .andThrow(new ResourceNotFoundException("CS not found"));
             replay(mockConfigContext);
 
-            // Act & Assert
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                     () -> service.verifyToken("some-token", processorId, mockRequest));
             assertTrue(exception.getMessage().contains("Component not found"));
@@ -398,7 +356,6 @@ class JwtValidationServiceTest {
                     .andReturn(details);
             replay(mockConfigContext);
 
-            // Act & Assert
             IllegalStateException exception = assertThrows(IllegalStateException.class,
                     () -> service.verifyToken("some-token", processorId, mockRequest));
             assertTrue(exception.getMessage().contains("No issuer configurations found"));
@@ -494,7 +451,6 @@ class JwtValidationServiceTest {
         @Test
         @DisplayName("Should reject null processor ID")
         void shouldRejectNullProcessorId() {
-            // Arrange & Act & Assert
             assertThrows(NullPointerException.class,
                     () -> service.verifyToken("some-token", null, mockRequest),
                     "Should throw NullPointerException for null processorId");
