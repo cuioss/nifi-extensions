@@ -206,6 +206,124 @@ class GatewayRequestHandlerTest {
     }
 
     @Nested
+    @DisplayName("Pattern Route Matching")
+    class PatternRouteMatching {
+
+        private Server patternServer;
+        private LinkedBlockingQueue<HttpRequestContainer> patternQueue;
+        private GatewayRequestHandler patternHandler;
+        private int patternPort;
+
+        /**
+         * Starts a dedicated server whose handler routes the given routes, so the
+         * pattern-aware third resolution pass can be exercised in isolation.
+         */
+        private void startServerWith(List<RouteConfiguration> routes) throws Exception {
+            patternQueue = new LinkedBlockingQueue<>(50);
+            patternHandler = new GatewayRequestHandler(
+                    toHandlers(routes, patternQueue, GLOBAL_MAX_REQUEST_SIZE),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE);
+            patternServer = new Server();
+            ServerConnector connector = new ServerConnector(patternServer);
+            connector.setPort(0);
+            patternServer.addConnector(connector);
+            patternServer.setHandler(patternHandler);
+            patternServer.start();
+            patternPort = connector.getLocalPort();
+        }
+
+        private HttpResponse<String> get(String path) throws Exception {
+            return httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + patternPort + path))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+        }
+
+        @AfterEach
+        void stopPatternServer() throws Exception {
+            if (patternServer != null && patternServer.isRunning()) {
+                patternServer.stop();
+            }
+        }
+
+        @ParameterizedTest(name = "Should match parameterized route for {0}")
+        @ValueSource(strings = {
+                "/api/orders/12345",
+                "/api/orders/abc-def",
+                "/api/orders/order_99"
+        })
+        @DisplayName("Should match single-parameter route and dispatch to its handler")
+        void shouldMatchSingleParameterRoute(String requestPath) throws Exception {
+            startServerWith(List.of(RouteConfiguration.builder()
+                    .name("order").path("/api/orders/{orderId}").method("GET").build()));
+
+            var response = get(requestPath);
+
+            assertEquals(200, response.statusCode());
+            assertFalse(patternQueue.isEmpty(), "Matched pattern route should enqueue a request");
+            assertEquals("order", patternQueue.poll().routeName());
+            assertEquals(0L, patternHandler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should match multi-parameter route")
+        void shouldMatchMultiParameterRoute() throws Exception {
+            startServerWith(List.of(RouteConfiguration.builder()
+                    .name("item").path("/api/orders/{orderId}/items/{itemId}").method("GET").build()));
+
+            var response = get("/api/orders/100/items/200");
+
+            assertEquals(200, response.statusCode());
+            assertEquals("item", patternQueue.poll().routeName());
+            assertEquals(0L, patternHandler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should match constrained parameter route only for matching segments")
+        void shouldMatchConstrainedParameterRoute() throws Exception {
+            startServerWith(List.of(RouteConfiguration.builder()
+                    .name("numeric").path("/api/orders/{orderId:\\d+}").method("GET").build()));
+
+            var matched = get("/api/orders/42");
+            assertEquals(200, matched.statusCode());
+            assertEquals("numeric", patternQueue.poll().routeName());
+
+            var unmatched = get("/api/orders/not-a-number");
+            assertEquals(404, unmatched.statusCode());
+            assertEquals(1L, patternHandler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("Should prefer exact match over pattern match")
+        void shouldPreferExactMatchOverPattern() throws Exception {
+            startServerWith(List.of(
+                    RouteConfiguration.builder().name("byId").path("/api/orders/{orderId}").method("GET").build(),
+                    RouteConfiguration.builder().name("recent").path("/api/orders/recent").method("GET").build()));
+
+            var response = get("/api/orders/recent");
+
+            assertEquals(200, response.statusCode());
+            assertEquals("recent", patternQueue.poll().routeName(),
+                    "Exact route must win over the parameterized route for a literal path");
+        }
+
+        @Test
+        @DisplayName("Should return 404 when no pattern route matches")
+        void shouldReturn404WhenNoPatternMatches() throws Exception {
+            startServerWith(List.of(RouteConfiguration.builder()
+                    .name("order").path("/api/orders/{orderId}").method("GET").build()));
+
+            // A deeper path the single-segment pattern cannot match.
+            var response = get("/api/orders/12345/extra");
+
+            assertEquals(404, response.statusCode());
+            assertTrue(patternQueue.isEmpty(), "No route should be enqueued on a no-match fallback");
+            assertEquals(1L, patternHandler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+        }
+    }
+
+    @Nested
     @DisplayName("Body Size Limit")
     class BodySizeLimit {
 

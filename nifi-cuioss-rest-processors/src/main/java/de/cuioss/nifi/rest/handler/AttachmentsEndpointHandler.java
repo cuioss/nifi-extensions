@@ -49,9 +49,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class AttachmentsEndpointHandler implements EndpointHandler {
 
-    private record ResponseContext(Response response, Callback callback) {
-    }
-
     private static final CuiLogger LOGGER = new CuiLogger(AttachmentsEndpointHandler.class);
     @SuppressWarnings("java:S1075") // URL path, not filesystem path
     static final String ATTACHMENTS_PATH = "/attachments";
@@ -174,7 +171,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return;
         }
 
-        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, new ResponseContext(response, callback))) {
+        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, response, callback)) {
             return;
         }
 
@@ -274,7 +271,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
 
     private boolean enqueueAttachment(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
             byte[] body, Request request, String parentTraceId,
-            String traceId, ResponseContext responseCtx) {
+            String traceId, Response response, Callback callback) {
         var container = new HttpRequestContainer(
                 ATTACHMENTS_ROUTE_NAME, "POST", sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
@@ -283,7 +280,8 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
                 traceId,
-                parentTraceId);
+                parentTraceId,
+                sanitized.pathParameters());
 
         if (!queue.offer(container)) {
             attachmentCounters.get(parentTraceId).decrementAndGet();
@@ -291,7 +289,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, "POST", sanitized.path(),
                     Request.getRemoteAddr(request));
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
-                    .sendResponse(responseCtx.response(), responseCtx.callback());
+                    .sendResponse(response, callback);
             return false;
         }
         return true;

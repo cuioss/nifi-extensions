@@ -310,7 +310,7 @@ class AttachmentsEndpointHandlerTest {
         while (queue.remainingCapacity() > 0) {
             queue.offer(new HttpRequestContainer("test", "POST", "/test",
                     Map.of(), Map.of(), "127.0.0.1",
-                    new byte[0], null, null, null, null));
+                    new byte[0], null, null, null, null, Map.of()));
         }
 
         var response = httpClient.send(

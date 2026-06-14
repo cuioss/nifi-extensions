@@ -11,7 +11,7 @@ image::api-gateway-pattern.png[RestApiGateway Pattern]
 The `GatewayRequestHandler` processes each request through a 7-stage pipeline:
 
 1. **Input Sanitization**: Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input.
-2. **Route Lookup**: Matches the sanitized path against configured routes (exact match). Returns 404 if no route is configured for the path.
+2. **Route Lookup**: Matches the sanitized path against configured routes using three ordered passes -- exact match, then prefix match, then pattern match against compiled `{placeholder}` route templates. The first pass to hit wins, so a literal path that also matches a pattern resolves to its exact handler. Pattern matches additionally extract the path parameters (see <<Path-Parameter Routes>>). Returns 404 if no pass matches.
 3. **Method Check**: Verifies the HTTP method is allowed for the matched route. Returns 405 with `Allow` header if not.
 4. **Body Size Check**: Reads the request body up to the configured maximum size (per-route or global). Returns 413 if the body exceeds the limit. This runs before authentication to avoid wasting CPU on oversized payloads.
 5. **JWT Authentication**: Auth-mode dispatch per endpoint: extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure. Skipped for `NONE` and loopback `LOCAL_ONLY` requests.
@@ -19,6 +19,52 @@ The `GatewayRequestHandler` processes each request through a 7-stage pipeline:
 7. **Delegate to Handler**: The matched `EndpointHandler.process()` executes handler-specific logic. For API routes (`ApiRouteHandler`), this includes optional JSON Schema validation (returns 422 on failure via `schemaPath`) and enqueue of `HttpRequestContainer` for `onTrigger` processing (returns 503 if the queue is full).
 
 All error responses use RFC 9457 `application/problem+json` format via `ProblemDetail`. See link:../reference/error-reference.adoc[Error Reference] for the full error type table.
+
+[#path-parameter-routes]
+== Path-Parameter Routes
+
+A route `path` may declare `{placeholder}` segments to capture variable parts of the request URI. When the path is registered, the template is compiled once into a `RoutePattern`; subsequent requests whose URI matches the template have the placeholder values extracted and exposed as FlowFile attributes.
+
+Placeholder syntax:
+
+* `{name}` -- matches a single path segment (`[^/]+`).
+* `{name:regex}` -- matches a single segment that also satisfies the supplied `regex` constraint, e.g. `{id:\\d+}`.
+
+=== Match Precedence
+
+Route resolution runs three ordered passes and the first to hit wins:
+
+. **Exact** -- the sanitized path equals a configured route `path` verbatim.
+. **Prefix** -- the path starts with a prefix-match route's `path` followed by `/`.
+. **Pattern** -- the path matches a compiled `{placeholder}` template.
+
+Because exact precedes pattern, a literal route such as `/api/users/me` always resolves to its exact handler even when a pattern route `/api/users/{id}` is also configured.
+
+=== Extracted Attributes
+
+Each captured placeholder becomes one FlowFile attribute named `rest.api.pathparam.<name>`, where `<name>` is the placeholder name. Exact and prefix-matched routes carry no such attributes.
+
+=== Worked Example
+
+Given the route configuration:
+
+[source,properties]
+----
+restapi.user-orders.path = /api/users/{userId}/orders/{orderId}
+restapi.user-orders.methods = GET
+----
+
+a request to `GET /api/users/42/orders/7` produces a FlowFile carrying:
+
+[cols="2,1"]
+|===
+|Attribute |Value
+
+|`rest.route.name` |`user-orders`
+|`http.request.uri` |`/api/users/42/orders/7`
+|`rest.api.pathparam.userId` |`42`
+|`rest.api.pathparam.orderId` |`7`
+|===
 
 == Authentication Layers
 
@@ -195,6 +241,9 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 |`http.query.<name>`
 |Query parameter values (one attribute per parameter)
+
+|`rest.api.pathparam.<name>`
+|Path parameter values extracted from a `{placeholder}` route template (one attribute per parameter; absent for exact/prefix-matched routes)
 
 |`jwt.validatedAt`
 |ISO-8601 timestamp when the token was validated

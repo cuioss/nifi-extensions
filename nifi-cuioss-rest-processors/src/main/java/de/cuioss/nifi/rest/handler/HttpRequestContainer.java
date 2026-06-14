@@ -43,6 +43,7 @@ import java.util.Objects;
  * @param token           the validated JWT access token (null for unauthenticated routes)
  * @param traceId         the unique trace identifier for request tracking (null when tracking disabled)
  * @param parentTraceId   optional parent trace ID for chained requests (null when not chained)
+ * @param pathParameters  the path parameters extracted from a pattern-matched route (empty otherwise)
  */
 public record HttpRequestContainer(
 @NonNull String routeName,
@@ -55,7 +56,8 @@ byte[] body,
 @Nullable String contentType,
 @Nullable AccessTokenContent token,
 @Nullable String traceId,
-@Nullable String parentTraceId) {
+@Nullable String parentTraceId,
+Map<String, String> pathParameters) {
 
     /**
      * Compact constructor — defensive copies for maps, null-safe body.
@@ -63,6 +65,7 @@ byte[] body,
     public HttpRequestContainer {
         queryParameters = queryParameters != null ? Map.copyOf(queryParameters) : Map.of();
         headers = headers != null ? Map.copyOf(headers) : Map.of();
+        pathParameters = pathParameters != null ? Map.copyOf(pathParameters) : Map.of();
         body = body != null ? body.clone() : new byte[0];
     }
 
@@ -81,7 +84,7 @@ byte[] body,
                 var thatRouteName, var thatMethod, var thatRequestUri,
                 var thatQueryParameters, var thatHeaders, var thatRemoteHost,
                 var thatBody, var thatContentType, var thatToken,
-                var thatTraceId, var thatParentTraceId))) return false;
+                var thatTraceId, var thatParentTraceId, var thatPathParameters))) return false;
         return Objects.equals(routeName, thatRouteName)
                 && Objects.equals(method, thatMethod)
                 && Objects.equals(requestUri, thatRequestUri)
@@ -92,13 +95,14 @@ byte[] body,
                 && Objects.equals(contentType, thatContentType)
                 && Objects.equals(token, thatToken)
                 && Objects.equals(traceId, thatTraceId)
-                && Objects.equals(parentTraceId, thatParentTraceId);
+                && Objects.equals(parentTraceId, thatParentTraceId)
+                && Objects.equals(pathParameters, thatPathParameters);
     }
 
     @Override
     public int hashCode() {
         int result = Objects.hash(routeName, method, requestUri, queryParameters,
-                headers, remoteHost, contentType, token, traceId, parentTraceId);
+                headers, remoteHost, contentType, token, traceId, parentTraceId, pathParameters);
         result = 31 * result + Arrays.hashCode(body);
         return result;
     }

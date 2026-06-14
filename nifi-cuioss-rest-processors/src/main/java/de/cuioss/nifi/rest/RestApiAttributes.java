@@ -51,6 +51,9 @@ public final class RestApiAttributes {
     /** Prefix for query parameter attributes: {@code http.query.<name>}. */
     public static final String QUERY_PARAM_PREFIX = "http.query.";
 
+    /** Prefix for path parameter attributes extracted from a pattern-matched route: {@code rest.api.pathparam.<name>}. */
+    public static final String PATH_PARAM_PREFIX = "rest.api.pathparam.";
+
     /** Prefix for header attributes: {@code http.header.<name>}. */
     public static final String HEADER_PREFIX = "http.header.";
 

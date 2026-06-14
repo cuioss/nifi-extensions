@@ -25,13 +25,34 @@ import java.util.Map;
  * pipelines, which normalize encoding, detect attack patterns, and sanitize
  * the input. Downstream processing should use these normalized values
  * instead of raw request data.
+ * <p>
+ * {@code pathParameters} carries the values extracted from a matched
+ * {@code {placeholder}} route. It is empty for exact/prefix-matched routes and
+ * is attached after route resolution via {@link #withPathParameters(Map)}, since
+ * the sanitized request is built before the handler is resolved.
  *
  * @param path            the normalized URL path
  * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
  * @param headers         the normalized header values (Authorization excluded, values sanitized)
+ * @param pathParameters  the path parameters extracted from a pattern-matched route (empty otherwise)
  */
 record SanitizedRequest(
 String path,
 Map<String, String> queryParameters,
-Map<String, String> headers) {
+Map<String, String> headers,
+Map<String, String> pathParameters) {
+
+    SanitizedRequest {
+        pathParameters = pathParameters == null ? Map.of() : Map.copyOf(pathParameters);
+    }
+
+    /**
+     * Returns a copy of this request with the given path parameters attached.
+     *
+     * @param extractedPathParameters the parameters extracted from the matched route
+     * @return a new immutable {@code SanitizedRequest} carrying the path parameters
+     */
+    SanitizedRequest withPathParameters(Map<String, String> extractedPathParameters) {
+        return new SanitizedRequest(path, queryParameters, headers, extractedPathParameters);
+    }
 }

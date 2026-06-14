@@ -71,6 +71,9 @@ class RestApiGatewayProcessorTest {
         testRunner.setProperty("restapi.health.methods", "GET");
         testRunner.setProperty("restapi.users.path", "/api/users");
         testRunner.setProperty("restapi.users.methods", "GET,POST");
+        testRunner.setProperty("restapi.userdetail.path", "/api/users/{userId}/orders/{orderId}");
+        testRunner.setProperty("restapi.userdetail.methods", "GET");
+        testRunner.setProperty("restapi.userdetail.success-outcome", "userdetail");
 
         tokenHolder = TestTokenGenerators.accessTokens().next();
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
@@ -290,6 +293,43 @@ class RestApiGatewayProcessorTest {
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("health").getFirst();
             flowFile.assertAttributeEquals("http.query.page", "1");
             flowFile.assertAttributeEquals("http.query.limit", "10");
+        }
+
+        @Test
+        @DisplayName("Should set path parameters from a pattern-matched route")
+        void shouldSetPathParameters() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/users/42/orders/7"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            testRunner.run(1, false, false);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("userdetail").getFirst();
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "userId", "42");
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "orderId", "7");
+        }
+
+        @Test
+        @DisplayName("Should not set path parameter attributes for exact-matched routes")
+        void shouldNotSetPathParametersForExactRoutes() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/health"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            testRunner.run(1, false, false);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("health").getFirst();
+            flowFile.assertAttributeNotExists(RestApiAttributes.PATH_PARAM_PREFIX + "userId");
         }
     }
 
