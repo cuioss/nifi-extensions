@@ -198,7 +198,8 @@
     "active_profiles": [
       "implementation",
       "module_testing",
-      "quality"
+      "quality",
+      "integration_testing"
     ]
   },
   "system": {
