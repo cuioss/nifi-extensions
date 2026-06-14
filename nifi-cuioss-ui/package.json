@@ -11,8 +11,8 @@
     "stylelint:fix": "stylelint \"src/main/webapp/css/**/*.css\" --fix",
     "test": "NODE_ENV=test jest",
     "test:watch": "NODE_ENV=test jest --watch",
-    "test:coverage": "NODE_ENV=test jest --coverage",
-    "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests"
+    "test:coverage": "NODE_ENV=test jest --coverage --silent",
+    "test:ci": "NODE_ENV=test jest --coverage --watchAll=false --passWithNoTests --silent"
   },
   "repository": {
     "type": "git",
