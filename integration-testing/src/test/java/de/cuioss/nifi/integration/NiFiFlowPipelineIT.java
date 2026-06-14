@@ -17,6 +17,7 @@
 package de.cuioss.nifi.integration;
 
 import jakarta.json.Json;
+import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -235,7 +236,7 @@ class NiFiFlowPipelineIT {
         }
         try {
             return Json.createReader(new StringReader(body)).readObject();
-        } catch (Exception e) {
+        } catch (JsonException e) {
             fail("Failed to parse response body as JSON: " + body);
             return null; // unreachable
         }
