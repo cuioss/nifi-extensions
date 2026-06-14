@@ -296,26 +296,21 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should block private address by default (allowPrivateAddresses=false)")
         void defaultBlocksPrivateAddress() {
-            // Arrange
             JwksValidationServlet servlet = new JwksValidationServlet();
 
             // Act — default is false, so private addresses should be blocked
             InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", false);
 
-            // Assert
             assertNull(result, "Private address should be blocked when allowPrivateAddresses=false");
         }
 
         @Test
         @DisplayName("Should allow loopback address when allowPrivateAddresses=true")
         void allowsLoopbackWhenEnabled() {
-            // Arrange
             JwksValidationServlet servlet = new JwksValidationServlet();
 
-            // Act
             InetAddress result = servlet.resolveAndValidateAddress("127.0.0.1", true);
 
-            // Assert
             assertNotNull(result, "Loopback address should be allowed when allowPrivateAddresses=true");
             assertTrue(result.isLoopbackAddress());
         }
@@ -323,10 +318,8 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return null for empty host regardless of allowPrivateAddresses")
         void returnsNullForEmptyHost() {
-            // Arrange
             JwksValidationServlet servlet = new JwksValidationServlet();
 
-            // Act & Assert
             assertNull(servlet.resolveAndValidateAddress("", true));
             assertNull(servlet.resolveAndValidateAddress(null, true));
             assertNull(servlet.resolveAndValidateAddress("", false));
@@ -336,10 +329,8 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return null for unresolvable host regardless of allowPrivateAddresses")
         void returnsNullForUnresolvableHost() {
-            // Arrange
             JwksValidationServlet servlet = new JwksValidationServlet();
 
-            // Act & Assert
             assertNull(servlet.resolveAndValidateAddress(
                     "this.host.definitely.does.not.exist.invalid", true));
             assertNull(servlet.resolveAndValidateAddress(
@@ -555,7 +546,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return processor properties when no CS keys present")
         void shouldReturnProcessorPropertiesWhenNoCsKeysPresent() {
-            // Arrange
             Map<String, String> processorProps = Map.of("some.key", "some-value");
             NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
             replay(mockCtx);
@@ -563,7 +553,6 @@ class JwksValidationServletTest {
             HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
             replay(mockReq);
 
-            // Act
             Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
                     processorProps, reader, mockReq);
 
@@ -574,7 +563,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should resolve CS properties when CS reference key present")
         void shouldResolveCsPropertiesWhenCsReferencePresent() {
-            // Arrange
             String csId = UUID.randomUUID().toString();
             Map<String, String> processorProps = new HashMap<>();
             processorProps.put("jwt.issuer.config.service", csId);
@@ -598,7 +586,6 @@ class JwksValidationServletTest {
             HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
             replay(mockReq);
 
-            // Act
             Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
                     processorProps, reader, mockReq);
 
@@ -610,7 +597,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return processor properties when CS lookup fails")
         void shouldReturnProcessorPropertiesWhenCsLookupFails() {
-            // Arrange
             String csId = UUID.randomUUID().toString();
             Map<String, String> processorProps = new HashMap<>();
             processorProps.put("jwt.issuer.config.service", csId);
@@ -636,7 +622,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should skip blank CS reference values")
         void shouldSkipBlankCsReferenceValues() {
-            // Arrange
             Map<String, String> processorProps = new HashMap<>();
             processorProps.put("jwt.issuer.config.service", "   ");
             NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
@@ -645,7 +630,6 @@ class JwksValidationServletTest {
             HttpServletRequest mockReq = createNiceMock(HttpServletRequest.class);
             replay(mockReq);
 
-            // Act
             Map<String, String> result = JwksValidationServlet.resolveControllerServiceProperties(
                     processorProps, reader, mockReq);
 
@@ -687,10 +671,8 @@ class JwksValidationServletTest {
             JwksValidationServlet servlet = new JwksValidationServlet();
             String url = mockServer.url("/jwks").toString();
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
 
-            // Assert
             assertFalse(result.isSuccess());
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
@@ -710,10 +692,8 @@ class JwksValidationServletTest {
             JwksValidationServlet servlet = new JwksValidationServlet();
             String url = mockServer.url("/jwks").toString();
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
 
-            // Assert
             assertTrue(result.isSuccess());
             assertTrue(result.getContent().isPresent());
             assertEquals(validJwks, result.getContent().get());
@@ -722,7 +702,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return failure for non-200 HTTP status")
         void shouldReturnFailureForNon200Status() throws Exception {
-            // Arrange
             mockServer.enqueue(new MockResponse.Builder()
                     .code(404)
                     .body("Not Found")
@@ -731,10 +710,8 @@ class JwksValidationServletTest {
             JwksValidationServlet servlet = new JwksValidationServlet();
             String url = mockServer.url("/jwks").toString();
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByOriginalUrl(url);
 
-            // Assert
             assertFalse(result.isSuccess());
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("status 404"));
@@ -743,7 +720,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should accept response via resolved address within size limit")
         void shouldAcceptResponseViaResolvedAddress() throws Exception {
-            // Arrange
             String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
             mockServer.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -755,11 +731,9 @@ class JwksValidationServletTest {
             URI uri = URI.create(mockServer.url("/jwks").toString());
             InetAddress resolved = InetAddress.getByName(uri.getHost());
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
                     uri.toString(), uri, resolved);
 
-            // Assert
             assertTrue(result.isSuccess());
             assertTrue(result.getContent().isPresent());
             assertEquals(validJwks, result.getContent().get());
@@ -768,7 +742,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should reject oversized response via resolved address")
         void shouldRejectOversizedResponseViaResolvedAddress() throws Exception {
-            // Arrange
             String oversizedBody = "x".repeat(1024 * 1024 + 1);
             mockServer.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -780,11 +753,9 @@ class JwksValidationServletTest {
             URI uri = URI.create(mockServer.url("/jwks").toString());
             InetAddress resolved = InetAddress.getByName(uri.getHost());
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
                     uri.toString(), uri, resolved);
 
-            // Assert
             assertFalse(result.isSuccess());
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
@@ -793,7 +764,6 @@ class JwksValidationServletTest {
         @Test
         @DisplayName("Should return failure for non-200 status via resolved address")
         void shouldReturnFailureForNon200ViaResolvedAddress() throws Exception {
-            // Arrange
             mockServer.enqueue(new MockResponse.Builder()
                     .code(503)
                     .body("Service Unavailable")
@@ -803,11 +773,9 @@ class JwksValidationServletTest {
             URI uri = URI.create(mockServer.url("/jwks").toString());
             InetAddress resolved = InetAddress.getByName(uri.getHost());
 
-            // Act
             HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
                     uri.toString(), uri, resolved);
 
-            // Assert
             assertFalse(result.isSuccess());
             assertTrue(result.getErrorMessage().isPresent());
             assertTrue(result.getErrorMessage().get().contains("status 503"));
@@ -893,7 +861,6 @@ class JwksValidationServletTest {
                              new JwksValidationServlet());
                      ctx.addServlet(holder, URL_ENDPOINT);
                  })) {
-                // Act
                 serverHandle.spec()
                         .contentType("application/json")
                         .header("X-Processor-Id", processorId)
