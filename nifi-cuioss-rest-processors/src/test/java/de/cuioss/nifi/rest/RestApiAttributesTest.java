@@ -42,13 +42,22 @@ class RestApiAttributesTest {
     @Test
     @DisplayName("Should follow naming convention")
     void shouldFollowNamingConvention() {
-        assertTrue(RestApiAttributes.ROUTE_NAME.startsWith("rest."));
-        assertTrue(RestApiAttributes.ROUTE_PATH.startsWith("rest."));
-        assertTrue(RestApiAttributes.HTTP_METHOD.startsWith("http."));
-        assertTrue(RestApiAttributes.HTTP_REQUEST_URI.startsWith("http."));
-        assertTrue(RestApiAttributes.HTTP_REMOTE_HOST.startsWith("http."));
-        assertTrue(RestApiAttributes.CONTENT_TYPE.startsWith("mime."));
-        assertTrue(RestApiAttributes.QUERY_PARAM_PREFIX.startsWith("http."));
-        assertTrue(RestApiAttributes.HEADER_PREFIX.startsWith("http."));
+        assertAll("Attribute naming convention",
+                () -> assertTrue(RestApiAttributes.ROUTE_NAME.startsWith("rest."),
+                        "ROUTE_NAME should start with 'rest.'"),
+                () -> assertTrue(RestApiAttributes.ROUTE_PATH.startsWith("rest."),
+                        "ROUTE_PATH should start with 'rest.'"),
+                () -> assertTrue(RestApiAttributes.HTTP_METHOD.startsWith("http."),
+                        "HTTP_METHOD should start with 'http.'"),
+                () -> assertTrue(RestApiAttributes.HTTP_REQUEST_URI.startsWith("http."),
+                        "HTTP_REQUEST_URI should start with 'http.'"),
+                () -> assertTrue(RestApiAttributes.HTTP_REMOTE_HOST.startsWith("http."),
+                        "HTTP_REMOTE_HOST should start with 'http.'"),
+                () -> assertTrue(RestApiAttributes.CONTENT_TYPE.startsWith("mime."),
+                        "CONTENT_TYPE should start with 'mime.'"),
+                () -> assertTrue(RestApiAttributes.QUERY_PARAM_PREFIX.startsWith("http."),
+                        "QUERY_PARAM_PREFIX should start with 'http.'"),
+                () -> assertTrue(RestApiAttributes.HEADER_PREFIX.startsWith("http."),
+                        "HEADER_PREFIX should start with 'http.'"));
     }
 }
