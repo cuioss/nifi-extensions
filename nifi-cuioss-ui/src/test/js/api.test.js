@@ -13,18 +13,32 @@ import {
     resolveJwtConfigServiceId,
     getComponentId, detectComponentType, resetComponentCache,
     fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES,
-    getConnectedRelationships
+    getConnectedRelationships,
+    getProxyContextPath, resetProxyContextPath
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
 
-beforeEach(() => {
+beforeEach(async () => {
     // Reset fetch mock and location
     globalThis.fetch = jest.fn();
     delete globalThis.jwtAuthConfig;
     resetComponentCache();
+
+    // Pre-prime the proxy context-path cache to the empty (non-proxied) prefix.
+    // Every public entry point now `await getProxyContextPath()` before building
+    // absolute /nifi-api/... URLs (the issue-334 fix). Priming the cache to ''
+    // here means those entry-point primes short-circuit on the cached value and
+    // add NO extra fetch to the test body — so the non-proxied assertions below
+    // (URLs and fetch.mock.calls indices) stay byte-identical. The save-route
+    // regression block resets the cache itself to drive the real priming flow.
+    resetProxyContextPath();
+    mockJsonResponse({ contextPath: '' });
+    await getProxyContextPath();
+    globalThis.fetch = jest.fn();
+
     // Reset location to default URL (jsdom 25+ makes location non-configurable)
     history.replaceState({}, '', '/nifi');
 });
@@ -821,5 +835,184 @@ describe('CSRF token handling', () => {
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['Request-Token']).toBeUndefined();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// getProxyContextPath — resolver, cache, fallback
+// ---------------------------------------------------------------------------
+
+describe('getProxyContextPath', () => {
+    // The global beforeEach pre-primes the cache to ''. These tests exercise the
+    // resolver directly, so each one starts from a cold cache.
+    beforeEach(() => {
+        resetProxyContextPath();
+    });
+
+    test('fetches /nifi-api/context-path and returns the resolved prefix', async () => {
+        mockJsonResponse({ contextPath: '/my-app/ui' });
+
+        const prefix = await getProxyContextPath();
+
+        expect(prefix).toBe('/my-app/ui');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('nifi-api/context-path');
+        expect(globalThis.fetch.mock.calls[0][1].credentials).toBe('same-origin');
+    });
+
+    test('caches the resolved prefix — a second call does not re-fetch', async () => {
+        mockJsonResponse({ contextPath: '/my-app/ui' });
+
+        const first = await getProxyContextPath();
+        const second = await getProxyContextPath();
+
+        expect(first).toBe('/my-app/ui');
+        expect(second).toBe('/my-app/ui');
+        // Only the first call hits the servlet; the cached value is reused.
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('deduplicates concurrent first calls into a single fetch', async () => {
+        mockJsonResponse({ contextPath: '/my-app/ui' });
+
+        // Several entry points priming the cache at once on page load: the
+        // in-flight promise is shared, so the servlet is hit at most once.
+        const [a, b, c] = await Promise.all([
+            getProxyContextPath(), getProxyContextPath(), getProxyContextPath()
+        ]);
+
+        expect(a).toBe('/my-app/ui');
+        expect(b).toBe('/my-app/ui');
+        expect(c).toBe('/my-app/ui');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('falls back to empty prefix when the servlet returns a non-OK response', async () => {
+        mockErrorResponse(503, 'Service Unavailable');
+
+        const prefix = await getProxyContextPath();
+
+        expect(prefix).toBe('');
+        // The empty fallback is cached, so a flaky servlet is not re-queried.
+        await getProxyContextPath();
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('falls back to empty prefix on a network error', async () => {
+        globalThis.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+        const prefix = await getProxyContextPath();
+
+        expect(prefix).toBe('');
+    });
+
+    test('falls back to empty prefix when contextPath is missing from the body', async () => {
+        mockJsonResponse({});
+
+        const prefix = await getProxyContextPath();
+
+        expect(prefix).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Save-route regression (issue-334): absolute NiFi REST API URLs must be
+// prefixed with the reverse-proxy context path in the REAL production flow.
+//
+// This block drives the public entry point updateComponentProperties() for a
+// PROCESSOR (the stop -> update -> restart cycle) WITHOUT manually priming the
+// cache. The production code primes it via getProxyContextPath(). It mocks ONLY
+// fetch — including the nifi-api/context-path endpoint — and asserts that every
+// absolute /nifi-api/... URL the flow fetches carries the proxy prefix.
+//
+// Against the unfixed api.js (no priming at the entry points), the cache stays
+// empty, the absolute URLs are NOT prefixed, and these assertions fail.
+// ---------------------------------------------------------------------------
+
+describe('save-route proxy-prefix regression (issue-334)', () => {
+    const PROC_UUID = '00000000-0000-0000-0000-000000000334';
+
+    // Cold cache: the production code must prime it itself. Do NOT call
+    // getProxyContextPath() in the test body.
+    beforeEach(() => {
+        resetProxyContextPath();
+    });
+
+    test('prefixes every absolute NiFi REST API URL when behind a reverse proxy', async () => {
+        const prefix = '/my-app/ui';
+        globalThis.jwtAuthConfig = { processorId: PROC_UUID };
+        const autoTerminated = ['failure'];
+
+        // The very first fetch the primed entry point issues: the context-path
+        // servlet resolving the reverse-proxy prefix.
+        mockJsonResponse({ contextPath: prefix });
+        // Detection (WAR-relative — not proxy-prefixed).
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // GET current — RUNNING.
+        mockJsonResponse({ revision: { version: 1 }, component: { id: PROC_UUID, state: 'RUNNING', config: { autoTerminatedRelationships: autoTerminated } } });
+        // PUT stop run-status.
+        mockJsonResponse({ revision: { version: 2 } });
+        // GET poll state — STOPPED.
+        mockJsonResponse({ revision: { version: 2 }, component: { id: PROC_UUID, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        // GET fresh revision.
+        mockJsonResponse({ revision: { version: 2 }, component: { id: PROC_UUID, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        // PUT property update.
+        mockJsonResponse({ revision: { version: 3 } });
+        // GET for autoTerminateStaleRelationships — no validation errors.
+        mockJsonResponse({ revision: { version: 3 }, component: { id: PROC_UUID, state: 'STOPPED', validationErrors: [] } });
+        // GET for restart.
+        mockJsonResponse({ revision: { version: 3 }, component: { id: PROC_UUID, state: 'STOPPED' } });
+        // PUT restart run-status.
+        mockJsonResponse({ revision: { version: 4 } });
+
+        await updateComponentProperties(PROC_UUID, { 'key': 'value' });
+
+        // The context-path servlet is the first call and is WAR-relative.
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('nifi-api/context-path');
+
+        // Every subsequent absolute NiFi REST API URL must carry the prefix.
+        const absoluteUrls = globalThis.fetch.mock.calls
+            .map((call) => call[0])
+            .filter((url) => url.includes('/nifi-api/'));
+
+        expect(absoluteUrls.length).toBeGreaterThan(0);
+        for (const url of absoluteUrls) {
+            expect(url.startsWith(`${prefix}/nifi-api/`)).toBe(true);
+        }
+
+        // Spot-check the load-bearing URLs explicitly.
+        expect(absoluteUrls).toContain(`${prefix}/nifi-api/processors/${PROC_UUID}`);
+        expect(absoluteUrls).toContain(`${prefix}/nifi-api/processors/${PROC_UUID}/run-status`);
+    });
+
+    test('leaves absolute URLs unprefixed for a direct (non-proxied) deployment', async () => {
+        globalThis.jwtAuthConfig = { processorId: PROC_UUID };
+        const autoTerminated = ['failure'];
+
+        // Direct deployment: the context-path servlet resolves an empty prefix.
+        mockJsonResponse({ contextPath: '' });
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        mockJsonResponse({ revision: { version: 1 }, component: { id: PROC_UUID, state: 'RUNNING', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 2 } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: PROC_UUID, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: PROC_UUID, state: 'STOPPED', config: { autoTerminatedRelationships: autoTerminated } } });
+        mockJsonResponse({ revision: { version: 3 } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: PROC_UUID, state: 'STOPPED', validationErrors: [] } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: PROC_UUID, state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 4 } });
+
+        await updateComponentProperties(PROC_UUID, { 'key': 'value' });
+
+        const absoluteUrls = globalThis.fetch.mock.calls
+            .map((call) => call[0])
+            .filter((url) => url.includes('/nifi-api/'));
+
+        expect(absoluteUrls.length).toBeGreaterThan(0);
+        // Byte-identical to the pre-fix behaviour: no prefix on any absolute URL.
+        for (const url of absoluteUrls) {
+            expect(url.startsWith('/nifi-api/')).toBe(true);
+        }
+        expect(absoluteUrls).toContain(`/nifi-api/processors/${PROC_UUID}`);
+        expect(absoluteUrls).toContain(`/nifi-api/processors/${PROC_UUID}/run-status`);
     });
 });

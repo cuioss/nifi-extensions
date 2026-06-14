@@ -106,4 +106,15 @@
         <url-pattern>/nifi-api/processors/jwt/gateway/*</url-pattern>
     </servlet-mapping>
 
+    <!-- Proxy context-path resolver - mapped OUTSIDE /nifi-api/processors/jwt/*
+         so ProcessorIdValidationFilter does not require a processor-ID header. -->
+    <servlet>
+        <servlet-name>ProxyContextPathServlet</servlet-name>
+        <servlet-class>de.cuioss.nifi.ui.servlets.ProxyContextPathServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ProxyContextPathServlet</servlet-name>
+        <url-pattern>/nifi-api/context-path</url-pattern>
+    </servlet-mapping>
+
 </web-app>

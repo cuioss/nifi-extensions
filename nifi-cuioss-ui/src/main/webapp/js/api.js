@@ -11,11 +11,94 @@ import { log } from './utils.js';
 
 const BASE_URL = 'nifi-api/processors/jwt';
 
+/** WAR-relative path of the proxy context-path resolver servlet. */
+const PROXY_CONTEXT_PATH_URL = 'nifi-api/context-path';
+
 /** Component type definitions with NiFi REST API paths. */
 const COMPONENT_TYPES = {
     PROCESSOR: { apiPath: '/nifi-api/processors', propsPath: ['component', 'config', 'properties'] },
     CONTROLLER_SERVICE: { apiPath: '/nifi-api/controller-services', propsPath: ['component', 'properties'] }
 };
+
+// ---------------------------------------------------------------------------
+// Reverse-proxy context path
+// ---------------------------------------------------------------------------
+
+/**
+ * Cached reverse-proxy context path prefix.
+ * `null` = not yet resolved; a string (possibly empty) = resolved value.
+ * Host-absolute /nifi-api/... URLs are prefixed with this so that requests
+ * routed through a reverse proxy (which serves NiFi under a sub-path) hit the
+ * correct path. Empty string for direct, non-proxied deployments.
+ */
+let _proxyContextPath = null;
+
+/**
+ * In-flight resolution promise, deduplicating concurrent first-call fetches.
+ * `null` when no fetch is pending. Cleared once the resolution settles.
+ */
+let _proxyContextPathPromise = null;
+
+/**
+ * Resolve and cache the reverse-proxy context path prefix.
+ *
+ * Browser JavaScript cannot read the proxy headers (X-ProxyContextPath /
+ * X-Forwarded-Prefix) directly — they are added by the reverse proxy on the
+ * hop to NiFi and never reach the browser. The ProxyContextPathServlet does
+ * receive them and returns the resolved prefix as JSON.
+ *
+ * The result is cached after the first successful call; subsequent calls
+ * return the cached value without re-fetching. Any failure (servlet
+ * unreachable, non-OK response, malformed body) resolves to an empty string,
+ * caching it so a flaky servlet does not trigger a fetch on every API call.
+ * Concurrent first calls (several API entry points priming the cache at once on
+ * page load) share a single in-flight fetch via `_proxyContextPathPromise`, so
+ * the servlet is hit at most once. Once resolved, `nifiApiUrl()` reads the
+ * cached value synchronously.
+ *
+ * @returns {Promise<string>}  the normalized prefix (e.g. '/my-app/ui'), or ''
+ */
+export const getProxyContextPath = async () => {
+    if (_proxyContextPath !== null) return _proxyContextPath;
+    if (_proxyContextPathPromise) return _proxyContextPathPromise;
+
+    _proxyContextPathPromise = (async () => {
+        try {
+            const res = await fetch(PROXY_CONTEXT_PATH_URL, { credentials: 'same-origin' });
+            if (!res.ok) {
+                log.warn(`Proxy context-path servlet returned HTTP ${res.status}; using empty prefix`);
+                _proxyContextPath = '';
+            } else {
+                const data = await res.json();
+                _proxyContextPath = typeof data?.contextPath === 'string' ? data.contextPath : '';
+            }
+        } catch (e) {
+            log.warn('Failed to resolve proxy context path; using empty prefix:', e);
+            _proxyContextPath = '';
+        } finally {
+            _proxyContextPathPromise = null;
+        }
+        return _proxyContextPath;
+    })();
+
+    return _proxyContextPathPromise;
+};
+
+/**
+ * Prepend the resolved reverse-proxy context path to a host-absolute NiFi REST
+ * API path. Reads the cached prefix synchronously (defaulting to '' until
+ * getProxyContextPath() has resolved it), so callers must prime the cache via
+ * getProxyContextPath() at startup for proxied deployments. WAR-relative paths
+ * (BASE_URL-based, no leading slash) are NOT routed through here — they already
+ * resolve relative to the proxied WAR context.
+ *
+ * @param {string} absolutePath  a host-absolute path beginning with '/nifi-api'
+ * @returns {string}  the prefixed path
+ */
+const nifiApiUrl = (absolutePath) => `${_proxyContextPath || ''}${absolutePath}`;
+
+/** Reset the cached proxy context path (and any in-flight fetch). Useful for testing. */
+const resetProxyContextPath = () => { _proxyContextPath = null; _proxyContextPathPromise = null; };
 
 /** Cached component detection results keyed by component ID. */
 const _componentInfoCache = new Map();
@@ -174,8 +257,9 @@ export const verifyToken = (token) =>
  * @returns {Promise<Object>}  NiFi REST API response
  */
 export const getComponentProperties = async (componentId) => {
+    await getProxyContextPath();
     const info = await detectComponentType(componentId);
-    const data = await request('GET', `${info.apiPath}/${componentId}`);
+    const data = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
     // Navigate propsPath to extract properties: e.g. ['component', 'config', 'properties']
     let props = data;
     for (const key of info.propsPath) { props = props?.[key]; }
@@ -192,14 +276,15 @@ export const getComponentProperties = async (componentId) => {
  * @returns {Promise<Object>}  updated component response
  */
 export const updateComponentProperties = async (componentId, properties) => {
+    await getProxyContextPath();
     const info = await detectComponentType(componentId);
 
     if (info.type === 'PROCESSOR') {
         return updateProcessorWithStopStart(componentId, info, properties);
     }
 
-    const current = await request('GET', `${info.apiPath}/${componentId}`);
-    return request('PUT', `${info.apiPath}/${componentId}`, {
+    const current = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
+    return request('PUT', nifiApiUrl(`${info.apiPath}/${componentId}`), {
         revision: current.revision,
         component: { id: componentId, properties }
     });
@@ -232,7 +317,7 @@ const buildComponentBody = (componentId, propsPath, properties) => {
  * If the processor is already stopped, just updates and restarts.
  */
 const updateProcessorWithStopStart = async (componentId, info, properties) => {
-    const current = await request('GET', `${info.apiPath}/${componentId}`);
+    const current = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
     const wasRunning = current.component?.status?.runStatus === 'Running'
         || current.component?.state === 'RUNNING';
 
@@ -244,7 +329,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
 
     // Fetch fresh revision after state change
     const fresh = wasRunning
-        ? await request('GET', `${info.apiPath}/${componentId}`)
+        ? await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`))
         : current;
 
     // Preserve autoTerminatedRelationships so NiFi doesn't reset them
@@ -256,7 +341,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
 
     let result;
     try {
-        result = await request('PUT', `${info.apiPath}/${componentId}`, {
+        result = await request('PUT', nifiApiUrl(`${info.apiPath}/${componentId}`), {
             revision: fresh.revision,
             component: componentBody
         });
@@ -265,7 +350,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
         if (wasRunning) {
             try {
                 await autoTerminateStaleRelationships(componentId, info);
-                const latest = await request('GET', `${info.apiPath}/${componentId}`);
+                const latest = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
                 await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
             } catch (e) { log.warn('Failed to restart processor after property update:', e); }
         }
@@ -278,7 +363,7 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
  */
 const updateProcessorRunStatus = (componentId, state, revision) => {
     assertValidUuid(componentId, 'Processor ID');
-    return request('PUT', `/nifi-api/processors/${componentId}/run-status`, {
+    return request('PUT', nifiApiUrl(`/nifi-api/processors/${componentId}/run-status`), {
         revision,
         state
     });
@@ -291,7 +376,7 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
     const maxAttempts = 20;
     const delayMs = 500;
     for (let i = 0; i < maxAttempts; i++) {
-        const data = await request('GET', `${info.apiPath}/${componentId}`);
+        const data = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
         if (data.component?.state === desiredState) return;
         await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
@@ -306,7 +391,7 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
  * Stale = relationship exists but no restapi.*.success-outcome property references it.
  */
 const autoTerminateStaleRelationships = async (componentId, info) => {
-    const proc = await request('GET', `${info.apiPath}/${componentId}`);
+    const proc = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
     const errors = proc.component?.validationErrors || [];
     // Parse relationship names from validation errors like:
     // "'Relationship foo' is invalid because Relationship 'foo' is not connected..."
@@ -335,7 +420,7 @@ const autoTerminateStaleRelationships = async (componentId, info) => {
 
     const current = proc.component?.config?.autoTerminatedRelationships || [];
     const updated = [...new Set([...current, ...stale])];
-    await request('PUT', `${info.apiPath}/${componentId}`, {
+    await request('PUT', nifiApiUrl(`${info.apiPath}/${componentId}`), {
         revision: proc.revision,
         component: { id: componentId, config: { autoTerminatedRelationships: updated } }
     });
@@ -350,11 +435,12 @@ const autoTerminateStaleRelationships = async (componentId, info) => {
  */
 export const getConnectedRelationships = async (componentId) => {
     assertValidUuid(componentId, 'Processor ID');
+    await getProxyContextPath();
     try {
-        const proc = await request('GET', `/nifi-api/processors/${componentId}`);
+        const proc = await request('GET', nifiApiUrl(`/nifi-api/processors/${componentId}`));
         const pgId = proc.component?.parentGroupId;
         if (!pgId) return new Set();
-        const connData = await request('GET', `/nifi-api/process-groups/${pgId}/connections`);
+        const connData = await request('GET', nifiApiUrl(`/nifi-api/process-groups/${pgId}/connections`));
         const connections = connData.connections || [];
         return new Set(
             connections
@@ -417,7 +503,8 @@ export const discoverTokenEndpoint = (issuerUrl) =>
  */
 export const getControllerServiceProperties = async (csId) => {
     assertValidUuid(csId, 'Controller Service ID');
-    const data = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
+    await getProxyContextPath();
+    const data = await request('GET', nifiApiUrl(`${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`));
     let props = data;
     for (const key of COMPONENT_TYPES.CONTROLLER_SERVICE.propsPath) { props = props?.[key]; }
     return { properties: props || {}, revision: data.revision };
@@ -433,8 +520,9 @@ export const getControllerServiceProperties = async (csId) => {
  */
 export const updateControllerServiceProperties = async (csId, properties) => {
     assertValidUuid(csId, 'Controller Service ID');
-    const current = await request('GET', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`);
-    return request('PUT', `${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`, {
+    await getProxyContextPath();
+    const current = await request('GET', nifiApiUrl(`${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`));
+    return request('PUT', nifiApiUrl(`${COMPONENT_TYPES.CONTROLLER_SERVICE.apiPath}/${csId}`), {
         revision: current.revision,
         component: { id: csId, properties }
     });
@@ -449,8 +537,9 @@ export const updateControllerServiceProperties = async (csId, properties) => {
  */
 export const resolveJwtConfigServiceId = async (processorId) => {
     assertValidUuid(processorId, 'Processor ID');
+    await getProxyContextPath();
     const info = await detectComponentType(processorId);
-    const data = await request('GET', `${info.apiPath}/${processorId}`);
+    const data = await request('GET', nifiApiUrl(`${info.apiPath}/${processorId}`));
     let props = data;
     for (const key of info.propsPath) { props = props?.[key]; }
     const properties = props || {};
@@ -461,18 +550,22 @@ export const resolveJwtConfigServiceId = async (processorId) => {
 
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
-export const getProcessorProperties = (processorId) =>
-    request('GET', `/nifi-api/processors/${processorId}`);
+export const getProcessorProperties = async (processorId) => {
+    await getProxyContextPath();
+    return request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
+};
 
 /** @deprecated Use updateComponentProperties instead */
 export const updateProcessorProperties = async (processorId, properties) => {
-    const proc = await request('GET', `/nifi-api/processors/${processorId}`);
-    return request('PUT', `/nifi-api/processors/${processorId}`, {
+    await getProxyContextPath();
+    const proc = await request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
+    return request('PUT', nifiApiUrl(`/nifi-api/processors/${processorId}`), {
         revision: proc.revision,
         component: { id: processorId, config: { properties } }
     });
 };
 
 export {
-    getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES
+    getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES,
+    resetProxyContextPath
 };
