@@ -41,14 +41,11 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse single route")
         void shouldParseSingleRoute() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals(1, routes.size());
             RouteConfiguration route = routes.getFirst();
             assertEquals("health", route.name());
@@ -58,7 +55,6 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse multiple routes")
         void shouldParseMultipleRoutes() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.methods", "GET");
@@ -66,55 +62,44 @@ class RouteConfigurationParserTest {
             properties.put("restapi.users.methods", "GET,POST,PUT,DELETE");
             properties.put("restapi.orders.path", "/api/orders");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals(3, routes.size());
         }
 
         @Test
         @DisplayName("Should apply default methods when not specified")
         void shouldApplyDefaultMethods() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals(RouteConfiguration.DEFAULT_METHODS, routes.getFirst().methods());
         }
 
         @Test
         @DisplayName("Should parse custom methods")
         void shouldParseCustomMethods() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.methods", "GET");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals(Set.of("GET"), routes.getFirst().methods());
         }
 
         @Test
         @DisplayName("Should parse roles and scopes")
         void shouldParseRolesAndScopes() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.users.path", "/api/users");
             properties.put("restapi.users.required-roles", "admin,user");
             properties.put("restapi.users.required-scopes", "read,write");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             RouteConfiguration route = routes.getFirst();
             assertEquals(Set.of("admin", "user"), route.requiredRoles());
             assertEquals(Set.of("read", "write"), route.requiredScopes());
@@ -123,59 +108,47 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should default enabled to true when absent")
         void shouldDefaultEnabledToTrue() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertTrue(routes.getFirst().enabled());
         }
 
         @Test
         @DisplayName("Should parse enabled=false")
         void shouldParseEnabledFalse() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.enabled", "false");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertFalse(routes.getFirst().enabled());
         }
 
         @Test
         @DisplayName("Should parse enabled=true explicitly")
         void shouldParseEnabledTrue() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.enabled", "true");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertTrue(routes.getFirst().enabled());
         }
 
         @Test
         @DisplayName("Should handle schema property as file path")
         void shouldHandleSchemaProperty() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.users.path", "/api/users");
             properties.put("restapi.users.schema", "./conf/schemas/user-schema.json");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals("./conf/schemas/user-schema.json", routes.getFirst().schemaPath());
         }
     }
@@ -352,14 +325,11 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should reject route without path")
         void shouldRejectRouteWithoutPath() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.methods", "GET");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertTrue(routes.isEmpty());
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "no path");
         }
@@ -367,28 +337,22 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should accept route with path only")
         void shouldAcceptRouteWithPathOnly() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertEquals(1, routes.size());
         }
 
         @Test
         @DisplayName("Should log warning for invalid route")
         void shouldLogWarningForInvalidRoute() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.methods", "GET"); // no path
 
-            // Act
             RouteConfigurationParser.parse(properties);
 
-            // Assert
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "health");
         }
     }
@@ -400,42 +364,33 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should return empty list for no route properties")
         void shouldReturnEmptyListForNoRouteProperties() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("some.other.property", "value");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertTrue(routes.isEmpty());
         }
 
         @Test
         @DisplayName("Should handle empty values")
         void shouldHandleEmptyValues() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "  ");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             assertTrue(routes.isEmpty());
         }
 
         @Test
         @DisplayName("Should return unmodifiable list")
         void shouldReturnUnmodifiableList() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
-            // Assert
             var newRoute = RouteConfiguration.builder().name("x").path("/x").build();
             assertThrows(UnsupportedOperationException.class, () -> routes.add(newRoute));
         }
