@@ -18,7 +18,7 @@ Custom Apache NiFi processors for JWT authentication and validation with a web-b
 - **Compile:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "compile"`
 - **Quality gate:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Psonar"`
 - **Full verify:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify"`
-- **Integration tests:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"` — stop any running Docker containers first; see [Running Maven integration tests](#running-maven-integration-tests--pintegration-tests)
+- **Integration tests:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"` — runbook (container lifecycle, mandatory `-pl integration-testing -am`, concurrency rule) lives in the `/deploy it` skill mode
 - **Coverage:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pcoverage"`
 - **Module tests (e-2-e-playwright-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=e-2-e-playwright"` — only on e-2-e-playwright-npm
 - **Module tests (nifi-cuioss-ui-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=nifi-cuioss-ui"` — only on nifi-cuioss-ui-npm
@@ -34,16 +34,7 @@ Use `/deploy` skill for full runbook. Quick reference:
 
 ### Running Maven integration tests (`-Pintegration-tests`)
 
-The Maven `integration-tests` profile **manages its own container lifecycle** (`deploy-and-start.sh` starts NiFi+Keycloak and waits for readiness; `cleanup-containers` stops them afterward). Because it binds the same host ports the standalone dev stack uses (Keycloak `9085`/`9086`, NiFi `9095`), any already-running containers cause a port conflict and the IT run fails. Follow this pre-flight every time:
-
-1. **Check for running containers:** `docker ps`
-2. **If the integration-testing stack is up** (compose project `docker`, e.g. `docker-keycloak-1` / `docker-nifi-1`), stop it:
-   `docker compose -f integration-testing/src/main/docker/docker-compose.yml down -v`
-   (Unnamed containers without a `keycloak`/`nifi` compose label do not bind the IT ports and can be left running.)
-3. **Run the IT** via the canonical executor with `-pl integration-testing -am` (the `-am` is mandatory — `integration-testing` test sources depend on the `nifi-cuioss-common` test-jar, which is only built when the reactor is also-made):
-   `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"`
-
-The profile tears its own containers down on completion. Do NOT run `/deploy` and a Maven IT run at the same time.
+To run the integration-testing module's Java Failsafe ITs, use the `/deploy it` skill mode — the runbook (self-managed container lifecycle, mandatory `-pl integration-testing -am`, and the concurrency rule) lives there.
 
 ## Conventions
 
