@@ -44,7 +44,7 @@ class HttpRequestContainerTest {
             var container = new HttpRequestContainer(
                     "users", "POST", "/api/users",
                     Map.of("page", "1"), Map.of("Authorization", "Bearer token"),
-                    "127.0.0.1", body, "application/json", token, null, null);
+                    "127.0.0.1", body, "application/json", token, null, null, Map.of("id", "42"));
 
             // Assert
             assertEquals("users", container.routeName());
@@ -56,6 +56,7 @@ class HttpRequestContainerTest {
             assertArrayEquals(body, container.body());
             assertEquals("application/json", container.contentType());
             assertNotNull(container.token());
+            assertEquals("42", container.pathParameters().get("id"));
         }
 
         @Test
@@ -67,7 +68,7 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    Map.of(), Map.of(), "127.0.0.1", new byte[0], null, token, null, null);
+                    Map.of(), Map.of(), "127.0.0.1", new byte[0], null, token, null, null, Map.of());
 
             // Assert
             assertEquals(0, container.body().length);
@@ -81,15 +82,18 @@ class HttpRequestContainerTest {
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
                     Map.of("key", "value"), Map.of("Header", "value"),
-                    "127.0.0.1", null, null, token, null, null);
+                    "127.0.0.1", null, null, token, null, null, Map.of("id", "1"));
 
             // Assert
             var queryParams = container.queryParameters();
             var headers = container.headers();
+            var pathParams = container.pathParameters();
             assertThrows(UnsupportedOperationException.class,
                     () -> queryParams.put("new", "entry"));
             assertThrows(UnsupportedOperationException.class,
                     () -> headers.put("New-Header", "value"));
+            assertThrows(UnsupportedOperationException.class,
+                    () -> pathParams.put("new", "entry"));
         }
 
         @Test
@@ -101,7 +105,7 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null);
+                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null, Map.of());
 
             // Assert
             assertSame(token, container.token());
@@ -116,12 +120,70 @@ class HttpRequestContainerTest {
             // Act
             var container = new HttpRequestContainer(
                     "health", "GET", "/api/health",
-                    null, null, "127.0.0.1", null, null, token, null, null);
+                    null, null, "127.0.0.1", null, null, token, null, null, null);
 
             // Assert
             assertEquals(0, container.body().length);
             assertTrue(container.queryParameters().isEmpty());
             assertTrue(container.headers().isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("Path Parameters")
+    class PathParameters {
+
+        @Test
+        @DisplayName("Should default to empty map when null")
+        void shouldDefaultToEmptyMapWhenNull() {
+            // Arrange
+            var token = TestTokenGenerators.accessTokens().next().asAccessTokenContent();
+
+            // Act
+            var container = new HttpRequestContainer(
+                    "users", "GET", "/api/users/42",
+                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null, null);
+
+            // Assert
+            assertNotNull(container.pathParameters(), "Path parameters should never be null");
+            assertTrue(container.pathParameters().isEmpty(), "Path parameters should default to empty");
+        }
+
+        @Test
+        @DisplayName("Should carry path parameters from a pattern-matched route")
+        void shouldCarryPathParameters() {
+            // Arrange
+            var token = TestTokenGenerators.accessTokens().next().asAccessTokenContent();
+
+            // Act
+            var container = new HttpRequestContainer(
+                    "users", "GET", "/api/users/42/orders/7",
+                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null,
+                    Map.of("userId", "42", "orderId", "7"));
+
+            // Assert
+            assertAll("Path parameters",
+                    () -> assertEquals("42", container.pathParameters().get("userId"), "userId should match"),
+                    () -> assertEquals("7", container.pathParameters().get("orderId"), "orderId should match"),
+                    () -> assertEquals(2, container.pathParameters().size(), "Both parameters should be present"));
+        }
+
+        @Test
+        @DisplayName("Should defensively copy the supplied path parameters")
+        void shouldDefensivelyCopyPathParameters() {
+            // Arrange
+            var token = TestTokenGenerators.accessTokens().next().asAccessTokenContent();
+            var mutable = new java.util.HashMap<String, String>();
+            mutable.put("id", "1");
+
+            // Act
+            var container = new HttpRequestContainer(
+                    "users", "GET", "/api/users/1",
+                    Map.of(), Map.of(), "127.0.0.1", null, null, token, null, null, mutable);
+            mutable.put("id", "mutated");
+
+            // Assert
+            assertEquals("1", container.pathParameters().get("id"), "Container should hold an independent copy");
         }
     }
 }

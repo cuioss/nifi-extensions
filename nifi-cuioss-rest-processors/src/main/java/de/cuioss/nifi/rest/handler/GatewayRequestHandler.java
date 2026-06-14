@@ -26,6 +26,7 @@ import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.AuthMode;
+import de.cuioss.nifi.rest.config.RoutePattern;
 import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
@@ -66,6 +67,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     /** Path to handler lookup map. Iteration order matches registration order. */
     private final Map<String, EndpointHandler> handlerMap;
+    /**
+     * Compiled path-template routes in registration order. Only handlers whose
+     * {@code path()} declares {@code {placeholder}} segments are compiled here;
+     * plain routes stay on the exact/prefix passes.
+     */
+    private final List<PatternRoute> patternRoutes;
     private final JwtIssuerConfigService configService;
     private final int globalMaxRequestSize;
     private final PipelineSet securityPipelines;
@@ -90,6 +97,17 @@ public class GatewayRequestHandler extends Handler.Abstract {
         /** Authentication failed; error response was already sent to the client. */
         record ErrorSent() implements AuthResult {
         }
+    }
+
+    /** A compiled path template paired with the handler it routes to. */
+    private record PatternRoute(RoutePattern pattern, EndpointHandler handler) {
+    }
+
+    /**
+     * The outcome of route resolution: the matched handler and the path
+     * parameters extracted from a pattern match (empty for exact/prefix matches).
+     */
+    private record ResolvedRoute(EndpointHandler handler, Map<String, String> pathParameters) {
     }
 
     /**
@@ -132,6 +150,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 SecurityConfiguration.defaults(), this.httpSecurityEvents);
 
         this.handlerMap = new LinkedHashMap<>();
+        this.patternRoutes = new ArrayList<>();
         for (EndpointHandler handler : handlers) {
             if (handlerMap.containsKey(handler.path())) {
                 throw new IllegalArgumentException(
@@ -141,6 +160,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
                                         handler.name()));
             }
             handlerMap.put(handler.path(), handler);
+            if (RoutePattern.containsPlaceholders(handler.path())) {
+                patternRoutes.add(new PatternRoute(RoutePattern.compile(handler.path()), handler));
+            }
         }
     }
 
@@ -170,15 +192,17 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         String path = sanitized.get().path();
 
-        // 2. Lookup handler
-        EndpointHandler handler = resolveHandler(path);
-        if (handler == null || !handler.enabled()) {
+        // 2. Lookup handler (exact → prefix → pattern)
+        ResolvedRoute resolved = resolveHandler(path);
+        if (resolved == null || !resolved.handler().enabled()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
             LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
             sendProblemResponse(response, callback,
                     ProblemDetail.notFound("No route configured for path: " + path));
             return;
         }
+        EndpointHandler handler = resolved.handler();
+        Map<String, String> pathParameters = resolved.pathParameters();
         LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, handler.name());
 
         // 3. Method check
@@ -209,19 +233,36 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
 
-        // 7. Delegate to handler
-        handler.process(sanitized.get(), token, body, request, response, callback);
+        // 7. Delegate to handler (attach extracted path parameters)
+        handler.process(sanitized.get().withPathParameters(pathParameters), token, body, request, response, callback);
     }
 
+    /**
+     * Resolves the request path to a handler using three ordered passes:
+     * exact match, prefix match, then pattern match. The first pass to hit wins,
+     * so a literal path that also matches a pattern resolves to its exact handler.
+     *
+     * @param path the sanitized request path
+     * @return the resolved route, or {@code null} when no pass matches
+     */
     @Nullable
-    private EndpointHandler resolveHandler(String path) {
-        EndpointHandler handler = handlerMap.get(path);
-        if (handler != null) {
-            return handler;
+    private ResolvedRoute resolveHandler(String path) {
+        if (path == null) {
+            return null;
+        }
+        EndpointHandler exact = handlerMap.get(path);
+        if (exact != null) {
+            return new ResolvedRoute(exact, Map.of());
         }
         for (EndpointHandler h : handlerMap.values()) {
             if (h.prefixMatch() && path.startsWith(h.path() + "/")) {
-                return h;
+                return new ResolvedRoute(h, Map.of());
+            }
+        }
+        for (PatternRoute route : patternRoutes) {
+            Optional<Map<String, String>> parameters = route.pattern().match(path);
+            if (parameters.isPresent()) {
+                return new ResolvedRoute(route.handler(), parameters.get());
             }
         }
         return null;
@@ -399,7 +440,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 }
             }
 
-            return Optional.of(new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders));
+            return Optional.of(new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders, Map.of()));
         } catch (UrlSecurityException e) {
             LOGGER.warn(RestApiLogMessages.WARN.SECURITY_VIOLATION, method, path, remoteHost, e.getMessage());
             sendProblemResponse(response, callback,

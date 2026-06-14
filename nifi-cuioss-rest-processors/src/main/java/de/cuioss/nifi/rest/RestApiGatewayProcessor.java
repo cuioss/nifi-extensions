@@ -355,6 +355,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             container.queryParameters().forEach((key, value) ->
                     attributes.put(RestApiAttributes.QUERY_PARAM_PREFIX + key, value));
 
+            // Set path parameters extracted from a pattern-matched route
+            container.pathParameters().forEach((key, value) ->
+                    attributes.put(RestApiAttributes.PATH_PARAM_PREFIX + key, value));
+
             // Set trace ID attributes for request tracking
             if (container.traceId() != null) {
                 attributes.put(RestApiAttributes.TRACE_ID, container.traceId());

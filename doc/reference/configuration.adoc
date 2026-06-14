@@ -272,7 +272,7 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |===
 |Property Pattern |Description |Example
 
-|restapi.<name>.path |URL path for the route (exact match) |/api/users
+|restapi.<name>.path |URL path for the route. Supports exact paths, prefix matching, and `{placeholder}` templates for path parameters (see <<Path-Parameter Routes>>) |/api/users/{id}
 |restapi.<name>.methods |Comma-separated HTTP methods (default: GET,POST,PUT,DELETE) |GET,POST
 |restapi.<name>.required-roles |Comma-separated roles the JWT must carry |admin,editor
 |restapi.<name>.required-scopes |Comma-separated scopes the JWT must carry |read,write
@@ -309,6 +309,40 @@ restapi.public.methods = GET
 restapi.public.auth-mode = none
 restapi.public.create-flowfile = false
 ----
+
+[#path-parameter-routes]
+=== Path-Parameter Routes
+
+A route `path` may contain `{placeholder}` segments to capture variable parts of the request URI. The placeholder values are extracted from the matched request and written to the FlowFile as `rest.api.pathparam.<name>` attributes (one per placeholder).
+
+Placeholder syntax:
+
+* `{name}` -- matches a single path segment.
+* `{name:regex}` -- matches a single segment constrained by `regex`, e.g. `{id:\\d+}`.
+
+Routes resolve through three ordered passes -- exact match, prefix match, then `{placeholder}` pattern match -- and the first to hit wins. A literal route (for example `/api/users/me`) therefore takes precedence over a pattern route (`/api/users/{id}`) that would also match.
+
+[source,properties]
+----
+# Path-parameter route: /api/users/42/orders/7 → userId=42, orderId=7
+restapi.user-orders.path = /api/users/{userId}/orders/{orderId}
+restapi.user-orders.methods = GET
+restapi.user-orders.required-roles = read
+----
+
+For a `GET /api/users/42/orders/7` request, the resulting FlowFile carries:
+
+[cols="2,1"]
+|===
+|Attribute |Value
+
+|`rest.route.name` |`user-orders`
+|`http.request.uri` |`/api/users/42/orders/7`
+|`rest.api.pathparam.userId` |`42`
+|`rest.api.pathparam.orderId` |`7`
+|===
+
+See link:../architecture/gateway.adoc#path-parameter-routes[Gateway Architecture -- Path-Parameter Routes] for the resolution pipeline and match precedence.
 
 == Static Configuration Files
 

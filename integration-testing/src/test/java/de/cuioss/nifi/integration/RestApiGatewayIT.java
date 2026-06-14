@@ -49,6 +49,7 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /api/admin} — GET only (requires ADMIN role)</li>
  *   <li>{@code /api/validated} — POST only (JSON Schema validated via file path)</li>
  *   <li>{@code /api/inline-validated} — POST only (JSON Schema validated via inline JSON)</li>
+ *   <li>{@code /api/items/{itemId}} — GET only (path-parameter route; extracts {@code rest.api.pathparam.itemId})</li>
  *   <li>{@code /metrics} — GET only (management, loopback or JWT auth)</li>
  *   <li>{@code /health} — GET only (management, loopback or JWT auth)</li>
  * </ul>
@@ -154,6 +155,56 @@ class RestApiGatewayIT {
                     .body("{\"key\": \"value\"}")
                     .when()
                     .post("/api/data")
+                    .then()
+                    .statusCode(401);
+        }
+    }
+
+    // ── Path-Parameter Routes ───────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Path-Parameter Routes")
+    class PathParameterRouteTests {
+
+        @Test
+        @DisplayName("should return 200 OK for GET /api/items/{itemId} matching the parameterized route")
+        void shouldMatchParameterizedRoute() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/items/123")
+                    .then()
+                    .statusCode(200)
+                    .body(not(emptyString()));
+        }
+
+        @Test
+        @DisplayName("should match the parameterized route for a different path-parameter value")
+        void shouldMatchParameterizedRouteForDifferentValue() {
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/items/abc-987")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("should return 404 for a request that does not fit the single-segment template")
+        void shouldReturn404ForNonMatchingPath() {
+            // /api/items/123/extra has an extra segment the {itemId} single-segment template cannot match,
+            // and no other route claims it.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/items/123/extra")
+                    .then()
+                    .statusCode(404);
+        }
+
+        @Test
+        @DisplayName("should return 401 for GET /api/items/{itemId} without JWT")
+        void shouldReturn401ForParameterizedRouteWithoutJwt() {
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/items/123")
                     .then()
                     .statusCode(401);
         }
