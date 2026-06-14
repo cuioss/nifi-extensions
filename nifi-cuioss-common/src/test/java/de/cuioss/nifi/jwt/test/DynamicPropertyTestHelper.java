@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.jwt.test;
 
+import lombok.experimental.UtilityClass;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.Processor;
@@ -25,53 +26,53 @@ import org.apache.nifi.util.TestRunner;
 import java.util.Map;
 
 /**
- * Helper class for testing NiFi components with dynamic properties.
+ * Helper utilities for testing NiFi components with dynamic properties.
  * <p>
- * Provides utilities to work around the limitation where TestRunner
- * doesn't properly handle dynamic properties in getProperties() method.
+ * Works around the limitation where {@link TestRunner} doesn't properly
+ * surface dynamic properties through the {@code getProperties()} method.
  */
+@UtilityClass
 public class DynamicPropertyTestHelper {
 
     /**
-     * Creates a ProcessContext from a TestRunner that properly includes dynamic properties.
+     * Creates a {@link ProcessContext} from a {@link TestRunner} that properly includes
+     * dynamic properties.
      *
-     * @param testRunner The test runner with configured properties
-     * @param processor  The processor being tested
-     * @return A ProcessContext that includes all dynamic properties
+     * @param testRunner the test runner with configured properties
+     * @param processor  the processor being tested
+     * @return a {@link ProcessContext} that includes all dynamic properties
      */
     public static ProcessContext createContextWithDynamicProperties(TestRunner testRunner, Processor processor) {
-        MockProcessContext context = new MockProcessContext(processor);
+        var context = new MockProcessContext(processor);
         Map<PropertyDescriptor, String> properties = testRunner.getProcessContext().getProperties();
-        for (Map.Entry<PropertyDescriptor, String> entry : properties.entrySet()) {
+        for (var entry : properties.entrySet()) {
             context.setProperty(entry.getKey(), entry.getValue());
         }
         return context;
     }
 
     /**
-     * Sets multiple dynamic properties with a common prefix.
+     * Sets multiple dynamic properties sharing a common prefix.
      *
-     * @param testRunner The test runner
-     * @param prefix     The property prefix (e.g., "issuer.test-issuer.")
-     * @param properties Map of property suffixes to values
+     * @param testRunner the test runner
+     * @param prefix     the property prefix (e.g. {@code "issuer.test-issuer."})
+     * @param properties map of property suffixes to values
      */
     public static void setDynamicProperties(TestRunner testRunner, String prefix, Map<String, String> properties) {
-        for (Map.Entry<String, String> entry : properties.entrySet()) {
-            String fullPropertyName = prefix + entry.getKey();
-            testRunner.setProperty(fullPropertyName, entry.getValue());
+        for (var entry : properties.entrySet()) {
+            testRunner.setProperty(prefix + entry.getKey(), entry.getValue());
         }
     }
 
     /**
      * Sets issuer properties for JWT testing.
      *
-     * @param testRunner       The test runner
-     * @param issuerName       The issuer name
-     * @param issuerProperties Map of issuer properties (without prefix)
+     * @param testRunner       the test runner
+     * @param issuerName       the issuer name
+     * @param issuerProperties map of issuer properties (without prefix)
      */
     public static void setIssuerProperties(TestRunner testRunner, String issuerName,
             Map<String, String> issuerProperties) {
-        String prefix = "issuer." + issuerName + ".";
-        setDynamicProperties(testRunner, prefix, issuerProperties);
+        setDynamicProperties(testRunner, "issuer." + issuerName + ".", issuerProperties);
     }
 }

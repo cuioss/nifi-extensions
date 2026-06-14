@@ -62,7 +62,8 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
             throw exceptionToThrow;
         }
         if (tokenToReturn == null) {
-            throw new IllegalStateException("TestJwtIssuerConfigService not configured — call configureValidToken() or configureValidationFailure()");
+            throw new IllegalStateException(
+                    "TestJwtIssuerConfigService not configured — call configureValidToken() or configureValidationFailure()");
         }
         return tokenToReturn;
     }
