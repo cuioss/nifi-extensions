@@ -93,7 +93,8 @@
       "<rootDir>/src/test/js/jest.setup-fetch.js"
     ],
     "setupFilesAfterEnv": [
-      "<rootDir>/src/test/js/jest.setup-dom.js"
+      "<rootDir>/src/test/js/jest.setup-dom.js",
+      "<rootDir>/src/test/js/jest.setup-console.js"
     ]
   }
 }
