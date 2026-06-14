@@ -41,7 +41,14 @@ import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Thin dispatcher implementing the command-pattern for endpoint handling.

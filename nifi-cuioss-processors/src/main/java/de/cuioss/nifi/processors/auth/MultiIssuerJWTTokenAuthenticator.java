@@ -42,7 +42,11 @@ import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.processor.*;
+import org.apache.nifi.processor.AbstractProcessor;
+import org.apache.nifi.processor.ProcessContext;
+import org.apache.nifi.processor.ProcessSession;
+import org.apache.nifi.processor.ProcessorInitializationContext;
+import org.apache.nifi.processor.Relationship;
 
 import java.util.HashMap;
 import java.util.List;
@@ -238,10 +242,18 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     }
 
     private String mapValidationCategoryToErrorCode(String category) {
-        if (category.contains("EXPIRED")) return "AUTH-005";
-        if (category.contains("SIGNATURE")) return "AUTH-006";
-        if (category.contains("ISSUER")) return "AUTH-007";
-        if (category.contains("AUDIENCE")) return "AUTH-008";
+        if (category.contains("EXPIRED")) {
+            return "AUTH-005";
+        }
+        if (category.contains("SIGNATURE")) {
+            return "AUTH-006";
+        }
+        if (category.contains("ISSUER")) {
+            return "AUTH-007";
+        }
+        if (category.contains("AUDIENCE")) {
+            return "AUTH-008";
+        }
         return "AUTH-002";
     }
 

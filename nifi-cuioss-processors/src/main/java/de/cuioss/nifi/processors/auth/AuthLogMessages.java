@@ -50,7 +50,7 @@ public final class AuthLogMessages {
         public static final LogRecord TOKEN_VALIDATION_METRICS = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(15)
-                .template("Token validation metrics - Processed flow files: %d")
+                .template("Token validation metrics - Processed flow files: %s")
                 .build();
 
         public static final LogRecord NO_TOKEN_NOT_REQUIRED = LogRecordModel.builder()
@@ -71,7 +71,7 @@ public final class AuthLogMessages {
         public static final LogRecord TOKEN_SIZE_EXCEEDED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(101)
-                .template("Token exceeds maximum size limit of %d bytes")
+                .template("Token exceeds maximum size limit of %s bytes")
                 .build();
 
         public static final LogRecord AUTHORIZATION_FAILED = LogRecordModel.builder()

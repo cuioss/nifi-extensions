@@ -29,7 +29,12 @@ import org.yaml.snakeyaml.error.YAMLException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 /**
@@ -213,8 +218,14 @@ public class ConfigurationManager {
     }
 
     private String getIssuerId(Map<String, Object> issuerConfig, int index) {
-        if (issuerConfig.containsKey("id")) return issuerConfig.get("id").toString();
-        if (issuerConfig.containsKey("name")) return issuerConfig.get("name").toString();
+        Object id = issuerConfig.get("id");
+        if (id != null) {
+            return id.toString();
+        }
+        Object name = issuerConfig.get("name");
+        if (name != null) {
+            return name.toString();
+        }
         return String.valueOf(index);
     }
 

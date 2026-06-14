@@ -66,13 +66,13 @@ public final class RestApiLogMessages {
         public static final LogRecord FLOWFILE_CREATED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(5)
-                .template("FlowFile created for route '%s' with %d bytes content")
+                .template("FlowFile created for route '%s' with %s bytes content")
                 .build();
 
         public static final LogRecord ROUTES_CONFIGURED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(6)
-                .template("Configured %d routes: %s")
+                .template("Configured %s routes: %s")
                 .build();
 
         public static final LogRecord PROCESSOR_INITIALIZED = LogRecordModel.builder()
@@ -84,7 +84,7 @@ public final class RestApiLogMessages {
         public static final LogRecord PROCESSOR_STOPPED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(8)
-                .template("RestApiGateway processor stopped, drained %d pending requests")
+                .template("RestApiGateway processor stopped, drained %s pending requests")
                 .build();
 
         public static final LogRecord AUTH_SUCCESSFUL = LogRecordModel.builder()
@@ -161,7 +161,7 @@ public final class RestApiLogMessages {
         public static final LogRecord BODY_TOO_LARGE = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(105)
-                .template("Request body size %d exceeds maximum %d for %s %s")
+                .template("Request body size %s exceeds maximum %s for %s %s")
                 .build();
 
         public static final LogRecord VALIDATION_FAILED = LogRecordModel.builder()

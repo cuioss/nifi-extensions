@@ -40,7 +40,12 @@ import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
@@ -71,7 +76,6 @@ import java.util.*;
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
-
 
     // --- NiFi Property Descriptors ---
 

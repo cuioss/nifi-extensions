@@ -111,7 +111,7 @@ public final class JwtLogMessages {
         public static final LogRecord METRICS_SNAPSHOT_CREATED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(14)
-                .template("Created metrics snapshot: %d total validations")
+                .template("Created metrics snapshot: %s total validations")
                 .build();
 
         public static final LogRecord VALIDATION_SUCCESS = LogRecordModel.builder()

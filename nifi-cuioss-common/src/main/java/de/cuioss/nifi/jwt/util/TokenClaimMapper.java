@@ -21,7 +21,11 @@ import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
 import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Maps a validated {@link AccessTokenContent} to a flat {@code Map<String, String>}
