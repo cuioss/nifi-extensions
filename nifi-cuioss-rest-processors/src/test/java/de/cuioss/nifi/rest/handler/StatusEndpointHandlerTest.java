@@ -116,7 +116,7 @@ class StatusEndpointHandlerTest {
     }
 
     private URI uri(String path) {
-        return URI.create("http://localhost:" + port + path);
+        return URI.create("http://127.0.0.1:" + port + path);
     }
 
     @Nested

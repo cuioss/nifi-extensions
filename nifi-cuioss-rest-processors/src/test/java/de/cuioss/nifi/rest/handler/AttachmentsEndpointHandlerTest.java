@@ -135,7 +135,7 @@ class AttachmentsEndpointHandlerTest {
     private String createParentEntry(String routePath) throws Exception {
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d%s".formatted(port, routePath)))
+                        .uri(URI.create("http://127.0.0.1:%d%s".formatted(port, routePath)))
                         .POST(HttpRequest.BodyPublishers.ofString("{\"test\":true}"))
                         .header("Content-Type", "application/json")
                         .build(),
@@ -155,7 +155,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -179,7 +179,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, unknownTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, unknownTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -193,7 +193,7 @@ class AttachmentsEndpointHandlerTest {
     void shouldReturn400ForInvalidUuid() throws Exception {
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/not-a-uuid".formatted(port)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/not-a-uuid".formatted(port)))
                         .POST(HttpRequest.BodyPublishers.ofString("data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -207,7 +207,7 @@ class AttachmentsEndpointHandlerTest {
     void shouldReturn400ForMissingParentTraceId() throws Exception {
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/".formatted(port)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/".formatted(port)))
                         .POST(HttpRequest.BodyPublishers.ofString("data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -224,7 +224,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .GET()
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -239,7 +239,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -257,7 +257,7 @@ class AttachmentsEndpointHandlerTest {
         for (int i = 0; i < 3; i++) {
             var response = httpClient.send(
                     HttpRequest.newBuilder()
-                            .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                            .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                             .POST(HttpRequest.BodyPublishers.ofString("attachment " + i))
                             .header("Content-Type", "application/octet-stream")
                             .build(),
@@ -268,7 +268,7 @@ class AttachmentsEndpointHandlerTest {
         // 4th should fail
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment 4"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -285,7 +285,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -315,7 +315,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -334,7 +334,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -358,7 +358,7 @@ class AttachmentsEndpointHandlerTest {
         // Submit one attachment (meets min count of 1)
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment data"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -378,7 +378,7 @@ class AttachmentsEndpointHandlerTest {
 
         var response = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
                         .POST(HttpRequest.BodyPublishers.ofString("attachment"))
                         .header("Content-Type", "application/octet-stream")
                         .build(),
@@ -394,7 +394,7 @@ class AttachmentsEndpointHandlerTest {
         // Query status of the attachment
         var statusResponse = httpClient.send(
                 HttpRequest.newBuilder()
-                        .uri(URI.create("http://localhost:%d/status/%s".formatted(port, attachmentTraceId)))
+                        .uri(URI.create("http://127.0.0.1:%d/status/%s".formatted(port, attachmentTraceId)))
                         .GET()
                         .build(),
                 HttpResponse.BodyHandlers.ofString());

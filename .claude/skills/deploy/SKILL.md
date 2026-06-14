@@ -17,6 +17,7 @@ Optional argument selects the workflow:
 - `/deploy redeploy` — Redeploy after code changes (rebuild NAR + restart NiFi only)
 - `/deploy test` — Run E2E Playwright tests (containers must be running)
 - `/deploy test <file>` — Run specific E2E test file
+- `/deploy integration-test` (alias `/deploy it`) — Run the integration-testing module's Java Failsafe ITs (Maven manages container lifecycle)
 - `/deploy stop` — Stop all containers
 - `/deploy full` — Full CI workflow: stop → build → start → test → stop
 - `/deploy troubleshoot` — Diagnose common issues
@@ -25,7 +26,7 @@ Optional argument selects the workflow:
 
 ### Step 1: Determine Action
 
-Parse the argument to determine which workflow to execute. Default (no args) = show status.
+Parse the argument to determine which workflow to execute. Default (no args) = show status. `integration-test` and `it` both route to the [integration-test [it]](#integration-test-it) subsection.
 
 ### Step 2: Execute Action
 
@@ -60,6 +61,15 @@ Verify: `./integration-testing/src/main/docker/check-status.sh`
 cd e-2-e-playwright && npm run playwright:test [-- tests/<file>.spec.js]
 ```
 Containers MUST be running. Use `/deploy start` first if needed.
+
+#### integration-test [it]
+```bash
+python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"
+```
+Runs the `integration-testing` module's Java Failsafe ITs (e.g. `RestApiGatewayIT`) via the canonical plan-marshall Maven executor. Use a 10-minute (600000 ms) Bash timeout and analyze the build's TOON result (`status`, `errors[]`, `log_file`) rather than scanning raw stdout.
+
+- `-pl integration-testing -am` is **mandatory** — the `-am` (also-make) is required because the `integration-testing` test sources depend on the `nifi-cuioss-common` test-jar, which is only built when the reactor is also-made.
+- The `integration-tests` profile **manages its own container lifecycle**: `deploy-and-start.sh` auto-stops the same-project `docker` stack (`docker compose down -v`) before building and starting fresh NiFi+Keycloak containers, and `cleanup-containers` tears them down on completion. **No explicit pre-flight stop is needed here** — the profile already reuses the existing Docker primitives.
 
 #### stop
 ```bash
@@ -113,6 +123,7 @@ The `tabs_context_mcp` call frequently returns "Browser extension is not connect
 ## Critical Rules
 
 - Maven E2E (`./mvnw verify -Pintegration-tests`) automatically stops existing containers before starting fresh ones (via fixed `deploy-and-start.sh`)
+- The `integration-tests` profile's `deploy-and-start.sh` already stops the same-project `docker` dev stack before starting, so `/deploy integration-test` (`it`) needs no competing explicit stop step
 - After `./mvnw clean install`, the NAR in `target/nifi-deploy/` is stale — must run `/deploy redeploy` to update running containers
 - NiFi loads NARs only at startup — code changes require container restart, not just file copy
 - The `target/nifi-deploy/` directory is volume-mounted into the NiFi container

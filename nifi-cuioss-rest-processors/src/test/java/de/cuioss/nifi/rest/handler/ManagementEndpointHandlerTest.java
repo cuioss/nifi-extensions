@@ -117,7 +117,12 @@ class ManagementEndpointHandlerTest {
     }
 
     private URI uri(String path) {
-        return URI.create("http://localhost:" + port + path);
+        // Use 127.0.0.1 (not "localhost"): the Jetty connector binds 0.0.0.0 (IPv4),
+        // but "localhost" can resolve to ::1 (IPv6) first on some platforms, letting the
+        // client reach a foreign service holding the same ephemeral IPv6 port instead of
+        // Jetty — an intermittent "Invalid status line" flake. Forcing IPv4 also matches
+        // the 127.0.0.1 address the loopback-bypass logic expects.
+        return URI.create("http://127.0.0.1:" + port + path);
     }
 
     @Nested
@@ -163,7 +168,7 @@ class ManagementEndpointHandlerTest {
         @Test
         @DisplayName("Should allow loopback requests without auth")
         void shouldAllowLoopbackRequestsWithoutAuth() throws Exception {
-            // Test connects via localhost — loopback bypass applies
+            // Test connects via 127.0.0.1 — loopback bypass applies
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -326,7 +331,7 @@ class ManagementEndpointHandlerTest {
         @Test
         @DisplayName("Loopback requests work without any auth header")
         void loopbackRequestsWorkWithoutAuthHeader() throws Exception {
-            // Tests connect via localhost — loopback bypass applies
+            // Tests connect via 127.0.0.1 — loopback bypass applies
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -343,7 +348,7 @@ class ManagementEndpointHandlerTest {
                             de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Token expired"));
 
-            // Even though the request comes via loopback (localhost), it should
+            // Even though the request comes via loopback (127.0.0.1), it should
             // succeed because loopback bypass is checked first.
             var response = httpClient.send(
                     HttpRequest.newBuilder(uri("/metrics")).GET().build(),
@@ -391,7 +396,7 @@ class ManagementEndpointHandlerTest {
         @DisplayName("Should allow loopback access without auth")
         void shouldAllowLoopbackWithoutAuth() throws Exception {
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + localOnlyPort + "/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + localOnlyPort + "/health"))
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -404,7 +409,7 @@ class ManagementEndpointHandlerTest {
             localOnlyHandler.loopbackBypassEnabled = false;
 
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + localOnlyPort + "/health"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + localOnlyPort + "/health"))
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 

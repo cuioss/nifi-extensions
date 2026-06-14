@@ -119,7 +119,7 @@ class GatewayRequestHandlerTest {
     }
 
     private URI uri(String path) {
-        return URI.create("http://localhost:" + port + path);
+        return URI.create("http://127.0.0.1:" + port + path);
     }
 
     private HttpRequest.Builder requestBuilder(String path) {
@@ -192,7 +192,7 @@ class GatewayRequestHandlerTest {
             try {
                 int disabledPort = connector.getLocalPort();
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + disabledPort + "/api/disabled"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + disabledPort + "/api/disabled"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -234,7 +234,7 @@ class GatewayRequestHandlerTest {
 
         private HttpResponse<String> get(String path) throws Exception {
             return httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + patternPort + path))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + patternPort + path))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -346,7 +346,7 @@ class GatewayRequestHandlerTest {
             int smallPort = connector.getLocalPort();
             try {
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + smallPort + "/api/data"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + smallPort + "/api/data"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
                                 .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
@@ -528,14 +528,14 @@ class GatewayRequestHandlerTest {
             try {
                 // Fill the queue
                 httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + tinyPort + "/api/health"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + tinyPort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
 
                 // This one should get 503
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + tinyPort + "/api/health"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + tinyPort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -573,7 +573,7 @@ class GatewayRequestHandlerTest {
 
             try {
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + noFlowFilePort + "/api/health"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + noFlowFilePort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -693,7 +693,7 @@ class GatewayRequestHandlerTest {
      * as a successful rejection.
      */
     private void assertAttackRejected(AttackTestCase testCase) throws Exception {
-        String attackUrl = "http://localhost:" + port + "/api/health" + testCase.attackString();
+        String attackUrl = "http://127.0.0.1:" + port + "/api/health" + testCase.attackString();
         try {
             var request = HttpRequest.newBuilder(URI.create(attackUrl))
                     .header("Authorization", "Bearer " + tokenHolder.getRawToken())
@@ -768,7 +768,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 422 for invalid body")
         void shouldReturn422ForInvalidBody() throws Exception {
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("""
@@ -789,7 +789,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 422 with violations array in response")
         void shouldReturn422WithViolationsArray() throws Exception {
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("""
@@ -808,7 +808,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 202 for valid body")
         void shouldReturn202ForValidBody() throws Exception {
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("""
@@ -824,7 +824,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should skip validation when no schema configured")
         void shouldSkipValidationWhenNoSchema() throws Exception {
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/noschema"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/noschema"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.ofString("any invalid json content"))
@@ -839,7 +839,7 @@ class GatewayRequestHandlerTest {
         void shouldRejectEmptyBody() throws Exception {
             // POST with empty body should fail schema validation
             var response = httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://localhost:" + schemaPort + "/api/validated"))
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
                             .POST(HttpRequest.BodyPublishers.noBody())
@@ -887,7 +887,7 @@ class GatewayRequestHandlerTest {
             try {
                 // Valid body
                 var validResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + inlinePort + "/api/inline"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + inlinePort + "/api/inline"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
                                 .POST(HttpRequest.BodyPublishers.ofString("{\"title\": \"Hello\"}"))
@@ -897,7 +897,7 @@ class GatewayRequestHandlerTest {
 
                 // Invalid body — missing required field
                 var invalidResponse = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + inlinePort + "/api/inline"))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + inlinePort + "/api/inline"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
                                 .POST(HttpRequest.BodyPublishers.ofString("{\"other\": 1}"))
@@ -935,7 +935,7 @@ class GatewayRequestHandlerTest {
 
             try {
                 var response = httpClient.send(
-                        HttpRequest.newBuilder(URI.create("http://localhost:" + testPort + testCase.legitimatePattern()))
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + testPort + testCase.legitimatePattern()))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
