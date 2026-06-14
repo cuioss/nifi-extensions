@@ -35,16 +35,13 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should parse properties with a single group")
         void shouldParsePropertiesWithSingleGroup() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.methods", "GET");
             properties.put("restapi.health.schema", "health-schema");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
-            // Assert
             assertEquals(1, result.size());
             assertTrue(result.containsKey("health"));
             assertEquals("/api/health", result.get("health").get("path"));
@@ -55,17 +52,14 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should parse properties with multiple groups")
         void shouldParsePropertiesWithMultipleGroups() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("restapi.health.methods", "GET");
             properties.put("restapi.users.path", "/api/users");
             properties.put("restapi.users.methods", "GET,POST");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
-            // Assert
             assertEquals(2, result.size());
             assertEquals("/api/health", result.get("health").get("path"));
             assertEquals("GET", result.get("health").get("methods"));
@@ -76,16 +70,13 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should ignore properties without matching prefix")
         void shouldIgnorePropertiesWithoutPrefix() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health.path", "/api/health");
             properties.put("other.setting", "value");
             properties.put("unrelated", "data");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
-            // Assert
             assertEquals(1, result.size());
             assertTrue(result.containsKey("health"));
         }
@@ -93,15 +84,12 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should ignore properties without dot after group name")
         void shouldIgnorePropertiesWithoutDotAfterGroupName() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.health", "value-without-property");
             properties.put("restapi.health.path", "/api/health");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
-            // Assert
             assertEquals(1, result.size());
             assertEquals(1, result.get("health").size());
             assertEquals("/api/health", result.get("health").get("path"));
@@ -110,10 +98,8 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should return empty map for empty input")
         void shouldReturnEmptyMapForEmptyInput() {
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", Map.of());
 
-            // Assert
             assertTrue(result.isEmpty());
         }
 
@@ -135,14 +121,11 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should handle dot in property name after group")
         void shouldHandleDotInPropertyName() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("restapi.users.some.nested.key", "nested-value");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
-            // Assert
             assertEquals(1, result.size());
             assertEquals("nested-value", result.get("users").get("some.nested.key"));
         }
@@ -155,15 +138,12 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should strip prefix correctly")
         void shouldStripPrefixCorrectly() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.myIssuer.name", "TestIssuer");
             properties.put("issuer.myIssuer.jwks-url", "https://example.com/jwks");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("issuer.", properties);
 
-            // Assert
             assertEquals(1, result.size());
             assertTrue(result.containsKey("myIssuer"));
             assertEquals("TestIssuer", result.get("myIssuer").get("name"));
@@ -173,15 +153,12 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should work with different prefixes")
         void shouldWorkWithDifferentPrefixes() {
-            // Arrange
             Map<String, String> properties = new HashMap<>();
             properties.put("custom.prefix.group1.key", "value1");
             properties.put("custom.prefix.group2.key", "value2");
 
-            // Act
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("custom.prefix.", properties);
 
-            // Assert
             assertEquals(2, result.size());
             assertEquals("value1", result.get("group1").get("key"));
             assertEquals("value2", result.get("group2").get("key"));

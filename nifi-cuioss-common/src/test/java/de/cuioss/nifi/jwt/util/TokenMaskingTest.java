@@ -34,26 +34,20 @@ class TokenMaskingTest {
         @Test
         @DisplayName("Should return *** for null token")
         void shouldMaskNullToken() {
-            // Arrange
             String token = null;
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertEquals("***", result);
         }
 
         @Test
         @DisplayName("Should return *** for empty string")
         void shouldMaskEmptyToken() {
-            // Arrange
             String token = "";
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertEquals("***", result);
         }
     }
@@ -76,39 +70,30 @@ class TokenMaskingTest {
         @Test
         @DisplayName("Should mask 13 character token showing first 8 chars")
         void shouldMaskThirteenCharToken() {
-            // Arrange
             String token = "1234567890123";
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertEquals("12345678...[13 chars]", result);
         }
 
         @Test
         @DisplayName("Should mask 20 character token showing first 8 chars")
         void shouldMaskTwentyCharToken() {
-            // Arrange
             String token = "12345678901234567890";
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertEquals("12345678...[20 chars]", result);
         }
 
         @Test
         @DisplayName("Should mask realistic JWT token")
         void shouldMaskRealisticJwt() {
-            // Arrange
             String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertTrue(result.startsWith("eyJhbGci..."),
                     "Should start with first 8 chars of JWT");
             assertTrue(result.contains("chars]"),
@@ -118,13 +103,10 @@ class TokenMaskingTest {
         @Test
         @DisplayName("Should mask very long token (1000+ chars)")
         void shouldMaskVeryLongToken() {
-            // Arrange
             String token = "A".repeat(1000);
 
-            // Act
             String result = TokenMasking.maskToken(token);
 
-            // Assert
             assertEquals("AAAAAAAA...[1000 chars]", result);
         }
     }

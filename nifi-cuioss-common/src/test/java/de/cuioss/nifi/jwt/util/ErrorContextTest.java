@@ -34,7 +34,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should create instance with all fields via builder")
         void shouldCreateWithAllFields() {
-            // Arrange & Act
             ErrorContext context = ErrorContext.builder()
                     .operation("tokenValidation")
                     .component("JwtProcessor")
@@ -42,7 +41,6 @@ class ErrorContextTest {
                     .cause(new RuntimeException("Test error"))
                     .build();
 
-            // Assert
             assertEquals("tokenValidation", context.getOperation());
             assertEquals("JwtProcessor", context.getComponent());
             assertEquals("AUTH_001", context.getErrorCode());
@@ -54,13 +52,11 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should create instance with minimal fields")
         void shouldCreateWithMinimalFields() {
-            // Arrange & Act
             ErrorContext context = ErrorContext.builder()
                     .operation("processing")
                     .component("TestComponent")
                     .build();
 
-            // Assert
             assertEquals("processing", context.getOperation());
             assertEquals("TestComponent", context.getComponent());
             assertNull(context.getErrorCode());
@@ -76,12 +72,10 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should create builder via forComponent")
         void shouldCreateBuilderViaForComponent() {
-            // Arrange & Act
             ErrorContext context = ErrorContext.forComponent("MyComponent")
                     .operation("myOperation")
                     .build();
 
-            // Assert
             assertEquals("MyComponent", context.getComponent());
             assertEquals("myOperation", context.getOperation());
         }
@@ -94,19 +88,16 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should add valid key-value pairs to context")
         void shouldAddValidKeyValuePairs() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
 
-            // Act
             context.with("key1", "value1")
                     .with("key_2", "value2")
                     .with("key-3", "value3")
                     .with("key.4", 123);
 
-            // Assert
             Map<String, Object> contextMap = context.getContext();
             assertEquals("value1", contextMap.get("key1"));
             assertEquals("value2", contextMap.get("key_2"));
@@ -117,68 +108,56 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should ignore null keys")
         void shouldIgnoreNullKeys() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
 
-            // Act
             context.with(null, "value");
 
-            // Assert
             assertTrue(context.getContext().isEmpty());
         }
 
         @Test
         @DisplayName("Should ignore null values")
         void shouldIgnoreNullValues() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
 
-            // Act
             context.with("key", null);
 
-            // Assert
             assertTrue(context.getContext().isEmpty());
         }
 
         @Test
         @DisplayName("Should ignore keys with invalid format")
         void shouldIgnoreInvalidKeyFormat() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
 
-            // Act
             context.with("invalid key", "value1")  // space not allowed
                     .with("key@test", "value2")      // @ not allowed
                     .with("key#test", "value3")      // # not allowed
                     .with("", "value4");             // empty not allowed
 
-            // Assert
             assertTrue(context.getContext().isEmpty());
         }
 
         @Test
         @DisplayName("Should return unmodifiable context map")
         void shouldReturnUnmodifiableContextMap() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
             context.with("key1", "value1");
 
-            // Act
             Map<String, Object> contextMap = context.getContext();
 
-            // Assert
             assertThrows(UnsupportedOperationException.class,
                     () -> contextMap.put("key2", "value2"));
         }
@@ -186,17 +165,14 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should allow method chaining with 'with'")
         void shouldAllowMethodChaining() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
                     .build();
 
-            // Act
             ErrorContext result = context.with("key1", "value1")
                     .with("key2", "value2");
 
-            // Assert
             assertSame(context, result);
             assertEquals(2, context.getContext().size());
         }
@@ -209,7 +185,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should build message with all components")
         void shouldBuildMessageWithAllComponents() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("tokenValidation")
                     .component("JwtProcessor")
@@ -217,10 +192,8 @@ class ErrorContextTest {
                     .build();
             context.with("issuer", "https://auth.example.com");
 
-            // Act
             String message = context.buildMessage("Token validation failed");
 
-            // Assert
             assertTrue(message.contains("Token validation failed"));
             assertTrue(message.contains("ErrorCode=AUTH_001"));
             assertTrue(message.contains("Component=JwtProcessor"));
@@ -231,16 +204,13 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should build message without error code when null")
         void shouldBuildMessageWithoutErrorCode() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("processing")
                     .component("TestComponent")
                     .build();
 
-            // Act
             String message = context.buildMessage("Processing failed");
 
-            // Assert
             assertTrue(message.contains("Processing failed"));
             assertTrue(message.contains("Component=TestComponent"));
             assertTrue(message.contains("Operation=processing"));
@@ -250,7 +220,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should truncate long context values at 100 characters")
         void shouldTruncateLongValues() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
@@ -258,10 +227,8 @@ class ErrorContextTest {
             String longValue = "A".repeat(150);
             context.with("longKey", longValue);
 
-            // Act
             String message = context.buildMessage("Test");
 
-            // Assert
             assertTrue(message.contains("longKey=" + "A".repeat(97) + "..."));
             assertFalse(message.contains("A".repeat(100)));
         }
@@ -269,7 +236,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should include cause information")
         void shouldIncludeCauseInformation() {
-            // Arrange
             Exception cause = new IllegalArgumentException("Invalid token format");
             ErrorContext context = ErrorContext.builder()
                     .operation("tokenParsing")
@@ -277,10 +243,8 @@ class ErrorContextTest {
                     .cause(cause)
                     .build();
 
-            // Act
             String message = context.buildMessage("Parsing failed");
 
-            // Assert
             assertTrue(message.contains("Caused by: IllegalArgumentException"));
             assertTrue(message.contains("Invalid token format"));
         }
@@ -288,7 +252,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should include root cause when different from direct cause")
         void shouldIncludeRootCauseWhenDifferent() {
-            // Arrange
             Exception rootCause = new IllegalStateException("Connection lost");
             Exception middleCause = new RuntimeException("Processing error", rootCause);
             Exception topCause = new Exception("Operation failed", middleCause);
@@ -299,10 +262,8 @@ class ErrorContextTest {
                     .cause(topCause)
                     .build();
 
-            // Act
             String message = context.buildMessage("Failed");
 
-            // Assert
             assertTrue(message.contains("Caused by: Exception"));
             assertTrue(message.contains("Operation failed"));
             assertTrue(message.contains("Root cause: IllegalStateException"));
@@ -312,7 +273,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should not duplicate root cause when same as direct cause")
         void shouldNotDuplicateRootCause() {
-            // Arrange
             Exception cause = new IllegalArgumentException("Invalid input");
             ErrorContext context = ErrorContext.builder()
                     .operation("validation")
@@ -320,10 +280,8 @@ class ErrorContextTest {
                     .cause(cause)
                     .build();
 
-            // Act
             String message = context.buildMessage("Validation failed");
 
-            // Assert
             assertTrue(message.contains("Caused by: IllegalArgumentException"));
             assertFalse(message.contains("Root cause:"));
         }
@@ -331,7 +289,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should handle null context values")
         void shouldHandleNullContextValues() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
                     .component("test")
@@ -354,7 +311,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should return same throwable when no cause")
         void shouldReturnSelfWhenNoCause() {
-            // Arrange
             Exception exception = new RuntimeException("Test");
             ErrorContext context = ErrorContext.builder()
                     .operation("test")
@@ -373,7 +329,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should traverse chain of 3 causes")
         void shouldTraverseThreeLevelCauseChain() {
-            // Arrange
             Exception level3 = new IllegalArgumentException("Root problem");
             Exception level2 = new RuntimeException("Middle problem", level3);
             Exception level1 = new Exception("Top problem", level2);
@@ -384,10 +339,8 @@ class ErrorContextTest {
                     .cause(level1)
                     .build();
 
-            // Act
             String message = context.buildMessage("Test");
 
-            // Assert
             assertTrue(message.contains("Caused by: Exception"));
             assertTrue(message.contains("Root cause: IllegalArgumentException"));
             assertTrue(message.contains("Root problem"));
@@ -396,7 +349,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should handle circular cause reference")
         void shouldHandleCircularCauseReference() {
-            // Arrange
             Exception exception1 = new RuntimeException("Error 1");
             Exception exception2 = new RuntimeException("Error 2", exception1);
             // Create circular reference via reflection
@@ -449,7 +401,6 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should have all error code constants accessible")
         void shouldHaveAllErrorCodes() {
-            // Assert
             assertEquals("CONFIG_ERROR", ErrorContext.ErrorCodes.CONFIGURATION_ERROR);
             assertEquals("VALIDATION_ERROR", ErrorContext.ErrorCodes.VALIDATION_ERROR);
             assertEquals("PROCESSING_ERROR", ErrorContext.ErrorCodes.PROCESSING_ERROR);
@@ -465,17 +416,14 @@ class ErrorContextTest {
         @Test
         @DisplayName("Should use error codes in context")
         void shouldUseErrorCodesInContext() {
-            // Arrange
             ErrorContext context = ErrorContext.builder()
                     .operation("authentication")
                     .component("AuthService")
                     .errorCode(ErrorContext.ErrorCodes.AUTHENTICATION_ERROR)
                     .build();
 
-            // Act
             String message = context.buildMessage("Auth failed");
 
-            // Assert
             assertTrue(message.contains("ErrorCode=AUTH_ERROR"));
         }
     }

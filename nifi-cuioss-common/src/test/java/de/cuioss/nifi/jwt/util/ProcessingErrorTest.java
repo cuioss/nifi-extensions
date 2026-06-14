@@ -31,14 +31,12 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should create instance with all fields via builder")
         void shouldCreateWithAllFields() {
-            // Arrange & Act
             ProcessingError error = ProcessingError.builder()
                     .errorCode("AUTH_001")
                     .errorReason("Invalid token signature")
                     .errorCategory("AUTHENTICATION")
                     .build();
 
-            // Assert
             assertEquals("AUTH_001", error.errorCode());
             assertEquals("Invalid token signature", error.errorReason());
             assertEquals("AUTHENTICATION", error.errorCategory());
@@ -47,14 +45,12 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should create instance with null values")
         void shouldCreateWithNullValues() {
-            // Arrange & Act
             ProcessingError error = ProcessingError.builder()
                     .errorCode(null)
                     .errorReason(null)
                     .errorCategory(null)
                     .build();
 
-            // Assert
             assertNull(error.errorCode());
             assertNull(error.errorReason());
             assertNull(error.errorCategory());
@@ -63,13 +59,11 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should create instance with partial fields")
         void shouldCreateWithPartialFields() {
-            // Arrange & Act
             ProcessingError error = ProcessingError.builder()
                     .errorCode("TOKEN_EXPIRED")
                     .errorReason("The access token has expired")
                     .build();
 
-            // Assert
             assertEquals("TOKEN_EXPIRED", error.errorCode());
             assertEquals("The access token has expired", error.errorReason());
             assertNull(error.errorCategory());
@@ -83,7 +77,6 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should be equal when all fields match")
         void shouldBeEqualWhenFieldsMatch() {
-            // Arrange
             ProcessingError error1 = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .errorReason("Test error")
@@ -96,7 +89,6 @@ class ProcessingErrorTest {
                     .errorCategory("TEST")
                     .build();
 
-            // Act & Assert
             assertEquals(error1, error2);
             assertEquals(error1.hashCode(), error2.hashCode());
         }
@@ -104,7 +96,6 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should not be equal when errorCode differs")
         void shouldNotBeEqualWhenErrorCodeDiffers() {
-            // Arrange
             ProcessingError error1 = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .errorReason("Test error")
@@ -117,14 +108,12 @@ class ProcessingErrorTest {
                     .errorCategory("TEST")
                     .build();
 
-            // Act & Assert
             assertNotEquals(error1, error2);
         }
 
         @Test
         @DisplayName("Should not be equal when errorReason differs")
         void shouldNotBeEqualWhenErrorReasonDiffers() {
-            // Arrange
             ProcessingError error1 = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .errorReason("First error")
@@ -137,14 +126,12 @@ class ProcessingErrorTest {
                     .errorCategory("TEST")
                     .build();
 
-            // Act & Assert
             assertNotEquals(error1, error2);
         }
 
         @Test
         @DisplayName("Should not be equal when errorCategory differs")
         void shouldNotBeEqualWhenErrorCategoryDiffers() {
-            // Arrange
             ProcessingError error1 = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .errorReason("Test error")
@@ -157,14 +144,12 @@ class ProcessingErrorTest {
                     .errorCategory("CATEGORY_B")
                     .build();
 
-            // Act & Assert
             assertNotEquals(error1, error2);
         }
 
         @Test
         @DisplayName("Should handle null values in equals")
         void shouldHandleNullsInEquals() {
-            // Arrange
             ProcessingError error1 = ProcessingError.builder()
                     .errorCode(null)
                     .errorReason(null)
@@ -177,7 +162,6 @@ class ProcessingErrorTest {
                     .errorCategory(null)
                     .build();
 
-            // Act & Assert
             assertEquals(error1, error2);
             assertEquals(error1.hashCode(), error2.hashCode());
         }
@@ -185,26 +169,22 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should not be equal to null")
         void shouldNotBeEqualToNull() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .build();
 
-            // Act & Assert
             assertNotEquals(null, error);
         }
 
         @Test
         @DisplayName("Should be equal to itself")
         void shouldBeEqualToItself() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorCode("ERR_001")
                     .errorReason("Test")
                     .errorCategory("TEST")
                     .build();
 
-            // Act & Assert
             assertEquals(error, error);
         }
     }
@@ -216,17 +196,14 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should include all fields in toString")
         void shouldIncludeAllFieldsInToString() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorCode("AUTH_FAILED")
                     .errorReason("Invalid credentials")
                     .errorCategory("SECURITY")
                     .build();
 
-            // Act
             String result = error.toString();
 
-            // Assert
             assertTrue(result.contains("AUTH_FAILED"));
             assertTrue(result.contains("Invalid credentials"));
             assertTrue(result.contains("SECURITY"));
@@ -240,36 +217,30 @@ class ProcessingErrorTest {
         @Test
         @DisplayName("Should return correct errorCode via getter")
         void shouldReturnCorrectErrorCode() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorCode("TEST_CODE")
                     .build();
 
-            // Act & Assert
             assertEquals("TEST_CODE", error.errorCode());
         }
 
         @Test
         @DisplayName("Should return correct errorReason via getter")
         void shouldReturnCorrectErrorReason() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorReason("Test reason message")
                     .build();
 
-            // Act & Assert
             assertEquals("Test reason message", error.errorReason());
         }
 
         @Test
         @DisplayName("Should return correct errorCategory via getter")
         void shouldReturnCorrectErrorCategory() {
-            // Arrange
             ProcessingError error = ProcessingError.builder()
                     .errorCategory("VALIDATION")
                     .build();
 
-            // Act & Assert
             assertEquals("VALIDATION", error.errorCategory());
         }
     }
