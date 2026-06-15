@@ -1306,4 +1306,130 @@ class GatewayProxyServletTest {
             assertEquals(2, methods.size());
         }
     }
+
+    // -----------------------------------------------------------------------
+    // cui-http security validation (URL / path / header)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("cui-http security validation")
+    class SecurityValidation {
+
+        private static final String TRAVERSAL_PROCESSOR_ID = "../../../etc/passwd";
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header on GET with 400")
+        void shouldRejectMaliciousProcessorIdOnGet() {
+            handle.spec()
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid header value"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header on /test with 400")
+        void shouldRejectMaliciousProcessorIdOnTest() {
+            handle.spec()
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid header value"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious path in /test request with 400")
+        void shouldRejectMaliciousPathInTestRequest() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/../../../etc/passwd","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious tokenEndpointUrl with 400")
+        void shouldRejectMaliciousTokenEndpointUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/%2e%2e%2f%2e%2e/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious issuerUrl on discover with 400")
+        void shouldRejectMaliciousIssuerUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/%2e%2e%2f%2e%2e/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate UUID processor ID pass header validation")
+        void shouldAllowLegitimateProcessorId() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate path pass URL validation in /test")
+        void shouldAllowLegitimatePathInTest() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate tokenEndpointUrl pass URL validation")
+        void shouldAllowLegitimateTokenEndpointUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s","scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+    }
 }

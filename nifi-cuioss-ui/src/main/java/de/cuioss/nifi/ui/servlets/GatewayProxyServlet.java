@@ -16,6 +16,11 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.config.SecurityConfiguration;
+import de.cuioss.http.security.core.HttpSecurityValidator;
+import de.cuioss.http.security.exceptions.UrlSecurityException;
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
@@ -133,6 +138,22 @@ public class GatewayProxyServlet extends HttpServlet {
     /** Cached gateway protocol (http or https) by processor ID. */
     private final Map<String, String> protocolCache = new ConcurrentHashMap<>();
 
+    /**
+     * cui-http security validators built once with a strict configuration.
+     * This servlet is a validation/proxy boundary, so it follows the
+     * {@code JwksValidationServlet} strict/throw baseline (reject-on-violation),
+     * not the rest-processors sanitize-and-fall-through shape.
+     */
+    private final transient HttpSecurityValidator urlPathValidator;
+    private final transient HttpSecurityValidator headerValueValidator;
+
+    public GatewayProxyServlet() {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        SecurityConfiguration secConfig = SecurityConfiguration.strict();
+        urlPathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
+        headerValueValidator = PipelineFactory.createHeaderValuePipeline(secConfig, counter);
+    }
+
     private transient NiFiWebConfigurationContext configContext;
 
     @Override
@@ -153,6 +174,9 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
+            if (!validateHeaderSecurity(processorId, resp)) {
+                return;
+            }
 
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
@@ -170,6 +194,9 @@ public class GatewayProxyServlet extends HttpServlet {
                         pathInfo != null ? pathInfo : "null");
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid management path");
+                return;
+            }
+            if (!validateUrlSecurity(pathInfo, resp)) {
                 return;
             }
 
@@ -234,6 +261,9 @@ public class GatewayProxyServlet extends HttpServlet {
                     MSG_MISSING_PROCESSOR_ID);
             return;
         }
+        if (!validateHeaderSecurity(processorId, resp)) {
+            return;
+        }
 
         JsonObject testRequest;
         try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
@@ -248,6 +278,9 @@ public class GatewayProxyServlet extends HttpServlet {
         if (path.isEmpty()) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Missing 'path' in test request");
+            return;
+        }
+        if (!validateUrlSecurity(path, resp)) {
             return;
         }
 
@@ -492,6 +525,9 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
+            if (!validateHeaderSecurity(processorId, resp)) {
+                return;
+            }
 
             JsonObject requestBody;
             try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
@@ -507,6 +543,9 @@ public class GatewayProxyServlet extends HttpServlet {
             if (tokenEndpointUrl.isBlank() || clientId.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Missing required fields: tokenEndpointUrl, clientId");
+                return;
+            }
+            if (!validateUrlSecurity(tokenEndpointUrl, resp)) {
                 return;
             }
 
@@ -564,6 +603,9 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
+            if (!validateHeaderSecurity(processorId, resp)) {
+                return;
+            }
 
             JsonObject requestBody;
             try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
@@ -574,6 +616,9 @@ public class GatewayProxyServlet extends HttpServlet {
             if (issuerUrl.isBlank()) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Missing required field: issuerUrl");
+                return;
+            }
+            if (!validateUrlSecurity(issuerUrl, resp)) {
                 return;
             }
 
@@ -1050,6 +1095,48 @@ public class GatewayProxyServlet extends HttpServlet {
         } catch (IOException e) {
             LOGGER.warn("Failed to write JSON response (status %s): %s",
                     status, e.getMessage());
+        }
+    }
+
+    /**
+     * Validates an externally-sourced URL or path value through the cui-http
+     * URL/path security pipeline. On violation, rejects with HTTP 400 and a
+     * {@code WARN} log entry, mirroring {@code JwksValidationServlet}.
+     *
+     * @param value the URL or path value to validate
+     * @param resp  the response to write a 400 error to on violation
+     * @return {@code true} when the value is safe, {@code false} when rejected
+     */
+    private boolean validateUrlSecurity(String value, HttpServletResponse resp) {
+        try {
+            urlPathValidator.validate(value);
+            return true;
+        } catch (UrlSecurityException e) {
+            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, value, e.getFailureType());
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid URL: " + e.getFailureType().getDescription());
+            return false;
+        }
+    }
+
+    /**
+     * Validates an externally-sourced header value (the {@code X-Processor-Id}
+     * header) through the cui-http header-value security pipeline. On violation,
+     * rejects with HTTP 400 and a {@code WARN} log entry.
+     *
+     * @param value the header value to validate
+     * @param resp  the response to write a 400 error to on violation
+     * @return {@code true} when the value is safe, {@code false} when rejected
+     */
+    private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
+        try {
+            headerValueValidator.validate(value);
+            return true;
+        } catch (UrlSecurityException e) {
+            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid header value: " + e.getFailureType().getDescription());
+            return false;
         }
     }
 
