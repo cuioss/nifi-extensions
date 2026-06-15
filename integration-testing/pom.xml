@@ -69,6 +69,12 @@
             <artifactId>cui-test-generator</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- cui-http core security types (UrlSecurityFailureType etc.) required by the attack databases at runtime -->
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-http</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- cui-http adversarial attack databases (OWASP/ApacheCVE/ModSecurity, AttackTestCase) -->
         <dependency>
             <groupId>de.cuioss</groupId>
