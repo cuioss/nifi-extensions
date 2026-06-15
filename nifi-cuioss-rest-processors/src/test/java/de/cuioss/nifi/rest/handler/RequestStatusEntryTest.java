@@ -37,13 +37,10 @@ class RequestStatusEntryTest {
         @Test
         @DisplayName("Should create ACCEPTED entry with traceId")
         void shouldCreateAcceptedEntry() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
 
-            // Act
             var entry = RequestStatusEntry.accepted(traceId, null);
 
-            // Assert
             assertEquals(traceId, entry.traceId());
             assertEquals(RequestStatus.ACCEPTED, entry.status());
             assertNotNull(entry.acceptedAt());
@@ -56,27 +53,21 @@ class RequestStatusEntryTest {
         @Test
         @DisplayName("Should create ACCEPTED entry with parentTraceId")
         void shouldCreateAcceptedEntryWithParent() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             String parentTraceId = UUID.randomUUID().toString();
 
-            // Act
             var entry = RequestStatusEntry.accepted(traceId, parentTraceId);
 
-            // Assert
             assertEquals(parentTraceId, entry.parentTraceId());
         }
 
         @Test
         @DisplayName("Should create COLLECTING_ATTACHMENTS entry")
         void shouldCreateCollectingAttachmentsEntry() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
 
-            // Act
             var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 5, 2);
 
-            // Assert
             assertEquals(traceId, entry.traceId());
             assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, entry.status());
             assertEquals("upload", entry.routeName());
@@ -94,15 +85,12 @@ class RequestStatusEntryTest {
         @Test
         @DisplayName("Should serialize and deserialize round-trip")
         void shouldSerializeDeserializeRoundTrip() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             var entry = RequestStatusEntry.accepted(traceId, null);
 
-            // Act
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
 
-            // Assert
             assertEquals(entry.traceId(), deserialized.traceId());
             assertEquals(entry.status(), deserialized.status());
             assertEquals(entry.acceptedAt(), deserialized.acceptedAt());
@@ -114,7 +102,6 @@ class RequestStatusEntryTest {
         @Test
         @DisplayName("Should serialize and deserialize with all optional fields")
         void shouldSerializeDeserializeWithOptionalFields() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             String parentTraceId = UUID.randomUUID().toString();
             Instant now = Instant.now();
@@ -122,11 +109,9 @@ class RequestStatusEntryTest {
                     traceId, RequestStatus.REJECTED, now, now,
                     parentTraceId, "Validation failed", 0, 0, null);
 
-            // Act
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
 
-            // Assert
             assertEquals(traceId, deserialized.traceId());
             assertEquals(RequestStatus.REJECTED, deserialized.status());
             assertEquals(parentTraceId, deserialized.parentTraceId());
@@ -137,31 +122,25 @@ class RequestStatusEntryTest {
         @EnumSource(RequestStatus.class)
         @DisplayName("Should serialize all status values")
         void shouldSerializeAllStatusValues(RequestStatus status) {
-            // Arrange
             Instant now = Instant.now();
             var entry = new RequestStatusEntry(
                     UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null);
 
-            // Act
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
 
-            // Assert
             assertEquals(status, deserialized.status());
         }
 
         @Test
         @DisplayName("Should serialize and deserialize COLLECTING_ATTACHMENTS round-trip")
         void shouldSerializeDeserializeCollectingAttachments() {
-            // Arrange
             String traceId = UUID.randomUUID().toString();
             var entry = RequestStatusEntry.collectingAttachments(traceId, null, "upload", 3, 1);
 
-            // Act
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
 
-            // Assert
             assertEquals(RequestStatus.COLLECTING_ATTACHMENTS, deserialized.status());
             assertEquals("upload", deserialized.routeName());
             assertEquals(3, deserialized.attachmentsMaxCount());
@@ -176,10 +155,8 @@ class RequestStatusEntryTest {
                     + "\"acceptedAt\":\"2026-01-01T00:00:00Z\",\"updatedAt\":\"2026-01-01T00:00:00Z\","
                     + "\"attachmentsMaxCount\":5}";
 
-            // Act
             var deserialized = RequestStatusEntry.fromJson(json);
 
-            // Assert
             assertEquals(0, deserialized.attachmentsMinCount());
             assertEquals(5, deserialized.attachmentsMaxCount());
         }
@@ -187,13 +164,10 @@ class RequestStatusEntryTest {
         @Test
         @DisplayName("Should produce valid JSON")
         void shouldProduceValidJson() {
-            // Arrange
             var entry = RequestStatusEntry.accepted(UUID.randomUUID().toString(), null);
 
-            // Act
             String json = entry.toJson();
 
-            // Assert
             assertTrue(json.contains("\"traceId\""));
             assertTrue(json.contains("\"status\":\"ACCEPTED\""));
             assertTrue(json.contains("\"acceptedAt\""));

@@ -197,7 +197,6 @@ class GatewayRequestHandlerTest {
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
 
-                // Assert
                 assertEquals(404, response.statusCode());
             } finally {
                 disabledServer.stop();

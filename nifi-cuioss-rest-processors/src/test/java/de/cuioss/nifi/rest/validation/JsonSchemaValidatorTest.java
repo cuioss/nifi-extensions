@@ -62,41 +62,34 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should return empty list for valid object with all fields")
         void shouldReturnEmptyForValidObject() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Alice", "age": 30}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.isEmpty());
         }
 
         @Test
         @DisplayName("Should return empty list for valid object with required field only")
         void shouldReturnEmptyForRequiredFieldOnly() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Bob"}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.isEmpty());
         }
 
         @Test
         @DisplayName("Should return empty list for route without schema")
         void shouldReturnEmptyForRouteWithoutSchema() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
@@ -104,7 +97,6 @@ class JsonSchemaValidatorTest {
             List<SchemaViolation> violations = validator.validate("health",
                     "anything".getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.isEmpty());
         }
     }
@@ -116,17 +108,14 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should return violations for missing required field")
         void shouldReturnViolationsForMissingRequiredField() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"age": 25}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertFalse(violations.isEmpty());
             assertTrue(violations.stream().anyMatch(v -> v.message().contains("name")),
                     "Expected violation mentioning 'name', got: " + violations);
@@ -135,17 +124,14 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should return violations for wrong type")
         void shouldReturnViolationsForWrongType() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Alice", "age": "not-a-number"}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertFalse(violations.isEmpty());
             assertTrue(violations.stream().anyMatch(v ->
                             v.message().toLowerCase().contains("integer")
@@ -156,24 +142,20 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should return violations for additional properties")
         void shouldReturnViolationsForAdditionalProperties() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Alice", "extra": true}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertFalse(violations.isEmpty());
         }
 
         @Test
         @DisplayName("Should return multiple violations")
         void shouldReturnMultipleViolations() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
@@ -183,7 +165,6 @@ class JsonSchemaValidatorTest {
                             {"age": "not-a-number", "extra": true}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.size() >= 2,
                     "Expected at least 2 violations, got: " + violations.size());
         }
@@ -196,15 +177,12 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should return violation for unparseable JSON")
         void shouldReturnViolationForUnparseableJson() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     "not-json{{{".getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertFalse(violations.isEmpty());
             assertTrue(violations.getFirst().message().startsWith("Invalid JSON"),
                     "Expected 'Invalid JSON' message, got: " + violations.getFirst().message());
@@ -248,7 +226,6 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should support multiple route schemas")
         void shouldSupportMultipleRouteSchemas() throws Exception {
-            // Arrange
             Path userSchema = writeSchema(USER_SCHEMA);
             Path orderSchema = tempDir.resolve("order-schema.json");
             Files.writeString(orderSchema, """
@@ -281,11 +258,9 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should report hasSchema correctly")
         void shouldReportHasSchemaCorrectly() throws Exception {
-            // Arrange
             Path schemaFile = writeSchema(USER_SCHEMA);
             var validator = new JsonSchemaValidator(Map.of("users", schemaFile.toString()));
 
-            // Assert
             assertTrue(validator.hasSchema("users"));
             assertFalse(validator.hasSchema("health"));
         }
@@ -298,32 +273,26 @@ class JsonSchemaValidatorTest {
         @Test
         @DisplayName("Should validate successfully with inline JSON schema")
         void shouldValidateWithInlineSchema() {
-            // Arrange
             var validator = new JsonSchemaValidator(Map.of("users", USER_SCHEMA));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Alice", "age": 30}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.isEmpty());
         }
 
         @Test
         @DisplayName("Should return violations for invalid body with inline schema")
         void shouldReturnViolationsForInvalidBodyWithInlineSchema() {
-            // Arrange
             var validator = new JsonSchemaValidator(Map.of("users", USER_SCHEMA));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"age": 25}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertFalse(violations.isEmpty());
             assertTrue(violations.stream().anyMatch(v -> v.message().contains("name")),
                     "Expected violation mentioning 'name', got: " + violations);
@@ -335,13 +304,11 @@ class JsonSchemaValidatorTest {
             // Arrange — leading spaces and newline before the JSON object
             var validator = new JsonSchemaValidator(Map.of("users", "  \n" + USER_SCHEMA));
 
-            // Act
             List<SchemaViolation> violations = validator.validate("users",
                     """
                             {"name": "Bob"}
                             """.getBytes(StandardCharsets.UTF_8));
 
-            // Assert
             assertTrue(violations.isEmpty());
         }
     }

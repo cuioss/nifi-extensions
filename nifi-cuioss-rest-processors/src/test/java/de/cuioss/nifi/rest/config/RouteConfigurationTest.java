@@ -34,7 +34,6 @@ class RouteConfigurationTest {
         @Test
         @DisplayName("Should create with all fields")
         void shouldCreateWithAllFields() {
-            // Arrange & Act
             var route = RouteConfiguration.builder()
                     .name("users").path("/api/users")
                     .method("GET").method("POST")
@@ -43,7 +42,6 @@ class RouteConfigurationTest {
                     .schemaPath("./conf/schemas/user-schema.json")
                     .build();
 
-            // Assert
             assertEquals("users", route.name());
             assertEquals("/api/users", route.path());
             assertTrue(route.enabled());

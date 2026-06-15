@@ -119,7 +119,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should return processor config when processor found on first try")
         void shouldReturnProcessorConfig() {
-            // Arrange
             String processorId = UUID.randomUUID().toString();
             Map<String, String> properties = Map.of(
                     "rest.gateway.listening.port", "9443",
@@ -135,11 +134,9 @@ class ComponentConfigReaderTest {
                     .andReturn(details);
             replay(mockConfigContext);
 
-            // Act
             ComponentConfigReader.ComponentConfig config =
                     reader.getComponentConfig(processorId, mockRequest);
 
-            // Assert
             assertEquals(ComponentConfigReader.ComponentType.PROCESSOR, config.type());
             assertEquals("de.cuioss.nifi.rest.RestApiGatewayProcessor", config.componentClass());
             assertEquals("9443", config.properties().get("rest.gateway.listening.port"));
@@ -151,7 +148,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should fall back to controller service when processor not found")
         void shouldFallbackToControllerService() {
-            // Arrange
             String componentId = UUID.randomUUID().toString();
             Map<String, String> properties = Map.of(
                     "jwt.issuer.url", "https://keycloak.example.com/realms/test");
@@ -170,11 +166,9 @@ class ComponentConfigReaderTest {
                     .andReturn(csDetails);
             replay(mockConfigContext);
 
-            // Act
             ComponentConfigReader.ComponentConfig config =
                     reader.getComponentConfig(componentId, mockRequest);
 
-            // Assert
             assertEquals(ComponentConfigReader.ComponentType.CONTROLLER_SERVICE, config.type());
             assertEquals("de.cuioss.nifi.jwt.StandardJwtIssuerConfigService", config.componentClass());
             assertEquals("https://keycloak.example.com/realms/test",
@@ -185,7 +179,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should throw IllegalArgumentException when both APIs fail")
         void shouldThrowWhenBothNotFound() {
-            // Arrange
             String componentId = UUID.randomUUID().toString();
             expect(mockConfigContext.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
                     .andThrow(new ResourceNotFoundException("Processor not found"));
@@ -193,7 +186,6 @@ class ComponentConfigReaderTest {
                     .andThrow(new ResourceNotFoundException("CS not found"));
             replay(mockConfigContext);
 
-            // Act & Assert
             IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                     () -> reader.getComponentConfig(componentId, mockRequest));
             assertTrue(exception.getMessage().contains("Component not found"));
@@ -204,7 +196,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should handle null properties from ComponentDetails")
         void shouldHandleNullProperties() {
-            // Arrange
             String processorId = UUID.randomUUID().toString();
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -215,11 +206,9 @@ class ComponentConfigReaderTest {
                     .andReturn(details);
             replay(mockConfigContext);
 
-            // Act
             ComponentConfigReader.ComponentConfig config =
                     reader.getComponentConfig(processorId, mockRequest);
 
-            // Assert
             assertNotNull(config.properties());
             assertTrue(config.properties().isEmpty());
             verify(mockConfigContext);
@@ -228,7 +217,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should handle empty properties from ComponentDetails")
         void shouldHandleEmptyProperties() {
-            // Arrange
             String processorId = UUID.randomUUID().toString();
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -240,11 +228,9 @@ class ComponentConfigReaderTest {
                     .andReturn(details);
             replay(mockConfigContext);
 
-            // Act
             ComponentConfigReader.ComponentConfig config =
                     reader.getComponentConfig(processorId, mockRequest);
 
-            // Assert
             assertNotNull(config.properties());
             assertTrue(config.properties().isEmpty());
             verify(mockConfigContext);
@@ -258,7 +244,6 @@ class ComponentConfigReaderTest {
         @Test
         @DisplayName("Should return properties map from component config")
         void shouldReturnPropertiesMap() {
-            // Arrange
             String processorId = UUID.randomUUID().toString();
             Map<String, String> expectedProperties = Map.of(
                     "issuer.1.name", "test-issuer",
@@ -274,10 +259,8 @@ class ComponentConfigReaderTest {
                     .andReturn(details);
             replay(mockConfigContext);
 
-            // Act
             Map<String, String> properties = reader.getProcessorProperties(processorId, mockRequest);
 
-            // Assert
             assertEquals(2, properties.size());
             assertEquals("test-issuer", properties.get("issuer.1.name"));
             assertEquals("https://example.com/jwks", properties.get("issuer.1.jwks-url"));

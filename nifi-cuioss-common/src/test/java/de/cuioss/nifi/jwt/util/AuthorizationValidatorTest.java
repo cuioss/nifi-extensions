@@ -40,11 +40,9 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should throw NullPointerException when token is null")
         void shouldThrowWhenTokenIsNull() {
-            // Arrange
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of(), Set.of());
 
-            // Act & Assert
             assertThrows(NullPointerException.class,
                     () -> AuthorizationValidator.validate(null, requirements));
         }
@@ -52,11 +50,9 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should throw NullPointerException when requirements is null")
         void shouldThrowWhenRequirementsIsNull() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             AccessTokenContent token = tokenHolder.asAccessTokenContent();
 
-            // Act & Assert
             assertThrows(NullPointerException.class,
                     () -> AuthorizationValidator.validate(token, null));
         }
@@ -69,16 +65,13 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should authorize when no roles or scopes required")
         void shouldAuthorizeWhenNoRequirements() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             AccessTokenContent token = tokenHolder.asAccessTokenContent();
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of(), Set.of());
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
             assertTrue(result.missingScopes().isEmpty());
@@ -88,16 +81,13 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should authorize when requirements has no authorization checks")
         void shouldAuthorizeWhenNoAuthorizationChecks() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             AccessTokenContent token = tokenHolder.asAccessTokenContent();
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     false, Set.of(), Set.of());
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
         }
@@ -110,7 +100,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should authorize when token has all required roles")
         void shouldAuthorizeWhenTokenHasAllRoles() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("admin,user",
                     List.of("admin", "user", "viewer")));
@@ -119,10 +108,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin", "user"), Set.of());
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
             assertTrue(result.missingRoles().isEmpty());
@@ -131,7 +118,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when token missing required roles")
         void shouldNotAuthorizeWhenMissingRoles() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("user",
                     List.of("user", "viewer")));
@@ -140,10 +126,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin", "superuser"), Set.of());
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing roles"));
@@ -155,7 +139,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when token has only non-matching roles")
         void shouldNotAuthorizeWhenTokenHasNonMatchingRoles() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("viewer",
                     List.of("viewer")));
@@ -164,10 +147,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin"), Set.of());
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing roles"));
@@ -181,7 +162,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should authorize when token has all required scopes")
         void shouldAuthorizeWhenTokenHasAllScopes() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("scope", ClaimValue.forList("read write delete",
                     List.of("read", "write", "delete")));
@@ -190,10 +170,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of(), Set.of("read", "write"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
             assertTrue(result.missingScopes().isEmpty());
@@ -202,7 +180,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when token missing required scopes")
         void shouldNotAuthorizeWhenMissingScopes() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("scope", ClaimValue.forList("read",
                     List.of("read")));
@@ -211,10 +188,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of(), Set.of("read", "write", "delete"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing scopes"));
@@ -226,17 +201,14 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when token has no scopes but scopes required")
         void shouldNotAuthorizeWhenTokenHasNoScopes() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             AccessTokenContent token = tokenHolder.asAccessTokenContent();
 
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of(), Set.of("read"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing scopes"));
@@ -250,7 +222,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should authorize when token has both required roles and scopes")
         void shouldAuthorizeWhenBothRolesAndScopesSatisfied() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("admin,user",
                     List.of("admin", "user")));
@@ -261,10 +232,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin"), Set.of("read"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
             assertTrue(result.missingRoles().isEmpty());
@@ -274,7 +243,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when roles satisfied but scopes missing")
         void shouldNotAuthorizeWhenRolesOkButScopesMissing() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("admin",
                     List.of("admin")));
@@ -285,10 +253,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin"), Set.of("read", "write"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing scopes"));
@@ -299,7 +265,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when scopes satisfied but roles missing")
         void shouldNotAuthorizeWhenScopesOkButRolesMissing() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("user",
                     List.of("user")));
@@ -310,10 +275,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin"), Set.of("read"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing roles"));
@@ -324,7 +287,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should not authorize when both roles and scopes missing")
         void shouldNotAuthorizeWhenBothRolesAndScopesMissing() {
-            // Arrange
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("viewer",
                     List.of("viewer")));
@@ -335,10 +297,8 @@ class AuthorizationValidatorTest {
             AuthorizationRequirements requirements = new AuthorizationRequirements(
                     true, Set.of("admin"), Set.of("write"));
 
-            // Act
             AuthorizationResult result = AuthorizationValidator.validate(token, requirements);
 
-            // Assert
             assertFalse(result.authorized());
             assertNotNull(result.reason());
             assertTrue(result.reason().contains("Missing scopes"));
@@ -355,7 +315,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should create result via builder with all fields")
         void shouldCreateResultViaBuilder() {
-            // Arrange & Act
             AuthorizationResult result = AuthorizationResult.builder()
                     .authorized(false)
                     .reason("Test failure reason")
@@ -363,7 +322,6 @@ class AuthorizationValidatorTest {
                     .missingRoles(Set.of("admin"))
                     .build();
 
-            // Assert
             assertFalse(result.authorized());
             assertEquals("Test failure reason", result.reason());
             assertEquals(Set.of("write", "delete"), result.missingScopes());
@@ -373,7 +331,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should handle null reason in result")
         void shouldHandleNullReason() {
-            // Arrange & Act
             AuthorizationResult result = AuthorizationResult.builder()
                     .authorized(true)
                     .reason(null)
@@ -381,7 +338,6 @@ class AuthorizationValidatorTest {
                     .missingRoles(Set.of())
                     .build();
 
-            // Assert
             assertTrue(result.authorized());
             assertNull(result.reason());
         }
@@ -389,7 +345,6 @@ class AuthorizationValidatorTest {
         @Test
         @DisplayName("Should support equals and hashCode")
         void shouldSupportEqualsAndHashCode() {
-            // Arrange
             AuthorizationResult result1 = AuthorizationResult.builder()
                     .authorized(true)
                     .missingScopes(Set.of())
@@ -402,7 +357,6 @@ class AuthorizationValidatorTest {
                     .missingRoles(Set.of())
                     .build();
 
-            // Act & Assert
             assertEquals(result1, result2);
             assertEquals(result1.hashCode(), result2.hashCode());
         }
