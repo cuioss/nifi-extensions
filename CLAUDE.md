@@ -60,7 +60,7 @@ Language-level prohibitions are owned by the skills referenced under [Convention
 
 - **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
 - **No raw `console.log`** in JavaScript — use the `log` utility from `utils.js` (`log.info`, `log.warn`, `log.error`, `log.debug`)
-- **No commits without pre-commit checks** — always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `... --command-args "clean install"`
+- **No commits without pre-commit checks** — always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`
 - **No hardcoded credentials or secrets**
 
 ## Temporary Files
