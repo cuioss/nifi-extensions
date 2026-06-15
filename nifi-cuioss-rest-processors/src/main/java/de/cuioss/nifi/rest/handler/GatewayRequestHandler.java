@@ -153,8 +153,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
         this.globalMaxRequestSize = globalMaxRequestSize;
         this.httpSecurityEvents = Objects.requireNonNull(httpSecurityEvents);
         this.gatewaySecurityEvents = Objects.requireNonNull(gatewaySecurityEvents);
+        // The gateway is the system's most external HTTP boundary (raw inbound
+        // requests from arbitrary clients), so it uses the strict security posture —
+        // consistent with the UI validation servlets (JwksValidationServlet,
+        // GatewayProxyServlet) which also build their pipelines with
+        // SecurityConfiguration.strict(). Hard violations are rejected with HTTP 400
+        // via the UrlSecurityException catch in validateAndSanitizeInput.
         this.securityPipelines = PipelineFactory.createCommonPipelines(
-                SecurityConfiguration.defaults(), this.httpSecurityEvents);
+                SecurityConfiguration.strict(), this.httpSecurityEvents);
 
         this.handlerMap = new LinkedHashMap<>();
         this.patternRoutes = new ArrayList<>();
