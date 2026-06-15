@@ -63,6 +63,19 @@
             <artifactId>hamcrest</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- cui-test-generator for generated path-parameter values -->
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-generator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- cui-http adversarial attack databases (OWASP/ApacheCVE/ModSecurity, AttackTestCase) -->
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-http</artifactId>
+            <classifier>generators</classifier>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

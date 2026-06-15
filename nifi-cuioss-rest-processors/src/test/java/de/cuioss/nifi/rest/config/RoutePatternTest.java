@@ -16,10 +16,18 @@
  */
 package de.cuioss.nifi.rest.config;
 
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -27,11 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@EnableGeneratorController
 @DisplayName("RoutePattern")
 class RoutePatternTest {
 
@@ -67,16 +77,17 @@ class RoutePatternTest {
     @DisplayName("Single Parameter Matching")
     class SingleParameterMatching {
 
-        @Test
-        @DisplayName("Should match and extract a single parameter")
+        @RepeatedTest(5)
+        @DisplayName("Should match and extract a single generated parameter value")
         void shouldMatchSingleParameter() {
             var pattern = RoutePattern.compile("/api/v1/personalprozesse/{processid}/status");
+            String value = Generators.letterStrings(1, 16).next();
 
-            var result = pattern.match("/api/v1/personalprozesse/12345/status");
+            var result = pattern.match("/api/v1/personalprozesse/" + value + "/status");
 
             assertTrue(result.isPresent(), "Path should match the pattern");
-            assertEquals(Map.of("processid", "12345"), result.get(),
-                    "Extracted parameter should match");
+            assertEquals(Map.of("processid", value), result.get(),
+                    "Extracted parameter should match the generated value");
         }
 
         @Test
@@ -125,16 +136,18 @@ class RoutePatternTest {
     @DisplayName("Multiple Parameter Matching")
     class MultipleParameterMatching {
 
-        @Test
-        @DisplayName("Should match and extract multiple parameters")
+        @RepeatedTest(5)
+        @DisplayName("Should match and extract multiple generated parameter values")
         void shouldMatchMultipleParameters() {
             var pattern = RoutePattern.compile("/api/{tenant}/users/{userId}");
+            String tenant = Generators.letterStrings(1, 12).next();
+            String userId = Generators.letterStrings(1, 12).next();
 
-            var result = pattern.match("/api/acme/users/42");
+            var result = pattern.match("/api/" + tenant + "/users/" + userId);
 
             assertTrue(result.isPresent(), "Path should match the multi-parameter pattern");
-            assertEquals(Map.of("tenant", "acme", "userId", "42"), result.get(),
-                    "Both parameters should be extracted");
+            assertEquals(Map.of("tenant", tenant, "userId", userId), result.get(),
+                    "Both generated parameters should be extracted");
         }
 
         @Test
@@ -315,6 +328,57 @@ class RoutePatternTest {
                     "Empty constraint should be rejected");
             assertTrue(exception.getMessage().contains("Empty constraint"),
                     "Message should mention the empty constraint");
+        }
+    }
+
+    @Nested
+    @DisplayName("Adversarial Parameter Matching")
+    class AdversarialParameterMatching {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle OWASP attack value in a parameter segment safely")
+        void shouldHandleOwaspAttackValue(AttackTestCase testCase) {
+            assertMatchHandlesAttackSafely(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle Apache CVE attack value in a parameter segment safely")
+        void shouldHandleApacheCveAttackValue(AttackTestCase testCase) {
+            assertMatchHandlesAttackSafely(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle ModSecurity CRS attack value in a parameter segment safely")
+        void shouldHandleModSecurityAttackValue(AttackTestCase testCase) {
+            assertMatchHandlesAttackSafely(testCase);
+        }
+
+        /**
+         * Feeds an attack string into a single {@code {id}} parameter segment and
+         * asserts {@link RoutePattern#match} handles it safely: it never throws, and
+         * when an attack string contains a path separator it must NOT over-match a
+         * single-segment placeholder (a {@code {id}} segment matches exactly one path
+         * segment, so a value carrying a {@code /} cannot satisfy it).
+         */
+        private void assertMatchHandlesAttackSafely(AttackTestCase testCase) {
+            var pattern = RoutePattern.compile("/api/{id}/status");
+            String attack = testCase.attackString();
+
+            var result = assertDoesNotThrow(
+                    () -> pattern.match("/api/" + attack + "/status"),
+                    "RoutePattern.match must not throw for: " + testCase.attackDescription());
+
+            if (attack.contains("/")) {
+                assertTrue(result.isEmpty(),
+                        "A multi-segment attack value must not match a single-segment placeholder: "
+                                + testCase.attackDescription());
+            } else if (result.isPresent()) {
+                assertEquals(attack, result.get().get("id"),
+                        "When matched, the extracted value must equal the input verbatim (no silent rewrite)");
+            }
         }
     }
 }
