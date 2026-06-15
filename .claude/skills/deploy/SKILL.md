@@ -80,9 +80,10 @@ cd integration-testing/src/main/docker && docker compose down -v
 ```bash
 cd integration-testing/src/main/docker && docker compose down -v
 cd <project-root>
-./mvnw clean install
-./mvnw verify -Pintegration-tests -pl e-2-e-playwright -am
+python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"
+python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl e-2-e-playwright -am"
 ```
+Run the two Maven steps via the canonical plan-marshall executor (10-minute / `600000` ms Bash timeout; analyze the TOON result rather than raw stdout).
 IMPORTANT: Maven manages its own container lifecycle. Do NOT have manually-started containers running.
 
 #### troubleshoot
@@ -122,9 +123,9 @@ The `tabs_context_mcp` call frequently returns "Browser extension is not connect
 
 ## Critical Rules
 
-- Maven E2E (`./mvnw verify -Pintegration-tests`) automatically stops existing containers before starting fresh ones (via fixed `deploy-and-start.sh`)
+- Maven E2E (`python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests"`) automatically stops existing containers before starting fresh ones (via fixed `deploy-and-start.sh`)
 - The `integration-tests` profile's `deploy-and-start.sh` already stops the same-project `docker` dev stack before starting, so `/deploy integration-test` (`it`) needs no competing explicit stop step
-- After `./mvnw clean install`, the NAR in `target/nifi-deploy/` is stale — must run `/deploy redeploy` to update running containers
+- After a `clean install` build (`python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`), the NAR in `target/nifi-deploy/` is stale — must run `/deploy redeploy` to update running containers
 - NiFi loads NARs only at startup — code changes require container restart, not just file copy
 - The `target/nifi-deploy/` directory is volume-mounted into the NiFi container
 
