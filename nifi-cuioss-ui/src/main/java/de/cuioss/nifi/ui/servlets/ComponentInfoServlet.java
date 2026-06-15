@@ -112,6 +112,11 @@ public class ComponentInfoServlet extends HttpServlet {
             LOGGER.error(e, "Failed to resolve component info for %s", processorId);
             sendErrorResponse(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to resolve component info");
+        } catch (IOException e) {
+            // getOutputStream() / response writing failed — the client connection is
+            // likely broken, so handle here rather than letting it escape the servlet
+            // method (java:S1989); a further error response would also fail.
+            LOGGER.warn("Failed to write component info response for %s: %s", processorId, e.getMessage());
         }
     }
 
