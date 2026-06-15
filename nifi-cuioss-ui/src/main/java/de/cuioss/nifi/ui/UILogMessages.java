@@ -150,6 +150,12 @@ public final class UILogMessages {
                 .identifier(115)
                 .template("JWKS response body exceeds size limit for URL: %s")
                 .build();
+
+        public static final LogRecord HEADER_SECURITY_VIOLATION = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(116)
+                .template("Header security violation for value: %s - %s")
+                .build();
     }
 
     public static final class ERROR {

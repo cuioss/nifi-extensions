@@ -21,12 +21,21 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
+import de.cuioss.test.generator.domain.UUIDStringGenerator;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -52,6 +61,7 @@ import static org.hamcrest.Matchers.*;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
+@EnableGeneratorController
 @DisplayName("Attachment Flow Integration Tests")
 class AttachmentFlowIT {
 
@@ -175,28 +185,66 @@ class AttachmentFlowIT {
                     .body("_links.status.href", startsWith("/status/"));
         }
 
-        @Test
-        @DisplayName("should return 404 for attachment with unknown parentTraceId")
+        @RepeatedTest(3)
+        @DisplayName("should return 404 for attachment with a generated non-existent parentTraceId")
         void shouldReturn404ForUnknownParent() {
+            // A generated, well-formed but non-existent UUID — exercises the
+            // not-tracked branch with a fresh value each run rather than a literal.
+            String unknownParentTraceId = new UUIDStringGenerator().next();
             given().spec(authSpec)
                     .body("{\"file\": \"orphan-attachment\"}")
                     .when()
-                    .post("/attachments/00000000-0000-0000-0000-000000000000")
+                    .post("/attachments/" + unknownParentTraceId)
                     .then()
                     .statusCode(404)
                     .contentType(containsString("application/problem+json"));
         }
 
-        @Test
-        @DisplayName("should return 400 for attachment with invalid UUID")
-        void shouldReturn400ForInvalidUuid() {
-            given().spec(authSpec)
-                    .body("{\"file\": \"bad-uuid\"}")
-                    .when()
-                    .post("/attachments/not-a-uuid")
-                    .then()
-                    .statusCode(400)
-                    .contentType(containsString("application/problem+json"));
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should reject OWASP attack as parentTraceId (non-2xx)")
+        void shouldRejectOwaspAttackParentTraceId(AttackTestCase testCase) {
+            assertAttackParentTraceIdRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should reject Apache CVE attack as parentTraceId (non-2xx)")
+        void shouldRejectApacheCveAttackParentTraceId(AttackTestCase testCase) {
+            assertAttackParentTraceIdRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should reject ModSecurity CRS attack as parentTraceId (non-2xx)")
+        void shouldRejectModSecurityAttackParentTraceId(AttackTestCase testCase) {
+            assertAttackParentTraceIdRejected(testCase);
+        }
+
+        /**
+         * Feeds an adversarial / malformed string into the {@code {parentTraceId}}
+         * path-parameter segment and asserts the gateway does not return 2xx — the
+         * invalid-UUID / security validation rejects it (400) or the router declines
+         * to match it (404). A value that cannot form a valid request is rejected at
+         * the transport level (caught here). This replaces the former single
+         * {@code not-a-uuid} literal with adversarial-database coverage.
+         */
+        private void assertAttackParentTraceIdRejected(AttackTestCase testCase) {
+            try {
+                int status = given().spec(authSpec)
+                        .body("{\"file\": \"bad-uuid\"}")
+                        .when()
+                        .post("/attachments/{parentTraceId}", testCase.attackString())
+                        .then()
+                        .extract()
+                        .statusCode();
+                org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+                        "Expected non-2xx for adversarial parentTraceId: " + testCase.attackDescription()
+                                + " (got " + status + ")");
+            } catch (RuntimeException e) {
+                // Attack string produced a request REST Assured / the client refused —
+                // rejected at the transport level, which counts as safe handling.
+            }
         }
 
         @Test

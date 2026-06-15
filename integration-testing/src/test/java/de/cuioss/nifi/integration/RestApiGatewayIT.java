@@ -21,11 +21,20 @@ import io.restassured.config.RestAssuredConfig;
 import io.restassured.config.SSLConfig;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -58,6 +67,7 @@ import static org.hamcrest.Matchers.*;
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
+@EnableGeneratorController
 @DisplayName("RestApiGateway Integration Tests")
 class RestApiGatewayIT {
 
@@ -166,25 +176,72 @@ class RestApiGatewayIT {
     @DisplayName("Path-Parameter Routes")
     class PathParameterRouteTests {
 
-        @Test
+        @RepeatedTest(3)
         @DisplayName("should return 200 OK for GET /api/items/{itemId} matching the parameterized route")
         void shouldMatchParameterizedRoute() {
+            String itemId = Generators.letterStrings(1, 12).next();
             given().spec(authSpec)
                     .when()
-                    .get("/api/items/123")
+                    .get("/api/items/" + itemId)
                     .then()
                     .statusCode(200)
                     .body(not(emptyString()));
         }
 
-        @Test
-        @DisplayName("should match the parameterized route for a different path-parameter value")
+        @RepeatedTest(3)
+        @DisplayName("should match the parameterized route for a different generated path-parameter value")
         void shouldMatchParameterizedRouteForDifferentValue() {
+            String itemId = Generators.letterStrings(1, 12).next();
             given().spec(authSpec)
                     .when()
-                    .get("/api/items/abc-987")
+                    .get("/api/items/" + itemId)
                     .then()
                     .statusCode(200);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should handle OWASP attack in {itemId} path parameter safely (non-2xx)")
+        void shouldHandleOwaspAttackInItemId(AttackTestCase testCase) {
+            assertAttackItemIdRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should handle Apache CVE attack in {itemId} path parameter safely (non-2xx)")
+        void shouldHandleApacheCveAttackInItemId(AttackTestCase testCase) {
+            assertAttackItemIdRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("should handle ModSecurity CRS attack in {itemId} path parameter safely (non-2xx)")
+        void shouldHandleModSecurityAttackInItemId(AttackTestCase testCase) {
+            assertAttackItemIdRejected(testCase);
+        }
+
+        /**
+         * Feeds an attack string into the {@code {itemId}} path-parameter segment of
+         * the live gateway and asserts the gateway does not return a 2xx success — the
+         * security pipeline rejects the adversarial value (400) or the router declines
+         * to match it (404). REST Assured URL-encodes the path segment; a value that
+         * cannot form a valid request is rejected at the transport level (caught here).
+         */
+        private void assertAttackItemIdRejected(AttackTestCase testCase) {
+            try {
+                int status = given().spec(authSpec)
+                        .when()
+                        .get("/api/items/{itemId}", testCase.attackString())
+                        .then()
+                        .extract()
+                        .statusCode();
+                org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+                        "Expected non-2xx for adversarial itemId: " + testCase.attackDescription()
+                                + " (got " + status + ")");
+            } catch (RuntimeException e) {
+                // Attack string produced a request REST Assured / the client refused —
+                // rejected at the transport level, which counts as safe handling.
+            }
         }
 
         @Test

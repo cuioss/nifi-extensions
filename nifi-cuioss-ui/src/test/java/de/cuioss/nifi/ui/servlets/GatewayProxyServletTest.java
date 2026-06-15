@@ -16,11 +16,18 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import jakarta.json.Json;
 import jakarta.servlet.http.HttpServletRequest;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -1304,6 +1311,187 @@ class GatewayProxyServletTest {
             // NiFi methods override
             var methods = dataRoute.getJsonArray("methods");
             assertEquals(2, methods.size());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // cui-http security validation (URL / path / header)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("cui-http security validation")
+    class SecurityValidation {
+
+        private static final String TRAVERSAL_PROCESSOR_ID = "../../../etc/passwd";
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header on GET with 400")
+        void shouldRejectMaliciousProcessorIdOnGet() {
+            handle.spec()
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid header value"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header on /test with 400")
+        void shouldRejectMaliciousProcessorIdOnTest() {
+            handle.spec()
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid header value"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious path in /test request with 400")
+        void shouldRejectMaliciousPathInTestRequest() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/../../../etc/passwd","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious tokenEndpointUrl with 400")
+        void shouldRejectMaliciousTokenEndpointUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/%2e%2e%2f%2e%2e/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious issuerUrl on discover with 400")
+        void shouldRejectMaliciousIssuerUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/%2e%2e%2f%2e%2e/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Invalid URL"));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate UUID processor ID pass header validation")
+        void shouldAllowLegitimateProcessorId() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate path pass URL validation in /test")
+        void shouldAllowLegitimatePathInTest() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200)
+                    .body("status", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate tokenEndpointUrl pass URL validation")
+        void shouldAllowLegitimateTokenEndpointUrl() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s","scope":"openid"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(200)
+                    .body("access_token", equalTo("test-token"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial attack-database coverage (OWASP / Apache CVE / ModSecurity CRS)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Adversarial attack-database coverage")
+    class AdversarialSecurityValidation {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject OWASP Top 10 attack in /test path")
+        void shouldRejectOwaspAttackInPath(AttackTestCase testCase) {
+            assertAttackPathRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject Apache CVE attack in /test path")
+        void shouldRejectApacheCveAttackInPath(AttackTestCase testCase) {
+            assertAttackPathRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject ModSecurity CRS attack in /test path")
+        void shouldRejectModSecurityAttackInPath(AttackTestCase testCase) {
+            assertAttackPathRejected(testCase);
+        }
+
+        /**
+         * Feeds an attack string as the {@code path} of a {@code /test} request (the
+         * URL-path validated input) and asserts the servlet does not succeed (non-200).
+         * The cui-http URL-path pipeline rejects the attack with HTTP 400; an attack
+         * string that cannot be embedded in a JSON body / parsed as JSON is rejected at
+         * the request-parse boundary (400), which also counts as a successful rejection.
+         */
+        private void assertAttackPathRejected(AttackTestCase testCase) {
+            String body = Json.createObjectBuilder()
+                    .add("path", testCase.attackString())
+                    .add("method", "GET")
+                    .add("headers", Json.createObjectBuilder())
+                    .build()
+                    .toString();
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body(body)
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(not(equalTo(200)));
         }
     }
 }

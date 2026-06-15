@@ -16,10 +16,16 @@
  */
 package de.cuioss.nifi.rest;
 
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -29,12 +35,16 @@ import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Collectors;
@@ -44,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("RestApiGatewayProcessor")
 @EnableTestLogger
+@EnableGeneratorController
 class RestApiGatewayProcessorTest {
 
     private static final String CS_ID = "jwt-config-service";
@@ -295,14 +306,17 @@ class RestApiGatewayProcessorTest {
             flowFile.assertAttributeEquals("http.query.limit", "10");
         }
 
-        @Test
-        @DisplayName("Should set path parameters from a pattern-matched route")
+        @RepeatedTest(5)
+        @DisplayName("Should set generated path parameters from a pattern-matched route")
         void shouldSetPathParameters() throws Exception {
             testRunner.run(1, false, true);
             int port = getServerPort();
+            String userId = Generators.letterStrings(1, 12).next();
+            String orderId = Generators.letterStrings(1, 12).next();
 
             httpClient.send(
-                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/users/42/orders/7"))
+                    HttpRequest.newBuilder(URI.create(
+                                    "http://127.0.0.1:" + port + "/api/users/" + userId + "/orders/" + orderId))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -310,8 +324,67 @@ class RestApiGatewayProcessorTest {
             testRunner.run(1, false, false);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("userdetail").getFirst();
-            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "userId", "42");
-            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "orderId", "7");
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "userId", userId);
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "orderId", orderId);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle OWASP attack in path parameter safely")
+        void shouldHandleOwaspAttackInPathParameter(AttackTestCase testCase) throws Exception {
+            assertAttackPathParameterHandledSafely(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle Apache CVE attack in path parameter safely")
+        void shouldHandleApacheCveAttackInPathParameter(AttackTestCase testCase) throws Exception {
+            assertAttackPathParameterHandledSafely(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should handle ModSecurity CRS attack in path parameter safely")
+        void shouldHandleModSecurityAttackInPathParameter(AttackTestCase testCase) throws Exception {
+            assertAttackPathParameterHandledSafely(testCase);
+        }
+
+        /**
+         * Feeds an attack string into the {@code {userId}} path-parameter segment and
+         * asserts the gateway handles it safely: either the security pipeline / route
+         * matcher rejects it (non-2xx, no FlowFile) or — when the value is matched — the
+         * extracted path-parameter attribute equals the input verbatim (no silent
+         * rewrite). The gateway must never crash, and an attack value carrying a path
+         * separator must not over-match the single-segment placeholder.
+         */
+        private void assertAttackPathParameterHandledSafely(AttackTestCase testCase) throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            String attack = testCase.attackString();
+            String encoded = URLEncoder.encode(attack, StandardCharsets.UTF_8);
+
+            int status;
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create(
+                                        "http://127.0.0.1:" + port + "/api/users/" + encoded + "/orders/1"))
+                                .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                status = response.statusCode();
+            } catch (IllegalArgumentException e) {
+                // Attack string produced a URI the client refused to build — rejected at
+                // the transport level, which counts as safe handling.
+                return;
+            }
+
+            testRunner.run(1, false, false);
+
+            var userdetailFiles = testRunner.getFlowFilesForRelationship("userdetail");
+            if (status == 200 && !userdetailFiles.isEmpty()) {
+                userdetailFiles.getFirst().assertAttributeEquals(
+                        RestApiAttributes.PATH_PARAM_PREFIX + "userId", attack);
+            }
         }
 
         @Test

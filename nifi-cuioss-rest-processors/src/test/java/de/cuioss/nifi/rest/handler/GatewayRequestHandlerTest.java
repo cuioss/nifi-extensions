@@ -647,6 +647,35 @@ class GatewayRequestHandlerTest {
 
             assertEquals(200, response.statusCode());
         }
+
+        // The gateway pipeline is built with SecurityConfiguration.strict() — the
+        // strictest external-boundary posture. The following cases assert that the
+        // strict posture rejects adversarial query-parameter values (the
+        // url-parameter pipeline) in addition to the path pipeline exercised above.
+        @ParameterizedTest(name = "Should reject malicious query parameter: {0}")
+        @ValueSource(strings = {
+                "/api/health?q=../../../etc/passwd",
+                "/api/health?q=%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+                "/api/health?q=value%00injection"
+        })
+        @DisplayName("Should reject malicious query parameter under strict posture")
+        void shouldRejectMaliciousQueryParameter(String pathWithQuery) throws Exception {
+            var response = httpClient.send(
+                    requestBuilder(pathWithQuery).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertNotEquals(200, response.statusCode());
+        }
+
+        @Test
+        @DisplayName("Should accept legitimate query parameters under strict posture")
+        void shouldAcceptLegitimateQueryParameter() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/api/health?page=2&size=50").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+        }
     }
 
     @Nested
