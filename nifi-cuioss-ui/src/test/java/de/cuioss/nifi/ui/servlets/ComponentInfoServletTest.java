@@ -20,6 +20,7 @@ import de.cuioss.nifi.ui.util.ComponentConfigReader.ComponentConfig;
 import de.cuioss.nifi.ui.util.ComponentConfigReader.ComponentType;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.ClusterRequestException;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 
@@ -171,9 +172,10 @@ class ComponentInfoServletTest {
         }
 
         @Test
-        @DisplayName("Should return 500 for unexpected exception")
+        @DisplayName("Should return 500 for NiFi cluster request failure")
         void shouldReturn500ForUnexpectedException() {
-            configException.set(new RuntimeException("Unexpected error in config resolution"));
+            configException.set(new ClusterRequestException(
+                    new RuntimeException("Unexpected error in config resolution")));
 
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -195,6 +197,46 @@ class ComponentInfoServletTest {
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // cui-http X-Processor-Id header security validation
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("cui-http X-Processor-Id security validation")
+    class SecurityValidation {
+
+        private static final String TRAVERSAL_PROCESSOR_ID = "../../../etc/passwd";
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header with 400")
+        void shouldRejectMaliciousProcessorIdHeader() {
+            configException.set(new ClusterRequestException(
+                    new RuntimeException("Component resolution must not be reached for a rejected header")));
+
+            handle.spec()
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .when()
+                    .get("/component-info")
+                    .then()
+                    .statusCode(400)
+                    .contentType(containsString("application/json"))
+                    .body("error", containsString("Invalid header value"));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate UUID X-Processor-Id resolve component info")
+        void shouldAllowLegitimateProcessorId() {
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/component-info")
+                    .then()
+                    .statusCode(200)
+                    .body("type", equalTo("PROCESSOR"))
+                    .body("componentClass", equalTo(PROCESSOR_CLASS));
         }
     }
 }

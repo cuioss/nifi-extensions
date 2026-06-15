@@ -16,6 +16,12 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.config.SecurityConfiguration;
+import de.cuioss.http.security.core.HttpSecurityValidator;
+import de.cuioss.http.security.exceptions.UrlSecurityException;
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
+import de.cuioss.http.security.pipeline.PipelineFactory;
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
@@ -24,6 +30,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.ClusterRequestException;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 
 import java.io.IOException;
@@ -52,6 +59,19 @@ public class ComponentInfoServlet extends HttpServlet {
 
     private transient NiFiWebConfigurationContext configContext;
 
+    /**
+     * cui-http header-value security validator built once with a strict
+     * configuration. This servlet is a validation boundary, so it follows the
+     * {@code JwksValidationServlet} strict/throw baseline (reject-on-violation).
+     */
+    private final transient HttpSecurityValidator headerValueValidator;
+
+    public ComponentInfoServlet() {
+        SecurityEventCounter counter = new SecurityEventCounter();
+        SecurityConfiguration secConfig = SecurityConfiguration.strict();
+        headerValueValidator = PipelineFactory.createHeaderValuePipeline(secConfig, counter);
+    }
+
     @Override
     public void init() throws ServletException {
         super.init();
@@ -64,6 +84,9 @@ public class ComponentInfoServlet extends HttpServlet {
         String processorId = req.getHeader(PROCESSOR_ID_HEADER);
         if (processorId == null || processorId.isBlank()) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, "Missing processor ID");
+            return;
+        }
+        if (!validateHeaderSecurity(processorId, resp)) {
             return;
         }
 
@@ -85,10 +108,32 @@ public class ComponentInfoServlet extends HttpServlet {
             LOGGER.debug("Component not found for ID %s: %s", processorId, e.getMessage());
             sendErrorResponse(resp, HttpServletResponse.SC_NOT_FOUND,
                     "Component not found: " + processorId);
-        } catch (Exception e) {
+        } catch (ClusterRequestException | IllegalStateException e) {
             LOGGER.error(e, "Failed to resolve component info for %s", processorId);
             sendErrorResponse(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to resolve component info");
+        }
+    }
+
+    /**
+     * Validates the externally-sourced {@code X-Processor-Id} header value
+     * through the cui-http header-value security pipeline. On violation, rejects
+     * with HTTP 400 and a {@code WARN} log entry, mirroring the
+     * {@code JwksValidationServlet} baseline.
+     *
+     * @param value the header value to validate
+     * @param resp  the response to write a 400 error to on violation
+     * @return {@code true} when the value is safe, {@code false} when rejected
+     */
+    private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
+        try {
+            headerValueValidator.validate(value);
+            return true;
+        } catch (UrlSecurityException e) {
+            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid header value: " + e.getFailureType().getDescription());
+            return false;
         }
     }
 
