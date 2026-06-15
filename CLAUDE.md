@@ -38,42 +38,30 @@ To run the integration-testing module's Java Failsafe ITs, use the `/deploy it` 
 
 ## Conventions
 
-- **Java 21** — Records, switch expressions, text blocks, pattern matching, sealed classes
-- **Lombok** — @Builder, @Value, @NonNull, @UtilityClass
-- **CuiLogger** — `de.cuioss.tools.logging.CuiLogger`, constant name `LOGGER`, `%s` substitutions, LogRecord for templates
-- **JUnit 5** with CUI test utilities (cui-test-generator, cui-test-value-objects, cui-test-juli-logger)
-- **AAA test pattern**, `@DisplayName`, `@Nested`, parameterized tests for 3+ similar variants
-- **80% coverage minimum** (Java line coverage; JS: 80% lines, 75% branches, 78% functions)
-- **ESLint + Prettier** for JavaScript, `const` over `let`
+The detailed language/testing standards live in plan-marshall skills — load them on demand instead of duplicating here. Each bullet names the skill that owns the standard (Java 21 features, Lombok, CuiLogger, JUnit/AAA/coverage, CUI test libraries, JS modules/lint, Jest):
+
+- **Java core** (Java 21 records, switch expressions, text blocks, pattern matching, sealed classes) — `pm-dev-java:java-core`
+- **Lombok** (@Builder, @Value, @NonNull, @UtilityClass) — `pm-dev-java:java-lombok`
+- **Null safety** (no null returns — use Optional or empty collections) — `pm-dev-java:java-null-safety`
+- **CUI logging** (CuiLogger, `LOGGER` constant, `%s` substitutions, LogRecord; no log4j/slf4j/System.out) — `pm-dev-java-cui:cui-logging`
+- **JUnit / coverage** (AAA pattern, `@DisplayName`, `@Nested`, parameterized for 3+ variants, 80% Java line coverage) — `pm-dev-java:junit-core`
+- **CUI test libraries** (cui-test-generator, cui-test-value-objects, cui-test-juli-logger; no Mockito/PowerMock) — `pm-dev-java-cui:cui-testing`
+- **JavaScript core** (ES modules, `const` over `let`, no `var`) — `pm-dev-frontend:javascript`
+- **JS lint/format** (ESLint + Prettier) — `pm-dev-frontend:lint-config`
+- **JS unit tests** (Jest; 80% lines, 75% branches, 78% functions) — `pm-dev-frontend:jest-testing`
+
+Project-specific conventions (not covered by the skills above):
+
 - **AsciiDoc** (.adoc) for documentation
 
 ## Forbidden Practices
 
-- **No Mockito, PowerMock** — use CUI test alternatives
+Language-level prohibitions are owned by the skills referenced under [Conventions](#conventions) (no Mockito/PowerMock → `pm-dev-java-cui:cui-testing`; no log4j/slf4j/System.out → `pm-dev-java-cui:cui-logging`; no `var` → `pm-dev-frontend:javascript`; no null returns → `pm-dev-java:java-null-safety`). Project-specific prohibitions:
+
 - **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
-- **No log4j, slf4j, System.out/err** in Java — use CuiLogger
-- **No `var`** keyword in JavaScript — use `const`/`let`
 - **No raw `console.log`** in JavaScript — use the `log` utility from `utils.js` (`log.info`, `log.warn`, `log.error`, `log.debug`)
-- **No commits without pre-commit checks** — always run `./mvnw -Ppre-commit clean install -DskipTests` then `./mvnw clean install`
+- **No commits without pre-commit checks** — always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `... --command-args "clean install"`
 - **No hardcoded credentials or secrets**
-- **No null returns** in Java — use Optional or empty collections
-
-## Git Workflow
-
-All cuioss repositories have branch protection on `main`. Direct pushes to `main` are never allowed. Always use this workflow:
-
-1. Create a feature branch: `git checkout -b <branch-name>`
-2. Commit changes: `git add <files> && git commit -m "<message>"`
-3. Push the branch: `git push -u origin <branch-name>`
-4. Create a PR: `gh pr create --repo cuioss/nifi-extensions --head <branch-name> --base main --title "<title>" --body "<body>"`
-5. Wait for CI + Gemini review (waits until checks complete): `gh pr checks --watch`
-6. **Handle Gemini review comments** — fetch with `gh api repos/cuioss/nifi-extensions/pulls/<pr-number>/comments` and for each:
-   - If clearly valid and fixable: fix it, commit, push, then reply explaining the fix and resolve the comment
-   - If disagree or out of scope: reply explaining why, then resolve the comment
-   - If uncertain (not 100% confident): **ask the user** before acting
-   - Every comment MUST get a reply (reason for fix or reason for not fixing) and MUST be resolved
-7. Do **NOT** enable auto-merge unless explicitly instructed. Wait for user approval.
-8. Return to main: `git checkout main && git pull`
 
 ## Temporary Files
 
