@@ -30,6 +30,7 @@ import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -541,5 +542,97 @@ class JwtVerificationServletTest {
                 .body("valid", equalTo(true))
                 // decoded field should be absent when JWT parsing fails
                 .body("$", not(hasKey("decoded")));
+    }
+
+    // -----------------------------------------------------------------------
+    // cui-http X-Processor-Id header security validation
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("cui-http X-Processor-Id security validation")
+    class SecurityValidation {
+
+        private static final String TRAVERSAL_PROCESSOR_ID = "../../../etc/passwd";
+        private static final String LEGITIMATE_PROCESSOR_ID = "d290f1ee-6c54-4b01-90e6-d701748f0851";
+
+        @Test
+        @DisplayName("Should reject malicious body processorId with 400")
+        void shouldRejectMaliciousBodyProcessorId() {
+            currentVerifier = (token, processorId) -> {
+                throw new AssertionError("Service should not be called for a rejected processor ID");
+            };
+
+            handle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"token":"test-token","processorId":"../../../etc/passwd"}""")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(400)
+                    .body("valid", equalTo(false))
+                    .body("error", containsString("Invalid processor ID"));
+        }
+
+        @Test
+        @DisplayName("Should reject malicious X-Processor-Id header with 400")
+        void shouldRejectMaliciousProcessorIdHeader() {
+            currentVerifier = (token, processorId) -> {
+                throw new AssertionError("Service should not be called for a rejected processor ID");
+            };
+
+            handle.spec()
+                    .contentType("application/json")
+                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .body("""
+                            {"token":"test-token"}""")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(400)
+                    .body("valid", equalTo(false))
+                    .body("error", containsString("Invalid processor ID"));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate UUID processor ID pass header validation")
+        void shouldAllowLegitimateProcessorId() {
+            currentVerifier = (token, processorId) -> {
+                TokenValidationResult result = TokenValidationResult.success(null);
+                result.setAuthorized(true);
+                return result;
+            };
+
+            handle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"token":"test-token","processorId":"d290f1ee-6c54-4b01-90e6-d701748f0851"}""")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body("valid", equalTo(true));
+        }
+
+        @Test
+        @DisplayName("Should let a legitimate UUID X-Processor-Id header pass validation")
+        void shouldAllowLegitimateProcessorIdHeader() {
+            currentVerifier = (token, processorId) -> {
+                TokenValidationResult result = TokenValidationResult.success(null);
+                result.setAuthorized(true);
+                return result;
+            };
+
+            handle.spec()
+                    .contentType("application/json")
+                    .header("X-Processor-Id", LEGITIMATE_PROCESSOR_ID)
+                    .body("""
+                            {"token":"test-token"}""")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(200)
+                    .body("valid", equalTo(true));
+        }
     }
 }

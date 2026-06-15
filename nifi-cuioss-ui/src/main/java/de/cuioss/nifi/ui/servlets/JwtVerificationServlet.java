@@ -16,6 +16,10 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.config.SecurityConfiguration;
+import de.cuioss.http.security.core.HttpSecurityValidator;
+import de.cuioss.http.security.exceptions.UrlSecurityException;
+import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
@@ -94,13 +98,28 @@ public class JwtVerificationServlet extends HttpServlet {
 
     private transient JwtValidationService validationService;
 
+    /**
+     * cui-http header-value security validator built once with a strict
+     * configuration. This servlet is a validation boundary, so it follows the
+     * {@code JwksValidationServlet} strict/throw baseline (reject-on-violation).
+     */
+    private final transient HttpSecurityValidator headerValueValidator;
+
     public JwtVerificationServlet() {
+        this.headerValueValidator = buildHeaderValueValidator();
         // validationService initialized in init() from ServletContext
     }
 
     // For testing - allows injection of validation service
     public JwtVerificationServlet(JwtValidationService validationService) {
         this.validationService = validationService;
+        this.headerValueValidator = buildHeaderValueValidator();
+    }
+
+    private static HttpSecurityValidator buildHeaderValueValidator() {
+        var counter = new de.cuioss.http.security.monitoring.SecurityEventCounter();
+        SecurityConfiguration secConfig = SecurityConfiguration.strict();
+        return PipelineFactory.createHeaderValuePipeline(secConfig, counter);
     }
 
     @Override
@@ -172,9 +191,35 @@ public class JwtVerificationServlet extends HttpServlet {
             throw new RequestException(400, "Processor ID cannot be empty");
         }
 
+        // Validate the externally-sourced processor ID (body-sourced value or the
+        // X-Processor-Id header fallback) through the cui-http header-value pipeline
+        // before it is used as a component lookup key. The token field is deliberately
+        // NOT validated here — JWT tokens are validated by the OAuth-Sheriff validation
+        // service and contain base64url characters a URL/path sanitizer would wrongly
+        // reject; the X-Processor-Id value is the externally-sourced value in scope.
+        validateProcessorIdSecurity(processorId);
+
         LOGGER.debug("Verifying token for processor: %s", processorId);
 
         return new TokenVerificationRequest(token, processorId);
+    }
+
+    /**
+     * Validates an externally-sourced {@code X-Processor-Id} value through the
+     * cui-http header-value security pipeline. On violation, rejects with HTTP 400
+     * and a {@code WARN} log entry, mirroring the {@code JwksValidationServlet} baseline.
+     *
+     * @param processorId the processor ID value to validate
+     * @throws RequestException with status 400 when the value violates the security policy
+     */
+    private void validateProcessorIdSecurity(String processorId) throws RequestException {
+        try {
+            headerValueValidator.validate(processorId);
+        } catch (UrlSecurityException e) {
+            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, processorId, e.getFailureType());
+            throw new RequestException(400,
+                    "Invalid processor ID: " + e.getFailureType().getDescription());
+        }
     }
 
     private TokenValidationResult performTokenVerification(
