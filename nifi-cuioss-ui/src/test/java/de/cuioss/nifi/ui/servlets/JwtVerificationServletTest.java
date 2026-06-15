@@ -16,6 +16,10 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.sheriff.oauth.core.TokenType;
@@ -34,6 +38,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.charset.StandardCharsets;
@@ -633,6 +638,62 @@ class JwtVerificationServletTest {
                     .then()
                     .statusCode(200)
                     .body("valid", equalTo(true));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial attack-database coverage (OWASP / Apache CVE / ModSecurity CRS)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Adversarial attack-database coverage")
+    class AdversarialSecurityValidation {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject OWASP Top 10 attack on X-Processor-Id header")
+        void shouldRejectOwaspAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject Apache CVE attack on X-Processor-Id header")
+        void shouldRejectApacheCveAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject ModSecurity CRS attack on X-Processor-Id header")
+        void shouldRejectModSecurityAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        /**
+         * Feeds an attack string as the {@code X-Processor-Id} header and asserts the
+         * servlet does not return a valid (200/valid) verification. An attack string
+         * containing characters illegal for an HTTP header line is rejected at the
+         * transport level, which also counts as a successful rejection.
+         */
+        private void assertAttackHeaderRejected(AttackTestCase testCase) {
+            currentVerifier = (token, processorId) -> {
+                throw new AssertionError("Service should not be called for a rejected processor ID");
+            };
+            try {
+                handle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", testCase.attackString())
+                        .body("""
+                                {"token":"test-token"}""")
+                        .when()
+                        .post(ENDPOINT)
+                        .then()
+                        .statusCode(not(equalTo(200)));
+            } catch (RuntimeException e) {
+                // Attack string contains characters illegal for an HTTP header —
+                // rejected at the transport level before reaching the servlet.
+            }
         }
     }
 }

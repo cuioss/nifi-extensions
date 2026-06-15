@@ -147,6 +147,13 @@
             <classifier>generators</classifier>
             <scope>test</scope>
         </dependency>
+        <!-- cui-http adversarial attack databases (OWASP/ApacheCVE/ModSecurity, AttackTestCase) -->
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-http</artifactId>
+            <classifier>generators</classifier>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>

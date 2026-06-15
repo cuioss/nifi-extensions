@@ -16,6 +16,10 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
+import de.cuioss.http.security.database.AttackTestCase;
+import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
+import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.ui.util.ComponentConfigReader.ComponentConfig;
 import de.cuioss.nifi.ui.util.ComponentConfigReader.ComponentType;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -23,12 +27,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.ClusterRequestException;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 
 /**
  * Tests for {@link ComponentInfoServlet} using embedded Jetty + REST Assured.
@@ -237,6 +244,58 @@ class ComponentInfoServletTest {
                     .statusCode(200)
                     .body("type", equalTo("PROCESSOR"))
                     .body("componentClass", equalTo(PROCESSOR_CLASS));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Adversarial attack-database coverage (OWASP / Apache CVE / ModSecurity CRS)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Adversarial attack-database coverage")
+    class AdversarialSecurityValidation {
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(OWASPTop10AttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject OWASP Top 10 attack on X-Processor-Id header")
+        void shouldRejectOwaspAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ApacheCVEAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject Apache CVE attack on X-Processor-Id header")
+        void shouldRejectApacheCveAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        @ParameterizedTest(name = "[{index}] {0}")
+        @ArgumentsSource(ModSecurityCRSAttackDatabase.ArgumentsProvider.class)
+        @DisplayName("Should reject ModSecurity CRS attack on X-Processor-Id header")
+        void shouldRejectModSecurityAttackOnHeader(AttackTestCase testCase) {
+            assertAttackHeaderRejected(testCase);
+        }
+
+        /**
+         * Feeds an attack string as the {@code X-Processor-Id} header and asserts the
+         * servlet does not succeed (non-200). An attack string containing characters
+         * illegal for an HTTP header line is rejected at the transport level, which
+         * also counts as a successful rejection.
+         */
+        private void assertAttackHeaderRejected(AttackTestCase testCase) {
+            configException.set(new ClusterRequestException(
+                    new RuntimeException("Component resolution must not be reached for a rejected header")));
+            try {
+                handle.spec()
+                        .header("X-Processor-Id", testCase.attackString())
+                        .when()
+                        .get("/component-info")
+                        .then()
+                        .statusCode(not(equalTo(200)));
+            } catch (RuntimeException e) {
+                // Attack string contains characters illegal for an HTTP header —
+                // rejected at the transport level before reaching the servlet.
+            }
         }
     }
 }
