@@ -33,11 +33,16 @@
     "phase-5-execute": {
       "commit_and_push": true,
       "max_iterations": 5,
-      "per_deliverable_build": "compile+scoped-test",
+      "per_deliverable_build": [
+        "default:verify:compile",
+        "default:verify:module-tests"
+      ],
       "per_task_budget_reserve_tokens": "50K",
-      "steps": [
-        "default:quality_check",
-        "default:build_verify"
+      "verification_steps": [
+        "default:verify:quality-gate",
+        "default:verify:module-tests",
+        "default:verify:integration-tests",
+        "default:verify:e2e"
       ],
       "effort": {
         "default": "level-4",
@@ -53,7 +58,6 @@
       "final_merge_without_asking": false,
       "self_review": "auto",
       "qgate": "auto",
-      "plugin_doctor": "auto",
       "simplify": "auto",
       "checks_wait_timeout_seconds": 600,
       "auto_rebase_threshold": "no_overlap_only",
