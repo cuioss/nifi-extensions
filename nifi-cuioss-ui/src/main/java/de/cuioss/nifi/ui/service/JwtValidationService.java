@@ -18,6 +18,7 @@ package de.cuioss.nifi.ui.service;
 
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.oauth.core.IssuerConfig;
 import de.cuioss.sheriff.oauth.core.ParserConfig;
@@ -106,7 +107,7 @@ public class JwtValidationService {
                 processorProperties = restProps;
                 LOGGER.debug("REST API returned %s processor properties", processorProperties.size());
             } else {
-                LOGGER.warn("REST API also returned empty processor properties for %s", processorId);
+                LOGGER.warn(UILogMessages.WARN.REST_API_EMPTY_PROCESSOR_PROPERTIES, processorId);
             }
         }
 
@@ -223,13 +224,11 @@ public class JwtValidationService {
             LOGGER.debug("Resolved %s properties from controller service %s",
                     csProperties.size(), controllerServiceId);
             if (csProperties.isEmpty()) {
-                LOGGER.warn("Internal API returned empty properties for controller service %s, "
-                        + "trying NiFi REST API fallback", controllerServiceId);
+                LOGGER.warn(UILogMessages.WARN.INTERNAL_API_EMPTY_CS_PROPERTIES, controllerServiceId);
             }
             return csProperties;
         } catch (RuntimeException e) {
-            LOGGER.warn("Internal API failed for controller service %s: %s, "
-                    + "trying NiFi REST API fallback", controllerServiceId, e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.INTERNAL_API_CS_FAILED, controllerServiceId, e.getMessage());
             return Map.of();
         }
     }
@@ -245,12 +244,12 @@ public class JwtValidationService {
                 LOGGER.debug("REST API returned %s properties for controller service %s",
                         restProperties.size(), controllerServiceId);
             } else {
-                LOGGER.warn("REST API also returned empty properties for controller service %s",
+                LOGGER.warn(UILogMessages.WARN.REST_API_EMPTY_CS_PROPERTIES,
                         controllerServiceId);
             }
             return restProperties;
         } catch (RuntimeException e) {
-            LOGGER.warn("REST API fallback failed for controller service %s: %s",
+            LOGGER.warn(UILogMessages.WARN.REST_API_CS_FALLBACK_FAILED,
                     controllerServiceId, e.getMessage());
             return Map.of();
         }

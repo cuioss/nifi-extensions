@@ -221,7 +221,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return Optional.empty();
         }
         if (!isAttachmentWindowOpen(parent)) {
-            LOGGER.warn("Attachment window closed for parentTraceId '%s' — status is %s",
+            LOGGER.warn(RestApiLogMessages.WARN.ATTACHMENT_WINDOW_CLOSED,
                     parentTraceId, parent.status());
             ProblemDetail.conflict("Attachment window closed — parent request is already being processed")
                     .sendResponse(response, callback);

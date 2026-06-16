@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.util;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -215,8 +216,7 @@ public class ComponentConfigReader {
             if (resolvedAuth != null) {
                 reqBuilder.header("Authorization", resolvedAuth);
             } else {
-                LOGGER.warn("No auth credentials available for REST API fallback "
-                        + "(no Authorization header, no %s cookie)", NIFI_AUTH_COOKIE);
+                LOGGER.warn(UILogMessages.WARN.NO_AUTH_CREDENTIALS_FOR_REST_FALLBACK, NIFI_AUTH_COOKIE);
             }
 
             // Forward cookies as additional auth context
@@ -226,7 +226,7 @@ public class ComponentConfigReader {
                     reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                LOGGER.warn("REST API returned %s for component %s (auth: %s)",
+                LOGGER.warn(UILogMessages.WARN.REST_API_NON_OK_STATUS,
                         response.statusCode(), componentId,
                         resolvedAuth != null ? "present" : "none");
                 return Map.of();
@@ -240,7 +240,7 @@ public class ComponentConfigReader {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            LOGGER.warn("REST API call failed for component %s: %s",
+            LOGGER.warn(UILogMessages.WARN.REST_API_CALL_FAILED,
                     componentId, e.getMessage());
             return Map.of();
         }
@@ -303,7 +303,7 @@ public class ComponentConfigReader {
             }
             return result;
         } catch (Exception e) {
-            LOGGER.warn("Failed to parse REST API response: %s", e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.FAILED_PARSE_REST_RESPONSE, e.getMessage());
             return Map.of();
         }
     }

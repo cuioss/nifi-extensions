@@ -156,6 +156,123 @@ public final class UILogMessages {
                 .identifier(116)
                 .template("Header security violation for value: %s - %s")
                 .build();
+
+        public static final LogRecord ISSUER_HOST_RESOLUTION_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(117)
+                .template("Failed to resolve issuer hosts for SSRF check: %s")
+                .build();
+
+        public static final LogRecord MALFORMED_ISSUER_URL = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(118)
+                .template("Malformed issuer URL, skipping for host extraction: %s")
+                .build();
+
+        public static final LogRecord INVALID_NUMERIC_PROPERTY = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(119)
+                .template("Invalid non-numeric value for '%s': '%s', using default %s")
+                .build();
+
+        public static final LogRecord IGNORED_NUMERIC_PROPERTY = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(120)
+                .template("Ignoring invalid non-numeric %s value: '%s'")
+                .build();
+
+        public static final LogRecord FAILED_WRITE_JSON_RESPONSE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(121)
+                .template("Failed to write JSON response (status %s): %s")
+                .build();
+
+        public static final LogRecord FAILED_SEND_ERROR_RESPONSE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(122)
+                .template("Failed to send error response (status %s): %s")
+                .build();
+
+        public static final LogRecord FAILED_WRITE_COMPONENT_INFO_RESPONSE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(123)
+                .template("Failed to write component info response for %s: %s")
+                .build();
+
+        public static final LogRecord NO_AUTH_CREDENTIALS_FOR_REST_FALLBACK = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(124)
+                .template("No auth credentials available for REST API fallback "
+                        + "(no Authorization header, no %s cookie)")
+                .build();
+
+        public static final LogRecord REST_API_NON_OK_STATUS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(125)
+                .template("REST API returned %s for component %s (auth: %s)")
+                .build();
+
+        public static final LogRecord REST_API_CALL_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(126)
+                .template("REST API call failed for component %s: %s")
+                .build();
+
+        public static final LogRecord FAILED_PARSE_REST_RESPONSE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(127)
+                .template("Failed to parse REST API response: %s")
+                .build();
+
+        public static final LogRecord REST_API_EMPTY_PROCESSOR_PROPERTIES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(128)
+                .template("REST API also returned empty processor properties for %s")
+                .build();
+
+        public static final LogRecord INTERNAL_API_EMPTY_CS_PROPERTIES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(129)
+                .template("Internal API returned empty properties for controller service %s, "
+                        + "trying NiFi REST API fallback")
+                .build();
+
+        public static final LogRecord INTERNAL_API_CS_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(130)
+                .template("Internal API failed for controller service %s: %s, "
+                        + "trying NiFi REST API fallback")
+                .build();
+
+        public static final LogRecord REST_API_EMPTY_CS_PROPERTIES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(131)
+                .template("REST API also returned empty properties for controller service %s")
+                .build();
+
+        public static final LogRecord REST_API_CS_FALLBACK_FAILED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(132)
+                .template("REST API fallback failed for controller service %s: %s")
+                .build();
+
+        public static final LogRecord FAILED_WRITE_CONTEXT_PATH_RESPONSE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(133)
+                .template("Failed to write proxy context-path response")
+                .build();
+
+        public static final LogRecord CONTEXT_PATH_CONTROL_CHARACTERS_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(134)
+                .template("Rejecting proxy context path with control characters: %s")
+                .build();
+
+        public static final LogRecord CONTEXT_PATH_PROTOCOL_RELATIVE_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(135)
+                .template("Rejecting proxy context path to prevent protocol-relative URL injection: %s")
+                .build();
     }
 
     public static final class ERROR {
@@ -258,6 +375,12 @@ public final class UILogMessages {
                 .prefix(PREFIX)
                 .identifier(218)
                 .template("OIDC discovery failed for issuer: %s")
+                .build();
+
+        public static final LogRecord FAILED_RESOLVE_COMPONENT_INFO = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(219)
+                .template("Failed to resolve component info for %s")
                 .build();
     }
 }

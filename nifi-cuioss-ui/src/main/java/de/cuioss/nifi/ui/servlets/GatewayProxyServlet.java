@@ -760,7 +760,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 }
             }
         } catch (IOException e) {
-            LOGGER.warn(e, "Failed to resolve issuer hosts for SSRF check: %s",
+            LOGGER.warn(e, UILogMessages.WARN.ISSUER_HOST_RESOLUTION_FAILED,
                     e.getMessage());
         }
 
@@ -785,7 +785,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 hosts.add(host.toLowerCase(Locale.ROOT));
             }
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Malformed issuer URL, skipping for host extraction: %s",
+            LOGGER.warn(UILogMessages.WARN.MALFORMED_ISSUER_URL,
                     urlString);
         }
     }
@@ -829,7 +829,7 @@ public class GatewayProxyServlet extends HttpServlet {
         try {
             return Integer.parseInt(value.strip());
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid non-numeric value for '%s': '%s', using default %s", key, value, defaultValue);
+            LOGGER.warn(UILogMessages.WARN.INVALID_NUMERIC_PROPERTY, key, value, defaultValue);
             return defaultValue;
         }
     }
@@ -1012,7 +1012,7 @@ public class GatewayProxyServlet extends HttpServlet {
         try {
             obj.add(key, Integer.parseInt(value.strip()));
         } catch (NumberFormatException e) {
-            LOGGER.warn("Ignoring invalid non-numeric %s value: '%s'", key, value);
+            LOGGER.warn(UILogMessages.WARN.IGNORED_NUMERIC_PROPERTY, key, value);
         }
     }
 
@@ -1093,7 +1093,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 writer.writeObject(json);
             }
         } catch (IOException e) {
-            LOGGER.warn("Failed to write JSON response (status %s): %s",
+            LOGGER.warn(UILogMessages.WARN.FAILED_WRITE_JSON_RESPONSE,
                     status, e.getMessage());
         }
     }
@@ -1154,7 +1154,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 writer.writeObject(errorJson);
             }
         } catch (IOException e) {
-            LOGGER.warn("Failed to send error response (status %s): %s", status, e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.FAILED_SEND_ERROR_RESPONSE, status, e.getMessage());
         }
     }
 }

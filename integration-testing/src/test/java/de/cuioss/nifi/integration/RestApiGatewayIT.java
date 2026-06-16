@@ -26,12 +26,13 @@ import de.cuioss.http.security.database.AttackTestCase;
 import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
 import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.TypedGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -176,10 +177,10 @@ class RestApiGatewayIT {
     @DisplayName("Path-Parameter Routes")
     class PathParameterRouteTests {
 
-        @RepeatedTest(3)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = ItemIdGenerator.class, count = 3)
         @DisplayName("should return 200 OK for GET /api/items/{itemId} matching the parameterized route")
-        void shouldMatchParameterizedRoute() {
-            String itemId = Generators.letterStrings(1, 12).next();
+        void shouldMatchParameterizedRoute(String itemId) {
             given().spec(authSpec)
                     .when()
                     .get("/api/items/" + itemId)
@@ -188,15 +189,30 @@ class RestApiGatewayIT {
                     .body(not(emptyString()));
         }
 
-        @RepeatedTest(3)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = ItemIdGenerator.class, count = 3)
         @DisplayName("should match the parameterized route for a different generated path-parameter value")
-        void shouldMatchParameterizedRouteForDifferentValue() {
-            String itemId = Generators.letterStrings(1, 12).next();
+        void shouldMatchParameterizedRouteForDifferentValue(String itemId) {
             given().spec(authSpec)
                     .when()
                     .get("/api/items/" + itemId)
                     .then()
                     .statusCode(200);
+        }
+
+        public static final class ItemIdGenerator implements TypedGenerator<String> {
+
+            private final TypedGenerator<String> letters = Generators.letterStrings(1, 12);
+
+            @Override
+            public String next() {
+                return letters.next();
+            }
+
+            @Override
+            public Class<String> getType() {
+                return String.class;
+            }
         }
 
         @ParameterizedTest(name = "[{index}] {0}")

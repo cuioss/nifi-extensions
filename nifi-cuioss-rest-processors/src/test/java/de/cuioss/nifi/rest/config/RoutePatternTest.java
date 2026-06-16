@@ -21,10 +21,11 @@ import de.cuioss.http.security.database.AttackTestCase;
 import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
 import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.TypedGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -77,17 +78,32 @@ class RoutePatternTest {
     @DisplayName("Single Parameter Matching")
     class SingleParameterMatching {
 
-        @RepeatedTest(5)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = SingleParameterValueGenerator.class, count = 5)
         @DisplayName("Should match and extract a single generated parameter value")
-        void shouldMatchSingleParameter() {
+        void shouldMatchSingleParameter(String value) {
             var pattern = RoutePattern.compile("/api/v1/personalprozesse/{processid}/status");
-            String value = Generators.letterStrings(1, 16).next();
 
             var result = pattern.match("/api/v1/personalprozesse/" + value + "/status");
 
             assertTrue(result.isPresent(), "Path should match the pattern");
             assertEquals(Map.of("processid", value), result.get(),
                     "Extracted parameter should match the generated value");
+        }
+
+        public static final class SingleParameterValueGenerator implements TypedGenerator<String> {
+
+            private final TypedGenerator<String> letters = Generators.letterStrings(1, 16);
+
+            @Override
+            public String next() {
+                return letters.next();
+            }
+
+            @Override
+            public Class<String> getType() {
+                return String.class;
+            }
         }
 
         @Test
@@ -136,18 +152,35 @@ class RoutePatternTest {
     @DisplayName("Multiple Parameter Matching")
     class MultipleParameterMatching {
 
-        @RepeatedTest(5)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = TenantUserGenerator.class, count = 5)
         @DisplayName("Should match and extract multiple generated parameter values")
-        void shouldMatchMultipleParameters() {
+        void shouldMatchMultipleParameters(TenantUser pair) {
             var pattern = RoutePattern.compile("/api/{tenant}/users/{userId}");
-            String tenant = Generators.letterStrings(1, 12).next();
-            String userId = Generators.letterStrings(1, 12).next();
 
-            var result = pattern.match("/api/" + tenant + "/users/" + userId);
+            var result = pattern.match("/api/" + pair.tenant() + "/users/" + pair.userId());
 
             assertTrue(result.isPresent(), "Path should match the multi-parameter pattern");
-            assertEquals(Map.of("tenant", tenant, "userId", userId), result.get(),
+            assertEquals(Map.of("tenant", pair.tenant(), "userId", pair.userId()), result.get(),
                     "Both generated parameters should be extracted");
+        }
+
+        public record TenantUser(String tenant, String userId) {
+        }
+
+        public static final class TenantUserGenerator implements TypedGenerator<TenantUser> {
+
+            private final TypedGenerator<String> letters = Generators.letterStrings(1, 12);
+
+            @Override
+            public TenantUser next() {
+                return new TenantUser(letters.next(), letters.next());
+            }
+
+            @Override
+            public Class<TenantUser> getType() {
+                return TenantUser.class;
+            }
         }
 
         @Test

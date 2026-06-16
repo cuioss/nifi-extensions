@@ -25,7 +25,9 @@ import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.TypedGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -306,17 +308,17 @@ class RestApiGatewayProcessorTest {
             flowFile.assertAttributeEquals("http.query.limit", "10");
         }
 
-        @RepeatedTest(5)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = UserOrderGenerator.class, count = 5)
         @DisplayName("Should set generated path parameters from a pattern-matched route")
-        void shouldSetPathParameters() throws Exception {
+        void shouldSetPathParameters(UserOrder pair) throws Exception {
             testRunner.run(1, false, true);
             int port = getServerPort();
-            String userId = Generators.letterStrings(1, 12).next();
-            String orderId = Generators.letterStrings(1, 12).next();
 
             httpClient.send(
                     HttpRequest.newBuilder(URI.create(
-                                    "http://127.0.0.1:" + port + "/api/users/" + userId + "/orders/" + orderId))
+                                    "http://127.0.0.1:" + port + "/api/users/" + pair.userId() + "/orders/"
+                                            + pair.orderId()))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -324,8 +326,26 @@ class RestApiGatewayProcessorTest {
             testRunner.run(1, false, false);
 
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("userdetail").getFirst();
-            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "userId", userId);
-            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "orderId", orderId);
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "userId", pair.userId());
+            flowFile.assertAttributeEquals(RestApiAttributes.PATH_PARAM_PREFIX + "orderId", pair.orderId());
+        }
+
+        public record UserOrder(String userId, String orderId) {
+        }
+
+        public static final class UserOrderGenerator implements TypedGenerator<UserOrder> {
+
+            private final TypedGenerator<String> letters = Generators.letterStrings(1, 12);
+
+            @Override
+            public UserOrder next() {
+                return new UserOrder(letters.next(), letters.next());
+            }
+
+            @Override
+            public Class<UserOrder> getType() {
+                return UserOrder.class;
+            }
         }
 
         @ParameterizedTest(name = "[{index}] {0}")

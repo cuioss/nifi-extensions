@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonWriterFactory;
@@ -85,7 +86,7 @@ public class ProxyContextPathServlet extends HttpServlet {
         try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
             writer.writeObject(json);
         } catch (IOException e) {
-            LOGGER.warn(e, "Failed to write proxy context-path response");
+            LOGGER.warn(e, UILogMessages.WARN.FAILED_WRITE_CONTEXT_PATH_RESPONSE);
         }
     }
 
@@ -137,7 +138,7 @@ public class ProxyContextPathServlet extends HttpServlet {
             return "";
         }
         if (containsControlCharacter(trimmed)) {
-            LOGGER.warn("Rejecting proxy context path with control characters: %s", trimmed);
+            LOGGER.warn(UILogMessages.WARN.CONTEXT_PATH_CONTROL_CHARACTERS_REJECTED, trimmed);
             return "";
         }
         // Reject protocol-relative values ("//host") and backslashes (which some
@@ -146,7 +147,7 @@ public class ProxyContextPathServlet extends HttpServlet {
         // protocol-relative URL that exfiltrates the request (with its CSRF token
         // and processor-id headers) to an attacker-controlled host.
         if (trimmed.startsWith("//") || trimmed.contains("\\")) {
-            LOGGER.warn("Rejecting proxy context path to prevent protocol-relative URL injection: %s", trimmed);
+            LOGGER.warn(UILogMessages.WARN.CONTEXT_PATH_PROTOCOL_RELATIVE_REJECTED, trimmed);
             return "";
         }
         String withLeadingSlash = trimmed.startsWith("/") ? trimmed : "/" + trimmed;

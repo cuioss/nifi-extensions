@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.NonNull;
 import org.apache.nifi.distributed.cache.client.Deserializer;
@@ -111,7 +112,7 @@ public class RequestStatusStore {
     public void updateStatus(String traceId, RequestStatus newStatus) throws IOException {
         RequestStatusEntry existing = cacheClient.get(traceId, STRING_SERIALIZER, ENTRY_DESERIALIZER);
         if (existing == null) {
-            LOGGER.warn("Cannot update status for unknown traceId '%s'", traceId);
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_UPDATE_UNKNOWN_TRACE, traceId);
             return;
         }
         var updated = new RequestStatusEntry(
