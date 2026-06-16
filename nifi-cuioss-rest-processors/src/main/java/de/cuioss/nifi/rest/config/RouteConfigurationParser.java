@@ -17,6 +17,7 @@
 package de.cuioss.nifi.rest.config;
 
 import de.cuioss.nifi.jwt.util.DynamicPropertyGroupParser;
+import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import de.cuioss.tools.string.Splitter;
 import lombok.experimental.UtilityClass;
@@ -112,7 +113,7 @@ public class RouteConfigurationParser {
     private static Optional<RouteConfiguration> parseRouteGroup(String routeName, Map<String, String> routeProps) {
         String path = routeProps.get(PATH_KEY);
         if (path == null || path.isBlank()) {
-            LOGGER.warn("Route '%s' has no path configured, skipping", routeName);
+            LOGGER.warn(RestApiLogMessages.WARN.ROUTE_PATH_MISSING, routeName);
             return Optional.empty();
         }
 
@@ -165,7 +166,7 @@ public class RouteConfigurationParser {
         try {
             return AuthMode.fromValues(authModeRaw);
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s",
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_AUTH_MODE,
                     routeName, authModeRaw, e.getMessage());
             return EnumSet.of(AuthMode.BEARER);
         }
@@ -174,8 +175,7 @@ public class RouteConfigurationParser {
     private static void warnIfNoneAuthWithRolesOrScopes(String routeName, Set<AuthMode> authModes,
             Set<String> roles, Set<String> scopes) {
         if (authModes.contains(AuthMode.NONE) && (!roles.isEmpty() || !scopes.isEmpty())) {
-            LOGGER.warn("Route '%s' has auth-mode=none but also has roles/scopes configured — "
-                    + "roles and scopes will be ignored", routeName);
+            LOGGER.warn(RestApiLogMessages.WARN.NONE_AUTH_WITH_ROLES_OR_SCOPES, routeName);
         }
     }
 
@@ -204,7 +204,7 @@ public class RouteConfigurationParser {
             int parsed = Integer.parseInt(value.strip());
             return parsed > 0 ? parsed : defaultValue;
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_INTEGER_VALUE, value, defaultValue);
             return defaultValue;
         }
     }
@@ -217,7 +217,7 @@ public class RouteConfigurationParser {
             int parsed = Integer.parseInt(value.strip());
             return parsed >= 0 ? parsed : defaultValue;
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid integer value '%s', using default %d", value, defaultValue);
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_INTEGER_VALUE, value, defaultValue);
             return defaultValue;
         }
     }
@@ -236,7 +236,7 @@ public class RouteConfigurationParser {
         try {
             return TrackingMode.valueOf(value.strip().toUpperCase());
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid tracking-mode '%s', defaulting to NONE", value);
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_TRACKING_MODE, value);
             return TrackingMode.NONE;
         }
     }

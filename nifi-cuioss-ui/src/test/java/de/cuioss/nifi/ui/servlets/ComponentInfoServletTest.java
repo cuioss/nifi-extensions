@@ -45,6 +45,12 @@ import static org.hamcrest.Matchers.not;
 @DisplayName("ComponentInfoServlet tests")
 class ComponentInfoServletTest {
 
+    // B3 rationale: a fixed, well-formed UUID is used as the routing stub because the
+    // test subclass overrides resolveComponentConfig and never dereferences the ID — the
+    // value only needs to (a) satisfy the servlet's X-Processor-Id header validation as a
+    // legitimate UUID and (b) stay constant so each request routes to the same stubbed
+    // config. A literal UUID (vs a generated one) keeps the routing deterministic and the
+    // assertions readable; the specific digits carry no behavioral meaning.
     private static final String PROCESSOR_ID = "d290f1ee-6c54-4b01-90e6-d701748f0851";
     private static final String PROCESSOR_CLASS =
             "de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator";

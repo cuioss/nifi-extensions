@@ -291,7 +291,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                         "Route '%s' has attachments-max-count=%d exceeding hard limit=%d"
                                 .formatted(route.name(), route.attachmentsMaxCount(), hardLimit));
             }
-            LOGGER.info("Route '%s': attachments mode, bounds min=%d max=%d (effective max=%d, hard limit=%d)",
+            LOGGER.info(RestApiLogMessages.INFO.ROUTE_ATTACHMENTS_BOUNDS,
                     route.name(), route.attachmentsMinCount(), route.attachmentsMaxCount(),
                     effectiveMax, hardLimit);
             if (route.attachmentsTimeout() != null) {
@@ -448,7 +448,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         for (RouteConfiguration route : routes) {
             if (route.hasSchemaValidation()) {
                 routeSchemas.put(route.name(), route.schemaPath());
-                LOGGER.info("Schema validation enabled for route '%s'", route.name());
+                LOGGER.info(RestApiLogMessages.INFO.SCHEMA_VALIDATION_ENABLED, route.name());
             }
         }
         if (routeSchemas.isEmpty()) {
@@ -474,7 +474,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         routeToAttachmentsMinCount.clear();
         for (RouteConfiguration route : routes) {
             if (!route.createFlowFile()) {
-                LOGGER.info("Route '%s' has createFlowFile=false — no NiFi relationship created", route.name());
+                LOGGER.info(RestApiLogMessages.INFO.ROUTE_NO_RELATIONSHIP, route.name());
                 continue;
             }
             String outcome = route.successOutcome();

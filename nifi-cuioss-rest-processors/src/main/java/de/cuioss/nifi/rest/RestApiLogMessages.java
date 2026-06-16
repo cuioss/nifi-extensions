@@ -123,6 +123,30 @@ public final class RestApiLogMessages {
                 .template("Minimum attachment count met for parentTraceId=%s (count %s/%s), transitioning to PROCESSED")
                 .build();
 
+        public static final LogRecord ROUTE_ATTACHMENTS_BOUNDS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(15)
+                .template("Route '%s': attachments mode, bounds min=%s max=%s (effective max=%s, hard limit=%s)")
+                .build();
+
+        public static final LogRecord SCHEMA_VALIDATION_ENABLED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(16)
+                .template("Schema validation enabled for route '%s'")
+                .build();
+
+        public static final LogRecord ROUTE_NO_RELATIONSHIP = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(17)
+                .template("Route '%s' has createFlowFile=false — no NiFi relationship created")
+                .build();
+
+        public static final LogRecord ROUTE_FLOWFILE_SKIPPED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(18)
+                .template("Route '%s' has createFlowFile=false — skipping FlowFile creation")
+                .build();
+
     }
 
     @UtilityClass
@@ -216,6 +240,49 @@ public final class RestApiLogMessages {
                 .prefix(PREFIX)
                 .identifier(114)
                 .template("Attachment rejected: limit reached for parent %s (%s/%s)")
+                .build();
+
+        public static final LogRecord ROUTE_PATH_MISSING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(115)
+                .template("Route '%s' has no path configured, skipping")
+                .build();
+
+        public static final LogRecord INVALID_AUTH_MODE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(116)
+                .template("Route '%s' has invalid auth-mode '%s', defaulting to BEARER: %s")
+                .build();
+
+        public static final LogRecord NONE_AUTH_WITH_ROLES_OR_SCOPES = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(117)
+                .template("Route '%s' has auth-mode=none but also has roles/scopes configured — "
+                        + "roles and scopes will be ignored")
+                .build();
+
+        public static final LogRecord INVALID_INTEGER_VALUE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(118)
+                .template("Invalid integer value '%s', using default %s")
+                .build();
+
+        public static final LogRecord INVALID_TRACKING_MODE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(119)
+                .template("Invalid tracking-mode '%s', defaulting to NONE")
+                .build();
+
+        public static final LogRecord STATUS_UPDATE_UNKNOWN_TRACE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(120)
+                .template("Cannot update status for unknown traceId '%s'")
+                .build();
+
+        public static final LogRecord ATTACHMENT_WINDOW_CLOSED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(121)
+                .template("Attachment window closed for parentTraceId '%s' — status is %s")
                 .build();
     }
 

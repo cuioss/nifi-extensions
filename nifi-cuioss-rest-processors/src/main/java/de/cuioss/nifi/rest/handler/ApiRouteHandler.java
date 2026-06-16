@@ -212,7 +212,7 @@ public final class ApiRouteHandler implements EndpointHandler {
             byte[] body, Request request, @Nullable String traceId,
             @Nullable String parentTraceId, Response response, Callback callback) {
         if (!route.createFlowFile()) {
-            LOGGER.info("Route '%s' has createFlowFile=false — skipping FlowFile creation", route.name());
+            LOGGER.info(RestApiLogMessages.INFO.ROUTE_FLOWFILE_SKIPPED, route.name());
             return true;
         }
         var container = new HttpRequestContainer(

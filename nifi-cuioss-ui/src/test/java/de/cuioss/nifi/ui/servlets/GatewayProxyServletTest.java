@@ -57,6 +57,13 @@ class GatewayProxyServletTest {
             {"component":"RestApiGatewayProcessor","port":9443,"routes":[]}""";
     private static final String SAMPLE_METRICS_JSON = """
             {"nifi_jwt_validations_total":42}""";
+    // B3 rationale: a fixed, well-formed UUID is used as the routing stub because the
+    // test subclass overrides every resolve* hook and never dereferences the ID — the
+    // value only needs to (a) satisfy the servlet's X-Processor-Id header validation as a
+    // legitimate UUID so requests reach the stubbed gateway logic and (b) stay constant so
+    // each request routes through the same stub. A literal UUID (vs a generated one) keeps
+    // the routing deterministic and the assertions readable; the specific digits carry no
+    // behavioral meaning.
     private static final String PROCESSOR_ID = "d290f1ee-6c54-4b01-90e6-d701748f0851";
 
     /** Configurable GET response — reset before each test. */

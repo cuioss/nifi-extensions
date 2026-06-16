@@ -27,12 +27,12 @@ import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
 import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.test.generator.domain.UUIDStringGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -185,12 +185,12 @@ class AttachmentFlowIT {
                     .body("_links.status.href", startsWith("/status/"));
         }
 
-        @RepeatedTest(3)
+        @ParameterizedTest
+        @TypeGeneratorSource(value = UUIDStringGenerator.class, count = 3)
         @DisplayName("should return 404 for attachment with a generated non-existent parentTraceId")
-        void shouldReturn404ForUnknownParent() {
+        void shouldReturn404ForUnknownParent(String unknownParentTraceId) {
             // A generated, well-formed but non-existent UUID — exercises the
             // not-tracked branch with a fresh value each run rather than a literal.
-            String unknownParentTraceId = new UUIDStringGenerator().next();
             given().spec(authSpec)
                     .body("{\"file\": \"orphan-attachment\"}")
                     .when()

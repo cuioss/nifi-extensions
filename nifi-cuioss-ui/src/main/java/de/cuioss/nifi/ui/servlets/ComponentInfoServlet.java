@@ -109,14 +109,14 @@ public class ComponentInfoServlet extends HttpServlet {
             sendErrorResponse(resp, HttpServletResponse.SC_NOT_FOUND,
                     "Component not found: " + processorId);
         } catch (ClusterRequestException | IllegalStateException e) {
-            LOGGER.error(e, "Failed to resolve component info for %s", processorId);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_RESOLVE_COMPONENT_INFO, processorId);
             sendErrorResponse(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to resolve component info");
         } catch (IOException e) {
             // getOutputStream() / response writing failed — the client connection is
             // likely broken, so handle here rather than letting it escape the servlet
             // method (java:S1989); a further error response would also fail.
-            LOGGER.warn("Failed to write component info response for %s: %s", processorId, e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.FAILED_WRITE_COMPONENT_INFO_RESPONSE, processorId, e.getMessage());
         }
     }
 
@@ -165,7 +165,7 @@ public class ComponentInfoServlet extends HttpServlet {
                 writer.writeObject(errorJson);
             }
         } catch (IOException e) {
-            LOGGER.warn("Failed to send error response (status %s): %s", status, e.getMessage());
+            LOGGER.warn(UILogMessages.WARN.FAILED_SEND_ERROR_RESPONSE, status, e.getMessage());
         }
     }
 }
