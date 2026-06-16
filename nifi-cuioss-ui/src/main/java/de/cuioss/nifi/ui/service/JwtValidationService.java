@@ -60,10 +60,6 @@ public class JwtValidationService {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_SCOPES = "scopes";
 
-    /** Shared CS property keys — see {@link ComponentConfigReader#CONTROLLER_SERVICE_PROPERTY_KEYS}. */
-    private static final List<String> CONTROLLER_SERVICE_PROPERTY_KEYS =
-            ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS;
-
     private final NiFiWebConfigurationContext configContext;
 
     /** Cached TokenValidator, reused as long as issuer properties haven't changed. */
@@ -181,7 +177,7 @@ public class JwtValidationService {
             ComponentConfigReader configReader,
             HttpServletRequest request) {
 
-        for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
+        for (String key : ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS) {
             String controllerServiceId = processorProperties.get(key);
             if (controllerServiceId != null && !controllerServiceId.isBlank()) {
                 LOGGER.debug("Resolving controller service %s from property '%s'",
@@ -261,7 +257,7 @@ public class JwtValidationService {
      * internal API redacts CS references in the processor WAR context.
      */
     static boolean hasEmptyControllerServiceReference(Map<String, String> processorProperties) {
-        for (String key : CONTROLLER_SERVICE_PROPERTY_KEYS) {
+        for (String key : ComponentConfigReader.CONTROLLER_SERVICE_PROPERTY_KEYS) {
             if (processorProperties.containsKey(key)) {
                 String value = processorProperties.get(key);
                 LOGGER.debug("CS reference property '%s' = '%s'", key,
