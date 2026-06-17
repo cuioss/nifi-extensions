@@ -1615,18 +1615,6 @@ const pushIfPresent = (lines, key, value, skipValue) => {
 };
 
 /**
- * Append the optional access-control and request-size export lines.
- * @param {string[]} lines  accumulator
- * @param {string} p  fully-qualified route key prefix
- * @param {Object|undefined} props  row._routeProps
- */
-const appendRouteAccessLines = (lines, p, props) => {
-    pushIfPresent(lines, `${p}.required-roles`, props?.['required-roles']);
-    pushIfPresent(lines, `${p}.required-scopes`, props?.['required-scopes']);
-    pushIfPresent(lines, `${p}.max-request-size`, props?.['max-request-size']);
-};
-
-/**
  * Append the tracking-mode export lines, including attachment sub-properties.
  * @param {string[]} lines  accumulator
  * @param {string} p  fully-qualified route key prefix
@@ -1665,7 +1653,9 @@ const buildRouteExportLines = (data, props) => {
     pushIfPresent(lines, `${p}.auth-mode`, authModeValue);
     if (!enabled) lines.push(`${p}.enabled = false`);
 
-    appendRouteAccessLines(lines, p, props);
+    pushIfPresent(lines, `${p}.required-roles`, props?.['required-roles']);
+    pushIfPresent(lines, `${p}.required-scopes`, props?.['required-scopes']);
+    pushIfPresent(lines, `${p}.max-request-size`, props?.['max-request-size']);
 
     if (outcomeDash) {
         lines.push(`${p}.create-flowfile = false`);
