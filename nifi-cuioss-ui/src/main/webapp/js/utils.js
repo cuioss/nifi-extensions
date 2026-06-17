@@ -328,6 +328,7 @@ export const TRANSLATIONS = {
         'tab.endpoint.config': 'Endpoint Configuration',
         'tab.endpoint.tester': 'Endpoint Tester',
         'tab.issuer.config': 'Issuer Configuration',
+        'tab.gateway.token.verification': 'Gateway Token Verification',
         'tab.metrics': 'Metrics',
         'tab.help': 'Help',
 
@@ -741,6 +742,7 @@ export const TRANSLATIONS = {
         'tab.endpoint.config': 'Endpunkt-Konfiguration',
         'tab.endpoint.tester': 'Endpunkt-Tester',
         'tab.issuer.config': 'Issuer-Konfiguration',
+        'tab.gateway.token.verification': 'Gateway-Token-Überprüfung',
         'tab.metrics': 'Metriken',
         'tab.help': 'Hilfe',
 

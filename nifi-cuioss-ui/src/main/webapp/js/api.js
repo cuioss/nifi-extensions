@@ -65,12 +65,12 @@ export const getProxyContextPath = async () => {
     _proxyContextPathPromise = (async () => {
         try {
             const res = await fetch(PROXY_CONTEXT_PATH_URL, { credentials: 'same-origin' });
-            if (!res.ok) {
-                log.warn(`Proxy context-path servlet returned HTTP ${res.status}; using empty prefix`);
-                _proxyContextPath = '';
-            } else {
+            if (res.ok) {
                 const data = await res.json();
                 _proxyContextPath = typeof data?.contextPath === 'string' ? data.contextPath : '';
+            } else {
+                log.warn(`Proxy context-path servlet returned HTTP ${res.status}; using empty prefix`);
+                _proxyContextPath = '';
             }
         } catch (e) {
             log.warn('Failed to resolve proxy context path; using empty prefix:', e);

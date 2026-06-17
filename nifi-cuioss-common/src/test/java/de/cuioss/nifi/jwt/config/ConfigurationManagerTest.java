@@ -311,8 +311,10 @@ class ConfigurationManagerTest {
                     jwt.validation.max.token.size=65536
                     """;
             Files.writeString(configFile, newContent);
-            Files.setLastModifiedTime(configFile,
-                    FileTime.from(Instant.now().plusSeconds(1)));
+            // Bump the mtime relative to the file's own current mtime (not the
+            // system clock) so reload detection sees a strictly newer timestamp.
+            Instant bumped = Files.getLastModifiedTime(configFile).toInstant().plusSeconds(1);
+            Files.setLastModifiedTime(configFile, FileTime.from(bumped));
 
             // Act — poll until the modification is detected
             await().atMost(2, SECONDS)
@@ -584,8 +586,10 @@ class ConfigurationManagerTest {
             // Overwrite with invalid YAML (unmatched quote triggers YAMLException)
             String invalidContent = "key: 'unclosed string\nanother: line";
             Files.writeString(configFile, invalidContent);
-            Files.setLastModifiedTime(configFile,
-                    FileTime.from(Instant.now().plusSeconds(1)));
+            // Bump the mtime relative to the file's own current mtime (not the
+            // system clock) so reload detection sees a strictly newer timestamp.
+            Instant bumped = Files.getLastModifiedTime(configFile).toInstant().plusSeconds(1);
+            Files.setLastModifiedTime(configFile, FileTime.from(bumped));
 
             // Act — poll until the modification is detected
             // Reload completes (returns true) even though YAML is invalid,
