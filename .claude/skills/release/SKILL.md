@@ -108,7 +108,8 @@ If NiFi did not change, leave README.adoc alone.
 ### Step 7 — Commit, push, open PR
 
 ```bash
-git add .github/project.yml README.adoc
+git add .github/project.yml
+git diff --quiet HEAD -- README.adoc || git add README.adoc   # stage only if NiFi badge changed
 git commit -m "chore(release): prepare release <version>"
 git push -u origin chore/release_<version>
 gh pr create --repo cuioss/nifi-extensions --base main \
@@ -174,6 +175,7 @@ The Release workflow creates the GitHub release with **auto-generated** notes (a
 push the update:
 
 ```bash
+mkdir -p .plan/temp
 gh release view <version> --repo cuioss/nifi-extensions --json body --jq .body > .plan/temp/release-<version>-orig.md
 # ...build the reformatted body in .plan/temp/release-<version>.md...
 gh release edit <version> --repo cuioss/nifi-extensions --notes-file .plan/temp/release-<version>.md
