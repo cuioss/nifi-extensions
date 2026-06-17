@@ -656,6 +656,32 @@ const toCommaSeparated = (value, fallback = '') =>
     Array.isArray(value) ? value.join(',') : (value || fallback);
 
 /**
+ * Build the UI route-map entry for a single gateway /config route.
+ * @param {Object} route  a single route object from the /config response
+ * @returns {Object} the route-map value (path, methods, enabled, ..., _source)
+ */
+const buildGatewayRouteEntry = (route) => {
+    const entry = {
+        path: route.path || '',
+        methods: toCommaSeparated(route.methods),
+        enabled: route.enabled === false ? 'false' : 'true',
+        'required-roles': toCommaSeparated(route.requiredRoles),
+        'required-scopes': toCommaSeparated(route.requiredScopes),
+        'auth-mode': route.authMode || 'bearer',
+        'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
+        'tracking-mode': route.trackingMode || 'none',
+        'attachments-min-count': route.attachmentsMinCount == null ? '' : String(route.attachmentsMinCount),
+        'attachments-max-count': route.attachmentsMaxCount == null ? '' : String(route.attachmentsMaxCount),
+        'attachments-timeout': route.attachmentsTimeout || '',
+        _source: route.source || 'nifi'
+    };
+    if (route.schema) entry.schema = route.schema;
+    if (route.successOutcome) entry['success-outcome'] = route.successOutcome;
+    if (route.maxRequestSize != null) entry['max-request-size'] = String(route.maxRequestSize);
+    return entry;
+};
+
+/**
  * Convert gateway /config route array to the route map format used by the UI.
  * Each route includes a _source field indicating its origin.
  * @param {Array} gwRoutes  routes array from /config response
@@ -665,30 +691,7 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
     const routes = {};
     for (const route of gwRoutes) {
         if (!route.name || !route.enabled) continue;
-        const name = route.name;
-        routes[name] = {
-            path: route.path || '',
-            methods: toCommaSeparated(route.methods),
-            enabled: route.enabled === false ? 'false' : 'true',
-            'required-roles': toCommaSeparated(route.requiredRoles),
-            'required-scopes': toCommaSeparated(route.requiredScopes),
-            'auth-mode': route.authMode || 'bearer',
-            'create-flowfile': route.createFlowFile === false ? 'false' : 'true',
-            'tracking-mode': route.trackingMode || 'none',
-            'attachments-min-count': route.attachmentsMinCount == null ? '' : String(route.attachmentsMinCount),
-            'attachments-max-count': route.attachmentsMaxCount == null ? '' : String(route.attachmentsMaxCount),
-            'attachments-timeout': route.attachmentsTimeout || '',
-            _source: route.source || 'nifi'
-        };
-        if (route.schema) {
-            routes[name].schema = route.schema;
-        }
-        if (route.successOutcome) {
-            routes[name]['success-outcome'] = route.successOutcome;
-        }
-        if (route.maxRequestSize != null) {
-            routes[name]['max-request-size'] = String(route.maxRequestSize);
-        }
+        routes[route.name] = buildGatewayRouteEntry(route);
     }
     return routes;
 };
@@ -1597,6 +1600,41 @@ const extractRowData = (row) => {
 };
 
 /**
+ * Append a `key = value` line when the value is truthy (and, optionally, not a
+ * default to be skipped). Centralizes the repeated "push only when present"
+ * pattern so callers stay flat.
+ * @param {string[]} lines  accumulator
+ * @param {string} key  fully-qualified property key
+ * @param {string|undefined} value  candidate value
+ * @param {string} [skipValue]  value that should be treated as "not set"
+ */
+const pushIfPresent = (lines, key, value, skipValue) => {
+    if (value && value !== skipValue) {
+        lines.push(`${key} = ${value}`);
+    }
+};
+
+/**
+ * Append the tracking-mode export lines, including attachment sub-properties.
+ * @param {string[]} lines  accumulator
+ * @param {string} p  fully-qualified route key prefix
+ * @param {Object|undefined} props  row._routeProps
+ */
+const appendRouteTrackingLines = (lines, p, props) => {
+    const trackingMode = props?.['tracking-mode'];
+    if (!trackingMode || trackingMode === 'none') {
+        return;
+    }
+    lines.push(`${p}.tracking-mode = ${trackingMode}`);
+    if (trackingMode !== 'attachments') {
+        return;
+    }
+    pushIfPresent(lines, `${p}.attachments-min-count`, props?.['attachments-min-count'], '0');
+    pushIfPresent(lines, `${p}.attachments-max-count`, props?.['attachments-max-count'], '0');
+    pushIfPresent(lines, `${p}.attachments-timeout`, props?.['attachments-timeout'], '30 sec');
+};
+
+/**
  * Build export lines for a single route.
  * @param {{name: string, prefix: string, pathText: string, methods: string,
  *          authModeValue: string, enabled: boolean, hasSchemaBadge: boolean,
@@ -1611,16 +1649,13 @@ const buildRouteExportLines = (data, props) => {
     const p = `${prefix}${ROUTE_PREFIX}${name}`;
 
     lines.push(`${p}.path = ${pathText}`);
-    if (methods) lines.push(`${p}.methods = ${methods}`);
-    if (authModeValue) lines.push(`${p}.auth-mode = ${authModeValue}`);
+    pushIfPresent(lines, `${p}.methods`, methods);
+    pushIfPresent(lines, `${p}.auth-mode`, authModeValue);
     if (!enabled) lines.push(`${p}.enabled = false`);
 
-    const requiredRoles = props?.['required-roles'];
-    if (requiredRoles) lines.push(`${p}.required-roles = ${requiredRoles}`);
-    const requiredScopes = props?.['required-scopes'];
-    if (requiredScopes) lines.push(`${p}.required-scopes = ${requiredScopes}`);
-    const maxRequestSize = props?.['max-request-size'];
-    if (maxRequestSize) lines.push(`${p}.max-request-size = ${maxRequestSize}`);
+    pushIfPresent(lines, `${p}.required-roles`, props?.['required-roles']);
+    pushIfPresent(lines, `${p}.required-scopes`, props?.['required-scopes']);
+    pushIfPresent(lines, `${p}.max-request-size`, props?.['max-request-size']);
 
     if (outcomeDash) {
         lines.push(`${p}.create-flowfile = false`);
@@ -1632,18 +1667,7 @@ const buildRouteExportLines = (data, props) => {
         lines.push(`${p}.schema = <see processor properties>`);
     }
 
-    const trackingMode = props?.['tracking-mode'];
-    if (trackingMode && trackingMode !== 'none') {
-        lines.push(`${p}.tracking-mode = ${trackingMode}`);
-        if (trackingMode === 'attachments') {
-            const minCount = props?.['attachments-min-count'];
-            if (minCount && minCount !== '0') lines.push(`${p}.attachments-min-count = ${minCount}`);
-            const maxCount = props?.['attachments-max-count'];
-            if (maxCount && maxCount !== '0') lines.push(`${p}.attachments-max-count = ${maxCount}`);
-            const timeout = props?.['attachments-timeout'];
-            if (timeout && timeout !== '30 sec') lines.push(`${p}.attachments-timeout = ${timeout}`);
-        }
-    }
+    appendRouteTrackingLines(lines, p, props);
     return lines;
 };
 

@@ -117,34 +117,19 @@ class RoutePatternTest {
                     "Template should be retained");
         }
 
-        @Test
-        @DisplayName("Should not match when a literal segment differs")
-        void shouldNotMatchDifferentLiteral() {
+        @ParameterizedTest(name = "{1}")
+        @CsvSource({
+                "/api/12345/state,        Differing literal segment should not match",
+                "/api/12345,              Missing trailing segment should not match",
+                "/api/12/34/status,       A slash in the value should not match a single segment"
+        })
+        @DisplayName("Should not match a non-conforming path")
+        void shouldNotMatchNonConformingPath(String candidatePath, String reason) {
             var pattern = RoutePattern.compile("/api/{id}/status");
 
-            var result = pattern.match("/api/12345/state");
+            var result = pattern.match(candidatePath);
 
-            assertTrue(result.isEmpty(), "Differing literal segment should not match");
-        }
-
-        @Test
-        @DisplayName("Should not match when a path segment is missing")
-        void shouldNotMatchMissingSegment() {
-            var pattern = RoutePattern.compile("/api/{id}/status");
-
-            var result = pattern.match("/api/12345");
-
-            assertTrue(result.isEmpty(), "Missing trailing segment should not match");
-        }
-
-        @Test
-        @DisplayName("Should not match when the placeholder spans multiple segments")
-        void shouldNotMatchMultiSegmentValue() {
-            var pattern = RoutePattern.compile("/api/{id}/status");
-
-            var result = pattern.match("/api/12/34/status");
-
-            assertTrue(result.isEmpty(), "A slash in the value should not match a single segment");
+            assertTrue(result.isEmpty(), reason);
         }
     }
 

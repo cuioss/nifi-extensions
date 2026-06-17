@@ -150,8 +150,8 @@ public final class ApiRouteHandler implements EndpointHandler {
             }
         }
 
-        if (!enqueueFlowFile(sanitized, token, body, request, traceId,
-                parentTraceId, response, callback)) {
+        if (!enqueueFlowFile(sanitized, token, body, request,
+                new TrackingContext(traceId, parentTraceId), response, callback)) {
             return;
         }
 
@@ -209,8 +209,8 @@ public final class ApiRouteHandler implements EndpointHandler {
     }
 
     private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, @Nullable String traceId,
-            @Nullable String parentTraceId, Response response, Callback callback) {
+            byte[] body, Request request, TrackingContext tracking,
+            Response response, Callback callback) {
         if (!route.createFlowFile()) {
             LOGGER.info(RestApiLogMessages.INFO.ROUTE_FLOWFILE_SKIPPED, route.name());
             return true;
@@ -222,8 +222,8 @@ public final class ApiRouteHandler implements EndpointHandler {
                 body,
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
-                traceId,
-                parentTraceId,
+                tracking.traceId(),
+                tracking.parentTraceId(),
                 sanitized.pathParameters());
 
         if (!queue.offer(container)) {

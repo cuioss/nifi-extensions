@@ -171,7 +171,8 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return;
         }
 
-        if (!enqueueAttachment(sanitized, token, body, request, parentTraceId.get(), traceId, response, callback)) {
+        if (!enqueueAttachment(sanitized, token, body, request,
+                new TrackingContext(traceId, parentTraceId.get()), response, callback)) {
             return;
         }
 
@@ -270,8 +271,9 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
     }
 
     private boolean enqueueAttachment(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, String parentTraceId,
-            String traceId, Response response, Callback callback) {
+            byte[] body, Request request, TrackingContext tracking,
+            Response response, Callback callback) {
+        String parentTraceId = tracking.parentTraceId();
         var container = new HttpRequestContainer(
                 ATTACHMENTS_ROUTE_NAME, "POST", sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
@@ -279,7 +281,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 body,
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
-                traceId,
+                tracking.traceId(),
                 parentTraceId,
                 sanitized.pathParameters());
 

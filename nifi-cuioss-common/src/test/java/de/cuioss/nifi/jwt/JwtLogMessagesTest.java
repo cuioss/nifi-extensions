@@ -33,13 +33,13 @@ class JwtLogMessagesTest {
 
     private static final String EXPECTED_PREFIX = "JWT";
 
-    private static void assertWellFormed(LogRecord record) {
+    private static void assertWellFormed(LogRecord logRecord) {
         assertAll("LogRecord is well-formed",
-                () -> assertNotNull(record, "LogRecord should be defined"),
-                () -> assertNotNull(record.getTemplate(), "Template should be defined"),
-                () -> assertTrue(record.getTemplate() != null && !record.getTemplate().isBlank(),
+                () -> assertNotNull(logRecord, "LogRecord should be defined"),
+                () -> assertNotNull(logRecord.getTemplate(), "Template should be defined"),
+                () -> assertTrue(logRecord.getTemplate() != null && !logRecord.getTemplate().isBlank(),
                         "Template should not be blank"),
-                () -> assertTrue(record.resolveIdentifierString().startsWith(EXPECTED_PREFIX + "-"),
+                () -> assertTrue(logRecord.resolveIdentifierString().startsWith(EXPECTED_PREFIX + "-"),
                         "Resolved identifier should carry the JWT prefix"));
     }
 
@@ -68,8 +68,8 @@ class JwtLogMessagesTest {
         @ParameterizedTest(name = "INFO.{0} should be a well-formed LogRecord")
         @MethodSource("infoRecords")
         @DisplayName("Should define well-formed INFO LogRecords")
-        void shouldDefineWellFormedInfoRecord(String name, LogRecord record) {
-            assertWellFormed(record);
+        void shouldDefineWellFormedInfoRecord(String name, LogRecord logRecord) {
+            assertWellFormed(logRecord);
         }
     }
 
@@ -95,8 +95,8 @@ class JwtLogMessagesTest {
         @ParameterizedTest(name = "WARN.{0} should be a well-formed LogRecord")
         @MethodSource("warnRecords")
         @DisplayName("Should define well-formed WARN LogRecords")
-        void shouldDefineWellFormedWarnRecord(String name, LogRecord record) {
-            assertWellFormed(record);
+        void shouldDefineWellFormedWarnRecord(String name, LogRecord logRecord) {
+            assertWellFormed(logRecord);
         }
     }
 
@@ -118,8 +118,8 @@ class JwtLogMessagesTest {
         @ParameterizedTest(name = "ERROR.{0} should be a well-formed LogRecord")
         @MethodSource("errorRecords")
         @DisplayName("Should define well-formed ERROR LogRecords")
-        void shouldDefineWellFormedErrorRecord(String name, LogRecord record) {
-            assertWellFormed(record);
+        void shouldDefineWellFormedErrorRecord(String name, LogRecord logRecord) {
+            assertWellFormed(logRecord);
         }
     }
 }

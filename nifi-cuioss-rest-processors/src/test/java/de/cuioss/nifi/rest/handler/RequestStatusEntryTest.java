@@ -30,6 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("RequestStatusEntry")
 class RequestStatusEntryTest {
 
+    /** Fixed timestamp — avoids the system clock so serialization tests stay deterministic. */
+    private static final Instant FIXED_INSTANT = Instant.parse("2024-01-01T00:00:00Z");
+
     @Nested
     @DisplayName("Factory Methods")
     class FactoryMethods {
@@ -104,7 +107,7 @@ class RequestStatusEntryTest {
         void shouldSerializeDeserializeWithOptionalFields() {
             String traceId = UUID.randomUUID().toString();
             String parentTraceId = UUID.randomUUID().toString();
-            Instant now = Instant.now();
+            Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
                     traceId, RequestStatus.REJECTED, now, now,
                     parentTraceId, "Validation failed", 0, 0, null);
@@ -122,7 +125,7 @@ class RequestStatusEntryTest {
         @EnumSource(RequestStatus.class)
         @DisplayName("Should serialize all status values")
         void shouldSerializeAllStatusValues(RequestStatus status) {
-            Instant now = Instant.now();
+            Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
                     UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null);
 
