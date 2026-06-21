@@ -38,12 +38,12 @@
         "default:verify:module-tests"
       ],
       "per_task_budget_reserve_tokens": "50K",
-      "verification_steps": [
-        "default:verify:quality-gate",
-        "default:verify:module-tests",
-        "default:verify:integration-tests",
-        "default:verify:e2e"
-      ],
+      "verification_steps": {
+        "default:verify:quality-gate": {},
+        "default:verify:module-tests": {},
+        "default:verify:integration-tests": {},
+        "default:verify:e2e": {}
+      },
       "effort": {
         "default": "level-4",
         "verification-feedback": "level-3"
@@ -51,32 +51,34 @@
     },
     "phase-6-finalize": {
       "max_iterations": 3,
-      "review_bot_buffer_seconds": 180,
-      "pr_merge_strategy": "squash",
       "finalize_without_asking": true,
       "loop_back_without_asking": false,
-      "final_merge_without_asking": false,
       "self_review": "auto",
       "qgate": "auto",
       "simplify": "auto",
       "checks_wait_timeout_seconds": 600,
-      "auto_rebase_threshold": "no_overlap_only",
       "drop_review_on_scope_gate": false,
-      "steps": [
-        "default:pre-push-quality-gate",
-        "default:finalize-step-whole-tree-gate",
-        "default:commit-push",
-        "default:finalize-step-simplify",
-        "default:create-pr",
-        "default:ci-verify",
-        "default:automated-review",
-        "default:sonar-roundtrip",
-        "default:lessons-capture",
-        "default:branch-cleanup",
-        "default:record-metrics",
-        "default:finalize-step-print-phase-breakdown",
-        "default:archive-plan"
-      ],
+      "steps": {
+        "default:pre-push-quality-gate": {},
+        "default:finalize-step-whole-tree-gate": {},
+        "default:commit-push": {},
+        "default:finalize-step-simplify": {},
+        "default:create-pr": {},
+        "default:ci-verify": {},
+        "default:automated-review": {
+          "review_bot_buffer_seconds": 180
+        },
+        "default:sonar-roundtrip": {},
+        "default:lessons-capture": {},
+        "default:branch-cleanup": {
+          "pr_merge_strategy": "squash",
+          "final_merge_without_asking": false,
+          "auto_rebase_threshold": "no_overlap_only"
+        },
+        "default:record-metrics": {},
+        "default:finalize-step-print-phase-breakdown": {},
+        "default:archive-plan": {}
+      },
       "effort": {
         "default": "level-3",
         "verification-feedback": "level-3",
