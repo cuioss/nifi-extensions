@@ -16,7 +16,23 @@ updates:
       semver-patch-days: 1
 
   - package-ecosystem: npm
-    directory: "/nifi-cuioss-processors"
+    directory: "/nifi-cuioss-ui"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 1
+    ignore:
+      # Accepted advisory GHSA-h67p-54hq-rp68 (js-yaml moderate DoS): only
+      # reachable transitively via the jest dev toolchain; the sole fix is a
+      # breaking babel-jest downgrade, so the advisory is accepted, not patched.
+      - dependency-name: "js-yaml"
+
+  - package-ecosystem: npm
+    directory: "/e-2-e-playwright"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
