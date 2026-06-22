@@ -9,12 +9,22 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 1
 
   - package-ecosystem: npm
     directory: "/nifi-cuioss-ui"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 1
     ignore:
       # Accepted advisory GHSA-h67p-54hq-rp68 (js-yaml moderate DoS): only
       # reachable transitively via the jest dev toolchain; the sole fix is a
@@ -29,3 +39,8 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+      semver-minor-days: 3
+      semver-patch-days: 1
