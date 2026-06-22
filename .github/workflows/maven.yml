@@ -2,8 +2,13 @@
 name: Maven Build
 
 on:
+  # main builds on push (the SonarCloud branch baseline that PR analyses diff against).
+  # Every other branch builds via its pull_request to main, which produces a Sonar
+  # pull-request analysis (PR decoration + plan-marshall sonar-roundtrip both rely on it).
+  # Because non-main branches are not in the push list, there is exactly one build per
+  # PR update and no push/PR duplicate — superseding the former fork-only `if:` guard.
   push:
-    branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,9 +18,6 @@ permissions:
 
 jobs:
   build:
-    # Run on push events, OR on pull_request only if from a fork
-    # This prevents duplicate runs: push handles internal branches, PR handles forks
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@14a19791f40f31521ba48fc84d699ef5e52ff7c1 # v0.6.6
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
