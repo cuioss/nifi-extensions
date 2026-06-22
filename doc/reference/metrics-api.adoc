@@ -1,0 +1,223 @@
+= Metrics API
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+
+== Overview
+
+The gateway `/metrics` endpoint is an *internal data source* for the
+RestApiGatewayProcessor custom UI's **Metrics** view. The UI does not call the
+gateway directly: the browser requests
+`/nifi-api/processors/jwt/gateway/metrics`, the
+link:../architecture/gateway.adoc[`GatewayProxyServlet`] proxies that request to
+the embedded gateway's `/metrics` endpoint, and the JSON response populates the
+three sections of the Metrics tab (see
+link:../guides/QuickStart.adoc#gateway-metrics[Quick Start -- Gateway Metrics]).
+
+This endpoint exists to back that one UI view. It is *not* the recommended
+surface for general-purpose external monitoring -- for scraping the gateway's
+counters from Prometheus, Grafana, or any other monitoring stack, use the
+NiFi-native endpoints described in <<external-monitoring,External Monitoring (NiFi-Native Endpoints)>>
+below.
+
+[NOTE]
+.Forward direction
+====
+The `/metrics` endpoint is a transitional surface. Once the admin Metrics view is
+reworked to read the gateway counters from the NiFi-native endpoints (which carry
+the same data; see <<external-monitoring,External Monitoring (NiFi-Native Endpoints)>>), this
+endpoint can be removed without loss of UI functionality. It is documented here
+as the current internal contract, not as a long-term external API.
+====
+
+== Endpoint Contract
+
+[cols="1,3"]
+|===
+|Property |Value
+
+|Path |`/metrics`
+|Method |`GET` (any other method returns `405 Method Not Allowed`)
+|Auth mode |`local-only,bearer` (default; see <<authorization,Authorization>>)
+|Default response |Prometheus text format (`text/plain; version=0.0.4; charset=utf-8`)
+|JSON response |Returned when the request carries `Accept: application/json`
+|Success status |`200 OK`
+|===
+
+Content negotiation is driven solely by the `Accept` header: a request whose
+`Accept` value contains `application/json` receives the JSON body; every other
+request (including no `Accept` header) receives the Prometheus text body. The UI
+proxy path requests JSON; the Prometheus body exists for ad-hoc local inspection
+of the same counters.
+
+=== Status Codes
+
+[cols="1,3"]
+|===
+|Status |When Returned
+
+|`200 OK` |Metrics successfully rendered (Prometheus or JSON per `Accept`)
+|`401 Unauthorized` |Remote request without a valid Bearer token (auth mode `bearer`)
+|`403 Forbidden` |Valid token but missing a required role (when `required-roles` is configured)
+|`405 Method Not Allowed` |HTTP method other than `GET`
+|===
+
+== Metric Sources
+
+The endpoint aggregates three independent counter sources. Each source is
+rendered as its own metric family (Prometheus) or its own top-level object key
+(JSON).
+
+[cols="1,1,3"]
+|===
+|Source |Origin |Description
+
+|Token Validation
+|oauth-sheriff `SecurityEventCounter`
+|JWT validation outcomes (e.g. `valid_tokens`, `invalid_tokens`). Empty until the linked `JwtIssuerConfigService` has validated at least one token.
+
+|Transport Security
+|cui-http `SecurityEventCounter`
+|Transport-level input-sanitization events raised by the cui-http security pipeline (e.g. `sanitized_path`).
+
+|Gateway Application Events
+|`GatewaySecurityEvents`
+|Application-level gateway security decisions. Exactly nine event types (see <<gateway-application-event-types,Gateway Application Event Types>>).
+|===
+
+[#gateway-application-event-types]
+=== Gateway Application Event Types
+
+The `gatewayEvents` source tracks nine application-level security decisions made
+by the `GatewayRequestHandler`. These are the same events surfaced in the
+link:../architecture/gateway.adoc#security-events[Gateway Architecture --
+Security Events] table.
+
+[cols="2,1,3"]
+|===
+|Event Type |HTTP Status |Description
+
+|`MISSING_BEARER_TOKEN` |401 |No Authorization header or malformed Bearer prefix
+|`AUTH_FAILED` |401 |Token validation failed (expired, bad signature, etc.)
+|`AUTHZ_ROLE_DENIED` |403 |Valid token but missing required roles
+|`AUTHZ_SCOPE_DENIED` |401 |Valid token but missing required scopes (step-up)
+|`BODY_TOO_LARGE` |413 |Request body exceeds the configured maximum size
+|`ROUTE_NOT_FOUND` |404 |No route configured for the requested path
+|`METHOD_NOT_ALLOWED` |405 |Route exists but the HTTP method is not allowed
+|`SCHEMA_VALIDATION_FAILED` |422 |Request body failed JSON Schema validation
+|`QUEUE_FULL` |503 |Request queue at capacity, back-pressure applied
+|===
+
+== Response Schemas
+
+=== Prometheus Format (default)
+
+The default body is Prometheus text exposition format. Each source contributes
+one metric family with `# HELP` and `# TYPE` lines followed by its samples.
+
+[source]
+----
+# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)
+# TYPE nifi_jwt_validations_total counter
+nifi_jwt_validations_total{result="valid_tokens"} 15126
+nifi_jwt_validations_total{result="invalid_tokens"} 297
+
+# HELP nifi_gateway_http_security_events_total Transport-level security events (cui-http)
+# TYPE nifi_gateway_http_security_events_total counter
+nifi_gateway_http_security_events_total{type="sanitized_path"} 42
+
+# HELP nifi_gateway_events_total Application-level gateway events
+# TYPE nifi_gateway_events_total counter
+nifi_gateway_events_total{type="missing_bearer_token"} 12
+nifi_gateway_events_total{type="auth_failed"} 85
+----
+
+[NOTE]
+====
+In the Prometheus body the gateway event `type` labels are lower-cased
+(`missing_bearer_token`, `auth_failed`, ...). When a source has no recorded
+events, its family still renders -- the transport-security and gateway-events
+families emit a single zero sample (e.g. `nifi_gateway_events_total 0`), and the
+token-validation family emits only its `# HELP`/`# TYPE` header lines.
+====
+
+=== JSON Format
+
+Requested with `Accept: application/json`. The body is a single object with one
+key per source.
+
+[source,json]
+----
+{
+  "tokenValidation": { "valid_tokens": 15126, "invalid_tokens": 297 },
+  "httpSecurity": { "sanitized_path": 42 },
+  "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
+}
+----
+
+[NOTE]
+====
+The `gatewayEvents` keys in the JSON body use the *raw* event-type names in
+upper-case (`MISSING_BEARER_TOKEN`), unlike the lower-cased Prometheus labels.
+The `tokenValidation` and `httpSecurity` keys are lower-cased in both formats.
+This is the schema the custom UI Metrics view consumes.
+====
+
+[#authorization]
+== Authorization
+
+Access to `/metrics` follows the gateway's standard management-endpoint
+auth-mode dispatch (see link:../architecture/gateway.adoc#auth-mode-dispatch[Auth-Mode
+Dispatch]). The default `local-only,bearer` mode reflects the UI proxy access
+path: the `GatewayProxyServlet` runs inside the NiFi process and reaches the
+embedded gateway over loopback, so the `local-only` branch admits the proxy
+without a token while still requiring Bearer authentication for any remote
+caller.
+
+[cols="2,1,3"]
+|===
+|Static Property |Default |Purpose
+
+|`rest.gateway.management.metrics.enabled` |`true` |Whether `/metrics` is active
+|`rest.gateway.management.metrics.auth-mode` |`local-only,bearer` |Authentication mode for `/metrics`
+|`rest.gateway.management.metrics.required-roles` |-- |Roles required when auth-mode includes `bearer`
+|`rest.gateway.management.metrics.required-scopes` |-- |Scopes required when auth-mode includes `bearer`
+|===
+
+See link:configuration.adoc#restapigateway-processor-properties[Configuration
+Reference -- RestApiGateway Processor Properties] for the full property table.
+
+[#external-monitoring]
+== External Monitoring (NiFi-Native Endpoints)
+
+For external monitoring stacks, do *not* scrape the gateway `/metrics` endpoint.
+The gateway application events are also published as native NiFi processor
+counters via `session.adjustCounter`, which makes them available on NiFi's own,
+already-authenticated monitoring endpoints. These endpoints are the recommended
+surface for Prometheus, Grafana, and similar tools.
+
+[cols="2,3"]
+|===
+|NiFi-Native Endpoint |Content
+
+|`/nifi-api/flow/metrics/prometheus`
+|Prometheus exposition of all NiFi metrics, including per-processor user counters under the `nifi_processor_counters` metric family.
+
+|`/nifi-api/counters`
+|JSON listing of all processor counters, including the gateway's per-event counters.
+|===
+
+The gateway counters appear in the `nifi_processor_counters` family labelled by
+`processor_name`, `counter_name`, and `processor_id`:
+
+[source]
+----
+nifi_processor_counters{processor_name="RestApiGatewayProcessor",counter_name="...",processor_id="..."} <value>
+----
+
+The `counter_name` values follow the stable naming convention published by the
+processor; treat those names as the contract for any external dashboard or
+alert. Because these endpoints are served by NiFi itself, they inherit NiFi's
+authentication and require no gateway-specific configuration.

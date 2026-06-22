@@ -22,6 +22,7 @@ import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
 import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.generator.Generators;
@@ -678,6 +679,98 @@ class RestApiGatewayProcessorTest {
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Files.writeString(confDir.resolve("cui-nifi-extensions.properties"), content);
+        }
+    }
+
+    @Nested
+    @DisplayName("Counter Bridge (Tier A)")
+    class CounterBridge {
+
+        private static final String MISSING_BEARER_COUNTER =
+                RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token";
+
+        @Test
+        @DisplayName("Should bridge a gateway security event to a NiFi counter after onTrigger")
+        void shouldBridgeGatewayEventToNifiCounter() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            testRunner.run(1, false, false);
+
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Unauthenticated request should surface one missing_bearer_token NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should flush event deltas on an idle trigger with no queued request")
+        void shouldFlushDeltasOnIdleTrigger() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            // Idle tick: the 401 response created no FlowFile, so the queue is empty —
+            // the counter must still publish from the early-return path in onTrigger.
+            testRunner.run(1, false, false);
+
+            assertTrue(testRunner.getFlowFilesForRelationship("health").isEmpty(),
+                    "Unauthenticated request must not create a FlowFile");
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Idle trigger must still flush the missing_bearer_token delta");
+        }
+
+        @Test
+        @DisplayName("Should not double-count across triggers with no new events")
+        void shouldNotDoubleCountAcrossTriggers() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            testRunner.run(1, false, false);
+            long afterFirst = testRunner.getCounterValue(MISSING_BEARER_COUNTER);
+            testRunner.run(1, false, false);
+            testRunner.run(1, false, false);
+
+            assertEquals(1L, afterFirst, "First flush should publish exactly one event");
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Subsequent idle triggers must not republish the same cumulative count");
+        }
+
+        @Test
+        @DisplayName("Should bridge a distinct event type (route-not-found) to its own NiFi counter")
+        void shouldBridgeDistinctEventType() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/does-not-exist"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            testRunner.run(1, false, false);
+
+            String routeNotFoundCounter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "route_not_found";
+            assertEquals(1L, testRunner.getCounterValue(routeNotFoundCounter),
+                    "A 404 request should surface one route_not_found NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should derive counter names through the stable Counters convention")
+        void shouldDeriveStableCounterNames() {
+            String name = RestApiGatewayConstants.Counters.counterName(
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX,
+                    GatewaySecurityEvents.EventType.AUTH_FAILED.name());
+
+            assertEquals("gateway.events.auth_failed", name,
+                    "Counter name must be the prefix plus the lower-cased event identifier");
+        }
+
+        private void sendUnauthenticated(int port) throws Exception {
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
         }
     }
 

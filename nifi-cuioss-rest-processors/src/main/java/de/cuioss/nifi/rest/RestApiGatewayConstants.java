@@ -281,4 +281,54 @@ public final class RestApiGatewayConstants {
                 .build();
 
     }
+
+    /**
+     * Stable counter-name convention for the NiFi-native counters bridged from the
+     * gateway's internal event sources in {@code onTrigger} via
+     * {@code session.adjustCounter}.
+     * <p>
+     * Each gateway event source maps to a dedicated dotted prefix; the per-event
+     * name is the prefix followed by the lower-cased event identifier. These names
+     * are the contract consumed by external monitoring: they surface verbatim as
+     * the {@code counter_name} label of the {@code nifi_processor_counters} metric
+     * family on {@code /nifi-api/flow/metrics/prometheus} and as the counter name in
+     * {@code /nifi-api/counters}. The names MUST remain stable — documentation
+     * (doc/reference/metrics-api.adoc) and integration tests assert them directly.
+     */
+    @UtilityClass
+    public static final class Counters {
+        /**
+         * Prefix for application-level gateway security events
+         * ({@code GatewaySecurityEvents.EventType}). Full name example:
+         * {@code gateway.events.missing_bearer_token}.
+         */
+        public static final String GATEWAY_EVENT_PREFIX = "gateway.events.";
+
+        /**
+         * Prefix for token-validation events (oauth-sheriff
+         * {@code SecurityEventCounter}). Full name example:
+         * {@code gateway.token.valid_tokens}.
+         */
+        public static final String TOKEN_VALIDATION_PREFIX = "gateway.token.";
+
+        /**
+         * Prefix for transport-level HTTP security events (cui-http
+         * {@code SecurityEventCounter}). Full name example:
+         * {@code gateway.http.security.path_traversal}.
+         */
+        public static final String HTTP_SECURITY_PREFIX = "gateway.http.security.";
+
+        /**
+         * Builds the stable counter name for a source prefix and an event
+         * identifier, lower-casing the identifier so the name matches the
+         * Prometheus label casing used elsewhere.
+         *
+         * @param prefix one of the {@code *_PREFIX} constants in this class
+         * @param eventName the raw event identifier (enum name)
+         * @return the fully-qualified, lower-cased counter name
+         */
+        public static String counterName(String prefix, String eventName) {
+            return prefix + eventName.toLowerCase(java.util.Locale.ROOT);
+        }
+    }
 }

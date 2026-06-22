@@ -264,6 +264,11 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |No
 |===
 
+NOTE: The `/metrics` management endpoint backs the custom UI Metrics view and
+also publishes its gateway counters to NiFi-native monitoring endpoints. See
+link:metrics-api.adoc[Metrics API] for the full endpoint contract, response
+schemas, and the recommended external-monitoring surface.
+
 == Route Configuration via Dynamic Properties
 
 Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
@@ -478,7 +483,7 @@ The Custom UI backend provides REST endpoints shared by both processors:
 |UI Endpoint |Method |Description
 
 |`/nifi-api/processors/jwt/gateway/config` |GET |Retrieves current route configuration
-|`/nifi-api/processors/jwt/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint
+|`/nifi-api/processors/jwt/gateway/metrics` |GET |Retrieves metrics from the gateway `/metrics` endpoint (see link:metrics-api.adoc[Metrics API])
 |`/nifi-api/processors/jwt/gateway/test` |POST |Sends test requests to the gateway (SSRF-protected)
 |`/nifi-api/processors/jwt/gateway/token-fetch` |POST |Proxies an OAuth token request to the IDP
 |`/nifi-api/processors/jwt/gateway/discover-token-endpoint` |POST |Fetches OIDC discovery for the token endpoint

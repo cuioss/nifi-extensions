@@ -127,6 +127,19 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     /** Guards lazy loading of external config relationships before @OnScheduled. */
     private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
 
+    /** Gateway application-level security events; shared with the Jetty handlers, read in onTrigger. */
+    private volatile GatewaySecurityEvents gatewaySecurityEvents;
+    /** Transport-level (cui-http) security events; shared with the Jetty handlers, read in onTrigger. */
+    private volatile SecurityEventCounter httpSecurityEvents;
+    /** Config service supplying the oauth-sheriff token-validation counter; resolved in onScheduled. */
+    private volatile JwtIssuerConfigService configService;
+    /**
+     * Last-published cumulative count per counter name. onTrigger publishes the delta
+     * (current cumulative count − last-published count) as a NiFi counter so the native
+     * counters stay cumulative-correct without double-counting across triggers.
+     */
+    private final ConcurrentHashMap<String, Long> lastPublishedCounts = new ConcurrentHashMap<>();
+
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
         return STATIC_PROPERTIES;
@@ -212,15 +225,22 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         JwtIssuerConfigService configService = context.getProperty(
                 RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
+        this.configService = configService;
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
         // Build JSON Schema validator from route configurations
         JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
 
-        // Pre-create shared event counters so all handlers + dispatcher share them
+        // Pre-create shared event counters so all handlers + dispatcher share them.
+        // Held as fields so onTrigger can bridge their cumulative counts to NiFi counters.
         var httpSecurityEvents = new SecurityEventCounter();
         var gatewaySecurityEvents = new GatewaySecurityEvents();
+        this.httpSecurityEvents = httpSecurityEvents;
+        this.gatewaySecurityEvents = gatewaySecurityEvents;
+        // Reset the per-instance delta baseline on each (re)schedule so a restart
+        // republishes from the freshly-zeroed counters without spurious deltas.
+        lastPublishedCounts.clear();
 
         // Resolve optional DistributedMapCacheClient for request tracking
         DistributedMapCacheClient cacheClient = context.getProperty(
@@ -344,6 +364,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) {
+        // Bridge gateway metric counts to NiFi-native counters before any early return,
+        // so idle ticks (no queued request) still flush newly-accumulated event deltas.
+        publishCounterDeltas(session);
+
         HttpRequestContainer container = requestQueue.poll();
         if (container == null) {
             context.yield();
@@ -428,6 +452,66 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             FlowFile errorFile = session.create();
             errorFile = session.putAttribute(errorFile, "error.message", e.getMessage());
             session.transfer(errorFile, RestApiGatewayConstants.Relationships.FAILURE);
+        }
+    }
+
+    /**
+     * Bridges the gateway's three internal event sources to NiFi-native counters.
+     * <p>
+     * For each event the current cumulative count is compared against the
+     * last-published value in {@link #lastPublishedCounts}; only the positive delta
+     * is forwarded to {@link ProcessSession#adjustCounter} so the native counter
+     * accumulates the same cumulative total without double-counting across triggers.
+     * The counter names follow {@link RestApiGatewayConstants.Counters}, which is the
+     * stable contract surfaced on NiFi's {@code /nifi-api/counters} and
+     * {@code /nifi-api/flow/metrics/prometheus} endpoints.
+     *
+     * @param session the current process session used to adjust counters
+     */
+    private void publishCounterDeltas(ProcessSession session) {
+        GatewaySecurityEvents gatewayEvents = this.gatewaySecurityEvents;
+        if (gatewayEvents != null) {
+            gatewayEvents.getAllCounts().forEach((eventType, count) ->
+                    publishDelta(session,
+                            RestApiGatewayConstants.Counters.counterName(
+                                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX, eventType.name()),
+                            count));
+        }
+
+        SecurityEventCounter httpEvents = this.httpSecurityEvents;
+        if (httpEvents != null) {
+            httpEvents.getAllCounts().forEach((failureType, count) ->
+                    publishDelta(session,
+                            RestApiGatewayConstants.Counters.counterName(
+                                    RestApiGatewayConstants.Counters.HTTP_SECURITY_PREFIX, failureType.name()),
+                            count));
+        }
+
+        JwtIssuerConfigService service = this.configService;
+        if (service != null) {
+            service.getSecurityEventCounter().ifPresent(tokenCounter ->
+                    tokenCounter.getCounters().forEach((eventType, count) ->
+                            publishDelta(session,
+                                    RestApiGatewayConstants.Counters.counterName(
+                                            RestApiGatewayConstants.Counters.TOKEN_VALIDATION_PREFIX, eventType.name()),
+                                    count)));
+        }
+    }
+
+    /**
+     * Publishes the positive delta between the supplied cumulative {@code count} and
+     * the last value recorded for {@code counterName}, then records the new baseline.
+     *
+     * @param session the process session used to adjust the counter
+     * @param counterName the stable NiFi counter name
+     * @param count the current cumulative count for the source event
+     */
+    private void publishDelta(ProcessSession session, String counterName, long count) {
+        long previous = lastPublishedCounts.getOrDefault(counterName, 0L);
+        long delta = count - previous;
+        if (delta > 0) {
+            session.adjustCounter(counterName, delta, false);
+            lastPublishedCounts.put(counterName, count);
         }
     }
 

@@ -198,6 +198,7 @@ The **Token Verification** tab lets you paste a JWT and verify it against the co
 
 image::ui-gateway-token-verification.png[Gateway Token Verification Tab]
 
+[#gateway-metrics]
 == Gateway Metrics
 
 The **Metrics** tab provides real-time monitoring of the gateway with three sections:
@@ -207,6 +208,11 @@ The **Metrics** tab provides real-time monitoring of the gateway with three sect
 * **Gateway Events**: overall gateway activity
 
 image::ui-gateway-metrics.png[Gateway Metrics Tab]
+
+This tab is backed by the gateway `/metrics` endpoint, proxied through the custom
+UI. For the endpoint contract, response schemas, and the recommended way to scrape
+these counters from external monitoring tools, see
+link:../reference/metrics-api.adoc[Metrics API].
 
 == Gateway Help
 
