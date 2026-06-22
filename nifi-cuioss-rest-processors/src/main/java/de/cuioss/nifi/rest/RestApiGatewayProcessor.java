@@ -465,8 +465,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
      * The counter names follow {@link RestApiGatewayConstants.Counters}, which is the
      * stable contract surfaced on NiFi's {@code /nifi-api/counters} and
      * {@code /nifi-api/flow/metrics/prometheus} endpoints.
-     *
-     * @param session the current process session used to adjust counters
      */
     private void publishCounterDeltas(ProcessSession session) {
         GatewaySecurityEvents gatewayEvents = this.gatewaySecurityEvents;
@@ -498,14 +496,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         }
     }
 
-    /**
-     * Publishes the positive delta between the supplied cumulative {@code count} and
-     * the last value recorded for {@code counterName}, then records the new baseline.
-     *
-     * @param session the process session used to adjust the counter
-     * @param counterName the stable NiFi counter name
-     * @param count the current cumulative count for the source event
-     */
     private void publishDelta(ProcessSession session, String counterName, long count) {
         long previous = lastPublishedCounts.getOrDefault(counterName, 0L);
         long delta = count - previous;

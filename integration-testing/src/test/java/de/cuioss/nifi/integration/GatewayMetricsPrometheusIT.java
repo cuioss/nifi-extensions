@@ -31,7 +31,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -111,7 +110,7 @@ class GatewayMetricsPrometheusIT {
         List<String> gatewayCounterLines = prometheus.lines()
                 .filter(line -> line.startsWith("nifi_processor_counters"))
                 .filter(line -> line.contains("counter_name=\"" + GATEWAY_COUNTER_PREFIX))
-                .collect(Collectors.toList());
+                .toList();
 
         assertTrue(!gatewayCounterLines.isEmpty(),
                 "The nifi_processor_counters family must contain at least one gateway.* counter_name; "
@@ -204,7 +203,7 @@ class GatewayMetricsPrometheusIT {
         return counters.stream()
                 .map(JsonObject.class::cast)
                 .filter(c -> c.getString("name", "").startsWith(GATEWAY_COUNTER_PREFIX))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
