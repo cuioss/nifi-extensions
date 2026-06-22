@@ -510,7 +510,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         long previous = lastPublishedCounts.getOrDefault(counterName, 0L);
         long delta = count - previous;
         if (delta > 0) {
-            session.adjustCounter(counterName, delta, false);
+            // immediate=true writes through to the FlowController counter repository at once,
+            // so the counter persists even on the idle early-return path (where the session is
+            // yielded, not committed) and surfaces on NiFi's /nifi-api/counters and
+            // /nifi-api/flow/metrics/prometheus endpoints independent of session lifecycle.
+            session.adjustCounter(counterName, delta, true);
             lastPublishedCounts.put(counterName, count);
         }
     }
