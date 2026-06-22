@@ -64,6 +64,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -127,12 +128,16 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     /** Guards lazy loading of external config relationships before @OnScheduled. */
     private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
 
-    /** Gateway application-level security events; shared with the Jetty handlers, read in onTrigger. */
-    private volatile GatewaySecurityEvents gatewaySecurityEvents;
+    /**
+     * Gateway application-level security events; shared with the Jetty handlers, read in onTrigger.
+     * Held in an {@link AtomicReference} (a thread-safe type) so the @OnScheduled publish and the
+     * onTrigger read of the reference are safely visible across NiFi framework threads.
+     */
+    final AtomicReference<GatewaySecurityEvents> gatewaySecurityEvents = new AtomicReference<>();
     /** Transport-level (cui-http) security events; shared with the Jetty handlers, read in onTrigger. */
-    private volatile SecurityEventCounter httpSecurityEvents;
+    final AtomicReference<SecurityEventCounter> httpSecurityEvents = new AtomicReference<>();
     /** Config service supplying the oauth-sheriff token-validation counter; resolved in onScheduled. */
-    private volatile JwtIssuerConfigService configService;
+    final AtomicReference<JwtIssuerConfigService> configService = new AtomicReference<>();
     /**
      * Last-published cumulative count per counter name. onTrigger publishes the delta
      * (current cumulative count − last-published count) as a NiFi counter so the native
@@ -225,7 +230,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         JwtIssuerConfigService configService = context.getProperty(
                 RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
-        this.configService = configService;
+        this.configService.set(configService);
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
@@ -236,8 +241,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         // Held as fields so onTrigger can bridge their cumulative counts to NiFi counters.
         var httpSecurityEvents = new SecurityEventCounter();
         var gatewaySecurityEvents = new GatewaySecurityEvents();
-        this.httpSecurityEvents = httpSecurityEvents;
-        this.gatewaySecurityEvents = gatewaySecurityEvents;
+        this.httpSecurityEvents.set(httpSecurityEvents);
+        this.gatewaySecurityEvents.set(gatewaySecurityEvents);
         // Reset the per-instance delta baseline on each (re)schedule so a restart
         // republishes from the freshly-zeroed counters without spurious deltas.
         lastPublishedCounts.clear();
@@ -466,8 +471,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
      * stable contract surfaced on NiFi's {@code /nifi-api/counters} and
      * {@code /nifi-api/flow/metrics/prometheus} endpoints.
      */
-    private void publishCounterDeltas(ProcessSession session) {
-        GatewaySecurityEvents gatewayEvents = this.gatewaySecurityEvents;
+    void publishCounterDeltas(ProcessSession session) {
+        GatewaySecurityEvents gatewayEvents = this.gatewaySecurityEvents.get();
         if (gatewayEvents != null) {
             gatewayEvents.getAllCounts().forEach((eventType, count) ->
                     publishDelta(session,
@@ -476,7 +481,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                             count));
         }
 
-        SecurityEventCounter httpEvents = this.httpSecurityEvents;
+        SecurityEventCounter httpEvents = this.httpSecurityEvents.get();
         if (httpEvents != null) {
             httpEvents.getAllCounts().forEach((failureType, count) ->
                     publishDelta(session,
@@ -485,7 +490,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                             count));
         }
 
-        JwtIssuerConfigService service = this.configService;
+        JwtIssuerConfigService service = this.configService.get();
         if (service != null) {
             service.getSecurityEventCounter().ifPresent(tokenCounter ->
                     tokenCounter.getCounters().forEach((eventType, count) ->

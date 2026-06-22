@@ -24,6 +24,8 @@ import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
 
+import java.util.Locale;
+
 /**
  * DSL-style nested constants for the RestApiGateway processor configuration.
  *
@@ -328,7 +330,7 @@ public final class RestApiGatewayConstants {
          * @return the fully-qualified, lower-cased counter name
          */
         public static String counterName(String prefix, String eventName) {
-            return prefix + eventName.toLowerCase(java.util.Locale.ROOT);
+            return prefix + eventName.toLowerCase(Locale.ROOT);
         }
     }
 }
