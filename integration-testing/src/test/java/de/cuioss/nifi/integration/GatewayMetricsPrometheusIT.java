@@ -35,6 +35,7 @@ import java.util.List;
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Integration tests verifying that the gateway's application metrics are bridged
@@ -154,7 +155,11 @@ class GatewayMetricsPrometheusIT {
             sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"poll\"}");
             Thread.sleep(2000);
         }
-        // Don't fail here — the test assertions report the precise gap.
+        // A polling helper that waits for a state change must throw on timeout so the test fails
+        // loudly with context, rather than returning silently and letting later assertions run
+        // against an unmet precondition.
+        fail("Timed out after %s waiting for the gateway NiFi counters to appear on /nifi-api/counters"
+                .formatted(timeout));
     }
 
     private static void sendGateway(HttpClient client, String method, String path,

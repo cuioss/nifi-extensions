@@ -40,11 +40,7 @@ import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.util.MockFlowFile;
-import org.apache.nifi.util.MockProcessSession;
-import org.apache.nifi.util.SharedSessionState;
-import org.apache.nifi.util.TestRunner;
-import org.apache.nifi.util.TestRunners;
+import org.apache.nifi.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -60,14 +56,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("RestApiGatewayProcessor")
 @EnableTestLogger
@@ -926,6 +922,58 @@ class RestApiGatewayProcessorTest {
         }
 
         @Test
+        @DisplayName("Should re-baseline without a negative counter when the cumulative source rolls back")
+        void shouldReBaselineOnRollback() {
+            // Arrange — a stub source whose cumulative count we can drive up then down to simulate
+            // a rollback/reset of the underlying gateway counter (e.g. a processor restart).
+            var rollbackEvents = new RollbackGatewaySecurityEvents();
+            processor.gatewaySecurityEvents.set(rollbackEvents);
+            String counter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token";
+
+            // Act + Assert — first trigger publishes the full cumulative 5
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 5L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(5L, sessionState.getCounterValue(counter),
+                    "First trigger must publish the full cumulative count");
+
+            // Source rolls back to 2 — no negative adjustCounter must be published, the NiFi
+            // counter must stay at 5, and the lower value must become the new baseline.
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 2L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(5L, sessionState.getCounterValue(counter),
+                    "A rollback must never decrement the cumulative NiFi counter");
+
+            // After re-baselining at 2, the next genuine increase to 4 publishes only the +2 delta
+            // (4 - 2), so the cumulative NiFi counter advances 5 -> 7, not 5 -> 9.
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 4L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(7L, sessionState.getCounterValue(counter),
+                    "Post-rollback delta must be measured from the re-baselined value");
+        }
+
+        @Test
+        @DisplayName("Should not publish a counter when the very first observed value is a rollback to a lower count")
+        void shouldNotPublishNegativeOnFirstRollbackObservation() {
+            // Arrange — first observed value is non-zero, then drops below it before any publish
+            // could have stored a higher baseline, exercising the previous==null then decrease path.
+            var rollbackEvents = new RollbackGatewaySecurityEvents();
+            processor.gatewaySecurityEvents.set(rollbackEvents);
+            String counter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "queue_full";
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.QUEUE_FULL, 3L);
+            processor.publishCounterDeltas(newSession());
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.QUEUE_FULL, 0L);
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert — the rollback to 0 keeps the cumulative NiFi counter at its prior 3
+            assertEquals(3L, sessionState.getCounterValue(counter),
+                    "A rollback to zero must not subtract from the cumulative NiFi counter");
+        }
+
+        @Test
         @DisplayName("Should no-op when all sources are unset (null guards)")
         void shouldNoOpWhenSourcesUnset() {
             // Arrange — fresh processor: all three AtomicReferences hold null
@@ -985,6 +1033,27 @@ class RestApiGatewayProcessorTest {
      * {@link TestJwtIssuerConfigService} always returns an empty counter optional, so it cannot
      * drive that branch.
      */
+    /**
+     * {@link GatewaySecurityEvents} stub whose per-event cumulative count can be driven up
+     * <em>and</em> down via {@link #setCount}, simulating a rollback/reset of the underlying
+     * source counter (e.g. a processor restart). The real {@code GatewaySecurityEvents} only
+     * exposes monotonic {@code increment}, so it cannot drive the re-baseline branch in
+     * {@link RestApiGatewayProcessor#publishCounterDeltas}.
+     */
+    private static final class RollbackGatewaySecurityEvents extends GatewaySecurityEvents {
+
+        private final Map<EventType, Long> counts = new EnumMap<>(EventType.class);
+
+        private void setCount(EventType eventType, long value) {
+            counts.put(eventType, value);
+        }
+
+        @Override
+        public Map<EventType, Long> getAllCounts() {
+            return Map.copyOf(counts);
+        }
+    }
+
     private static final class CounterStubConfigService extends AbstractControllerService
             implements JwtIssuerConfigService {
 

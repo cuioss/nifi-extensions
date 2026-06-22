@@ -132,6 +132,7 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |No
 |===
 
+[#restapigateway-processor-properties]
 == RestApiGateway Processor Properties
 
 [cols="2,1,3,1"]

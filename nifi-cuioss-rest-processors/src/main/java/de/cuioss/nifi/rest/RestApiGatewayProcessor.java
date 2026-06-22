@@ -24,16 +24,7 @@ import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.RouteConfigurationParser;
 import de.cuioss.nifi.rest.config.TrackingMode;
-import de.cuioss.nifi.rest.handler.ApiRouteHandler;
-import de.cuioss.nifi.rest.handler.AttachmentsEndpointHandler;
-import de.cuioss.nifi.rest.handler.EndpointHandler;
-import de.cuioss.nifi.rest.handler.GatewayRequestHandler;
-import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
-import de.cuioss.nifi.rest.handler.HealthEndpointHandler;
-import de.cuioss.nifi.rest.handler.HttpRequestContainer;
-import de.cuioss.nifi.rest.handler.MetricsEndpointHandler;
-import de.cuioss.nifi.rest.handler.RequestStatusStore;
-import de.cuioss.nifi.rest.handler.StatusEndpointHandler;
+import de.cuioss.nifi.rest.handler.*;
 import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.tools.logging.CuiLogger;
@@ -502,15 +493,29 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     }
 
     private void publishDelta(ProcessSession session, String counterName, long count) {
-        long previous = lastPublishedCounts.getOrDefault(counterName, 0L);
-        long delta = count - previous;
+        // RestApiGatewayProcessor is not @TriggerSerially, so concurrent onTrigger threads may
+        // call publishDelta for the same counter at once. A plain get/compute/put would let two
+        // threads read the same baseline and both publish the same delta (double-counting).
+        // ConcurrentHashMap.compute is atomic per key: the baseline read, delta capture, and new
+        // baseline write happen under the bin lock, so the delta for each (current - previous)
+        // transition is captured exactly once. The holder carries the delta out of the lambda.
+        long[] deltaHolder = new long[1];
+        lastPublishedCounts.compute(counterName, (key, previous) -> {
+            long prior = (previous == null) ? 0L : previous;
+            // Re-baseline on a rollback/reset of the cumulative source counter: a decrease must
+            // never publish a negative adjustCounter. The new (lower) value becomes the baseline
+            // so the next genuine increase publishes the correct forward delta.
+            long delta = (count > prior) ? (count - prior) : 0L;
+            deltaHolder[0] = delta;
+            return count;
+        });
+        long delta = deltaHolder[0];
         if (delta > 0) {
             // immediate=true writes through to the FlowController counter repository at once,
             // so the counter persists even on the idle early-return path (where the session is
             // yielded, not committed) and surfaces on NiFi's /nifi-api/counters and
             // /nifi-api/flow/metrics/prometheus endpoints independent of session lifecycle.
             session.adjustCounter(counterName, delta, true);
-            lastPublishedCounts.put(counterName, count);
         }
     }
 
