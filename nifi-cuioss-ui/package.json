@@ -31,7 +31,7 @@
   },
   "homepage": "https://github.com/CU-Boulder-OIT/nifi-cuioss#readme",
   "devDependencies": {
-    "@babel/core": "^7.29.6",
+    "@babel/core": "^7.29.7",
     "@babel/preset-env": "^7.24.7",
     "@testing-library/jest-dom": "^6.4.0",
     "babel-jest": "^29.7.0",
