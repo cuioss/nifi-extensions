@@ -2,6 +2,10 @@
 name: Maven Build
 
 on:
+  # Every push builds (quality + Sonar branch analysis); every PR builds (Sonar
+  # pull-request analysis). The reusable workflow's gate skips a push build when an
+  # open PR already covers that commit, so there is no push/PR duplicate — no caller
+  # `if:` is needed. The gate reads open PRs, hence `pull-requests: read` below.
   push:
     branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
   pull_request:
@@ -10,13 +14,11 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   build:
-    # Run on push events, OR on pull_request only if from a fork
-    # This prevents duplicate runs: push handles internal branches, PR handles forks
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@14a19791f40f31521ba48fc84d699ef5e52ff7c1 # v0.6.6
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@0af17b4211b2db37c3bc9b5f316f0c534c3ee8d5 # v0.6.8
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       OSS_SONATYPE_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}

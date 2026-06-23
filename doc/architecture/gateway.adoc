@@ -116,6 +116,7 @@ Requests flow through up to three authentication layers depending on the entry p
 * **Layer 2 (Custom UI)**: `SecurityHeadersFilter` (defense-in-depth headers), `ProcessorIdValidationFilter` (UUID check), per-component NiFi authorization via `ComponentConfigReader`.
 * **Layer 3 (Gateway Jetty)**: Auth-mode dispatch per endpoint.
 
+[#auth-mode-dispatch]
 == Auth-Mode Dispatch
 
 Each endpoint (built-in or user-defined route) has a configurable `auth-mode`:
@@ -303,6 +304,7 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |503 |Service Unavailable |Request queue is full (back-pressure)
 |===
 
+[#security-events]
 == Security Events
 
 [cols="2,1,2"]
@@ -323,6 +325,11 @@ Management endpoint auth-mode is configured via static NiFi properties:
 These counters are exposed through the `/metrics` management endpoint.
 
 == /metrics Endpoint
+
+For the full endpoint contract (status codes, content negotiation, both response
+schemas, authorization, and the recommended external-monitoring surface) see
+link:../reference/metrics-api.adoc[Metrics API]. This section summarizes the
+three aggregated metric sources.
 
 The `/metrics` endpoint aggregates three metric sources:
 

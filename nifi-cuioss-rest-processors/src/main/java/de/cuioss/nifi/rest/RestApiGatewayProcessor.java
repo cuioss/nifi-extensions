@@ -24,16 +24,7 @@ import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.RouteConfigurationParser;
 import de.cuioss.nifi.rest.config.TrackingMode;
-import de.cuioss.nifi.rest.handler.ApiRouteHandler;
-import de.cuioss.nifi.rest.handler.AttachmentsEndpointHandler;
-import de.cuioss.nifi.rest.handler.EndpointHandler;
-import de.cuioss.nifi.rest.handler.GatewayRequestHandler;
-import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
-import de.cuioss.nifi.rest.handler.HealthEndpointHandler;
-import de.cuioss.nifi.rest.handler.HttpRequestContainer;
-import de.cuioss.nifi.rest.handler.MetricsEndpointHandler;
-import de.cuioss.nifi.rest.handler.RequestStatusStore;
-import de.cuioss.nifi.rest.handler.StatusEndpointHandler;
+import de.cuioss.nifi.rest.handler.*;
 import de.cuioss.nifi.rest.server.JettyServerManager;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.tools.logging.CuiLogger;
@@ -64,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 /**
@@ -126,6 +118,23 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private final ConcurrentHashMap<String, Integer> routeToAttachmentsMinCount = new ConcurrentHashMap<>();
     /** Guards lazy loading of external config relationships before @OnScheduled. */
     private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
+
+    /**
+     * Gateway application-level security events; shared with the Jetty handlers, read in onTrigger.
+     * Held in an {@link AtomicReference} (a thread-safe type) so the @OnScheduled publish and the
+     * onTrigger read of the reference are safely visible across NiFi framework threads.
+     */
+    final AtomicReference<GatewaySecurityEvents> gatewaySecurityEvents = new AtomicReference<>();
+    /** Transport-level (cui-http) security events; shared with the Jetty handlers, read in onTrigger. */
+    final AtomicReference<SecurityEventCounter> httpSecurityEvents = new AtomicReference<>();
+    /** Config service supplying the oauth-sheriff token-validation counter; resolved in onScheduled. */
+    final AtomicReference<JwtIssuerConfigService> configService = new AtomicReference<>();
+    /**
+     * Last-published cumulative count per counter name. onTrigger publishes the delta
+     * (current cumulative count − last-published count) as a NiFi counter so the native
+     * counters stay cumulative-correct without double-counting across triggers.
+     */
+    private final ConcurrentHashMap<String, Long> lastPublishedCounts = new ConcurrentHashMap<>();
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -212,15 +221,22 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         JwtIssuerConfigService configService = context.getProperty(
                 RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE)
                 .asControllerService(JwtIssuerConfigService.class);
+        this.configService.set(configService);
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
         // Build JSON Schema validator from route configurations
         JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
 
-        // Pre-create shared event counters so all handlers + dispatcher share them
+        // Pre-create shared event counters so all handlers + dispatcher share them.
+        // Held as fields so onTrigger can bridge their cumulative counts to NiFi counters.
         var httpSecurityEvents = new SecurityEventCounter();
         var gatewaySecurityEvents = new GatewaySecurityEvents();
+        this.httpSecurityEvents.set(httpSecurityEvents);
+        this.gatewaySecurityEvents.set(gatewaySecurityEvents);
+        // Reset the per-instance delta baseline on each (re)schedule so a restart
+        // republishes from the freshly-zeroed counters without spurious deltas.
+        lastPublishedCounts.clear();
 
         // Resolve optional DistributedMapCacheClient for request tracking
         DistributedMapCacheClient cacheClient = context.getProperty(
@@ -344,6 +360,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
     @Override
     public void onTrigger(ProcessContext context, ProcessSession session) {
+        // Bridge gateway metric counts to NiFi-native counters before any early return,
+        // so idle ticks (no queued request) still flush newly-accumulated event deltas.
+        publishCounterDeltas(session);
+
         HttpRequestContainer container = requestQueue.poll();
         if (container == null) {
             context.yield();
@@ -428,6 +448,74 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             FlowFile errorFile = session.create();
             errorFile = session.putAttribute(errorFile, "error.message", e.getMessage());
             session.transfer(errorFile, RestApiGatewayConstants.Relationships.FAILURE);
+        }
+    }
+
+    /**
+     * Bridges the gateway's three internal event sources to NiFi-native counters.
+     * <p>
+     * For each event the current cumulative count is compared against the
+     * last-published value in {@link #lastPublishedCounts}; only the positive delta
+     * is forwarded to {@link ProcessSession#adjustCounter} so the native counter
+     * accumulates the same cumulative total without double-counting across triggers.
+     * The counter names follow {@link RestApiGatewayConstants.Counters}, which is the
+     * stable contract surfaced on NiFi's {@code /nifi-api/counters} and
+     * {@code /nifi-api/flow/metrics/prometheus} endpoints.
+     */
+    void publishCounterDeltas(ProcessSession session) {
+        GatewaySecurityEvents gatewayEvents = this.gatewaySecurityEvents.get();
+        if (gatewayEvents != null) {
+            gatewayEvents.getAllCounts().forEach((eventType, count) ->
+                    publishDelta(session,
+                            RestApiGatewayConstants.Counters.counterName(
+                                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX, eventType.name()),
+                            count));
+        }
+
+        SecurityEventCounter httpEvents = this.httpSecurityEvents.get();
+        if (httpEvents != null) {
+            httpEvents.getAllCounts().forEach((failureType, count) ->
+                    publishDelta(session,
+                            RestApiGatewayConstants.Counters.counterName(
+                                    RestApiGatewayConstants.Counters.HTTP_SECURITY_PREFIX, failureType.name()),
+                            count));
+        }
+
+        JwtIssuerConfigService service = this.configService.get();
+        if (service != null) {
+            service.getSecurityEventCounter().ifPresent(tokenCounter ->
+                    tokenCounter.getCounters().forEach((eventType, count) ->
+                            publishDelta(session,
+                                    RestApiGatewayConstants.Counters.counterName(
+                                            RestApiGatewayConstants.Counters.TOKEN_VALIDATION_PREFIX, eventType.name()),
+                                    count)));
+        }
+    }
+
+    private void publishDelta(ProcessSession session, String counterName, long count) {
+        // RestApiGatewayProcessor is not @TriggerSerially, so concurrent onTrigger threads may
+        // call publishDelta for the same counter at once. A plain get/compute/put would let two
+        // threads read the same baseline and both publish the same delta (double-counting).
+        // ConcurrentHashMap.compute is atomic per key: the baseline read, delta capture, and new
+        // baseline write happen under the bin lock, so the delta for each (current - previous)
+        // transition is captured exactly once. The holder carries the delta out of the lambda.
+        long[] deltaHolder = new long[1];
+        lastPublishedCounts.compute(counterName, (key, previous) -> {
+            long prior = (previous == null) ? 0L : previous;
+            // Re-baseline on a rollback/reset of the cumulative source counter: a decrease must
+            // never publish a negative adjustCounter. The new (lower) value becomes the baseline
+            // so the next genuine increase publishes the correct forward delta.
+            long delta = (count > prior) ? (count - prior) : 0L;
+            deltaHolder[0] = delta;
+            return count;
+        });
+        long delta = deltaHolder[0];
+        if (delta > 0) {
+            // immediate=true writes through to the FlowController counter repository at once,
+            // so the counter persists even on the idle early-return path (where the session is
+            // yielded, not committed) and surfaces on NiFi's /nifi-api/counters and
+            // /nifi-api/flow/metrics/prometheus endpoints independent of session lifecycle.
+            session.adjustCounter(counterName, delta, true);
         }
     }
 

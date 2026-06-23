@@ -1,8 +1,11 @@
 name: Integration Tests
 
 on:
+  # main builds on push; every other branch builds via its pull_request to main.
+  # Non-main branches are not in the push list, so there is one run per PR update and
+  # no push/PR duplicate — superseding the former fork-only `if:` guard.
   push:
-    branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -12,8 +15,7 @@ permissions:
 
 jobs:
   integration-tests:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@14a19791f40f31521ba48fc84d699ef5e52ff7c1 # v0.6.6
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@0af17b4211b2db37c3bc9b5f316f0c534c3ee8d5 # v0.6.8
     with:
       report-name: integration-testing
       maven-args-input: verify -Pintegration-tests -pl integration-testing -am

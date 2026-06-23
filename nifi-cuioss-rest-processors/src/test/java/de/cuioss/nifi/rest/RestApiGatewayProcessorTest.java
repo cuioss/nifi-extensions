@@ -16,12 +16,19 @@
  */
 package de.cuioss.nifi.rest;
 
+import de.cuioss.http.security.core.UrlSecurityFailureType;
 import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
 import de.cuioss.http.security.database.AttackTestCase;
 import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
 import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
+import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
+import de.cuioss.nifi.jwt.config.JwtAuthenticationConfig;
+import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
+import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
 import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
 import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
 import de.cuioss.test.generator.Generators;
@@ -31,14 +38,14 @@ import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.util.MockFlowFile;
-import org.apache.nifi.util.TestRunner;
-import org.apache.nifi.util.TestRunners;
+import org.apache.nifi.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
 import java.net.URI;
@@ -49,10 +56,14 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("RestApiGatewayProcessor")
 @EnableTestLogger
@@ -317,8 +328,8 @@ class RestApiGatewayProcessorTest {
 
             httpClient.send(
                     HttpRequest.newBuilder(URI.create(
-                                    "http://127.0.0.1:" + port + "/api/users/" + pair.userId() + "/orders/"
-                                            + pair.orderId()))
+                            "http://127.0.0.1:" + port + "/api/users/" + pair.userId() + "/orders/"
+                                    + pair.orderId()))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -387,7 +398,7 @@ class RestApiGatewayProcessorTest {
             try {
                 var response = httpClient.send(
                         HttpRequest.newBuilder(URI.create(
-                                        "http://127.0.0.1:" + port + "/api/users/" + encoded + "/orders/1"))
+                                "http://127.0.0.1:" + port + "/api/users/" + encoded + "/orders/1"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
@@ -678,6 +689,394 @@ class RestApiGatewayProcessorTest {
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Files.writeString(confDir.resolve("cui-nifi-extensions.properties"), content);
+        }
+    }
+
+    @Nested
+    @DisplayName("Counter Bridge (Tier A)")
+    class CounterBridge {
+
+        private static final String MISSING_BEARER_COUNTER =
+                RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token";
+
+        @Test
+        @DisplayName("Should bridge a gateway security event to a NiFi counter after onTrigger")
+        void shouldBridgeGatewayEventToNifiCounter() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            testRunner.run(1, false, false);
+
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Unauthenticated request should surface one missing_bearer_token NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should flush event deltas on an idle trigger with no queued request")
+        void shouldFlushDeltasOnIdleTrigger() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            // Idle tick: the 401 response created no FlowFile, so the queue is empty —
+            // the counter must still publish from the early-return path in onTrigger.
+            testRunner.run(1, false, false);
+
+            assertTrue(testRunner.getFlowFilesForRelationship("health").isEmpty(),
+                    "Unauthenticated request must not create a FlowFile");
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Idle trigger must still flush the missing_bearer_token delta");
+        }
+
+        @Test
+        @DisplayName("Should not double-count across triggers with no new events")
+        void shouldNotDoubleCountAcrossTriggers() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            sendUnauthenticated(port);
+
+            testRunner.run(1, false, false);
+            long afterFirst = testRunner.getCounterValue(MISSING_BEARER_COUNTER);
+            testRunner.run(1, false, false);
+            testRunner.run(1, false, false);
+
+            assertEquals(1L, afterFirst, "First flush should publish exactly one event");
+            assertEquals(1L, testRunner.getCounterValue(MISSING_BEARER_COUNTER),
+                    "Subsequent idle triggers must not republish the same cumulative count");
+        }
+
+        @Test
+        @DisplayName("Should bridge a distinct event type (route-not-found) to its own NiFi counter")
+        void shouldBridgeDistinctEventType() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/does-not-exist"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            testRunner.run(1, false, false);
+
+            String routeNotFoundCounter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "route_not_found";
+            assertEquals(1L, testRunner.getCounterValue(routeNotFoundCounter),
+                    "A 404 request should surface one route_not_found NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should derive counter names through the stable Counters convention")
+        void shouldDeriveStableCounterNames() {
+            String name = RestApiGatewayConstants.Counters.counterName(
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX,
+                    GatewaySecurityEvents.EventType.AUTH_FAILED.name());
+
+            assertEquals("gateway.events.auth_failed", name,
+                    "Counter name must be the prefix plus the lower-cased event identifier");
+        }
+
+        private void sendUnauthenticated(int port) throws Exception {
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+        }
+    }
+
+    /**
+     * White-box coverage for {@link RestApiGatewayProcessor#publishCounterDeltas} that drives the
+     * three event sources directly (gateway / cui-http transport / oauth-sheriff token validation)
+     * without an HTTP round-trip. Each source is set on the processor's package-private
+     * {@code AtomicReference} holders, then {@code publishCounterDeltas} is invoked with a
+     * {@link MockProcessSession} whose backing {@link SharedSessionState} exposes the resulting
+     * NiFi counter values. This isolates the cumulative-delta math, the per-source counter-name
+     * derivation, and the null-source guards from the embedded-server paths.
+     */
+    @Nested
+    @DisplayName("Counter Bridge (direct, all sources)")
+    class CounterBridgeDirect {
+
+        private RestApiGatewayProcessor processor;
+        private SharedSessionState sessionState;
+
+        @BeforeEach
+        void initProcessor() {
+            processor = new RestApiGatewayProcessor();
+            sessionState = new SharedSessionState(processor, new AtomicLong(0));
+        }
+
+        private MockProcessSession newSession() {
+            return new MockProcessSession(sessionState, processor, null);
+        }
+
+        @Test
+        @DisplayName("Should publish a gateway event source delta to its NiFi counter")
+        void shouldPublishGatewaySource() {
+            // Arrange
+            var gatewayEvents = new GatewaySecurityEvents();
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_ROLE_DENIED);
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_ROLE_DENIED);
+            processor.gatewaySecurityEvents.set(gatewayEvents);
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert
+            assertEquals(2L, sessionState.getCounterValue(
+                            RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "authz_role_denied"),
+                    "Gateway counter must equal the cumulative source count");
+        }
+
+        @Test
+        @DisplayName("Should publish a cui-http transport-security source delta to its NiFi counter")
+        void shouldPublishHttpSecuritySource() {
+            // Arrange
+            var httpEvents = new SecurityEventCounter();
+            httpEvents.increment(UrlSecurityFailureType.PATH_TRAVERSAL_DETECTED);
+            httpEvents.increment(UrlSecurityFailureType.PATH_TRAVERSAL_DETECTED);
+            httpEvents.increment(UrlSecurityFailureType.PATH_TRAVERSAL_DETECTED);
+            processor.httpSecurityEvents.set(httpEvents);
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert
+            assertEquals(3L, sessionState.getCounterValue(
+                            RestApiGatewayConstants.Counters.HTTP_SECURITY_PREFIX + "path_traversal_detected"),
+                    "HTTP security counter must equal the cumulative source count");
+        }
+
+        @Test
+        @DisplayName("Should publish an oauth-sheriff token-validation source delta to its NiFi counter")
+        void shouldPublishTokenValidationSource() {
+            // Arrange
+            var tokenCounter = new de.cuioss.sheriff.oauth.core.security.SecurityEventCounter();
+            tokenCounter.increment(
+                    de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
+            processor.configService.set(new CounterStubConfigService(tokenCounter));
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert
+            assertEquals(1L, sessionState.getCounterValue(
+                            RestApiGatewayConstants.Counters.TOKEN_VALIDATION_PREFIX + "token_expired"),
+                    "Token-validation counter must equal the cumulative source count");
+        }
+
+        @Test
+        @DisplayName("Should publish all three sources in a single trigger")
+        void shouldPublishAllThreeSourcesAtOnce() {
+            // Arrange
+            var gatewayEvents = new GatewaySecurityEvents();
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
+            processor.gatewaySecurityEvents.set(gatewayEvents);
+
+            var httpEvents = new SecurityEventCounter();
+            httpEvents.increment(UrlSecurityFailureType.NULL_BYTE_INJECTION);
+            processor.httpSecurityEvents.set(httpEvents);
+
+            var tokenCounter = new de.cuioss.sheriff.oauth.core.security.SecurityEventCounter();
+            tokenCounter.increment(
+                    de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED);
+            processor.configService.set(new CounterStubConfigService(tokenCounter));
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert
+            assertEquals(1L, sessionState.getCounterValue(
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "queue_full"));
+            assertEquals(1L, sessionState.getCounterValue(
+                    RestApiGatewayConstants.Counters.HTTP_SECURITY_PREFIX + "null_byte_injection"));
+            assertEquals(1L, sessionState.getCounterValue(
+                    RestApiGatewayConstants.Counters.TOKEN_VALIDATION_PREFIX + "signature_validation_failed"));
+        }
+
+        @Test
+        @DisplayName("Should publish only the incremental delta across successive triggers")
+        void shouldPublishOnlyIncrementalDelta() {
+            // Arrange
+            var gatewayEvents = new GatewaySecurityEvents();
+            processor.gatewaySecurityEvents.set(gatewayEvents);
+            String counter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token";
+
+            // Act + Assert — first trigger publishes 2
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN);
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(2L, sessionState.getCounterValue(counter));
+
+            // Second trigger with no new events must not republish
+            processor.publishCounterDeltas(newSession());
+            assertEquals(2L, sessionState.getCounterValue(counter),
+                    "No new events must keep the cumulative NiFi counter unchanged");
+
+            // Third trigger after one more event publishes only the +1 delta
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(3L, sessionState.getCounterValue(counter),
+                    "Only the incremental delta must be added to the cumulative NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should re-baseline without a negative counter when the cumulative source rolls back")
+        void shouldReBaselineOnRollback() {
+            // Arrange — a stub source whose cumulative count we can drive up then down to simulate
+            // a rollback/reset of the underlying gateway counter (e.g. a processor restart).
+            var rollbackEvents = new RollbackGatewaySecurityEvents();
+            processor.gatewaySecurityEvents.set(rollbackEvents);
+            String counter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token";
+
+            // Act + Assert — first trigger publishes the full cumulative 5
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 5L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(5L, sessionState.getCounterValue(counter),
+                    "First trigger must publish the full cumulative count");
+
+            // Source rolls back to 2 — no negative adjustCounter must be published, the NiFi
+            // counter must stay at 5, and the lower value must become the new baseline.
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 2L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(5L, sessionState.getCounterValue(counter),
+                    "A rollback must never decrement the cumulative NiFi counter");
+
+            // After re-baselining at 2, the next genuine increase to 4 publishes only the +2 delta
+            // (4 - 2), so the cumulative NiFi counter advances 5 -> 7, not 5 -> 9.
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.MISSING_BEARER_TOKEN, 4L);
+            processor.publishCounterDeltas(newSession());
+            assertEquals(7L, sessionState.getCounterValue(counter),
+                    "Post-rollback delta must be measured from the re-baselined value");
+        }
+
+        @Test
+        @DisplayName("Should not publish a counter when the very first observed value is a rollback to a lower count")
+        void shouldNotPublishNegativeOnFirstRollbackObservation() {
+            // Arrange — first observed value is non-zero, then drops below it before any publish
+            // could have stored a higher baseline, exercising the previous==null then decrease path.
+            var rollbackEvents = new RollbackGatewaySecurityEvents();
+            processor.gatewaySecurityEvents.set(rollbackEvents);
+            String counter =
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "queue_full";
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.QUEUE_FULL, 3L);
+            processor.publishCounterDeltas(newSession());
+            rollbackEvents.setCount(GatewaySecurityEvents.EventType.QUEUE_FULL, 0L);
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert — the rollback to 0 keeps the cumulative NiFi counter at its prior 3
+            assertEquals(3L, sessionState.getCounterValue(counter),
+                    "A rollback to zero must not subtract from the cumulative NiFi counter");
+        }
+
+        @Test
+        @DisplayName("Should no-op when all sources are unset (null guards)")
+        void shouldNoOpWhenSourcesUnset() {
+            // Arrange — fresh processor: all three AtomicReferences hold null
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert — no counter is ever created
+            assertNull(sessionState.getCounterValue(
+                            RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "missing_bearer_token"),
+                    "Null gateway source must not publish any counter");
+        }
+
+        @Test
+        @DisplayName("Should treat an empty token-validation counter optional as a no-op")
+        void shouldHandleEmptyTokenCounterOptional() {
+            // Arrange — config service present but its counter optional is empty
+            processor.configService.set(new TestJwtIssuerConfigService());
+            var gatewayEvents = new GatewaySecurityEvents();
+            gatewayEvents.increment(GatewaySecurityEvents.EventType.AUTH_FAILED);
+            processor.gatewaySecurityEvents.set(gatewayEvents);
+
+            // Act
+            processor.publishCounterDeltas(newSession());
+
+            // Assert — gateway source still publishes; absent token counter is silently skipped
+            assertEquals(1L, sessionState.getCounterValue(
+                    RestApiGatewayConstants.Counters.GATEWAY_EVENT_PREFIX + "auth_failed"));
+            assertNull(sessionState.getCounterValue(
+                            RestApiGatewayConstants.Counters.TOKEN_VALIDATION_PREFIX + "token_expired"),
+                    "Empty token-validation optional must not create a counter");
+        }
+    }
+
+    @Nested
+    @DisplayName("Counter name derivation")
+    class CounterNameDerivation {
+
+        @ParameterizedTest(name = "[{index}] {0}{1} -> {2}")
+        @CsvSource({
+                "gateway.events.,MISSING_BEARER_TOKEN,gateway.events.missing_bearer_token",
+                "gateway.token.,TOKEN_EXPIRED,gateway.token.token_expired",
+                "gateway.http.security.,PATH_TRAVERSAL_DETECTED,gateway.http.security.path_traversal_detected"
+        })
+        @DisplayName("Should lower-case the event identifier and concatenate it to the prefix")
+        void shouldDeriveCounterName(String prefix, String eventName, String expected) {
+            assertEquals(expected,
+                    RestApiGatewayConstants.Counters.counterName(prefix, eventName),
+                    "Counter name must be the prefix plus the lower-cased event identifier");
+        }
+    }
+
+    /**
+     * Minimal {@link JwtIssuerConfigService} stub that surfaces a pre-populated oauth-sheriff
+     * {@code SecurityEventCounter} so the token-validation publish path in
+     * {@link RestApiGatewayProcessor#publishCounterDeltas} can be exercised directly. The shared
+     * {@link TestJwtIssuerConfigService} always returns an empty counter optional, so it cannot
+     * drive that branch.
+     */
+    /**
+     * {@link GatewaySecurityEvents} stub whose per-event cumulative count can be driven up
+     * <em>and</em> down via {@link #setCount}, simulating a rollback/reset of the underlying
+     * source counter (e.g. a processor restart). The real {@code GatewaySecurityEvents} only
+     * exposes monotonic {@code increment}, so it cannot drive the re-baseline branch in
+     * {@link RestApiGatewayProcessor#publishCounterDeltas}.
+     */
+    private static final class RollbackGatewaySecurityEvents extends GatewaySecurityEvents {
+
+        private final Map<EventType, Long> counts = new EnumMap<>(EventType.class);
+
+        private void setCount(EventType eventType, long value) {
+            counts.put(eventType, value);
+        }
+
+        @Override
+        public Map<EventType, Long> getAllCounts() {
+            return Map.copyOf(counts);
+        }
+    }
+
+    private static final class CounterStubConfigService extends AbstractControllerService
+            implements JwtIssuerConfigService {
+
+        private final de.cuioss.sheriff.oauth.core.security.SecurityEventCounter counter;
+
+        private CounterStubConfigService(
+                de.cuioss.sheriff.oauth.core.security.SecurityEventCounter counter) {
+            this.counter = counter;
+        }
+
+        @Override
+        public AccessTokenContent validateToken(String rawToken) throws TokenValidationException {
+            throw new UnsupportedOperationException("not used in counter-bridge tests");
+        }
+
+        @Override
+        public JwtAuthenticationConfig getAuthenticationConfig() {
+            return new JwtAuthenticationConfig(16384, Set.of(), true);
+        }
+
+        @Override
+        public Optional<de.cuioss.sheriff.oauth.core.security.SecurityEventCounter> getSecurityEventCounter() {
+            return Optional.of(counter);
         }
     }
 

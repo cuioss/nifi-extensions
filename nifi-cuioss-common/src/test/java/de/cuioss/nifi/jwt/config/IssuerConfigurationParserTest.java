@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -87,7 +86,7 @@ class IssuerConfigurationParserTest {
 
         @Test
         @DisplayName("Should create IssuerConfig from UI property with JWKS file")
-        void shouldCreateIssuerConfigWithJwksFile(@TempDir Path tempDir) throws IOException {
+        void shouldCreateIssuerConfigWithJwksFile(@TempDir Path tempDir) throws Exception {
             // Arrange — create a real JWKS file since the builder validates existence
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
@@ -269,7 +268,7 @@ class IssuerConfigurationParserTest {
 
         @Test
         @DisplayName("Should infer file type from jwks-file property")
-        void shouldInferFileTypeFromJwksFile(@TempDir Path tempDir) throws IOException {
+        void shouldInferFileTypeFromJwksFile(@TempDir Path tempDir) throws Exception {
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
             Map<String, String> properties = new HashMap<>();
@@ -383,7 +382,7 @@ class IssuerConfigurationParserTest {
 
         @Test
         @DisplayName("Should load issuers from ConfigurationManager")
-        void shouldLoadIssuersFromConfigManager(@TempDir Path tempDir) throws IOException {
+        void shouldLoadIssuersFromConfigManager(@TempDir Path tempDir) throws Exception {
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Path configFile = confDir.resolve("cui-nifi-extensions.properties");
@@ -404,7 +403,7 @@ class IssuerConfigurationParserTest {
 
         @Test
         @DisplayName("Should merge UI and external configurations")
-        void shouldMergeUIAndExternalConfigs(@TempDir Path tempDir) throws IOException {
+        void shouldMergeUIAndExternalConfigs(@TempDir Path tempDir) throws Exception {
             Path confDir = tempDir.resolve("conf");
             Files.createDirectories(confDir);
             Path configFile = confDir.resolve("cui-nifi-extensions.properties");
