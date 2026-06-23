@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   auto-merge:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-dependabot-auto-merge.yml@a7368d92f50df26ff8e495b9bd8ecee4cf9a8471 # v0.6.7
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-dependabot-auto-merge.yml@0af17b4211b2db37c3bc9b5f316f0c534c3ee8d5 # v0.6.8
     permissions:
       contents: write
       pull-requests: write
