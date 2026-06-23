@@ -60,7 +60,7 @@
       "drop_review_on_scope_gate": false,
       "steps": {
         "default:pre-push-quality-gate": {},
-        "default:commit-push": {},
+        "default:push": {},
         "default:finalize-step-simplify": {},
         "default:create-pr": {},
         "default:ci-verify": {},
