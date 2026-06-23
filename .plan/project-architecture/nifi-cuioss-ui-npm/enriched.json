@@ -21,11 +21,11 @@
       "defaults": [
         {
           "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
-          "skill": "plan-marshall:dev-agent-behavior-rules"
+          "skill": "plan-marshall:persona-plan-marshall-agent"
         },
         {
           "description": "Language-agnostic code quality, refactoring, and documentation principles",
-          "skill": "plan-marshall:dev-general-code-quality"
+          "skill": "plan-marshall:ref-code-quality"
         },
         {
           "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
@@ -37,15 +37,15 @@
       "defaults": [
         {
           "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
-          "skill": "plan-marshall:dev-agent-behavior-rules"
+          "skill": "plan-marshall:persona-plan-marshall-agent"
         },
         {
           "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
-          "skill": "plan-marshall:dev-general-code-quality"
+          "skill": "plan-marshall:ref-code-quality"
         },
         {
           "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
-          "skill": "plan-marshall:dev-general-module-testing"
+          "skill": "plan-marshall:persona-module-tester"
         },
         {
           "description": "Core JavaScript development standards covering ES modules, modern patterns, and code quality",
@@ -61,11 +61,11 @@
       "defaults": [
         {
           "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
-          "skill": "plan-marshall:dev-agent-behavior-rules"
+          "skill": "plan-marshall:persona-plan-marshall-agent"
         },
         {
           "description": "Language-agnostic code quality, refactoring, and documentation principles",
-          "skill": "plan-marshall:dev-general-code-quality"
+          "skill": "plan-marshall:ref-code-quality"
         }
       ]
     }
