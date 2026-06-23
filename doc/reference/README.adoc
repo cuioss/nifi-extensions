@@ -4,6 +4,7 @@ Property tables, configuration formats, error types, request tracking APIs, and 
 
 * link:configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
+* link:metrics-api.adoc[Metrics API]: the gateway `/metrics` endpoint contract and NiFi-native monitoring endpoints
 * link:request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
 * link:request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
 * link:attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement

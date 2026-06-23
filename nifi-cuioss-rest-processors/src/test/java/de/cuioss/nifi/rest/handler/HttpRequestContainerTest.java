@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -152,7 +153,7 @@ class HttpRequestContainerTest {
         @DisplayName("Should defensively copy the supplied path parameters")
         void shouldDefensivelyCopyPathParameters() {
             var token = TestTokenGenerators.accessTokens().next().asAccessTokenContent();
-            var mutable = new java.util.HashMap<String, String>();
+            var mutable = new HashMap<String, String>();
             mutable.put("id", "1");
 
             var container = new HttpRequestContainer(
