@@ -59,6 +59,9 @@
       "checks_wait_timeout_seconds": 600,
       "drop_review_on_scope_gate": false,
       "steps": {
+        "default:finalize-step-sync-baseline": {
+          "auto_rebase_threshold": "no_overlap_only"
+        },
         "default:pre-push-quality-gate": {},
         "default:finalize-step-simplify": {},
         "default:push": {},
