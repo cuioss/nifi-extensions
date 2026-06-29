@@ -950,7 +950,7 @@ export const formatDate = (d) => {
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line no-useless-escape, max-len
+// eslint-disable-next-line no-useless-escape, @stylistic/max-len
 const RE_URL = /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
 const RE_SAFE_NAME = /^[a-zA-Z0-9._-]+$/;
 const RE_PROCESSOR_ID = /\/processors\/([a-f0-9-]+)/i;
@@ -994,7 +994,7 @@ export const validateUrl = (url, opts = {}) => {
     if (s.length > maxLength) {
         return { isValid: false, error: t('validation.url.too.long', maxLength), sanitizedValue: s };
     }
-    // eslint-disable-next-line no-useless-escape, max-len
+    // eslint-disable-next-line no-useless-escape, @stylistic/max-len
     const httpsPattern = /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
     const pattern = httpsOnly ? httpsPattern : RE_URL;
     if (!pattern.test(s)) {

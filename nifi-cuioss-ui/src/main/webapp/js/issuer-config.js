@@ -227,7 +227,7 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
         rc.innerHTML = t('issuer.jwks.test.testing');
         const typeSel = fields.querySelector('.field-jwks-type');
         const type = typeSel ? typeSel.value : 'url';
-        let value = '';
+        let value;
         if (type === 'url') {
             value = fields.querySelector('.field-jwks-url')?.value || '';
         } else if (type === 'file') {
