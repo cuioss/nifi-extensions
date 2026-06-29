@@ -164,7 +164,7 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 
 * link:doc/architecture/README.adoc[Architecture Overview]: module overview, "which processor" decision guide
 * link:doc/architecture/gateway.adoc[Gateway Architecture]: pipeline, auth layers, metrics, error handling
-* link:doc/architecture/jwt-processor.adoc[JWT Processor Architecture]: flow, attributes, OAuth-Sheriff lifecycle
+* link:doc/architecture/jwt-processor.adoc[JWT Processor Architecture]: flow, attributes, Token-Sheriff lifecycle
 * link:doc/architecture/standards.adoc[Standards Compliance]: RFC/standards compliance table
 
 === Guides

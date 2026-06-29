@@ -20,12 +20,12 @@ import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
-import de.cuioss.sheriff.oauth.core.IssuerConfig;
-import de.cuioss.sheriff.oauth.core.ParserConfig;
-import de.cuioss.sheriff.oauth.core.TokenValidator;
-import de.cuioss.sheriff.oauth.core.domain.context.AccessTokenRequest;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.IssuerConfig;
+import de.cuioss.sheriff.token.validation.ParserConfig;
+import de.cuioss.sheriff.token.validation.TokenValidator;
+import de.cuioss.sheriff.token.validation.domain.context.AccessTokenRequest;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
@@ -39,7 +39,7 @@ import java.util.Objects;
 import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
 /**
- * Service for JWT token validation using the OAuth-Sheriff library.
+ * Service for JWT token validation using the Token-Sheriff library.
  * This service retrieves processor configuration via NiFi's internal
  * {@link NiFiWebConfigurationContext} API and creates the same
  * TokenValidator instance that the processor uses.
@@ -140,7 +140,7 @@ public class JwtValidationService {
 
         // ParserConfig must be created first (on this servlet thread with the correct
         // classloader) and passed through so HttpJwksLoader reuses it instead of
-        // triggering ServiceLoader on ForkJoinPool threads (OAuthSheriff#212).
+        // triggering ServiceLoader on ForkJoinPool threads (TokenSheriff#212).
         ParserConfig parserConfig = IssuerConfigurationParser.parseParserConfig(issuerProperties);
         parserConfig.getDslJson(); // Eagerly init DSL-JSON on this thread's classloader
         ConfigurationManager configurationManager = new ConfigurationManager();

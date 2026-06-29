@@ -38,7 +38,7 @@ package "nifi-cuioss-ui" {
   [Unified Custom UI] as UI
 }
 
-package "OAuth-Sheriff" {
+package "Token-Sheriff" {
   [TokenValidator] as TokenValidator
   [AccessTokenContent] as TokenContent
 }

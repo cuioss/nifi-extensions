@@ -19,7 +19,7 @@ package de.cuioss.nifi.rest.handler;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.AuthMode;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 import org.eclipse.jetty.http.HttpHeader;
@@ -37,7 +37,7 @@ import java.util.Set;
  * <p>
  * Aggregates metrics from three sources:
  * <ol>
- *   <li>Token validation events (oauth-sheriff)</li>
+ *   <li>Token validation events (token-sheriff)</li>
  *   <li>HTTP security events (cui-http)</li>
  *   <li>Application-level gateway events ({@link GatewaySecurityEvents})</li>
  * </ol>
@@ -105,12 +105,12 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
     private void appendTokenValidationMetrics(StringBuilder sb) {
         var counter = configService.getSecurityEventCounter();
         if (counter.isEmpty()) {
-            sb.append("# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n");
+            sb.append("# HELP nifi_jwt_validations_total Token validation events (token-sheriff)\n");
             sb.append("# TYPE nifi_jwt_validations_total counter\n\n");
             return;
         }
         var counts = counter.get().getCounters();
-        sb.append("# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)\n");
+        sb.append("# HELP nifi_jwt_validations_total Token validation events (token-sheriff)\n");
         sb.append("# TYPE nifi_jwt_validations_total counter\n");
         for (var entry : counts.entrySet()) {
             sb.append("nifi_jwt_validations_total{result=\"%s\"} %d\n"

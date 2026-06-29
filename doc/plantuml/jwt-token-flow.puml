@@ -39,7 +39,7 @@ partition "Size Check" {
   endif
 }
 
-partition "Token Validation (OAuth-Sheriff)" {
+partition "Token Validation (Token-Sheriff)" {
   :Send token to TokenValidator;
 
   if (Token valid?) then (yes)

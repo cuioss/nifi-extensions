@@ -17,14 +17,14 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
-import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
-import de.cuioss.sheriff.oauth.core.test.JwtTokenTamperingUtil;
-import de.cuioss.sheriff.oauth.core.test.JwtTokenTamperingUtil.TamperingStrategy;
-import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
-import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.token.validation.domain.claim.ClaimValue;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.test.JwtTokenTamperingUtil;
+import de.cuioss.sheriff.token.validation.test.JwtTokenTamperingUtil.TamperingStrategy;
+import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
+import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
  * Extended tests for {@link MultiIssuerJWTTokenAuthenticator} using realistic token content
- * from the oauth-sheriff test generators.
+ * from the token-sheriff test generators.
  * <p>
  * Token validation is delegated to the {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService}
  * Controller Service. These tests use a mock CS to verify processor routing, attribute population,

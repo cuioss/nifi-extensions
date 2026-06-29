@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.jwt.util;
 
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import lombok.Builder;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Validates JWT token authorization using the oauth-sheriff API
+ * Validates JWT token authorization using the token-sheriff API
  * ({@link AccessTokenContent#determineMissingScopes}, {@link AccessTokenContent#determineMissingRoles}).
  * <p>
  * Pure stateless utility — takes a token and requirements, returns a result.

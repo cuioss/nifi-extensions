@@ -245,4 +245,4 @@ Or use the link:../../README.adoc#_sandbox[Sandbox] to explore the flow interact
 
 * link:QuickStart.adoc[Quick Start Guide]: RestApiGateway setup
 * link:IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough]: step-by-step UI configuration with troubleshooting
-* link:../architecture/jwt-processor.adoc[JWT Processor Architecture]: flow, lifecycle, OAuth-Sheriff integration
+* link:../architecture/jwt-processor.adoc[JWT Processor Architecture]: flow, lifecycle, Token-Sheriff integration

@@ -17,15 +17,11 @@
 package de.cuioss.nifi.jwt.util;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Maps a validated {@link AccessTokenContent} to a flat {@code Map<String, String>}

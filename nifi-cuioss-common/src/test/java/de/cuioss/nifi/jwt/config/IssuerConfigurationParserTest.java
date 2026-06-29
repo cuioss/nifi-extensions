@@ -17,9 +17,9 @@
 package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
-import de.cuioss.sheriff.oauth.core.IssuerConfig;
-import de.cuioss.sheriff.oauth.core.ParserConfig;
-import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
+import de.cuioss.sheriff.token.validation.IssuerConfig;
+import de.cuioss.sheriff.token.validation.ParserConfig;
+import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;

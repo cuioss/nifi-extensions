@@ -16,11 +16,11 @@
  */
 package de.cuioss.nifi.ui.service;
 
-import de.cuioss.sheriff.oauth.core.TokenType;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
-import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
-import de.cuioss.sheriff.oauth.core.test.generator.ClaimControlParameter;
+import de.cuioss.sheriff.token.validation.TokenType;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
+import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
+import de.cuioss.sheriff.token.validation.test.generator.ClaimControlParameter;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;

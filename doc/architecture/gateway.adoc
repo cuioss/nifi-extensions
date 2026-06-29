@@ -333,7 +333,7 @@ three aggregated metric sources.
 
 The `/metrics` endpoint aggregates three metric sources:
 
-1. **Token Validation** (`tokenValidation`): OAuth-Sheriff `SecurityEventCounter` events
+1. **Token Validation** (`tokenValidation`): Token-Sheriff `SecurityEventCounter` events
 2. **Transport Security** (`httpSecurity`): cui-http security events (input sanitization)
 3. **Gateway Application Events** (`gatewayEvents`): Application-level events from `GatewaySecurityEvents`
 
@@ -372,7 +372,7 @@ Requested with `Accept: application/json`:
 |===
 |Component |Purpose
 
-|de.cuioss.sheriff.oauth:oauth-sheriff-core |Token validation framework
+|de.cuioss.sheriff.token:token-sheriff-validation |Token validation framework
 |org.eclipse.jetty:jetty-server (Jetty 12) |Embedded HTTP server
 |de.cuioss:cui-http |HTTP security pipeline (input sanitization, security event counters)
 |jakarta.json:jakarta.json-api |JSON processing for RFC 9457 ProblemDetail responses

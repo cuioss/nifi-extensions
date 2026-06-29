@@ -18,9 +18,9 @@ package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.config.JwtAuthenticationConfig;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import org.apache.nifi.controller.AbstractControllerService;
 
 import java.util.Optional;

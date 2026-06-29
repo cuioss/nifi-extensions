@@ -307,7 +307,7 @@ public final class RestApiGatewayConstants {
         public static final String GATEWAY_EVENT_PREFIX = "gateway.events.";
 
         /**
-         * Prefix for token-validation events (oauth-sheriff
+         * Prefix for token-validation events (token-sheriff
          * {@code SecurityEventCounter}). Full name example:
          * {@code gateway.token.valid_tokens}.
          */

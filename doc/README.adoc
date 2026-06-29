@@ -7,7 +7,7 @@ How the processors work, which one to choose, and standards compliance.
 
 * link:architecture/README.adoc[Architecture Overview]: module overview, "which processor" decision guide
 * link:architecture/gateway.adoc[Gateway Architecture]: request pipeline, auth layers, metrics, error handling
-* link:architecture/jwt-processor.adoc[JWT Processor Architecture]: FlowFile flow, attributes, OAuth-Sheriff lifecycle
+* link:architecture/jwt-processor.adoc[JWT Processor Architecture]: FlowFile flow, attributes, Token-Sheriff lifecycle
 * link:architecture/standards.adoc[Standards Compliance]: RFC/standards compliance table
 
 == Guides
@@ -30,3 +30,9 @@ Property tables, configuration formats, error types, request tracking, and attac
 * link:reference/request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
 * link:reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
 * link:reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement
+
+== Migration
+
+Upgrade notes for dependency and configuration changes.
+
+* link:migration/token-sheriff-0.9.0.adoc[OAuth-Sheriff → Token-Sheriff (0.9.0)]: library rename, `sheriff.oauth.*` → `sheriff.token.*` config keys, Java API package move

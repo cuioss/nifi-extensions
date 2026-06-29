@@ -22,7 +22,7 @@ import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.TrackingMode;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.nifi.rest.validation.SchemaViolation;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import org.eclipse.jetty.http.HttpHeader;

@@ -16,9 +16,9 @@
  */
 package de.cuioss.nifi.jwt.config;
 
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import org.apache.nifi.controller.ControllerService;
 
 import java.util.Optional;
@@ -29,7 +29,7 @@ import java.util.Optional;
  * Centralizes JWT issuer management, JWKS key retrieval, and token validation
  * so that multiple processors can share the same configuration without duplication.
  * <p>
- * Exposes oauth-sheriff's {@link AccessTokenContent} directly — no wrapping.
+ * Exposes token-sheriff's {@link AccessTokenContent} directly — no wrapping.
  * Metrics are exposed via the library's own {@link SecurityEventCounter} — no
  * intermediate data structures.
  */

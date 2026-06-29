@@ -1,0 +1,103 @@
+= Migration: OAuth-Sheriff → Token-Sheriff (0.9.0)
+:toc: left
+:toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
+
+The JWT-validation library underpinning these processors was renamed from *OAuth-Sheriff*
+to *Token-Sheriff*. This page describes what changes for operators and integrators of
+`nifi-extensions`, and — most importantly — the user-facing *configuration-key* rename.
+
+[cols="1,3"]
+|===
+| Affects   | Deployments that set Token-Sheriff *library* properties, and downstream Java consumers of `nifi-cuioss-api`
+| Code      | Applied in `nifi-extensions` as of the `token-sheriff-validation 0.9.0` bump — rename-only, no behavioural change
+|===
+
+== Summary
+
+[cols="2,3,3"]
+|===
+| Surface | From | To
+
+| Maven groupId   | `de.cuioss.sheriff.oauth`        | `de.cuioss.sheriff.token`
+| Artifact        | `oauth-sheriff-core`             | `token-sheriff-validation`
+| Java packages   | `de.cuioss.sheriff.oauth.core.*` | `de.cuioss.sheriff.token.validation.*`
+| Config keys     | `sheriff.oauth.*`                | `sheriff.token.*`
+|===
+
+The test-jar classifier `generators` is unchanged. The change is purely a rename: no
+validation behaviour, defaults, or wire formats change.
+
+== Configuration-key migration (primary)
+
+Token-Sheriff's own property keys move from the `sheriff.oauth.` prefix to `sheriff.token.`.
+Every key under the old prefix has an identical counterpart under the new one — only the
+prefix changes:
+
+[source,properties]
+----
+# before (OAuth-Sheriff)
+sheriff.oauth.issuers.keycloak.issuer-identifier=https://idp.example.com/realms/app
+sheriff.oauth.issuers.keycloak.jwks.http.well-known-url=https://idp.example.com/realms/app/.well-known/openid-configuration
+
+# after (Token-Sheriff)
+sheriff.token.issuers.keycloak.issuer-identifier=https://idp.example.com/realms/app
+sheriff.token.issuers.keycloak.jwks.http.well-known-url=https://idp.example.com/realms/app/.well-known/openid-configuration
+----
+
+[WARNING]
+====
+This is a *breaking runtime change* for any deployment that sets these library-level
+properties directly — for example via `nifi.properties`, JVM system properties
+(`-Dsheriff.oauth.…`), `bootstrap.conf`, environment, or any externally mounted config.
+Bumping the dependency version does *not* migrate live configuration: rename every
+`sheriff.oauth.*` key to `sheriff.token.*` in your environment as part of the upgrade.
+====
+
+== Relationship to NiFi's own configuration
+
+In a standard NiFi deployment you almost certainly do *not* set `sheriff.*` keys at all.
+The processors and the `JwtIssuerConfigService` Controller Service are configured through
+NiFi's own key namespace, which is *unchanged* by this migration:
+
+* Controller-service and processor properties — `jwt.validation.*`
+* Per-issuer dynamic properties — `issuer.<name>.*` (`jwks-url`, `issuer`, `audience`,
+  `client-id`, …)
+* Gateway / route properties — `rest.gateway.*`, `restapi.<name>.*`
+* Static-config files and environment — `jwt.validation.issuer.<name>.*`, `JWT_*`
+
+None of these contain `oauth`/`sheriff`, and none change. See
+link:../reference/configuration.adoc[Configuration Reference] for the full tables.
+
+The `sheriff.token.*` keys above matter only if you drive the underlying library directly
+(outside NiFi's property abstraction). If you do not, no configuration action is required.
+
+== Java API note (downstream consumers)
+
+If you compile against `nifi-cuioss-api`, the re-exposed Token-Sheriff types move package:
+
+[cols="3,3"]
+|===
+| From | To
+
+| `de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent` | `de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent`
+| `de.cuioss.sheriff.oauth.core.exception.TokenValidationException` | `de.cuioss.sheriff.token.validation.exception.TokenValidationException`
+| `de.cuioss.sheriff.oauth.core.security.SecurityEventCounter` | `de.cuioss.sheriff.token.validation.security.SecurityEventCounter`
+| `de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig` | `de.cuioss.sheriff.token.validation.jwks.http.HttpJwksLoaderConfig`
+|===
+
+Update imports accordingly (the package root `…oauth.core` maps to `…token.validation`).
+
+== Observability note
+
+The Prometheus metric *name* `nifi_jwt_validations_total` is *unchanged* — scraping,
+dashboards, and alerts keyed on the metric name are unaffected. Only the human-readable
+`# HELP` description text changes from `…(oauth-sheriff)` to `…(token-sheriff)`. See
+link:../reference/metrics-api.adoc[Metrics API].
+
+== Upstream reference
+
+The authoritative upstream migration guide (coordinates, relocation stubs, OpenRewrite
+recipe) lives in the Token-Sheriff project under
+`doc/oidc/01-restructure/migration-nifi-extensions.adoc`.

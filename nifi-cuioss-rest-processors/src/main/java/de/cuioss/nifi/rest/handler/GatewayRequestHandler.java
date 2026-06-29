@@ -27,8 +27,8 @@ import de.cuioss.nifi.jwt.util.AuthorizationValidator;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RoutePattern;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.Getter;
 import org.eclipse.jetty.http.HttpField;
@@ -41,14 +41,7 @@ import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Thin dispatcher implementing the command-pattern for endpoint handling.

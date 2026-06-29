@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import lombok.NonNull;
 import org.jspecify.annotations.Nullable;
 

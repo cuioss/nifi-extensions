@@ -16,8 +16,8 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
 import org.apache.nifi.util.TestRunners;
@@ -31,9 +31,7 @@ import java.util.Map;
 
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Test class for internationalization aspects of {@link MultiIssuerJWTTokenAuthenticator}.
@@ -83,7 +81,7 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
             String errorReason = flowFile.getAttribute(JwtAttributes.Error.REASON);
             assertNotNull(errorReason, "Error reason should be present");
             assertTrue(errorReason.contains("jwt.token") || errorReason.contains("Token")
-                            || errorReason.contains("token") || errorReason.contains("Kein"),
+                    || errorReason.contains("token") || errorReason.contains("Kein"),
                     "Error message should reference the token attribute or mention token");
         }
 

@@ -27,10 +27,10 @@ import de.cuioss.nifi.jwt.config.JwtAuthenticationConfig;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
-import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
+import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.TypedGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -786,7 +786,7 @@ class RestApiGatewayProcessorTest {
 
     /**
      * White-box coverage for {@link RestApiGatewayProcessor#publishCounterDeltas} that drives the
-     * three event sources directly (gateway / cui-http transport / oauth-sheriff token validation)
+     * three event sources directly (gateway / cui-http transport / token-sheriff token validation)
      * without an HTTP round-trip. Each source is set on the processor's package-private
      * {@code AtomicReference} holders, then {@code publishCounterDeltas} is invoked with a
      * {@link MockProcessSession} whose backing {@link SharedSessionState} exposes the resulting
@@ -848,12 +848,12 @@ class RestApiGatewayProcessorTest {
         }
 
         @Test
-        @DisplayName("Should publish an oauth-sheriff token-validation source delta to its NiFi counter")
+        @DisplayName("Should publish an token-sheriff token-validation source delta to its NiFi counter")
         void shouldPublishTokenValidationSource() {
             // Arrange
-            var tokenCounter = new de.cuioss.sheriff.oauth.core.security.SecurityEventCounter();
+            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
             tokenCounter.increment(
-                    de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
+                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
             processor.configService.set(new CounterStubConfigService(tokenCounter));
 
             // Act
@@ -877,9 +877,9 @@ class RestApiGatewayProcessorTest {
             httpEvents.increment(UrlSecurityFailureType.NULL_BYTE_INJECTION);
             processor.httpSecurityEvents.set(httpEvents);
 
-            var tokenCounter = new de.cuioss.sheriff.oauth.core.security.SecurityEventCounter();
+            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
             tokenCounter.increment(
-                    de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED);
+                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED);
             processor.configService.set(new CounterStubConfigService(tokenCounter));
 
             // Act
@@ -1027,7 +1027,7 @@ class RestApiGatewayProcessorTest {
     }
 
     /**
-     * Minimal {@link JwtIssuerConfigService} stub that surfaces a pre-populated oauth-sheriff
+     * Minimal {@link JwtIssuerConfigService} stub that surfaces a pre-populated token-sheriff
      * {@code SecurityEventCounter} so the token-validation publish path in
      * {@link RestApiGatewayProcessor#publishCounterDeltas} can be exercised directly. The shared
      * {@link TestJwtIssuerConfigService} always returns an empty counter optional, so it cannot
@@ -1057,10 +1057,10 @@ class RestApiGatewayProcessorTest {
     private static final class CounterStubConfigService extends AbstractControllerService
             implements JwtIssuerConfigService {
 
-        private final de.cuioss.sheriff.oauth.core.security.SecurityEventCounter counter;
+        private final de.cuioss.sheriff.token.validation.security.SecurityEventCounter counter;
 
         private CounterStubConfigService(
-                de.cuioss.sheriff.oauth.core.security.SecurityEventCounter counter) {
+                de.cuioss.sheriff.token.validation.security.SecurityEventCounter counter) {
             this.counter = counter;
         }
 
@@ -1075,7 +1075,7 @@ class RestApiGatewayProcessorTest {
         }
 
         @Override
-        public Optional<de.cuioss.sheriff.oauth.core.security.SecurityEventCounter> getSecurityEventCounter() {
+        public Optional<de.cuioss.sheriff.token.validation.security.SecurityEventCounter> getSecurityEventCounter() {
             return Optional.of(counter);
         }
     }

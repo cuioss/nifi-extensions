@@ -127,7 +127,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     final AtomicReference<GatewaySecurityEvents> gatewaySecurityEvents = new AtomicReference<>();
     /** Transport-level (cui-http) security events; shared with the Jetty handlers, read in onTrigger. */
     final AtomicReference<SecurityEventCounter> httpSecurityEvents = new AtomicReference<>();
-    /** Config service supplying the oauth-sheriff token-validation counter; resolved in onScheduled. */
+    /** Config service supplying the token-sheriff token-validation counter; resolved in onScheduled. */
     final AtomicReference<JwtIssuerConfigService> configService = new AtomicReference<>();
     /**
      * Last-published cumulative count per counter name. onTrigger publishes the delta
