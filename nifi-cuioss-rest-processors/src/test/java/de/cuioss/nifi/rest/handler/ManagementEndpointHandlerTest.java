@@ -147,6 +147,27 @@ class ManagementEndpointHandlerTest {
         }
 
         @Test
+        @DisplayName("Should emit per-result token-validation counters when events are present")
+        void shouldEmitPopulatedTokenValidationCounters() throws Exception {
+            // Populate the token-validation counter so the non-empty branch of
+            // appendTokenValidationMetrics emits per-result counter lines.
+            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
+            tokenCounter.increment(
+                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
+            configService.configureSecurityEventCounter(tokenCounter);
+
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(uri("/metrics")).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            String body = response.body();
+            assertTrue(body.contains("# HELP nifi_jwt_validations_total"));
+            assertTrue(body.contains("# TYPE nifi_jwt_validations_total counter"));
+            assertTrue(body.contains("nifi_jwt_validations_total{result=\"token_expired\"} 1"));
+        }
+
+        @Test
         @DisplayName("Should return JSON metrics when Accept: application/json")
         void shouldReturnJsonMetricsWhenAcceptJson() throws Exception {
             var response = httpClient.send(

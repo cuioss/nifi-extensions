@@ -41,10 +41,20 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
     private AccessTokenContent tokenToReturn;
     private TokenValidationException exceptionToThrow;
     private JwtAuthenticationConfig authenticationConfig = DEFAULT_CONFIG;
+    private SecurityEventCounter securityEventCounter;
 
     public void configureValidToken(AccessTokenContent token) {
         this.tokenToReturn = token;
         this.exceptionToThrow = null;
+    }
+
+    /**
+     * Configures the {@link SecurityEventCounter} returned by
+     * {@link #getSecurityEventCounter()}; pass a populated counter to exercise the
+     * per-result metrics-emission path.
+     */
+    public void configureSecurityEventCounter(SecurityEventCounter counter) {
+        this.securityEventCounter = counter;
     }
 
     public void configureValidationFailure(TokenValidationException exception) {
@@ -75,6 +85,6 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
 
     @Override
     public Optional<SecurityEventCounter> getSecurityEventCounter() {
-        return Optional.empty();
+        return Optional.ofNullable(securityEventCounter);
     }
 }
