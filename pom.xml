@@ -112,7 +112,7 @@
 
         <!-- Frontend Maven Plugin -->
         <frontend.maven.plugin.version>2.0.1</frontend.maven.plugin.version>
-        <frontend.node.version>v20.20.1</frontend.node.version>
+        <frontend.node.version>v22.23.1</frontend.node.version>
         <frontend.npm.version>10.5.0</frontend.npm.version>
 
         <!-- WebJars Dependencies -->
