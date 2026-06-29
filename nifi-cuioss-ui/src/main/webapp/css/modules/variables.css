@@ -3,7 +3,7 @@
 :root {
     /* Primary colors */
     --primary-color: #0074d9;
-    --primary-color-dark: #0063b1;
+    --primary-color-dark: #1565c0;
     --primary-color-rgb: 0, 116, 217;
 
     /* Success colors */
@@ -39,7 +39,6 @@
     --text-primary: #333;
     --text-secondary: #666;
     --primary-color-light: #e3f2fd;
-    --primary-color-dark: #1565c0;
     --code-background: #f8f8f8;
     --code-color: #d14;
 }

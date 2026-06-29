@@ -5,9 +5,9 @@
 
 /* Help Tab Container */
 .help-tab {
+    margin: 0 auto;
     padding: 20px;
     max-width: 900px;
-    margin: 0 auto;
 }
 
 .help-header {
@@ -28,27 +28,27 @@
 }
 
 .help-section {
-    margin-bottom: 25px;
-    background: var(--background-light, #fff);
     border: 1px solid var(--border-color, #ddd);
-    border-radius: 4px;
+    background: var(--background-light, #fff);
     overflow: hidden;
+    margin-bottom: 25px;
+    border-radius: 4px;
 }
 
 /* Collapsible Headers */
 .collapsible-header {
+    display: flex;
     margin: 0;
     padding: 15px 20px;
-    background: var(--background-secondary, #f5f5f5);
     border: none;
+    background: var(--background-secondary, #f5f5f5);
+    color: var(--text-primary, #333);
+    transition: background-color 0.2s ease;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.2s ease;
-    display: flex;
     align-items: center;
     font-size: 16px;
     font-weight: 600;
-    color: var(--text-primary, #333);
 }
 
 .collapsible-header:hover {
@@ -105,12 +105,12 @@
 .collapsible-content code {
     display: inline-block;
     padding: 2px 6px;
-    background: var(--code-background, #f5f5f5);
     border: 1px solid var(--border-color-light, #eee);
-    border-radius: 3px;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 13px;
+    background: var(--code-background, #f5f5f5);
     color: var(--code-color, #d14);
+    border-radius: 3px;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    font-size: 13px;
 }
 
 .example-config {
@@ -130,10 +130,10 @@
 .example-config code {
     display: block;
     padding: 8px;
-    margin-top: 5px;
-    background: transparent;
     border: none;
+    background: transparent;
     color: var(--text-primary, #333);
+    margin-top: 5px;
 }
 
 /* Resource Links */
@@ -147,11 +147,11 @@
 }
 
 .resource-links a {
-    color: var(--primary-color, #1976d2);
-    text-decoration: none;
     display: inline-flex;
-    align-items: center;
+    color: var(--primary-color, #1976d2);
     transition: color 0.2s ease;
+    text-decoration: none;
+    align-items: center;
 }
 
 .resource-links a:hover {
@@ -182,7 +182,7 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .help-tab {
         padding: 15px;
     }

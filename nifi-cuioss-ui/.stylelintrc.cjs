@@ -38,6 +38,12 @@ module.exports = {
     // CUI Standards - Quality Rules
     "color-named": "never",
     "max-nesting-depth": 3,
-    "no-descending-specificity": null
+    "no-descending-specificity": null,
+
+    // Allow BEM modifier classes (e.g. .metric-card--active) used in the JS-rendered markup
+    "selector-class-pattern": [
+      "^[a-z][a-z0-9]*(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+      { "message": "Expected class selector to be kebab-case with optional BEM __element / --modifier" }
+    ]
   }
 }

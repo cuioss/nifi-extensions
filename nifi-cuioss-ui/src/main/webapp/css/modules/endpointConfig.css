@@ -306,7 +306,7 @@
 
 .timeout-input-group .field-attachments-timeout-unit {
     width: auto;
-    padding: 4px 4px;
+    padding: 4px;
     border-radius: 0 4px 4px 0;
     border: 1px solid var(--input-border, #ccc);
     font-size: 0.85em;
@@ -374,9 +374,9 @@
 /* Management endpoints section */
 
 .management-endpoints-display {
+    padding: 0 12px 12px;
     background: var(--mgmt-section-bg, #fafafa);
     border-radius: 6px;
-    padding: 0 12px 12px;
     margin-bottom: 16px;
 }
 
@@ -414,7 +414,7 @@
 
 .method-chip-area:focus-within {
     border-color: var(--primary-color, #2196f3);
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+    box-shadow: 0 0 0 2px rgb(33 150 243 / 15%);
 }
 
 .method-chips {
@@ -454,8 +454,8 @@
 }
 
 .method-chip-remove:hover {
+    background: rgb(21 101 192 / 15%);
     opacity: 1;
-    background: rgba(21, 101, 192, 0.15);
 }
 
 .method-input-wrapper {
@@ -466,12 +466,12 @@
 
 .method-chip-text-input {
     width: 100%;
-    border: none;
-    outline: none;
     padding: 4px 0;
+    border: none;
+    background: transparent;
+    outline: none;
     font-family: inherit;
     font-size: 0.85rem;
-    background: transparent;
 }
 
 /* Override the form-field input styles for the chip text input */
@@ -486,16 +486,16 @@
     display: none;
     position: absolute;
     top: 100%;
-    left: 0;
     right: 0;
+    left: 0;
+    z-index: 100;
     margin: 4px 0 0;
     padding: 4px 0;
-    list-style: none;
-    background: var(--container-background, #fff);
     border: 1px solid var(--border-color, #ccc);
+    background: var(--container-background, #fff);
+    list-style: none;
     border-radius: 3px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    z-index: 100;
+    box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
     max-height: 200px;
     overflow-y: auto;
 }
@@ -675,21 +675,21 @@
 
 .property-export-textarea {
     width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color, #ccc);
+    background: var(--bg-secondary, #f5f5f5);
     font-family: monospace;
     font-size: 0.85rem;
-    background: var(--bg-secondary, #f5f5f5);
-    border: 1px solid var(--border-color, #ccc);
     border-radius: 3px;
-    padding: 8px;
     resize: vertical;
 }
 
 .copy-properties-button {
-    margin-top: 8px;
     padding: 6px 12px;
     border: 1px solid var(--primary-color, #2196f3);
-    color: var(--primary-color, #2196f3);
     background: transparent;
+    color: var(--primary-color, #2196f3);
+    margin-top: 8px;
     border-radius: 3px;
     cursor: pointer;
     font-size: 0.8rem;
@@ -717,7 +717,7 @@
 
 .auth-mode-chip-area:focus-within {
     border-color: var(--primary-color, #2196f3);
-    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+    box-shadow: 0 0 0 2px rgb(33 150 243 / 15%);
 }
 
 .auth-mode-chips {
@@ -757,8 +757,8 @@
 }
 
 .auth-mode-chip-remove:hover {
+    background: rgb(21 101 192 / 15%);
     opacity: 1;
-    background: rgba(21, 101, 192, 0.15);
 }
 
 .auth-mode-input-wrapper {
@@ -769,12 +769,12 @@
 
 .auth-mode-chip-text-input {
     width: 100%;
-    border: none;
-    outline: none;
     padding: 4px 0;
+    border: none;
+    background: transparent;
+    outline: none;
     font-family: inherit;
     font-size: 0.85rem;
-    background: transparent;
 }
 
 /* Override the form-field input styles for the auth-mode chip text input */
@@ -789,16 +789,16 @@
     display: none;
     position: absolute;
     top: 100%;
-    left: 0;
     right: 0;
+    left: 0;
+    z-index: 100;
     margin: 4px 0 0;
     padding: 4px 0;
-    list-style: none;
-    background: var(--container-background, #fff);
     border: 1px solid var(--border-color, #ccc);
+    background: var(--container-background, #fff);
+    list-style: none;
     border-radius: 3px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    z-index: 100;
+    box-shadow: 0 4px 8px rgb(0 0 0 / 10%);
     max-height: 200px;
     overflow-y: auto;
 }
@@ -870,10 +870,10 @@
 
 /* Route form sections (fieldset grouping) */
 .route-form-section {
+    margin: 0 0 12px;
+    padding: 12px 0 0;
     border: none;
     border-top: 1px solid var(--border-light, #eee);
-    margin: 0 0 12px 0;
-    padding: 12px 0 0 0;
     min-width: 0; /* Firefox fieldset fix */
 }
 
@@ -883,11 +883,11 @@
 }
 
 .route-form-section-title {
+    padding: 0 4px;
+    color: var(--text-muted, #666);
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-muted, #666);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 0 4px;
     margin-bottom: 8px;
 }
