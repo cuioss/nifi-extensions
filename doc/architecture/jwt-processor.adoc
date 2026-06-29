@@ -10,7 +10,7 @@ image::jwt-token-flow.png[JWT Token Processing Flow]
 
 1. Read raw JWT from a configurable FlowFile attribute (default: `jwt.token`)
 2. Validate token format and size (rejects tokens exceeding `maxTokenSize`)
-3. Validate signature, expiry, issuer, and audience via OAuth-Sheriff
+3. Validate signature, expiry, issuer, and audience via Token-Sheriff
 4. Check required roles and scopes via `AuthorizationValidator` (only when roles or scopes are configured on the processor)
 5. Route to `success` (valid) or `authentication-failed` (invalid)
 6. Write token claims as `jwt.*` FlowFile attributes when the token is valid (regardless of authorization outcome)
@@ -29,7 +29,7 @@ The CS provides:
 * `getAuthenticationConfig()`: returns immutable configuration snapshot
 * `getSecurityEventCounter()`: returns `Optional<SecurityEventCounter>` (empty if the service is not enabled)
 
-== OAuth-Sheriff Lifecycle in NiFi
+== Token-Sheriff Lifecycle in NiFi
 
 The `TokenValidator` is stateful, it maintains JWKS key caches and background refresh tasks. It is managed by the `StandardJwtIssuerConfigService` Controller Service, not by the processors directly:
 

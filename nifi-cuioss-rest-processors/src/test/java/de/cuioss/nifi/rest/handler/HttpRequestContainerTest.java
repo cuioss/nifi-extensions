@@ -16,7 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
-import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -17,10 +17,10 @@
 package de.cuioss.nifi.jwt.util;
 
 import de.cuioss.nifi.jwt.util.AuthorizationValidator.AuthorizationResult;
-import de.cuioss.sheriff.oauth.core.domain.claim.ClaimValue;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
-import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.token.validation.domain.claim.ClaimValue;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
+import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -28,12 +28,7 @@ import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
-import jakarta.json.JsonException;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonReader;
-import jakarta.json.JsonReaderFactory;
-import jakarta.json.JsonWriterFactory;
+import jakarta.json.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Servlet for JWKS URL validation using the OAuth-Sheriff library.
+ * Servlet for JWKS URL validation using the Token-Sheriff library.
  * This servlet provides REST endpoints for validating JWKS URLs, files, and content.
  *
  * Endpoints:

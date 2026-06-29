@@ -334,7 +334,7 @@ const exportAsPrometheus = (data) => {
     let output = '';
     if (data.tokenValidation) {
         output += formatPrometheusSection('nifi_jwt_validations_total',
-            'Token validation events (oauth-sheriff)',
+            'Token validation events (token-sheriff)',
             data.tokenValidation, 'result');
     }
     if (data.httpSecurity) {

@@ -18,7 +18,7 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.http.client.result.HttpResult;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
-import de.cuioss.sheriff.oauth.core.test.InMemoryKeyMaterialHandler;
+import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import mockwebserver3.MockResponse;

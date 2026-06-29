@@ -75,7 +75,7 @@ rendered as its own metric family (Prometheus) or its own top-level object key
 |Source |Origin |Description
 
 |Token Validation
-|oauth-sheriff `SecurityEventCounter`
+|token-sheriff `SecurityEventCounter`
 |JWT validation outcomes (e.g. `valid_tokens`, `invalid_tokens`). Empty until the linked `JwtIssuerConfigService` has validated at least one token.
 
 |Transport Security
@@ -119,7 +119,7 @@ one metric family with `# HELP` and `# TYPE` lines followed by its samples.
 
 [source]
 ----
-# HELP nifi_jwt_validations_total Token validation events (oauth-sheriff)
+# HELP nifi_jwt_validations_total Token validation events (token-sheriff)
 # TYPE nifi_jwt_validations_total counter
 nifi_jwt_validations_total{result="valid_tokens"} 15126
 nifi_jwt_validations_total{result="invalid_tokens"} 297

@@ -82,8 +82,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>de.cuioss.sheriff.oauth</groupId>
-            <artifactId>oauth-sheriff-core</artifactId>
+            <groupId>de.cuioss.sheriff.token</groupId>
+            <artifactId>token-sheriff-validation</artifactId>
             <classifier>generators</classifier>
             <scope>test</scope>
         </dependency>

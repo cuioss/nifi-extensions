@@ -23,20 +23,13 @@ import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.json.JwtHeader;
-import de.cuioss.sheriff.oauth.core.pipeline.NonValidatingJwtParser;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.json.JwtHeader;
+import de.cuioss.sheriff.token.validation.pipeline.NonValidatingJwtParser;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
-import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonException;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
-import jakarta.json.JsonReader;
-import jakarta.json.JsonReaderFactory;
-import jakarta.json.JsonWriterFactory;
+import jakarta.json.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,7 +43,7 @@ import java.util.Map;
 import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
 /**
- * Servlet for JWT token verification using the OAuth-Sheriff library.
+ * Servlet for JWT token verification using the Token-Sheriff library.
  * This servlet provides a REST endpoint that verifies JWT tokens using the
  * same configuration and logic as the MultiIssuerJWTTokenAuthenticator processor.
  *
@@ -194,7 +187,7 @@ public class JwtVerificationServlet extends HttpServlet {
         // Validate the externally-sourced processor ID (body-sourced value or the
         // X-Processor-Id header fallback) through the cui-http header-value pipeline
         // before it is used as a component lookup key. The token field is deliberately
-        // NOT validated here — JWT tokens are validated by the OAuth-Sheriff validation
+        // NOT validated here — JWT tokens are validated by the Token-Sheriff validation
         // service and contain base64url characters a URL/path sanitizer would wrongly
         // reject; the X-Processor-Id value is the externally-sourced value in scope.
         validateProcessorIdSecurity(processorId);

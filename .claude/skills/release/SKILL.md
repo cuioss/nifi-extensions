@@ -193,13 +193,13 @@ gh release edit <version> --repo cuioss/nifi-extensions --notes-file .plan/temp/
    - `### Documentation`
    Adapt theme headings to the actual PRs; omit empty sections.
 3. **Dependency Updates** — group by type with `###` subheadings:
-   - `### Java` — Java libraries (e.g. lombok, junit, parsson, oauth-sheriff-core)
+   - `### Java` — Java libraries (e.g. lombok, junit, parsson, token-sheriff-validation)
    - `### JavaScript` — npm deps (in `/nifi-cuioss-ui` or `/e-2-e-playwright`)
    - `### Infra` — platform/build/CI: Apache NiFi version, build plugins
      (e.g. sonar-maven-plugin), org workflow bumps
 4. **Collapse version chains** — when the same artifact is bumped multiple times
    (`A → B → C`), keep only the **latest** entry spanning the full range
-   (e.g. `oauth-sheriff-core 0.6.0 → 0.7.0 → 0.8.0` becomes a single `0.6.0 → 0.8.0`).
+   (e.g. `token-sheriff-validation 0.6.0 → 0.7.0 → 0.8.0` becomes a single `0.6.0 → 0.8.0`).
 5. **Remove all OpenRewrite bumps and friends** — drop every `rewrite-maven-plugin`,
    `rewrite-migrate-java`, `rewrite-testing-frameworks`, and related OpenRewrite dependency PR.
 6. **Remove internal tooling churn** — drop PRs that only touch dev/build orchestration with

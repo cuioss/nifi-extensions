@@ -47,10 +47,10 @@
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-mock</artifactId>
         </dependency>
-        <!-- Required by oauth-sheriff-core generators for JWT token creation in tests -->
+        <!-- Required by token-sheriff-validation generators for JWT token creation in tests -->
         <dependency>
-            <groupId>de.cuioss.sheriff.oauth</groupId>
-            <artifactId>oauth-sheriff-core</artifactId>
+            <groupId>de.cuioss.sheriff.token</groupId>
+            <artifactId>token-sheriff-validation</artifactId>
             <classifier>generators</classifier>
             <scope>test</scope>
         </dependency>

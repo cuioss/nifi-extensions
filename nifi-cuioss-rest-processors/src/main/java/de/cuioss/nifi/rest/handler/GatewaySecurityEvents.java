@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
  * <p>
  * Complements the transport-level counters from cui-http
  * ({@code de.cuioss.http.security.monitoring.SecurityEventCounter}) and the
- * token-level counters from oauth-sheriff
- * ({@code de.cuioss.sheriff.oauth.core.security.SecurityEventCounter}) by
+ * token-level counters from token-sheriff
+ * ({@code de.cuioss.sheriff.token.validation.security.SecurityEventCounter}) by
  * tracking gateway-specific security decisions: authentication failures,
  * authorization denials, request size violations, and route probing.
  * <p>

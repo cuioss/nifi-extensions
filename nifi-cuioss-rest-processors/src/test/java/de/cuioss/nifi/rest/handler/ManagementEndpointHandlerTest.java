@@ -20,9 +20,9 @@ import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
-import de.cuioss.sheriff.oauth.core.exception.TokenValidationException;
-import de.cuioss.sheriff.oauth.core.test.TestTokenHolder;
-import de.cuioss.sheriff.oauth.core.test.generator.TestTokenGenerators;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
+import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
+import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -345,7 +345,7 @@ class ManagementEndpointHandlerTest {
             // Configure the config service to reject tokens
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Token expired"));
 
             // Even though the request comes via loopback (127.0.0.1), it should
@@ -441,7 +441,7 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401ForInvalidBearerToken() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Invalid token"));
 
             var response = httpClient.send(
@@ -495,7 +495,7 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401WhenTokenValidationFails() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.oauth.core.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Token expired"));
 
             var response = httpClient.send(

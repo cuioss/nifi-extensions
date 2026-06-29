@@ -25,8 +25,8 @@ import java.util.Set;
  * <p>
  * Contains only settings that apply globally across all issuers.
  * Per-issuer operational settings (JWKS refresh interval, connection timeout,
- * source type) are passed directly to the oauth-sheriff
- * {@link de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig} per issuer.
+ * source type) are passed directly to the token-sheriff
+ * {@link de.cuioss.sheriff.token.validation.jwks.http.HttpJwksLoaderConfig} per issuer.
  *
  * @param maxTokenSize        maximum token size in bytes
  * @param allowedAlgorithms   allowed JWT signing algorithms

@@ -19,13 +19,13 @@ package de.cuioss.nifi.jwt.config;
 import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
-import de.cuioss.sheriff.oauth.core.IssuerConfig;
-import de.cuioss.sheriff.oauth.core.ParserConfig;
-import de.cuioss.sheriff.oauth.core.TokenValidator;
-import de.cuioss.sheriff.oauth.core.domain.context.AccessTokenRequest;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.oauth.core.security.SecurityEventCounter;
-import de.cuioss.sheriff.oauth.core.security.SignatureAlgorithmPreferences;
+import de.cuioss.sheriff.token.validation.IssuerConfig;
+import de.cuioss.sheriff.token.validation.ParserConfig;
+import de.cuioss.sheriff.token.validation.TokenValidator;
+import de.cuioss.sheriff.token.validation.domain.context.AccessTokenRequest;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
@@ -40,12 +40,7 @@ import org.apache.nifi.controller.ConfigurationContext;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
@@ -55,7 +50,7 @@ import java.util.Set;
  * the NAR classloader is temporarily set as context classloader so that
  * {@code ServiceLoader} finds dsl-json converters for {@link ParserConfig} initialization.
  * The pre-initialized {@code ParserConfig} is then passed to each
- * {@link de.cuioss.sheriff.oauth.core.jwks.http.HttpJwksLoaderConfig}, avoiding
+ * {@link de.cuioss.sheriff.token.validation.jwks.http.HttpJwksLoaderConfig}, avoiding
  * any classloader issues on async threads.
  * <p>
  * Runtime {@code validateToken()} calls do NOT use ServiceLoader.

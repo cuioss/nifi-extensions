@@ -17,7 +17,7 @@
 package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.nifi.rest.config.AuthMode;
-import de.cuioss.sheriff.oauth.core.domain.token.AccessTokenContent;
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
