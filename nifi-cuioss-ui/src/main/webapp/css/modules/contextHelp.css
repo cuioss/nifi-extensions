@@ -36,25 +36,25 @@
 
 /* Disclosure panel */
 .context-help-panel {
-    border-left: 3px solid var(--primary-color);
-    background: var(--background-secondary);
-    padding: 8px 12px;
     margin: 4px 0 8px;
+    padding: 8px 12px;
+    background: var(--background-secondary);
+    border-left: 3px solid var(--primary-color);
     border-radius: 0 4px 4px 0;
-    animation: contextHelpFadeIn 0.15s ease-in;
+    animation: context-help-fade-in 0.15s ease-in;
 }
 
 .context-help-panel hr {
+    margin: 6px 0;
     border: none;
     border-top: 1px solid var(--border-color-light);
-    margin: 6px 0;
 }
 
 .context-help-description {
+    margin: 0;
     color: var(--text-secondary);
     font-size: 13px;
     line-height: 1.4;
-    margin: 0;
 }
 
 .context-help-property {
@@ -66,9 +66,9 @@
 }
 
 .context-help-property code {
+    padding: 1px 5px;
     background: var(--code-background);
     color: var(--code-color);
-    padding: 1px 5px;
     border-radius: 3px;
     font-family: monospace;
     font-size: 12px;
@@ -84,7 +84,14 @@
     border-top: none !important;
 }
 
-@keyframes contextHelpFadeIn {
-    from { opacity: 0; transform: translateY(-2px); }
-    to   { opacity: 1; transform: translateY(0); }
+@keyframes context-help-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

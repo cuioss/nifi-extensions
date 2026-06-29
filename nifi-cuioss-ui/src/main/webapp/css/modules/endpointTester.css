@@ -127,7 +127,7 @@
     font-family: monospace;
     font-size: 0.8rem;
     white-space: pre-wrap;
-    word-break: break-word;
+    overflow-wrap: break-word;
     max-height: 400px;
     overflow-y: auto;
     border-top: 1px solid var(--border-light, #eee);
@@ -182,9 +182,9 @@
 }
 
 .token-fetch-body {
+    display: flex;
     padding: 12px;
     border-top: 1px solid var(--border-color, #ccc);
-    display: flex;
     flex-direction: column;
     gap: var(--spacing-sm, 8px);
 }
@@ -227,14 +227,14 @@
 }
 
 .discover-btn {
+    height: fit-content;
     padding: 6px 12px;
     border: 1px solid var(--border-color, #ccc);
-    border-radius: 4px;
     background: var(--bg-secondary, #f5f5f5);
+    border-radius: 4px;
     cursor: pointer;
     font-size: 0.8rem;
     white-space: nowrap;
-    height: fit-content;
 }
 
 .discover-btn:hover {

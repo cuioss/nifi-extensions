@@ -1,7 +1,7 @@
 /**
  * Font Awesome font-family overrides.
  *
- * NiFi's SystemTokensService injects a massive <style> element (~230 KB) into
+ * NiFi's SystemTokensService injects a massive \3c style> element (~230 KB) into
  * the Custom UI iframe for theme propagation.  That injected CSS:
  *   1. Sets content: "" on every FA ::before pseudo-element, wiping icon glyphs
  *   2. Sets font-family: "Font Awesome 6 Free" via general .fa rules
