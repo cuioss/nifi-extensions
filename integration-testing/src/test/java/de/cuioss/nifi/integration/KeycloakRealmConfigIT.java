@@ -115,9 +115,9 @@ class KeycloakRealmConfigIT {
 
             // The realm-roles-mapper maps realm roles into a top-level 'roles' claim
             assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
-            String roles = payload.getJsonArray("roles").toString();
-            assertTrue(roles.contains("user"), "roles should contain 'user': " + roles);
-            assertTrue(roles.contains("read"), "roles should contain 'read': " + roles);
+            var roles = payload.getJsonArray("roles");
+            assertTrue(roles.contains(Json.createValue("user")), "roles should contain 'user': " + roles);
+            assertTrue(roles.contains(Json.createValue("read")), "roles should contain 'read': " + roles);
         }
 
         @Test
@@ -126,9 +126,9 @@ class KeycloakRealmConfigIT {
             JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, LIMITED_USER));
 
             assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
-            String roles = payload.getJsonArray("roles").toString();
-            assertTrue(roles.contains("user"), "roles should contain 'user': " + roles);
-            assertFalse(roles.contains("read"), "roles should NOT contain 'read': " + roles);
+            var roles = payload.getJsonArray("roles");
+            assertTrue(roles.contains(Json.createValue("user")), "roles should contain 'user': " + roles);
+            assertFalse(roles.contains(Json.createValue("read")), "roles should NOT contain 'read': " + roles);
         }
     }
 

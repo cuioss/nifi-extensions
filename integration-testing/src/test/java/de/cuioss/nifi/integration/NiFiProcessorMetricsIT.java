@@ -167,7 +167,10 @@ class NiFiProcessorMetricsIT {
             throws Exception {
         String bearerToken = authenticateToNifi(nifiClient);
         try {
-            await().atMost(timeout).pollInterval(Duration.ofMillis(500)).until(() -> {
+            // ignoring(Throwable) lets the poll retry on transient API failures or
+            // not-yet-populated status snapshots instead of aborting immediately.
+            await().atMost(timeout).pollInterval(Duration.ofMillis(500))
+                    .ignoring(Throwable.class).until(() -> {
                 JsonObject status = getProcessGroupStatus(bearerToken);
                 JsonObject aggregateSnapshot = status
                         .getJsonObject("processGroupStatus")
