@@ -136,11 +136,11 @@ class GatewayMetricsPrometheusIT {
 
     private static void waitForGatewayCounters(Duration timeout) {
         try {
-            // ignoring(Throwable) covers transient startup failures from the helper calls
-            // (authenticateToNifi/fetchKeycloakToken assert on status codes) so the poll
-            // retries instead of aborting on the first slow response.
+            // ignoreExceptionsInstanceOf(Throwable) covers transient startup failures from the
+            // helper calls (authenticateToNifi/fetchKeycloakToken assert on status codes) so the
+            // poll retries instead of aborting on the first slow response.
             await().atMost(timeout).pollInterval(Duration.ofSeconds(2))
-                    .ignoring(Throwable.class).until(() -> {
+                    .ignoreExceptionsInstanceOf(Throwable.class).until(() -> {
                 // Re-authenticate to NiFi each iteration so a short-lived access token
                 // cannot expire mid-loop on a slow fresh-container start.
                 String bearerToken = authenticateToNifi(nifiClient);
