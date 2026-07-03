@@ -1,4 +1,4 @@
-FROM apache/nifi:2.8.0@sha256:b3dbebf989bb3d7edc6e4aff11dd21a78ca5c17d86fc838eba41362d850b520c
+FROM apache/nifi:2.10.0@sha256:362d7a7caa27f246f2fd8797f906cb216ae71546e15abee5c6b579187c42e28e
 
 # Set environment variables for faster startup and better HTTP configuration
 ENV NIFI_WEB_HTTPS_PORT=9095

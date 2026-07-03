@@ -21,6 +21,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import lombok.experimental.UtilityClass;
+import org.awaitility.core.ConditionTimeoutException;
 import org.jspecify.annotations.Nullable;
 
 import javax.net.ssl.SSLContext;
@@ -43,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -59,8 +61,8 @@ class IntegrationTestSupport {
             + "/realms/oauth_integration_tests/protocol/openid-connect/token";
     static final String KEYCLOAK_JWKS_ENDPOINT = KEYCLOAK_BASE
             + "/realms/oauth_integration_tests/protocol/openid-connect/certs";
+    // test_client is a public client (no secret) using the direct-access grant
     static final String CLIENT_ID = "test_client";
-    static final String CLIENT_SECRET = "yTKslWLtf4giJcWCaoVJ20H8sy6STexM";
     static final String TEST_USER = "testUser";
     static final String LIMITED_USER = "limitedUser";
     static final String PASSWORD = "drowssap";
@@ -92,34 +94,29 @@ class IntegrationTestSupport {
      * @param endpoint the URL to poll
      * @param timeout  maximum wait duration
      */
-    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay pattern for Docker polling loops
-    static void waitForEndpoint(HttpClient client, String endpoint, Duration timeout) throws Exception {
-        long startNanos = System.nanoTime();
-        long timeoutNanos = timeout.toNanos();
-        boolean ready = false;
-
-        while (System.nanoTime() - startNanos < timeoutNanos) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(endpoint))
-                        .GET()
-                        .timeout(Duration.ofSeconds(10))
-                        .build();
-                client.send(request, HttpResponse.BodyHandlers.ofString());
-                ready = true;
-                break;
-            } catch (IOException e) {
-                // Retry on any I/O failure: ConnectException (nothing listening),
-                // "header parser received no bytes" (Docker proxy accepted but
-                // container service not yet bound), or other transient errors.
-                Thread.sleep(1000);
-            }
+    static void waitForEndpoint(HttpClient client, String endpoint, Duration timeout) {
+        try {
+            await().atMost(timeout).pollInterval(Duration.ofSeconds(1)).until(() -> {
+                try {
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create(endpoint))
+                            .GET()
+                            .timeout(Duration.ofSeconds(10))
+                            .build();
+                    client.send(request, HttpResponse.BodyHandlers.ofString());
+                    return true;
+                } catch (IOException e) {
+                    // Retry on any I/O failure: ConnectException (nothing listening),
+                    // "header parser received no bytes" (Docker proxy accepted but
+                    // container service not yet bound), or other transient errors.
+                    return false;
+                }
+            });
+        } catch (ConditionTimeoutException e) {
+            fail("Endpoint at %s did not become available within %d seconds. "
+                    .formatted(endpoint, timeout.toSeconds())
+                    + "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.");
         }
-
-        assertTrue(ready,
-                "Endpoint at %s did not become available within %d seconds. "
-                        .formatted(endpoint, timeout.toSeconds())
-                        + "Run ./integration-testing/src/main/docker/run-and-deploy.sh to start containers.");
     }
 
     /**

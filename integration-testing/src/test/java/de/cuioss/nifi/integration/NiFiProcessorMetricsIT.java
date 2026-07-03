@@ -18,6 +18,7 @@ package de.cuioss.nifi.integration;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import org.awaitility.core.ConditionTimeoutException;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +33,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -161,31 +163,25 @@ class NiFiProcessorMetricsIT {
      * at least one FlowFile processed, or the timeout expires. This replaces
      * a fixed {@code Thread.sleep} with a condition-based wait.
      */
-    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi status polling
     private static void waitForProcessorActivity(String processorName, Duration timeout)
             throws Exception {
         String bearerToken = authenticateToNifi(nifiClient);
-        long deadline = System.nanoTime() + timeout.toNanos();
+        try {
+            await().atMost(timeout).pollInterval(Duration.ofMillis(500)).until(() -> {
+                JsonObject status = getProcessGroupStatus(bearerToken);
+                JsonObject aggregateSnapshot = status
+                        .getJsonObject("processGroupStatus")
+                        .getJsonObject("aggregateSnapshot");
 
-        while (System.nanoTime() < deadline) {
-            JsonObject status = getProcessGroupStatus(bearerToken);
-            JsonObject aggregateSnapshot = status
-                    .getJsonObject("processGroupStatus")
-                    .getJsonObject("aggregateSnapshot");
-
-            Optional<JsonObject> processor = findProcessorInSnapshot(
-                    aggregateSnapshot, processorName);
-            if (processor.isPresent()) {
-                int flowFilesIn = processor.get()
+                Optional<JsonObject> processor = findProcessorInSnapshot(
+                        aggregateSnapshot, processorName);
+                return processor.isPresent() && processor.get()
                         .getJsonObject("processorStatusSnapshot")
-                        .getInt("flowFilesIn");
-                if (flowFilesIn > 0) {
-                    return;
-                }
-            }
-            Thread.sleep(500);
+                        .getInt("flowFilesIn") > 0;
+            });
+        } catch (ConditionTimeoutException e) {
+            // Don't fail here — let the actual test assertions report the problem
         }
-        // Don't fail here — let the actual test assertions report the problem
     }
 
     private static JsonObject getProcessGroupStatus(String bearerToken) throws Exception {

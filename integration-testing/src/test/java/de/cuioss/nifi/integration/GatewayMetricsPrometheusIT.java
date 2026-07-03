@@ -19,6 +19,7 @@ package de.cuioss.nifi.integration;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import org.awaitility.core.ConditionTimeoutException;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -33,9 +34,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration tests verifying that the gateway's application metrics are bridged
@@ -134,32 +134,32 @@ class GatewayMetricsPrometheusIT {
         sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"value\"}");
     }
 
-    @SuppressWarnings("java:S2925") // Thread.sleep is the standard retry-delay for NiFi metrics polling
-    private static void waitForGatewayCounters(Duration timeout) throws Exception {
-        long deadline = System.nanoTime() + timeout.toNanos();
-
-        while (System.nanoTime() < deadline) {
-            // Re-authenticate to NiFi each iteration so a short-lived access token
-            // cannot expire mid-loop on a slow fresh-container start.
-            String bearerToken = authenticateToNifi(nifiClient);
-            if (!fetchGatewayCounters(bearerToken).isEmpty()) {
-                return;
-            }
-            // Re-drive both an unauthenticated request (seeds a gateway event) and a
-            // FlowFile-producing authenticated POST so onTrigger fires and flushes the
-            // accumulated deltas — covers the fresh-container case where the gateway's
-            // embedded server or the processor schedule was not ready for the first burst.
-            sendGateway(gatewayClient, "GET", "/api/data", null, null);
-            String token = fetchKeycloakToken(gatewayClient,
-                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
-            sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"poll\"}");
-            Thread.sleep(2000);
+    private static void waitForGatewayCounters(Duration timeout) {
+        try {
+            await().atMost(timeout).pollInterval(Duration.ofSeconds(2)).until(() -> {
+                // Re-authenticate to NiFi each iteration so a short-lived access token
+                // cannot expire mid-loop on a slow fresh-container start.
+                String bearerToken = authenticateToNifi(nifiClient);
+                if (!fetchGatewayCounters(bearerToken).isEmpty()) {
+                    return true;
+                }
+                // Re-drive both an unauthenticated request (seeds a gateway event) and a
+                // FlowFile-producing authenticated POST so onTrigger fires and flushes the
+                // accumulated deltas — covers the fresh-container case where the gateway's
+                // embedded server or the processor schedule was not ready for the first burst.
+                sendGateway(gatewayClient, "GET", "/api/data", null, null);
+                String token = fetchKeycloakToken(gatewayClient,
+                        KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"poll\"}");
+                return false;
+            });
+        } catch (ConditionTimeoutException e) {
+            // A polling helper that waits for a state change must throw on timeout so the test fails
+            // loudly with context, rather than returning silently and letting later assertions run
+            // against an unmet precondition.
+            fail("Timed out after %s waiting for the gateway NiFi counters to appear on /nifi-api/counters"
+                    .formatted(timeout));
         }
-        // A polling helper that waits for a state change must throw on timeout so the test fails
-        // loudly with context, rather than returning silently and letting later assertions run
-        // against an unmet precondition.
-        fail("Timed out after %s waiting for the gateway NiFi counters to appear on /nifi-api/counters"
-                .formatted(timeout));
     }
 
     private static void sendGateway(HttpClient client, String method, String path,
