@@ -109,14 +109,14 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should return null issuer when no token content is available")
-        void shouldReturnNullIssuerWhenNotAvailable() {
+        @DisplayName("Should return empty issuer when no token content is available")
+        void shouldReturnEmptyIssuerWhenNotAvailable() {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
 
             String issuer = result.getIssuer();
 
-            assertNull(issuer, "Issuer should be null when not available");
+            assertEquals("", issuer, "Issuer should be empty when not available");
         }
 
         @Test

@@ -271,7 +271,7 @@ public class JwtVerificationServlet extends HttpServlet {
                 .add(JSON_KEY_VALID, result.isValid())
                 .add("error", result.getError() != null ? result.getError() : "");
 
-        if (result.getIssuer() != null) {
+        if (!result.getIssuer().isEmpty()) {
             builder.add(JSON_KEY_ISSUER, result.getIssuer());
         }
 
