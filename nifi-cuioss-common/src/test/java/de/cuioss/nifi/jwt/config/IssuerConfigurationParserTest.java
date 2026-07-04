@@ -483,4 +483,81 @@ class IssuerConfigurationParserTest {
             assertEquals(1, configs.size());
         }
     }
+
+    @Nested
+    @DisplayName("Security Enforcement")
+    class SecurityEnforcementTests {
+
+        @Test
+        @DisplayName("Should reject non-HTTPS JWKS URL by default")
+        void shouldRejectHttpJwksUrlByDefault() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "http://example.com/jwks");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertTrue(configs.isEmpty(), "Non-HTTPS JWKS URL must be rejected when HTTPS is required");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "does not use HTTPS");
+        }
+
+        @Test
+        @DisplayName("Should allow non-HTTPS JWKS URL when requirement is disabled")
+        void shouldAllowHttpJwksUrlWhenHttpsNotRequired() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "http://localhost:8080/jwks");
+            properties.put(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(), "HTTP JWKS URL should pass when both restrictions are lifted");
+        }
+
+        @Test
+        @DisplayName("Should reject JWKS URL resolving to loopback address by default")
+        void shouldRejectLoopbackJwksUrlByDefault() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://localhost/jwks");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertTrue(configs.isEmpty(), "Loopback JWKS URL must be rejected when private addresses are disallowed");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "private/loopback");
+        }
+
+        @Test
+        @DisplayName("Should allow JWKS URL resolving to loopback when private addresses enabled")
+        void shouldAllowLoopbackJwksUrlWhenPrivateAllowed() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://localhost/jwks");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(), "Loopback JWKS URL should pass when private addresses are allowed");
+        }
+
+        @Test
+        @DisplayName("Should apply trimmed, de-duplicated allowed algorithms to issuer configs")
+        void shouldApplyAllowedAlgorithms() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            properties.put(JwtAttributes.Properties.Validation.ALLOWED_ALGORITHMS, "RS256, ES256,RS256, ");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size());
+            var preferences = configs.getFirst().getAlgorithmPreferences();
+            assertEquals(List.of("RS256", "ES256"), preferences.getPreferredAlgorithms(),
+                    "Algorithms must be trimmed and de-duplicated");
+            assertTrue(preferences.isSupported("RS256"));
+            assertFalse(preferences.isSupported("HS256"),
+                    "Algorithms outside the configured list must not be supported");
+        }
+    }
 }

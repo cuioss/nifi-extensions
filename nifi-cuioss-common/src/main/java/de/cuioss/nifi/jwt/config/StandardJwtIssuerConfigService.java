@@ -41,6 +41,7 @@ import org.apache.nifi.processor.util.StandardValidators;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Standard implementation of {@link JwtIssuerConfigService}.
@@ -255,8 +256,12 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
         boolean requireHttps = context.getProperty(REQUIRE_HTTPS_FOR_JWKS).asBoolean();
 
         String algorithmsValue = context.getProperty(ALLOWED_ALGORITHMS).getValue();
+        // Trim entries and tolerate duplicates — Set.of would throw on "RS256,RS256"
         Set<String> allowedAlgorithms = algorithmsValue != null
-                ? Set.of(algorithmsValue.split(","))
+                ? Arrays.stream(algorithmsValue.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toUnmodifiableSet())
                 : Set.of();
 
         return new JwtAuthenticationConfig(maxTokenSize, allowedAlgorithms, requireHttps);
@@ -264,7 +269,6 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     private Map<String, String> convertContextToProperties(ConfigurationContext context) {
         Map<String, String> properties = new HashMap<>();
-        properties.put("Maximum Token Size", context.getProperty(MAXIMUM_TOKEN_SIZE).getValue());
         for (PropertyDescriptor descriptor : context.getProperties().keySet()) {
             String value = context.getProperty(descriptor).getValue();
             if (value != null) {
