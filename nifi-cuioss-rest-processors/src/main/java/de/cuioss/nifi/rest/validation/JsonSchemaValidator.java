@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.validation;
 
+import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import dev.harrel.jsonschema.Validator;
 import dev.harrel.jsonschema.ValidatorFactory;
@@ -72,13 +73,13 @@ public class JsonSchemaValidator {
 
     private static String resolveSchemaContent(String routeName, String schemaSource) {
         if (schemaSource.strip().startsWith("{")) {
-            LOGGER.info("Registered inline JSON Schema for route '%s'", routeName);
+            LOGGER.info(RestApiLogMessages.INFO.SCHEMA_REGISTERED_INLINE, routeName);
             return schemaSource;
         }
         try {
             Path schemaPath = Path.of(schemaSource).normalize();
             String content = Files.readString(schemaPath, StandardCharsets.UTF_8);
-            LOGGER.info("Registered JSON Schema for route '%s' from %s", routeName, schemaPath);
+            LOGGER.info(RestApiLogMessages.INFO.SCHEMA_REGISTERED_FROM_FILE, routeName, schemaPath);
             return content;
         } catch (InvalidPathException e) {
             throw new IllegalStateException(

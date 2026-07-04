@@ -32,6 +32,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static de.cuioss.nifi.jwt.util.AuthorizationRequirements.parseCommaSeparated;
+
 /**
  * Parses {@code restapi.*} dynamic properties into {@link RouteConfiguration} instances.
  * <p>
@@ -187,13 +189,6 @@ public class RouteConfigurationParser {
                 .stream()
                 .map(String::toUpperCase)
                 .collect(Collectors.toUnmodifiableSet());
-    }
-
-    private static Set<String> parseCommaSeparated(String value) {
-        if (value == null || value.isBlank()) {
-            return Set.of();
-        }
-        return Set.copyOf(Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value));
     }
 
     private static int parsePositiveInt(String value, int defaultValue) {

@@ -81,22 +81,12 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
         String path = sanitized.path();
 
         // The path segment after the status prefix is the traceId
-        if (!path.startsWith(STATUS_PATH_PREFIX) || path.length() <= STATUS_PATH_PREFIX.length()) {
-            ProblemDetail.badRequest("Missing traceId in path. Expected: /status/{traceId}")
-                    .sendResponse(response, callback);
+        Optional<String> extractedTraceId = RequestUtils.extractUuidPathParameter(
+                path, STATUS_PATH_PREFIX, "traceId", response, callback);
+        if (extractedTraceId.isEmpty()) {
             return;
         }
-
-        String traceId = path.substring(STATUS_PATH_PREFIX.length());
-
-        // Validate UUID format
-        try {
-            UUID.fromString(traceId);
-        } catch (IllegalArgumentException e) {
-            ProblemDetail.badRequest("Invalid traceId format. Expected UUID.")
-                    .sendResponse(response, callback);
-            return;
-        }
+        String traceId = extractedTraceId.get();
 
         // Query status store
         Optional<RequestStatusEntry> entry;

@@ -16,8 +16,20 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObjectBuilder;
 import lombok.experimental.UtilityClass;
+import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
+import org.eclipse.jetty.util.Callback;
+
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Shared request utilities for endpoint handlers.
@@ -25,18 +37,107 @@ import org.eclipse.jetty.server.Request;
 @UtilityClass
 class RequestUtils {
 
-    private static final String IPV4_LOOPBACK = "127.0.0.1";
-    private static final String IPV6_LOOPBACK = "::1";
-
     /**
-     * Returns {@code true} if the request originates from a loopback address
-     * (127.0.0.1 or ::1).
+     * Returns {@code true} if the request originates from a loopback address.
+     * <p>
+     * Uses the remote {@link InetSocketAddress} and
+     * {@link java.net.InetAddress#isLoopbackAddress()} instead of comparing the
+     * string form: Jetty renders IPv6 addresses in normalized/bracketed form
+     * (e.g. {@code [0:0:0:0:0:0:0:1]}), which a literal {@code "::1"} comparison
+     * never matches.
      *
      * @param request the Jetty request
      * @return {@code true} for loopback requests
      */
     public static boolean isLoopbackRequest(Request request) {
-        String remoteAddr = Request.getRemoteAddr(request);
-        return IPV4_LOOPBACK.equals(remoteAddr) || IPV6_LOOPBACK.equals(remoteAddr);
+        SocketAddress remote = request.getConnectionMetaData().getRemoteSocketAddress();
+        return remote instanceof InetSocketAddress inet
+                && inet.getAddress() != null
+                && inet.getAddress().isLoopbackAddress();
+    }
+
+    /**
+     * Extracts and validates a UUID path parameter after the given prefix.
+     * On failure, a Problem Details response is sent and empty is returned.
+     *
+     * @param path      the sanitized request path
+     * @param prefix    the path prefix including trailing slash (e.g. {@code /status/})
+     * @param paramName the parameter name used in error messages (e.g. {@code traceId})
+     * @param response  the response to send errors to
+     * @param callback  the Jetty callback
+     * @return the validated UUID string, or empty if an error response was sent
+     */
+    public static Optional<String> extractUuidPathParameter(String path, String prefix,
+            String paramName, Response response, Callback callback) {
+        if (!path.startsWith(prefix) || path.length() <= prefix.length()) {
+            ProblemDetail.badRequest("Missing %s in path. Expected: %s{%s}"
+                    .formatted(paramName, prefix, paramName))
+                    .sendResponse(response, callback);
+            return Optional.empty();
+        }
+        String id = path.substring(prefix.length());
+        try {
+            UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            ProblemDetail.badRequest("Invalid %s format. Expected UUID.".formatted(paramName))
+                    .sendResponse(response, callback);
+            return Optional.empty();
+        }
+        return Optional.of(id);
+    }
+
+    /**
+     * Builds the absolute {@code Location} URI for the status endpoint of the given traceId,
+     * omitting default ports (80/443).
+     *
+     * @param request the originating Jetty request (source of scheme/host/port)
+     * @param traceId the trace ID
+     * @return the absolute status URI
+     */
+    public static String buildStatusLocationUri(Request request, String traceId) {
+        String scheme = request.getHttpURI().getScheme();
+        String host = Request.getServerName(request);
+        int port = Request.getServerPort(request);
+        boolean isDefaultPort = ("http".equals(scheme) && port == 80)
+                || ("https".equals(scheme) && port == 443);
+        if (isDefaultPort) {
+            return "%s://%s/status/%s".formatted(scheme, host, traceId);
+        }
+        return "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
+    }
+
+    /**
+     * Sends the shared 202 Accepted response with {@code Location} header and
+     * HATEOAS {@code _links} body used by tracked routes and the attachments endpoint.
+     *
+     * @param request                the originating Jetty request
+     * @param response               the response
+     * @param callback               the Jetty callback
+     * @param traceId                the accepted request's trace ID
+     * @param includeAttachmentsLink whether to add the {@code attachments} link
+     *                               (routes in ATTACHMENTS tracking mode)
+     */
+    public static void sendAcceptedResponse(Request request, Response response, Callback callback,
+            String traceId, boolean includeAttachmentsLink) {
+        String statusPath = "/status/" + traceId;
+        JsonObjectBuilder linksBuilder = Json.createObjectBuilder()
+                .add("status", Json.createObjectBuilder().add("href", statusPath));
+        if (includeAttachmentsLink) {
+            linksBuilder.add("attachments", Json.createObjectBuilder()
+                    .add("href", "/attachments/" + traceId));
+        }
+        byte[] responseBody = Json.createObjectBuilder()
+                .add("status", "accepted")
+                .add("traceId", traceId)
+                .add("_links", linksBuilder)
+                .build()
+                .toString()
+                .getBytes(StandardCharsets.UTF_8);
+
+        response.setStatus(202);
+        response.getHeaders().put(HttpHeader.LOCATION, buildStatusLocationUri(request, traceId));
+        response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
+        response.write(true, ByteBuffer.wrap(responseBody), callback);
     }
 }

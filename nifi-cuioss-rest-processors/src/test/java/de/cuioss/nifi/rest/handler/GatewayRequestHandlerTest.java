@@ -436,15 +436,15 @@ class GatewayRequestHandlerTest {
         }
 
         @Test
-        @DisplayName("Should return 401 step-up when scopes are missing")
-        void shouldReturn401StepUpWhenScopesMissing() throws Exception {
+        @DisplayName("Should return 403 with insufficient_scope challenge when scopes are missing")
+        void shouldReturn403WhenScopesMissing() throws Exception {
             // data route requires READ scope
             var response = httpClient.send(
                     requestBuilder("/api/data").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Step-up auth: 401 with insufficient_scope when scopes are missing
-            assertEquals(401, response.statusCode());
+            // RFC 6750 §3.1: insufficient_scope -> 403 with the WWW-Authenticate challenge
+            assertEquals(403, response.statusCode());
             assertTrue(response.headers().firstValue("WWW-Authenticate")
                     .orElse("").contains("insufficient_scope"));
             assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTHZ_SCOPE_DENIED));

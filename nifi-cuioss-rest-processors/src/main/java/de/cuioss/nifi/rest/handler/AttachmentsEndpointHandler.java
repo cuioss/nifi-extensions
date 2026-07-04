@@ -178,24 +178,12 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
 
         autoTransitionToProcessedIfMinMet(parentTraceId.get(), parent.get(), attachmentCount.get());
 
-        sendAcceptedResponse(request, response, callback, traceId);
+        RequestUtils.sendAcceptedResponse(request, response, callback, traceId, false);
     }
 
     private Optional<String> extractAndValidateParentTraceId(String path, Response response, Callback callback) {
-        if (!path.startsWith(ATTACHMENTS_PATH_PREFIX) || path.length() <= ATTACHMENTS_PATH_PREFIX.length()) {
-            ProblemDetail.badRequest("Missing parentTraceId in path. Expected: /attachments/{parentTraceId}")
-                    .sendResponse(response, callback);
-            return Optional.empty();
-        }
-        String parentTraceId = path.substring(ATTACHMENTS_PATH_PREFIX.length());
-        try {
-            UUID.fromString(parentTraceId);
-        } catch (IllegalArgumentException e) {
-            ProblemDetail.badRequest("Invalid parentTraceId format. Expected UUID.")
-                    .sendResponse(response, callback);
-            return Optional.empty();
-        }
-        return Optional.of(parentTraceId);
+        return RequestUtils.extractUuidPathParameter(
+                path, ATTACHMENTS_PATH_PREFIX, "parentTraceId", response, callback);
     }
 
     private Optional<RequestStatusEntry> lookupAndValidateParent(String parentTraceId, Response response, Callback callback) {
@@ -209,6 +197,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return Optional.empty();
         }
         if (parentEntry.isEmpty()) {
+            attachmentCounters.remove(parentTraceId);
             LOGGER.warn(RestApiLogMessages.WARN.PARENT_TRACE_NOT_FOUND, parentTraceId);
             ProblemDetail.notFound("No parent request found for traceId: " + parentTraceId)
                     .sendResponse(response, callback);
@@ -222,6 +211,9 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return Optional.empty();
         }
         if (!isAttachmentWindowOpen(parent)) {
+            // Terminal for this parent — evict its in-memory counter so the map
+            // does not grow unboundedly over the processor's lifetime
+            attachmentCounters.remove(parentTraceId);
             LOGGER.warn(RestApiLogMessages.WARN.ATTACHMENT_WINDOW_CLOSED,
                     parentTraceId, parent.status());
             ProblemDetail.conflict("Attachment window closed — parent request is already being processed")
@@ -312,36 +304,4 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
         }
     }
 
-    private static void sendAcceptedResponse(Request request, Response response, Callback callback, String traceId) {
-        String statusPath = "/status/" + traceId;
-        byte[] responseBody = Json.createObjectBuilder()
-                .add("status", "accepted")
-                .add("traceId", traceId)
-                .add("_links", Json.createObjectBuilder()
-                        .add("status", Json.createObjectBuilder()
-                                .add("href", statusPath)))
-                .build()
-                .toString()
-                .getBytes(StandardCharsets.UTF_8);
-
-        String locationUri = buildLocationUri(request, traceId);
-        response.setStatus(202);
-        response.getHeaders().put(HttpHeader.LOCATION, locationUri);
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, JSON_CONTENT_TYPE);
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
-        response.write(true, ByteBuffer.wrap(responseBody), callback);
-    }
-
-    private static String buildLocationUri(Request request, String traceId) {
-        var httpUri = request.getHttpURI();
-        String scheme = httpUri.getScheme();
-        String host = Request.getServerName(request);
-        int port = Request.getServerPort(request);
-        boolean isDefaultPort = ("http".equals(scheme) && port == 80)
-                || ("https".equals(scheme) && port == 443);
-        if (isDefaultPort) {
-            return "%s://%s/status/%s".formatted(scheme, host, traceId);
-        }
-        return "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
-    }
 }
