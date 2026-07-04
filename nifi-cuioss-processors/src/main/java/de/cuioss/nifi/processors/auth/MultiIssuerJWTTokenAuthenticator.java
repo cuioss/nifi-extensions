@@ -159,12 +159,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         } catch (TokenValidationException e) {
             handleTokenValidationException(session, flowFile, e);
         } catch (IllegalStateException e) {
-            // Controller service not enabled (yet) — route to failure and yield instead of
-            // letting the exception escape and roll back the session repeatedly
+            // Controller service not enabled (yet) — a transient administrative state, not a
+            // token problem. Yield and roll back so the FlowFile stays queued and is retried
+            // once the service becomes available.
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
-            handleError(session, flowFile, "AUTH-002",
-                    "JWT validation unavailable: " + e.getMessage(), "SERVICE_UNAVAILABLE");
             context.yield();
+            session.rollback();
         }
     }
 

@@ -332,10 +332,13 @@ public class ConfigurationManager {
     }
 
     /**
-     * Returns all issuer configuration properties as an unmodifiable view of the outer map.
+     * Returns all issuer configuration properties; neither the outer map nor the
+     * inner per-issuer maps are modifiable by callers.
      */
     public Map<String, Map<String, String>> getIssuerProperties() {
-        return Collections.unmodifiableMap(issuerProperties);
+        Map<String, Map<String, String>> view = new HashMap<>();
+        issuerProperties.forEach((issuerId, props) -> view.put(issuerId, Collections.unmodifiableMap(props)));
+        return Collections.unmodifiableMap(view);
     }
 
     public Optional<String> getProperty(String key) {
