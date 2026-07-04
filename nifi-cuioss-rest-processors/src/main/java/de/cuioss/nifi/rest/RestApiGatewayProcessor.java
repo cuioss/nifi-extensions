@@ -398,9 +398,13 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                     attributes.put(RestApiAttributes.QUERY_PARAM_PREFIX + key, value));
 
             // Set sanitized request headers (Authorization is excluded upstream);
-            // header names are lowercased for deterministic attribute keys
-            container.headers().forEach((name, value) ->
-                    attributes.put(RestApiAttributes.HEADER_PREFIX + name.toLowerCase(Locale.ROOT), value));
+            // header names are lowercased for deterministic attribute keys.
+            // Null values are skipped — FlowFile attributes reject null.
+            container.headers().forEach((name, value) -> {
+                if (value != null) {
+                    attributes.put(RestApiAttributes.HEADER_PREFIX + name.toLowerCase(Locale.ROOT), value);
+                }
+            });
 
             // Set path parameters extracted from a pattern-matched route
             container.pathParameters().forEach((key, value) ->
