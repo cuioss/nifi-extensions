@@ -124,6 +124,32 @@ class JettyServerManagerTest {
         void shouldReturnNegativePortWhenNotRunning() {
             assertEquals(-1, manager.getPort());
         }
+
+        @Test
+        @DisplayName("Should clean up after failed start and allow retry")
+        void shouldCleanUpAfterFailedStartAndAllowRetry() {
+            // Arrange — occupy a port so the second manager's bind fails
+            var blocker = new JettyServerManager();
+            try {
+                blocker.start(0, echoHandler());
+                int occupiedPort = blocker.getPort();
+
+                var handler = echoHandler();
+                assertThrows(IllegalStateException.class,
+                        () -> manager.start(occupiedPort, handler),
+                        "Starting on an occupied port must fail");
+
+                // The partially-started server must be cleaned up...
+                assertFalse(manager.isRunning(), "Manager must not report running after failed start");
+                assertEquals(-1, manager.getPort());
+
+                // ...and a subsequent start on a free port must succeed
+                manager.start(0, echoHandler());
+                assertTrue(manager.isRunning());
+            } finally {
+                blocker.stop();
+            }
+        }
     }
 
     @Nested
