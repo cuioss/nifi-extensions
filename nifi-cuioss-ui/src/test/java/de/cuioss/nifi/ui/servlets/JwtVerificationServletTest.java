@@ -42,7 +42,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.easymock.EasyMock.*;
+import static org.easymock.EasyMock.createNiceMock;
+import static org.easymock.EasyMock.replay;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -139,6 +140,25 @@ class JwtVerificationServletTest {
                 .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Invalid token signature"));
+    }
+
+    @Test
+    @DisplayName("Should reject request body larger than 1 MB with 413")
+    void oversizedBodyReturns413() {
+        // 1 MB of padding pushes the total body over MAX_REQUEST_BODY_SIZE; the
+        // limit must hold even without a trustworthy Content-Length header
+        String requestJson = """
+                {"token":"%s","processorId":"test-processor-id"}"""
+                .formatted("a".repeat(1024 * 1024));
+
+        handle.spec()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(413)
+                .body("error", containsString("too large"));
     }
 
     @Test

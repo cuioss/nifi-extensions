@@ -302,13 +302,15 @@ public class JwksValidationServlet extends HttpServlet {
     /**
      * Returns {@code true} for addresses that must not be reachable via URL validation
      * when private addresses are disallowed: loopback, RFC 1918 site-local, link-local,
-     * wildcard, IPv6 unique-local (fc00::/7 — not covered by
+     * wildcard, multicast, IPv6 unique-local (fc00::/7 — not covered by
      * {@link InetAddress#isSiteLocalAddress()}, which only matches deprecated fec0::/10),
-     * and carrier-grade NAT (100.64.0.0/10).
+     * carrier-grade NAT (100.64.0.0/10), and the benchmarking range (198.18.0.0/15).
+     * A JWKS endpoint is legitimately reachable only on a global-unicast address.
      */
     static boolean isPrivateOrLocalAddress(InetAddress address) {
         if (address.isLoopbackAddress() || address.isSiteLocalAddress()
-                || address.isLinkLocalAddress() || address.isAnyLocalAddress()) {
+                || address.isLinkLocalAddress() || address.isAnyLocalAddress()
+                || address.isMulticastAddress()) {
             return true;
         }
         byte[] bytes = address.getAddress();
@@ -316,8 +318,15 @@ public class JwksValidationServlet extends HttpServlet {
         if (bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC) {
             return true;
         }
-        // IPv4 carrier-grade NAT 100.64.0.0/10
-        return bytes.length == 4 && (bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 64;
+        if (bytes.length == 4) {
+            // IPv4 carrier-grade NAT 100.64.0.0/10
+            if ((bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 64) {
+                return true;
+            }
+            // Benchmarking range 198.18.0.0/15 (RFC 2544)
+            return (bytes[0] & 0xFF) == 198 && (bytes[1] & 0xFE) == 18;
+        }
+        return false;
     }
 
     /**

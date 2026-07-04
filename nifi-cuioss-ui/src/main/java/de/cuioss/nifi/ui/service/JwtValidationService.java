@@ -161,15 +161,18 @@ public class JwtValidationService {
                     + " (properties: " + issuerProperties.keySet() + ")");
         }
 
+        // Build the replacement first: if builder() throws, the previous validator
+        // stays cached and usable instead of pointing at a closed instance
+        TokenValidator newValidator = TokenValidator.builder()
+                .parserConfig(parserConfig)
+                .issuerConfigs(issuerConfigs)
+                .build();
         // Dispose the previous validator so its background JWKS refresh resources
         // do not leak across configuration changes
         if (cachedValidator != null) {
             cachedValidator.close();
         }
-        cachedValidator = TokenValidator.builder()
-                .parserConfig(parserConfig)
-                .issuerConfigs(issuerConfigs)
-                .build();
+        cachedValidator = newValidator;
         cachedIssuerProperties = Map.copyOf(issuerProperties);
         return cachedValidator;
     }
