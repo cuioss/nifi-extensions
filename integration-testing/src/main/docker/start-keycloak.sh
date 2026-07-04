@@ -89,7 +89,7 @@ main() {
         echo "  Realm: oauth_integration_tests"
         echo "  Admin: admin/admin"
         echo "  Test user: testUser/drowssap"
-        echo "  Test client: test_client/yTKslWLtf4giJcWCaoVJ20H8sy6STexM"
+        echo "  Test client: test_client (public client, no secret)"
         return 0
     else
         echo ""

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Start NiFi HTTPS instance for testing and MCP Playwright
+set -e
+
 echo "Starting NiFi HTTPS instance on port 9095..."
 
 # Define script directory

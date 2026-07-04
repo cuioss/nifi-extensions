@@ -96,8 +96,6 @@
              before containers can start. Set to false in integration-tests profile when ready. -->
         <skip.docker.deployment>true</skip.docker.deployment>
         <!-- Maven Plugins -->
-        <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
-        <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
         <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <sonar.maven.plugin.version>5.7.0.6970</sonar.maven.plugin.version>
@@ -115,24 +113,14 @@
         <frontend.node.version>v22.23.1</frontend.node.version>
         <frontend.npm.version>10.5.0</frontend.npm.version>
 
-        <!-- WebJars Dependencies -->
-        <version.jquery>4.0.0</version.jquery>
-        <version.jquery-ui>1.14.2</version.jquery-ui>
-
-
-        <!-- Logging Dependencies -->
-        <version.slf4j>2.0.17</version.slf4j>
-
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>6.1.1</version.junit.jupiter>
         <version.lombok>1.18.46</version.lombok>
         <version.parsson>1.1.9</version.parsson>
-        <version.snakeyaml>2.6</version.snakeyaml>
         <version.easymock>5.6.0</version.easymock>
         <version.rest-assured>6.0.0</version.rest-assured>
         <version.hamcrest>3.0</version.hamcrest>
         <version.jakarta.json-api>2.1.3</version.jakarta.json-api>
-        <version.jakarta.servlet-api>6.1.0</version.jakarta.servlet-api>
         <version.webjars.font-awesome>7.2.0</version.webjars.font-awesome>
         <!-- CUI-OSS -->
         <version.cui.test.juli.logger>2.1.2</version.cui.test.juli.logger>
@@ -162,17 +150,6 @@
                 <artifactId>jspecify</artifactId>
                 <version>${version.jspecify}</version>
                 <scope>provided</scope>
-            </dependency>
-            <!-- WebJars dependencies -->
-            <dependency>
-                <groupId>org.webjars</groupId>
-                <artifactId>jquery</artifactId>
-                <version>${version.jquery}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.webjars</groupId>
-                <artifactId>jquery-ui</artifactId>
-                <version>${version.jquery-ui}</version>
             </dependency>
             <!-- Incoming-->
             <dependency>
@@ -617,15 +594,6 @@
     <profiles>
         <profile>
             <id>sonar</id>
-            <modules>
-                <module>nifi-cuioss-common</module>
-                <module>nifi-cuioss-processors</module>
-                <module>nifi-cuioss-rest-processors</module>
-                <module>nifi-cuioss-ui</module>
-                <module>nifi-cuioss-nar</module>
-                <module>integration-testing</module>
-                <module>e-2-e-playwright</module>
-            </modules>
             <build>
                 <plugins>
                     <plugin>

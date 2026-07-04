@@ -23,8 +23,6 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
-import org.hamcrest.Matcher;
-import org.hamcrest.MatcherAssert;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -39,7 +37,9 @@ import java.util.Base64;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifies that the Keycloak realm configurations
@@ -114,10 +114,10 @@ class KeycloakRealmConfigIT {
             JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
 
             // The realm-roles-mapper maps realm roles into a top-level 'roles' claim
-            assertThat(payload, hasKey("roles"));
-            assertThat(payload.getJsonArray("roles").toString(), allOf(
-                    containsString("user"),
-                    containsString("read")));
+            assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
+            var roles = payload.getJsonArray("roles");
+            assertTrue(roles.contains(Json.createValue("user")), "roles should contain 'user': " + roles);
+            assertTrue(roles.contains(Json.createValue("read")), "roles should contain 'read': " + roles);
         }
 
         @Test
@@ -125,10 +125,10 @@ class KeycloakRealmConfigIT {
         void limitedUserShouldHaveUserRoleOnly() {
             JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, LIMITED_USER));
 
-            assertThat(payload, hasKey("roles"));
-            String roles = payload.getJsonArray("roles").toString();
-            assertThat(roles, containsString("user"));
-            assertThat(roles, not(containsString("read")));
+            assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
+            var roles = payload.getJsonArray("roles");
+            assertTrue(roles.contains(Json.createValue("user")), "roles should contain 'user': " + roles);
+            assertFalse(roles.contains(Json.createValue("read")), "roles should NOT contain 'read': " + roles);
         }
     }
 
@@ -143,8 +143,9 @@ class KeycloakRealmConfigIT {
         void primaryRealmIssuerShouldContainRealmName() {
             JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
 
-            assertThat(payload.getString("iss"),
-                    containsString("/realms/oauth_integration_tests"));
+            String issuer = payload.getString("iss");
+            assertTrue(issuer.contains("/realms/oauth_integration_tests"),
+                    "issuer should contain realm name: " + issuer);
         }
 
         @Test
@@ -153,12 +154,14 @@ class KeycloakRealmConfigIT {
             JsonObject primaryPayload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
             JsonObject otherPayload = decodeJwtPayload(fetchToken(otherRealmTokenSpec, OTHER_USER));
 
-            assertThat(primaryPayload.getString("iss"),
-                    containsString("oauth_integration_tests"));
-            assertThat(otherPayload.getString("iss"),
-                    containsString("other_realm"));
-            assertThat(primaryPayload.getString("iss"),
-                    not(equalTo(otherPayload.getString("iss"))));
+            String primaryIssuer = primaryPayload.getString("iss");
+            String otherIssuer = otherPayload.getString("iss");
+            assertTrue(primaryIssuer.contains("oauth_integration_tests"),
+                    "primary issuer should contain realm name: " + primaryIssuer);
+            assertTrue(otherIssuer.contains("other_realm"),
+                    "other issuer should contain realm name: " + otherIssuer);
+            assertNotEquals(primaryIssuer, otherIssuer,
+                    "issuers of the two realms must differ");
         }
     }
 
@@ -178,10 +181,10 @@ class KeycloakRealmConfigIT {
             JsonObject primaryHeader = decodeJwtHeader(primaryToken);
             JsonObject otherHeader = decodeJwtHeader(otherToken);
 
-            assertThat(primaryHeader, hasKey("kid"));
-            assertThat(otherHeader, hasKey("kid"));
-            assertThat(primaryHeader.getString("kid"),
-                    not(equalTo(otherHeader.getString("kid"))));
+            assertTrue(primaryHeader.containsKey("kid"), "primary token header should contain 'kid'");
+            assertTrue(otherHeader.containsKey("kid"), "other token header should contain 'kid'");
+            assertNotEquals(primaryHeader.getString("kid"), otherHeader.getString("kid"),
+                    "signing key IDs of the two realms must differ");
         }
     }
 
@@ -264,9 +267,5 @@ class KeycloakRealmConfigIT {
                 Base64.getUrlDecoder().decode(jwt.split("\\.")[0]),
                 StandardCharsets.UTF_8);
         return Json.createReader(new StringReader(headerJson)).readObject();
-    }
-
-    private static <T> void assertThat(T actual, Matcher<? super T> matcher) {
-        MatcherAssert.assertThat(actual, matcher);
     }
 }
