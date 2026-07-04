@@ -136,9 +136,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             return;
         }
 
-        processedFlowFilesCount.incrementAndGet();
-        if (processedFlowFilesCount.get() % JwtConstants.LOG_METRICS_INTERVAL == 0) {
-            LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedFlowFilesCount);
+        // Use the returned count so concurrent tasks cannot skip or duplicate the interval log
+        long processedCount = processedFlowFilesCount.incrementAndGet();
+        if (processedCount % JwtConstants.LOG_METRICS_INTERVAL == 0) {
+            LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedCount);
         }
 
         try {
@@ -157,6 +158,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         } catch (TokenValidationException e) {
             handleTokenValidationException(session, flowFile, e);
+        } catch (IllegalStateException e) {
+            // Controller service not enabled (yet) — a transient administrative state, not a
+            // token problem. Yield and roll back so the FlowFile stays queued and is retried
+            // once the service becomes available.
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
+            context.yield();
+            session.rollback();
         }
     }
 

@@ -183,6 +183,13 @@ public final class JwtLogMessages {
                 .template("Token validation failed: %s")
                 .build();
 
+        public static final LogRecord JWKS_HOST_NOT_RESOLVABLE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(110)
+                .template("Could not resolve JWKS host '%s' for issuer %s while checking the "
+                        + "private-network restriction; deferring to the JWKS loader")
+                .build();
+
     }
 
     @UtilityClass
@@ -221,6 +228,20 @@ public final class JwtLogMessages {
                 .prefix(PREFIX)
                 .identifier(205)
                 .template("Failed to enable JwtIssuerConfigService: %s")
+                .build();
+
+        public static final LogRecord ISSUER_JWKS_HTTPS_REQUIRED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(206)
+                .template("Rejected issuer %s: JWKS URL '%s' does not use HTTPS but "
+                        + "'Require HTTPS for JWKS URLs' is enabled")
+                .build();
+
+        public static final LogRecord ISSUER_JWKS_PRIVATE_ADDRESS_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(207)
+                .template("Rejected issuer %s: JWKS URL '%s' resolves to a private/loopback address "
+                        + "and 'Allow Private Network Addresses for JWKS' is disabled")
                 .build();
     }
 }

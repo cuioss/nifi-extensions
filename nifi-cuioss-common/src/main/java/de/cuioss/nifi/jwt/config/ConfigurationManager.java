@@ -30,10 +30,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -52,10 +54,12 @@ public class ConfigurationManager {
 
     @Nullable private File configFile;
     private long lastLoadedTimestamp = 0;
-    @Getter private final Map<String, String> staticProperties = new HashMap<>();
-    @Getter private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
+    private final Map<String, String> staticProperties = new HashMap<>();
+    private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
     @Getter private boolean configurationLoaded = false;
     private final String basePath;
+
+    private enum FileLoadResult {NO_FILE, LOADED, FAILED}
 
     public ConfigurationManager() {
         this("");
@@ -66,17 +70,46 @@ public class ConfigurationManager {
         loadConfiguration();
     }
 
-    public void loadConfiguration() {
+    /**
+     * Loads (or reloads) the configuration from the config file and environment.
+     * If a config file exists but cannot be parsed, the previously loaded
+     * configuration is kept instead of running with a wiped state.
+     *
+     * @return {@code true} if loading succeeded (or no file exists), {@code false}
+     *         if a present config file failed to load and the previous configuration was kept
+     */
+    public boolean loadConfiguration() {
+        Map<String, String> previousStatic = new HashMap<>(staticProperties);
+        Map<String, Map<String, String>> previousIssuers = copyIssuerProperties();
+        boolean previouslyLoaded = configurationLoaded;
+
         staticProperties.clear();
         issuerProperties.clear();
-        boolean fileLoaded = loadFromConfigFile();
+        FileLoadResult result = loadFromConfigFile();
+        if (result == FileLoadResult.FAILED && previouslyLoaded) {
+            // Restore the previous configuration rather than wiping the running state
+            staticProperties.clear();
+            issuerProperties.clear();
+            staticProperties.putAll(previousStatic);
+            issuerProperties.putAll(previousIssuers);
+            LOGGER.error(JwtLogMessages.ERROR.CONFIG_RELOAD_FAILED);
+            return false;
+        }
         loadFromEnvironment();
-        configurationLoaded = fileLoaded || !staticProperties.isEmpty() || !issuerProperties.isEmpty();
+        configurationLoaded = result == FileLoadResult.LOADED
+                || !staticProperties.isEmpty() || !issuerProperties.isEmpty();
         if (configurationLoaded) {
             LOGGER.info(JwtLogMessages.INFO.CONFIG_LOADED);
         } else {
             LOGGER.info(JwtLogMessages.INFO.NO_EXTERNAL_CONFIG);
         }
+        return result != FileLoadResult.FAILED;
+    }
+
+    private Map<String, Map<String, String>> copyIssuerProperties() {
+        Map<String, Map<String, String>> copy = new HashMap<>();
+        issuerProperties.forEach((issuerId, props) -> copy.put(issuerId, new HashMap<>(props)));
+        return copy;
     }
 
     public boolean checkAndReloadConfiguration() {
@@ -84,40 +117,30 @@ public class ConfigurationManager {
             long lastModified = configFile.lastModified();
             if (lastModified > lastLoadedTimestamp) {
                 LOGGER.info(JwtLogMessages.INFO.CONFIG_FILE_RELOADING, configFile);
-                try {
-                    loadConfiguration();
+                // loadConfiguration keeps the previous configuration on failure; the
+                // timestamp is only advanced on success so the next check retries.
+                if (loadConfiguration()) {
                     lastLoadedTimestamp = lastModified;
                     return true;
-                } catch (IllegalStateException | IllegalArgumentException | YAMLException e) {
-                    String contextMessage = ErrorContext.forComponent(COMPONENT_NAME)
-                            .operation("checkAndReloadConfiguration")
-                            .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
-                            .cause(e)
-                            .build()
-                            .with("configFile", configFile.getAbsolutePath())
-                            .with("lastModified", lastModified)
-                            .buildMessage("Failed to reload configuration, using previous configuration");
-                    LOGGER.error(e, JwtLogMessages.ERROR.CONFIG_RELOAD_FAILED);
-                    LOGGER.debug(contextMessage);
                 }
             }
         }
         return false;
     }
 
-    private boolean loadFromConfigFile() {
+    private FileLoadResult loadFromConfigFile() {
         File propertiesFile = new File(basePath + DEFAULT_PROPERTIES_PATH);
         if (propertiesFile.exists() && propertiesFile.isFile()) {
             configFile = propertiesFile;
-            return loadConfigurationFile(propertiesFile);
+            return loadConfigurationFile(propertiesFile) ? FileLoadResult.LOADED : FileLoadResult.FAILED;
         }
         File yamlFile = new File(basePath + DEFAULT_YAML_PATH);
         if (yamlFile.exists() && yamlFile.isFile()) {
             configFile = yamlFile;
-            return loadConfigurationFile(yamlFile);
+            return loadConfigurationFile(yamlFile) ? FileLoadResult.LOADED : FileLoadResult.FAILED;
         }
         LOGGER.info(JwtLogMessages.INFO.NO_CONFIG_FILE);
-        return false;
+        return FileLoadResult.NO_FILE;
     }
 
     private boolean loadConfigurationFile(File file) {
@@ -301,8 +324,25 @@ public class ConfigurationManager {
         return envName.toLowerCase().replace('_', '.');
     }
 
-    public String getProperty(String key) {
-        return staticProperties.get(key);
+    /**
+     * Returns the static (non-issuer) configuration properties as an unmodifiable view.
+     */
+    public Map<String, String> getStaticProperties() {
+        return Collections.unmodifiableMap(staticProperties);
+    }
+
+    /**
+     * Returns all issuer configuration properties; neither the outer map nor the
+     * inner per-issuer maps are modifiable by callers.
+     */
+    public Map<String, Map<String, String>> getIssuerProperties() {
+        Map<String, Map<String, String>> view = new HashMap<>();
+        issuerProperties.forEach((issuerId, props) -> view.put(issuerId, Collections.unmodifiableMap(props)));
+        return Collections.unmodifiableMap(view);
+    }
+
+    public Optional<String> getProperty(String key) {
+        return Optional.ofNullable(staticProperties.get(key));
     }
 
     public String getProperty(String key, String defaultValue) {
@@ -313,7 +353,12 @@ public class ConfigurationManager {
         return new ArrayList<>(issuerProperties.keySet());
     }
 
+    /**
+     * Returns a defensive copy of the properties for the given issuer,
+     * or an empty map if the issuer is unknown.
+     */
     public Map<String, String> getIssuerProperties(String issuerId) {
-        return issuerProperties.getOrDefault(issuerId, new HashMap<>());
+        Map<String, String> props = issuerProperties.get(issuerId);
+        return props != null ? new HashMap<>(props) : new HashMap<>();
     }
 }

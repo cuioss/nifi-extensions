@@ -89,8 +89,8 @@ class ConfigurationManagerTest {
             assertTrue(configManager.isConfigurationLoaded(),
                     "Configuration should be loaded");
 
-            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size"));
-            assertEquals("value", configManager.getProperty("jwt.validation.some.other.prop"));
+            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
+            assertEquals("value", configManager.getProperty("jwt.validation.some.other.prop").orElse(null));
 
             List<String> issuerIds = configManager.getIssuerIds();
             assertTrue(issuerIds.contains("issuer1"));
@@ -152,7 +152,7 @@ class ConfigurationManagerTest {
             var configManager = new ConfigurationManager(basePath(tempDir));
 
             assertTrue(configManager.isConfigurationLoaded());
-            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size"));
+            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
 
             Map<String, String> issuer1Props = configManager.getIssuerProperties("issuer1");
             assertEquals("Issuer One", issuer1Props.get("name"));
@@ -320,7 +320,7 @@ class ConfigurationManagerTest {
             await().atMost(2, SECONDS)
                     .until(configManager::checkAndReloadConfiguration);
 
-            assertEquals("65536", configManager.getProperty("jwt.validation.max.token.size"));
+            assertEquals("65536", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
         }
     }
 
@@ -333,9 +333,9 @@ class ConfigurationManagerTest {
         void shouldReturnNullForMissingKey() {
             var configManager = new ConfigurationManager();
 
-            String value = configManager.getProperty("non.existent.key");
+            var value = configManager.getProperty("non.existent.key");
 
-            assertNull(value, "Should return null for missing key");
+            assertTrue(value.isEmpty(), "Should return empty Optional for missing key");
         }
 
         @Test
@@ -447,7 +447,7 @@ class ConfigurationManagerTest {
             var configManager = new ConfigurationManager(basePath(tempDir));
 
             assertTrue(configManager.isConfigurationLoaded());
-            assertEquals("11111", configManager.getProperty("jwt.validation.max.token.size"));
+            assertEquals("11111", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
         }
     }
 
@@ -467,7 +467,7 @@ class ConfigurationManagerTest {
 
             var configManager = new ConfigurationManager(basePath(tempDir));
 
-            assertNotNull(configManager.getProperty("jwt.validation.max.token.size"),
+            assertTrue(configManager.getProperty("jwt.validation.max.token.size").isPresent(),
                     "Property should exist in lowercase dot format");
         }
     }
@@ -532,7 +532,7 @@ class ConfigurationManagerTest {
             var configManager = new ConfigurationManager(basePath(tempDir));
 
             assertTrue(configManager.isConfigurationLoaded());
-            String algorithms = configManager.getProperty("jwt.validation.algorithms");
+            String algorithms = configManager.getProperty("jwt.validation.algorithms").orElse(null);
             assertNotNull(algorithms, "Algorithms property should exist");
             assertEquals("RS256,RS384,RS512", algorithms,
                     "List should be stored as comma-separated string");
@@ -555,7 +555,7 @@ class ConfigurationManagerTest {
             var configManager = new ConfigurationManager(basePath(tempDir));
 
             assertTrue(configManager.isConfigurationLoaded());
-            String claims = configManager.getProperty("jwt.validation.claims");
+            String claims = configManager.getProperty("jwt.validation.claims").orElse(null);
             assertNotNull(claims, "Claims property should exist");
             assertEquals("sub,iss", claims);
         }
@@ -566,8 +566,8 @@ class ConfigurationManagerTest {
     class ReloadErrorTests {
 
         @Test
-        @DisplayName("Should clear old config when reload encounters invalid YAML")
-        void shouldClearOldConfigOnReloadWithInvalidYaml(@TempDir Path tempDir) throws Exception {
+        @DisplayName("Should keep previous config when reload encounters invalid YAML")
+        void shouldKeepPreviousConfigOnReloadWithInvalidYaml(@TempDir Path tempDir) throws Exception {
             Path confDir = createConfDir(tempDir);
             Path configFile = confDir.resolve("cui-nifi-extensions.yml");
             String validContent = """
@@ -581,7 +581,7 @@ class ConfigurationManagerTest {
 
             var configManager = new ConfigurationManager(basePath(tempDir));
             assertTrue(configManager.isConfigurationLoaded());
-            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size"));
+            assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
 
             // Overwrite with invalid YAML (unmatched quote triggers YAMLException)
             String invalidContent = "key: 'unclosed string\nanother: line";
@@ -591,15 +591,17 @@ class ConfigurationManagerTest {
             Instant bumped = Files.getLastModifiedTime(configFile).toInstant().plusSeconds(1);
             Files.setLastModifiedTime(configFile, FileTime.from(bumped));
 
-            // Act — poll until the modification is detected
-            // Reload completes (returns true) even though YAML is invalid,
-            // because the exception is caught internally and properties are cleared
-            await().atMost(2, SECONDS)
-                    .until(configManager::checkAndReloadConfiguration);
+            // Act — the mtime bump is applied synchronously, so the first call detects
+            // the modification, attempts the reload, and fails on the invalid YAML
+            boolean reloaded = configManager.checkAndReloadConfiguration();
 
-            // Assert — old config is cleared
-            assertFalse(configManager.isConfigurationLoaded(),
-                    "Configuration should not be loaded after invalid YAML");
+            // Assert — reload reports failure and the previous configuration is kept
+            assertFalse(reloaded, "Reload must report failure for invalid YAML");
+            assertTrue(configManager.isConfigurationLoaded(),
+                    "Previous configuration should remain loaded after a failed reload");
+            assertEquals("32768",
+                    configManager.getProperty("jwt.validation.max.token.size").orElse(null),
+                    "Previous property values should be preserved");
         }
     }
 

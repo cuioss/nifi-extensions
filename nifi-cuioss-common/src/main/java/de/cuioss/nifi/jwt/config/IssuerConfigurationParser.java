@@ -25,11 +25,16 @@ import de.cuioss.nifi.jwt.util.ErrorContext;
 import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.validation.ParserConfig;
 import de.cuioss.sheriff.token.validation.jwks.http.HttpJwksLoaderConfig;
+import de.cuioss.sheriff.token.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -93,8 +98,11 @@ public class IssuerConfigurationParser {
     public static ParserConfig parseParserConfig(Map<String, String> properties) {
         Objects.requireNonNull(properties, "properties must not be null");
         int maxTokenSize = DEFAULT_MAX_TOKEN_SIZE;
-        String tokenSizeValue = properties.getOrDefault(MAXIMUM_TOKEN_SIZE_KEY,
-                String.valueOf(DEFAULT_MAX_TOKEN_SIZE));
+        // Prefer the property name; fall back to the legacy display-name key so both the
+        // controller-service path (name-keyed) and older external configs keep working.
+        String tokenSizeValue = properties.getOrDefault(
+                JwtAttributes.Properties.Validation.MAXIMUM_TOKEN_SIZE,
+                properties.getOrDefault(MAXIMUM_TOKEN_SIZE_KEY, String.valueOf(DEFAULT_MAX_TOKEN_SIZE)));
         try {
             maxTokenSize = Integer.parseInt(tokenSizeValue);
         } catch (NumberFormatException e) {
@@ -183,8 +191,14 @@ public class IssuerConfigurationParser {
         }
         var builder = IssuerConfig.builder()
                 .issuerIdentifier(issuerName.get());
+        parseAllowedAlgorithms(globalProperties)
+                .ifPresent(algorithms -> builder.algorithmPreferences(
+                        new SignatureAlgorithmPreferences(algorithms)));
         String jwksType = resolveJwksType(issuerProps);
         if ("url".equals(jwksType)) {
+            if (!isJwksUrlAllowed(issuerId, jwksSource.get(), globalProperties)) {
+                return Optional.empty();
+            }
             var httpConfigBuilder = HttpJwksLoaderConfig.builder()
                     .jwksUrl(jwksSource.get())
                     .issuerIdentifier(issuerName.get());
@@ -257,6 +271,86 @@ public class IssuerConfigurationParser {
             return "url";
         }
         return "file";
+    }
+
+    /**
+     * Parses the globally configured allowed signing algorithms into an ordered list.
+     * Trims entries and drops blanks/duplicates so values like {@code "RS256, ES256"} work.
+     *
+     * @param globalProperties the global (controller-service level) properties
+     * @return the algorithm list, or empty if the property is absent/blank (library default applies)
+     */
+    private static Optional<List<String>> parseAllowedAlgorithms(Map<String, String> globalProperties) {
+        String value = globalProperties.get(JwtAttributes.Properties.Validation.ALLOWED_ALGORITHMS);
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        List<String> algorithms = Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
+        return algorithms.isEmpty() ? Optional.empty() : Optional.of(algorithms);
+    }
+
+    /**
+     * Enforces the global JWKS URL restrictions: {@code Require HTTPS for JWKS URLs}
+     * (default true) and {@code Allow Private Network Addresses for JWKS} (default false).
+     * The private-address check resolves the host at configuration time; if the host
+     * cannot be resolved, the check is deferred to the JWKS loader rather than
+     * permanently excluding the issuer (the IdP may simply not be up yet).
+     *
+     * @return {@code true} if the URL passes the configured restrictions
+     */
+    private static boolean isJwksUrlAllowed(String issuerId, String jwksUrl,
+            Map<String, String> globalProperties) {
+        boolean requireHttps = !"false".equalsIgnoreCase(
+                globalProperties.get(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS));
+        if (requireHttps && !jwksUrl.toLowerCase(Locale.ROOT).startsWith("https://")) {
+            LOGGER.error(JwtLogMessages.ERROR.ISSUER_JWKS_HTTPS_REQUIRED,
+                    sanitizeLogValue(issuerId), sanitizeLogValue(jwksUrl));
+            return false;
+        }
+        boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
+                .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
+        if (!allowPrivate && resolvesToPrivateAddress(issuerId, jwksUrl)) {
+            LOGGER.error(JwtLogMessages.ERROR.ISSUER_JWKS_PRIVATE_ADDRESS_REJECTED,
+                    sanitizeLogValue(issuerId), sanitizeLogValue(jwksUrl));
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean resolvesToPrivateAddress(String issuerId, String jwksUrl) {
+        String host;
+        try {
+            host = URI.create(jwksUrl).getHost();
+        } catch (IllegalArgumentException e) {
+            // Malformed URL — leave rejection to the JWKS loader, which reports it properly
+            return false;
+        }
+        if (host == null) {
+            return false;
+        }
+        try {
+            for (InetAddress address : InetAddress.getAllByName(host)) {
+                if (address.isLoopbackAddress() || address.isSiteLocalAddress()
+                        || address.isLinkLocalAddress() || address.isAnyLocalAddress()
+                        || isUniqueLocalIpv6(address)) {
+                    return true;
+                }
+            }
+        } catch (UnknownHostException e) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_HOST_NOT_RESOLVABLE,
+                    sanitizeLogValue(host), sanitizeLogValue(issuerId));
+        }
+        return false;
+    }
+
+    /** IPv6 unique-local addresses (fc00::/7) are not covered by isSiteLocalAddress(). */
+    private static boolean isUniqueLocalIpv6(InetAddress address) {
+        byte[] bytes = address.getAddress();
+        return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
     }
 
     private static void applyGlobalJwksSettings(
