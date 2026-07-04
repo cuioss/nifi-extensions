@@ -174,8 +174,7 @@ public class GatewayProxyServlet extends HttpServlet {
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
                 // Invalidate cached port/protocol — properties may have changed
-                portCache.remove(processorId);
-                protocolCache.remove(processorId);
+                invalidateCaches(processorId);
                 var componentConfig = resolveComponentConfig(processorId, req);
                 writeConfigResponse(resp, componentConfig.properties(),
                         componentConfig.componentClass());
@@ -196,7 +195,15 @@ public class GatewayProxyServlet extends HttpServlet {
             int port = resolveGatewayPort(processorId, req);
             String protocol = protocolCache.getOrDefault(processorId, "http");
             String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
-            GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
+            GatewayGetResponse gwResp;
+            try {
+                gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
+            } catch (IOException e) {
+                // The cached port/protocol may be stale after a gateway reconfiguration —
+                // drop it so the next request re-resolves from the processor properties
+                invalidateCaches(processorId);
+                throw e;
+            }
 
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding(CHARSET_UTF8);
@@ -290,8 +297,20 @@ public class GatewayProxyServlet extends HttpServlet {
         }
 
         Map<String, String> headers = extractTestHeaders(testRequest);
-        GatewayResponse gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
+        GatewayResponse gatewayResp;
+        try {
+            gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
+        } catch (IOException e) {
+            // Stale cached port/protocol — re-resolve on the next request
+            invalidateCaches(processorId);
+            throw e;
+        }
         writeTestResponse(resp, gatewayResp);
+    }
+
+    private void invalidateCaches(String processorId) {
+        portCache.remove(processorId);
+        protocolCache.remove(processorId);
     }
 
     private static Map<String, String> extractTestHeaders(JsonObject testRequest) {

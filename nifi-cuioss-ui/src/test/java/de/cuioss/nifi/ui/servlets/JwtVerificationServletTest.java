@@ -42,7 +42,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.easymock.EasyMock.*;
+import static org.easymock.EasyMock.createNiceMock;
+import static org.easymock.EasyMock.replay;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -105,12 +106,9 @@ class JwtVerificationServletTest {
     @DisplayName("Should return valid response for valid token")
     void validTokenVerification() {
         currentVerifier = (token, processorId) -> {
-            TokenValidationResult result = TokenValidationResult.success(null);
-            result.setIssuer("test-issuer");
-            result.setScopes(List.of("read", "write"));
-            result.setRoles(List.of("admin"));
-            result.setAuthorized(true);
-            return result;
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            return TokenValidationResult.success(tokenHolder.asAccessTokenContent());
         };
 
         handle.spec()
@@ -123,7 +121,7 @@ class JwtVerificationServletTest {
                 .statusCode(200)
                 .body("valid", equalTo(true))
                 .body("authorized", equalTo(true))
-                .body("issuer", equalTo("test-issuer"));
+                .body("issuer", equalTo(TestTokenHolder.TEST_ISSUER));
     }
 
     @Test
@@ -142,6 +140,25 @@ class JwtVerificationServletTest {
                 .statusCode(200)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Invalid token signature"));
+    }
+
+    @Test
+    @DisplayName("Should reject request body larger than 1 MB with 413")
+    void oversizedBodyReturns413() {
+        // 1 MB of padding pushes the total body over MAX_REQUEST_BODY_SIZE; the
+        // limit must hold even without a trustworthy Content-Length header
+        String requestJson = """
+                {"token":"%s","processorId":"test-processor-id"}"""
+                .formatted("a".repeat(1024 * 1024));
+
+        handle.spec()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(413)
+                .body("error", containsString("too large"));
     }
 
     @Test
@@ -257,9 +274,7 @@ class JwtVerificationServletTest {
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -290,7 +305,7 @@ class JwtVerificationServletTest {
                 .then()
                 .statusCode(200)
                 .body("valid", equalTo(true))
-                .body("authorized", equalTo(false))
+                .body("authorized", equalTo(true))
                 .body("claims.size()", equalTo(0));
     }
 
@@ -298,9 +313,7 @@ class JwtVerificationServletTest {
     @DisplayName("Should read processorId from X-Processor-Id header when missing in body")
     void processorIdFromHeader() {
         currentVerifier = (token, processorId) -> {
-            TokenValidationResult result = TokenValidationResult.success(null);
-            result.setAuthorized(false);
-            return result;
+            return TokenValidationResult.success(null);
         };
 
         handle.spec()
@@ -323,9 +336,7 @@ class JwtVerificationServletTest {
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -345,12 +356,13 @@ class JwtVerificationServletTest {
     @DisplayName("Should include scopes and roles in valid response")
     void validTokenWithScopesAndRoles() {
         currentVerifier = (token, processorId) -> {
-            TokenValidationResult result = TokenValidationResult.success(null);
-            result.setIssuer("test-issuer");
-            result.setScopes(List.of("openid", "profile", "email"));
-            result.setRoles(List.of("admin", "user"));
-            result.setAuthorized(true);
-            return result;
+            var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
+                    ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
+            tokenHolder.withClaim("scope",
+                    ClaimValue.forList("openid profile email", List.of("openid", "profile", "email")));
+            tokenHolder.withClaim("roles",
+                    ClaimValue.forList("admin user", List.of("admin", "user")));
+            return TokenValidationResult.success(tokenHolder.asAccessTokenContent());
         };
 
         handle.spec()
@@ -369,14 +381,7 @@ class JwtVerificationServletTest {
     @Test
     @DisplayName("Should omit scopes and roles when empty")
     void validTokenWithEmptyScopesAndRoles() {
-        currentVerifier = (token, processorId) -> {
-            TokenValidationResult result = TokenValidationResult.success(null);
-            result.setIssuer("test-issuer");
-            result.setScopes(List.of());
-            result.setRoles(List.of());
-            result.setAuthorized(false);
-            return result;
-        };
+        currentVerifier = (token, processorId) -> TokenValidationResult.success(null);
 
         handle.spec()
                 .contentType("application/json")
@@ -419,9 +424,7 @@ class JwtVerificationServletTest {
             tokenHolder.withClaim("custom", ClaimValue.forPlainString("value"));
             AccessTokenContent tokenContent = tokenHolder.asAccessTokenContent();
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -459,9 +462,7 @@ class JwtVerificationServletTest {
             AccessTokenContent tokenContent = new AccessTokenContent(
                     tokenHolder.getClaims(), rawToken);
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -497,9 +498,7 @@ class JwtVerificationServletTest {
             AccessTokenContent tokenContent = new AccessTokenContent(
                     tokenHolder.getClaims(), rawToken);
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -527,9 +526,7 @@ class JwtVerificationServletTest {
             AccessTokenContent tokenContent = new AccessTokenContent(
                     tokenHolder.getClaims(), "not-a-valid-jwt");
 
-            TokenValidationResult result = TokenValidationResult.success(tokenContent);
-            result.setAuthorized(true);
-            return result;
+            return TokenValidationResult.success(tokenContent);
         };
 
         handle.spec()
@@ -599,9 +596,7 @@ class JwtVerificationServletTest {
         @DisplayName("Should let a legitimate UUID processor ID pass header validation")
         void shouldAllowLegitimateProcessorId() {
             currentVerifier = (token, processorId) -> {
-                TokenValidationResult result = TokenValidationResult.success(null);
-                result.setAuthorized(true);
-                return result;
+                return TokenValidationResult.success(null);
             };
 
             handle.spec()
@@ -619,9 +614,7 @@ class JwtVerificationServletTest {
         @DisplayName("Should let a legitimate UUID X-Processor-Id header pass validation")
         void shouldAllowLegitimateProcessorIdHeader() {
             currentVerifier = (token, processorId) -> {
-                TokenValidationResult result = TokenValidationResult.success(null);
-                result.setAuthorized(true);
-                return result;
+                return TokenValidationResult.success(null);
             };
 
             handle.spec()

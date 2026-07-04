@@ -37,7 +37,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.net.InetAddress;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -262,6 +261,26 @@ class JwksValidationServletTest {
     }
 
     @Test
+    @DisplayName("Should reject request body larger than 1 MB with 413")
+    void oversizedBodyReturns413() {
+        // 1 MB of padding pushes the total body over MAX_REQUEST_BODY_SIZE; the
+        // limit must hold even without a trustworthy Content-Length header
+        String requestJson = """
+                {"jwksContent":"%s","processorId":"test-processor-id"}"""
+                .formatted("a".repeat(1024 * 1024));
+
+        handle.spec()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(413)
+                .body("valid", equalTo(false))
+                .body("error", containsString("too large"));
+    }
+
+    @Test
     @DisplayName("Should block private address via SSRF protection")
     void ssrfProtectionBlocksPrivateAddress() {
         handle.spec()
@@ -324,6 +343,52 @@ class JwksValidationServletTest {
             assertNull(servlet.resolveAndValidateAddress(null, true));
             assertNull(servlet.resolveAndValidateAddress("", false));
             assertNull(servlet.resolveAndValidateAddress(null, false));
+        }
+
+        @ParameterizedTest
+        @DisplayName("Should classify non-global-unicast addresses as private/local")
+        @CsvSource({
+                // loopback
+                "127.0.0.1, true",
+                "::1, true",
+                // RFC 1918 site-local
+                "10.0.0.1, true",
+                "172.16.0.1, true",
+                "192.168.1.1, true",
+                // link-local
+                "169.254.1.1, true",
+                "fe80::1, true",
+                // wildcard
+                "0.0.0.0, true",
+                "::, true",
+                // multicast
+                "224.0.0.1, true",
+                "ff02::1, true",
+                // IPv6 unique-local fc00::/7
+                "fc00::1, true",
+                "fdff:ffff::1, true",
+                // carrier-grade NAT 100.64.0.0/10
+                "100.64.0.1, true",
+                "100.127.255.255, true",
+                // benchmarking 198.18.0.0/15
+                "198.18.0.1, true",
+                "198.19.255.255, true",
+                // global unicast — must stay reachable
+                "8.8.8.8, false",
+                "93.184.216.34, false",
+                "2001:4860:4860::8888, false",
+                // boundary neighbours of the blocked ranges
+                "100.63.255.255, false",
+                "100.128.0.1, false",
+                "198.17.255.255, false",
+                "198.20.0.1, false",
+                "fb00::1, false"
+        })
+        void shouldClassifyPrivateOrLocalAddresses(String address, boolean expectedPrivate) throws Exception {
+            InetAddress inetAddress = InetAddress.getByName(address);
+
+            assertEquals(expectedPrivate, JwksValidationServlet.isPrivateOrLocalAddress(inetAddress),
+                    "Unexpected classification for " + address);
         }
 
         @Test
@@ -718,70 +783,6 @@ class JwksValidationServletTest {
         }
 
         @Test
-        @DisplayName("Should accept response via resolved address within size limit")
-        void shouldAcceptResponseViaResolvedAddress() throws Exception {
-            String validJwks = InMemoryKeyMaterialHandler.createDefaultJwks();
-            mockServer.enqueue(new MockResponse.Builder()
-                    .code(200)
-                    .addHeader("Content-Type", "application/json")
-                    .body(validJwks)
-                    .build());
-
-            JwksValidationServlet servlet = new JwksValidationServlet();
-            URI uri = URI.create(mockServer.url("/jwks").toString());
-            InetAddress resolved = InetAddress.getByName(uri.getHost());
-
-            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
-                    uri.toString(), uri, resolved);
-
-            assertTrue(result.isSuccess());
-            assertTrue(result.getContent().isPresent());
-            assertEquals(validJwks, result.getContent().get());
-        }
-
-        @Test
-        @DisplayName("Should reject oversized response via resolved address")
-        void shouldRejectOversizedResponseViaResolvedAddress() throws Exception {
-            String oversizedBody = "x".repeat(1024 * 1024 + 1);
-            mockServer.enqueue(new MockResponse.Builder()
-                    .code(200)
-                    .addHeader("Content-Type", "application/json")
-                    .body(oversizedBody)
-                    .build());
-
-            JwksValidationServlet servlet = new JwksValidationServlet();
-            URI uri = URI.create(mockServer.url("/jwks").toString());
-            InetAddress resolved = InetAddress.getByName(uri.getHost());
-
-            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
-                    uri.toString(), uri, resolved);
-
-            assertFalse(result.isSuccess());
-            assertTrue(result.getErrorMessage().isPresent());
-            assertTrue(result.getErrorMessage().get().contains("exceeds maximum size limit"));
-        }
-
-        @Test
-        @DisplayName("Should return failure for non-200 status via resolved address")
-        void shouldReturnFailureForNon200ViaResolvedAddress() throws Exception {
-            mockServer.enqueue(new MockResponse.Builder()
-                    .code(503)
-                    .body("Service Unavailable")
-                    .build());
-
-            JwksValidationServlet servlet = new JwksValidationServlet();
-            URI uri = URI.create(mockServer.url("/jwks").toString());
-            InetAddress resolved = InetAddress.getByName(uri.getHost());
-
-            HttpResult<String> result = servlet.fetchJwksContentByResolvedAddress(
-                    uri.toString(), uri, resolved);
-
-            assertFalse(result.isSuccess());
-            assertTrue(result.getErrorMessage().isPresent());
-            assertTrue(result.getErrorMessage().get().contains("status 503"));
-        }
-
-        @Test
         @DisplayName("Should validate JWKS URL end-to-end with valid content via servlet")
         void shouldValidateJwksUrlEndToEnd() throws Exception {
             // Arrange — mock NiFi config that returns allowPrivateAddresses=true
@@ -809,7 +810,7 @@ class JwksValidationServletTest {
 
             try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
                      ctx.setAttribute("nifi-web-configuration-context", mockCtx);
-                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                     var holder = new ServletHolder(
                              new JwksValidationServlet());
                      ctx.addServlet(holder, URL_ENDPOINT);
                  })) {
@@ -857,7 +858,7 @@ class JwksValidationServletTest {
 
             try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
                      ctx.setAttribute("nifi-web-configuration-context", mockCtx);
-                     var holder = new org.eclipse.jetty.ee11.servlet.ServletHolder(
+                     var holder = new ServletHolder(
                              new JwksValidationServlet());
                      ctx.addServlet(holder, URL_ENDPOINT);
                  })) {

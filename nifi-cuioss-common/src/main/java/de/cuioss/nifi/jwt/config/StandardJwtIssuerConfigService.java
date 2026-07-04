@@ -216,6 +216,10 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @OnDisabled
     public void onDisabled() {
+        if (tokenValidator != null) {
+            // Release the validator's background JWKS refresh resources
+            tokenValidator.close();
+        }
         tokenValidator = null;
         authenticationConfig = null;
         configurationManager = null;
