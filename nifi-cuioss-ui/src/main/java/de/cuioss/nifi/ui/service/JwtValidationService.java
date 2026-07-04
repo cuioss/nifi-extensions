@@ -111,18 +111,27 @@ public class JwtValidationService {
         Map<String, String> issuerProperties = resolveIssuerProperties(
                 processorProperties, configReader, request);
 
-        // 2. Get or create a cached TokenValidator
-        TokenValidator validator = getOrCreateValidator(issuerProperties);
-
-        // 3. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
+        // 2.+3. Resolve the cached TokenValidator and validate under the same lock, so a
+        // concurrent request with changed properties cannot close the validator between
+        // lookup and use. Serializing validation is acceptable for this admin-UI endpoint.
         try {
-            AccessTokenContent tokenContent = validator.createAccessToken(AccessTokenRequest.of(token));
+            AccessTokenContent tokenContent = validateWithCurrentValidator(issuerProperties, token);
             LOGGER.debug("Token validation successful for processor %s", processorId);
             return TokenValidationResult.success(tokenContent);
         } catch (TokenValidationException e) {
             LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
             return TokenValidationResult.failure(e.getMessage());
         }
+    }
+
+    /**
+     * Validates the token with the validator matching the given issuer properties.
+     * Synchronized together with {@link #getOrCreateValidator(Map)} so the cached
+     * validator cannot be disposed while a validation is in flight.
+     */
+    private synchronized AccessTokenContent validateWithCurrentValidator(
+            Map<String, String> issuerProperties, String token) {
+        return getOrCreateValidator(issuerProperties).createAccessToken(AccessTokenRequest.of(token));
     }
 
     /**
