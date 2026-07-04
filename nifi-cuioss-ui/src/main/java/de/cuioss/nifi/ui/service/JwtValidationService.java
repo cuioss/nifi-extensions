@@ -152,6 +152,11 @@ public class JwtValidationService {
                     + " (properties: " + issuerProperties.keySet() + ")");
         }
 
+        // Dispose the previous validator so its background JWKS refresh resources
+        // do not leak across configuration changes
+        if (cachedValidator != null) {
+            cachedValidator.close();
+        }
         cachedValidator = TokenValidator.builder()
                 .parserConfig(parserConfig)
                 .issuerConfigs(issuerConfigs)
@@ -284,15 +289,15 @@ public class JwtValidationService {
         private final boolean valid;
         private final String error;
         private final AccessTokenContent tokenContent;
-        private String issuer;
-        private boolean authorized;
-        private List<String> scopes;
-        private List<String> roles;
+        private final boolean authorized;
 
         private TokenValidationResult(boolean valid, String error, AccessTokenContent tokenContent) {
             this.valid = valid;
             this.error = error;
             this.tokenContent = tokenContent;
+            // The UI verify-token endpoint has no separate role/scope requirements;
+            // a successfully validated token is authorized.
+            this.authorized = valid;
         }
 
         public static TokenValidationResult success(AccessTokenContent tokenContent) {
@@ -307,53 +312,31 @@ public class JwtValidationService {
             return valid;
         }
 
+        @Nullable
         public String getError() {
             return error;
         }
 
+        @Nullable
         public AccessTokenContent getTokenContent() {
             return tokenContent;
         }
 
-        public void setIssuer(String issuer) {
-            this.issuer = issuer;
-        }
-
+        @Nullable
         public String getIssuer() {
-            if (issuer != null) {
-                return issuer;
-            }
             return tokenContent != null ? tokenContent.getIssuer() : null;
-        }
-
-        public void setAuthorized(boolean authorized) {
-            this.authorized = authorized;
         }
 
         public boolean isAuthorized() {
             return authorized;
         }
 
-        public void setScopes(List<String> scopes) {
-            this.scopes = scopes;
-        }
-
         public List<String> getScopes() {
-            if (scopes != null) {
-                return scopes;
-            }
-            return tokenContent != null ? tokenContent.getScopes() : null;
-        }
-
-        public void setRoles(List<String> roles) {
-            this.roles = roles;
+            return tokenContent != null ? tokenContent.getScopes() : List.of();
         }
 
         public List<String> getRoles() {
-            if (roles != null) {
-                return roles;
-            }
-            return tokenContent != null ? tokenContent.getRoles() : null;
+            return tokenContent != null ? tokenContent.getRoles() : List.of();
         }
 
         /**
