@@ -20,7 +20,6 @@ import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
 import jakarta.json.JsonException;
 import lombok.Builder;
 import org.eclipse.jetty.http.HttpHeader;
@@ -30,8 +29,6 @@ import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -234,7 +231,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 .computeIfAbsent(parentTraceId, k -> new AtomicInteger(0))
                 .incrementAndGet();
         if (count > parent.attachmentsMaxCount()) {
-            attachmentCounters.get(parentTraceId).decrementAndGet();
+            rollbackAttachmentCount(parentTraceId);
             LOGGER.warn(RestApiLogMessages.WARN.ATTACHMENT_LIMIT_REACHED,
                     parentTraceId, count - 1, parent.attachmentsMaxCount());
             ProblemDetail.conflict("Attachment limit reached: " + parent.attachmentsMaxCount())
@@ -251,7 +248,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
         try {
             statusStore.accept(traceId, parentTraceId);
         } catch (IOException e) {
-            attachmentCounters.get(parentTraceId).decrementAndGet();
+            rollbackAttachmentCount(parentTraceId);
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             ProblemDetail.serviceUnavailable("Status store temporarily unavailable")
                     .sendResponse(response, callback);
@@ -278,7 +275,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 sanitized.pathParameters());
 
         if (!queue.offer(container)) {
-            attachmentCounters.get(parentTraceId).decrementAndGet();
+            rollbackAttachmentCount(parentTraceId);
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, "POST", sanitized.path(),
                     Request.getRemoteAddr(request));
@@ -287,6 +284,18 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Decrements the attachment counter for a rolled-back registration. Null-safe:
+     * the counter may have been evicted concurrently by {@code lookupAndValidateParent}
+     * (parent gone or window closed on another thread) — a missing entry needs no rollback.
+     */
+    private void rollbackAttachmentCount(String parentTraceId) {
+        attachmentCounters.computeIfPresent(parentTraceId, (k, counter) -> {
+            counter.decrementAndGet();
+            return counter;
+        });
     }
 
     private void autoTransitionToProcessedIfMinMet(String parentTraceId, RequestStatusEntry parent, int count) {

@@ -127,17 +127,20 @@ class RestApiGatewayProcessorTest {
             runner.setProperty(RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
             runner.setProperty(RestApiGatewayConstants.Properties.LISTENING_PORT, "0");
 
-            runner.run(1, false, true);
+            try {
+                runner.run(1, false, true);
 
-            var processor = (RestApiGatewayProcessor) runner.getProcessor();
-            assertFalse(processor.serverManager.isRunning(),
-                    "Embedded server must not start when no routes are configured");
-            assertEquals(
-                    java.util.Set.of(RestApiGatewayConstants.Relationships.FAILURE,
-                            RestApiGatewayConstants.Relationships.ATTACHMENTS),
-                    processor.getRelationships(),
-                    "Only the built-in relationships must remain without routes");
-            runner.stop();
+                var processor = (RestApiGatewayProcessor) runner.getProcessor();
+                assertFalse(processor.serverManager.isRunning(),
+                        "Embedded server must not start when no routes are configured");
+                assertEquals(
+                        Set.of(RestApiGatewayConstants.Relationships.FAILURE,
+                                RestApiGatewayConstants.Relationships.ATTACHMENTS),
+                        processor.getRelationships(),
+                        "Only the built-in relationships must remain without routes");
+            } finally {
+                runner.stop();
+            }
         }
     }
 

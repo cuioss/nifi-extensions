@@ -34,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Built-in handler for the {@code /status/{traceId}} management endpoint.

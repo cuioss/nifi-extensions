@@ -359,6 +359,41 @@ class GatewayRequestHandlerTest {
                 smallServer.stop();
             }
         }
+
+        @Test
+        @DisplayName("Should reject unauthenticated oversized POST with 401 before reading the body")
+        void shouldRejectUnauthenticatedOversizedPostBeforeBodyRead() throws Exception {
+            // Auth runs before body buffering: an unauthenticated client must get
+            // 401 and must NOT trigger BODY_TOO_LARGE for its oversized payload
+            var smallHandler = new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
+                            .method("POST").build()), queue, 10),
+                    mockConfigService, 10); // 10 bytes max
+
+            Server smallServer = new Server();
+            ServerConnector connector = new ServerConnector(smallServer);
+            connector.setPort(0);
+            smallServer.addConnector(connector);
+            smallServer.setHandler(smallHandler);
+            smallServer.start();
+
+            int smallPort = connector.getLocalPort();
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + smallPort + "/api/data"))
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(401, response.statusCode());
+                assertEquals(0L, smallHandler.getGatewaySecurityEvents().getCount(EventType.BODY_TOO_LARGE),
+                        "Body size must not be evaluated for unauthenticated requests");
+                assertEquals(1L, smallHandler.getGatewaySecurityEvents().getCount(EventType.MISSING_BEARER_TOKEN));
+            } finally {
+                smallServer.stop();
+            }
+        }
     }
 
     @Nested
