@@ -415,6 +415,10 @@ export class ProcessorService {
       attempts++;
       if (attempts < maxAttempts) {
         testLogger.info('Processor',`[Processor] Waiting before retry ${attempts}/${maxAttempts}`);
+        // Polling interval between frame-detection attempts. There is no single
+        // observable condition to wait on here — the surrounding retry loop IS the
+        // condition (frame appears, loads, and passes the stability check), so a
+        // short pacing sleep between iterations is intentional.
         await this.page.waitForTimeout(500);
       }
     }

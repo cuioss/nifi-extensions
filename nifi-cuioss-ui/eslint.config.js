@@ -37,12 +37,11 @@ export default [
             '@stylistic': stylistic
         },
         languageOptions: {
-            ecmaVersion: 2020,
+            ecmaVersion: 2022,
             sourceType: 'module',
             globals: {
                 ...globals.browser,
                 ...globals.node,
-                ...globals.jest,
                 globalThis: 'readonly'
             }
         },
@@ -87,8 +86,36 @@ export default [
         }
     },
     {
+        // Production webapp source: console is forbidden — use the `log` utility
+        // from utils.js instead. The only sanctioned exceptions (below) are
+        // utils.js itself (it implements the log wrapper) and nifi-common-init.js
+        // (a classic non-module script that cannot import utils.js).
+        files: ['src/main/webapp/js/**/*.js'],
+        rules: {
+            'no-console': 'error'
+        }
+    },
+    {
+        files: [
+            'src/main/webapp/js/utils.js',
+            'src/main/webapp/js/nifi-common-init.js'
+        ],
+        rules: {
+            'no-console': ['error', {
+                allow: ['debug', 'info', 'warn', 'error']
+            }]
+        }
+    },
+    {
         files: ['src/test/js/**/*.js'],
         ...jest.configs['flat/recommended'],
+        languageOptions: {
+            ...(jest.configs['flat/recommended'].languageOptions ?? {}),
+            globals: {
+                ...(jest.configs['flat/recommended'].languageOptions?.globals ?? {}),
+                ...globals.jest
+            }
+        },
         rules: {
             ...jest.configs['flat/recommended'].rules,
             'jest/expect-expect': 'error',

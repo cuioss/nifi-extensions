@@ -13,8 +13,6 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi
  */
 const TARGET_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || path.join(__dirname, 'target');
 const TEST_RESULTS_DIR = process.env.TEST_RESULTS_DIR || path.join(TARGET_DIR, 'test-results');
-const SCREENSHOTS_DIR = path.join(TEST_RESULTS_DIR, 'screenshots');
-const VIDEOS_DIR = path.join(TEST_RESULTS_DIR, 'videos');
 
 /** Shared Chrome launch options for all projects */
 const CHROME_OPTIONS = {
@@ -66,9 +64,6 @@ module.exports = defineConfig({
   outputDir: TEST_RESULTS_DIR,
   /* Preserve output from test runs */
   preserveOutput: 'always',
-  /* Screenshot and video directories */
-  screenshotsDir: SCREENSHOTS_DIR,
-  videosDir: VIDEOS_DIR,
   /* Shared settings for all projects */
   use: {
     baseURL: BASE_URL,

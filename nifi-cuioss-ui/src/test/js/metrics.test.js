@@ -126,6 +126,22 @@ describe('metrics — gateway mode', () => {
         document.body.innerHTML = '';
     });
 
+    it('should auto-refresh periodically using the injectable interval', async () => {
+        init(container, true, { refreshIntervalMs: 20 });
+        await new Promise((r) => setTimeout(r, 100));
+
+        // Initial load plus at least one interval-driven refresh
+        expect(api.fetchGatewayApi.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    it('should not auto-refresh when the interval is disabled', async () => {
+        init(container, true, { refreshIntervalMs: 0 });
+        await new Promise((r) => setTimeout(r, 60));
+
+        // Only the initial load — no interval registered
+        expect(api.fetchGatewayApi).toHaveBeenCalledTimes(1);
+    });
+
     it('should render gateway template with three sections', async () => {
         init(container, true);
         await new Promise((r) => setTimeout(r, 50));

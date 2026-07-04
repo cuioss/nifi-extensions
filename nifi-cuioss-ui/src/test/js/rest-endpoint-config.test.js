@@ -82,9 +82,6 @@ describe('rest-endpoint-config', () => {
             onConfirm();
             return Promise.resolve(true);
         });
-        // Default: all relationships appear connected (bootstrapped on NiFi canvas)
-        api.getConnectedRelationships.mockResolvedValue(new Set(['health', 'data', 'api-data']));
-
         // Reset location (URL set via @jest-environment-options docblock)
         history.replaceState({}, '', '/nifi-jwt-ui/?id=test-processor-id');
 
@@ -878,6 +875,55 @@ describe('rest-endpoint-config', () => {
         expect(fileInput.value).toBe('./conf/schemas/my-schema.json');
     });
 
+    it('should not allow a malicious schema file path to break out of the value attribute', async () => {
+        const payload = 'x" autofocus onfocus="alert(1)';
+        const propsWithEvilSchema = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.health.schema': payload
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsWithEvilSchema,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const fileInput = form.querySelector('.field-schema-file');
+        // The full payload must land in the input's value, not in new attributes
+        expect(fileInput.value).toBe(payload);
+        expect(fileInput.hasAttribute('onfocus')).toBe(false);
+        expect(fileInput.hasAttribute('autofocus')).toBe(false);
+        expect(form.querySelector('[onfocus]')).toBeNull();
+    });
+
+    it('should not allow a malicious connection name to break out of the datalist option attribute', async () => {
+        const payload = 'x" onfocus="alert(1)';
+        const propsWithEvilOutcome = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.data.success-outcome': payload
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: propsWithEvilOutcome,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        // Edit the other route so the datalist collects the evil connection name
+        const healthRow = container.querySelector('tr[data-route-name="health"]');
+        healthRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        const options = Array.from(form.querySelectorAll('datalist option'));
+        // The full payload must be the option's value, not attribute spillover
+        expect(options.some((o) => o.value === payload)).toBe(true);
+        expect(form.querySelector('datalist option[onfocus]')).toBeNull();
+    });
+
     it('should show inline mode for inline JSON schema', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: PROPERTIES_WITH_SCHEMA,
@@ -1209,8 +1255,6 @@ describe('rest-endpoint-config', () => {
     });
 
     it('should show origin badge for all persisted routes regardless of connection', async () => {
-        // Only 'health' is connected; 'data' is not
-        api.getConnectedRelationships.mockResolvedValue(new Set(['health']));
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
             revision: { version: 1 }
@@ -2164,8 +2208,15 @@ describe('rest-endpoint-config', () => {
 
         // Row should be visible again with updated status
         expect(row.classList.contains('hidden')).toBe(false);
-        const enabledCell = row.querySelectorAll('td')[2];
+        // cells: 0=name, 1=path, 2=methods, 3=enabled, 4=authmode, 5=actions
+        const enabledCell = row.querySelectorAll('td')[3];
         expect(enabledCell.querySelector('.status-disabled')).not.toBeNull();
+        // Methods column must be left untouched by the save
+        const methodsCell = row.querySelectorAll('td')[2];
+        expect(methodsCell.querySelector('.method-badge')).not.toBeNull();
+        // Auth-mode column must carry the updated badges
+        const authModeCell = row.querySelectorAll('td')[4];
+        expect(authModeCell.querySelector('.authmode-badge')).not.toBeNull();
     });
 
     it('should close previous management editor when opening another', async () => {
@@ -2206,8 +2257,9 @@ describe('rest-endpoint-config', () => {
         await tick();
 
         // Row should be updated with enabled status
+        // cells: 0=name, 1=path, 2=methods, 3=enabled, 4=authmode, 5=actions
         expect(configRow.classList.contains('hidden')).toBe(false);
-        const enabledCell = configRow.querySelectorAll('td')[2];
+        const enabledCell = configRow.querySelectorAll('td')[3];
         expect(enabledCell.querySelector('.status-enabled')).not.toBeNull();
     });
 
@@ -2488,7 +2540,7 @@ describe('rest-endpoint-config', () => {
             expect(rows.length).toBe(2); // health and data from SAMPLE_PROPERTIES
         });
 
-        it('should not display disabled-test external routes', async () => {
+        it('should display disabled external routes with Disabled status', async () => {
             api.getComponentProperties.mockResolvedValue({
                 properties: SAMPLE_PROPERTIES,
                 revision: { version: 1 }
@@ -2506,9 +2558,10 @@ describe('rest-endpoint-config', () => {
             await init(container);
             await tick();
 
-            // Disabled routes are filtered out by convertGatewayRoutesToMap
+            // Disabled routes must stay visible so they can be re-enabled/deleted
             const dataRow = container.querySelector('tr[data-route-name="data"]');
-            expect(dataRow).toBeNull();
+            expect(dataRow).not.toBeNull();
+            expect(dataRow.querySelector('.status-disabled')).not.toBeNull();
         });
     });
 

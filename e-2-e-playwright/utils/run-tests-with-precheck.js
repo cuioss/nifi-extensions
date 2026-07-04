@@ -4,6 +4,12 @@
  * @file Run Tests with Pre-check
  * Ensures self-tests pass before running actual tests
  * @version 1.0.0
+ *
+ * NOTE: This script duplicates the gating that playwright.config.cjs already
+ * enforces via project `dependencies` (auth-setup -> self-tests -> functional/
+ * accessibility). It is kept because the `test` and `test:jwt` npm scripts and
+ * the docs reference it — it additionally provides an explicit fail-fast run
+ * of the self-tests with friendlier console output before the main suite.
  */
 
 import { spawn } from 'child_process';

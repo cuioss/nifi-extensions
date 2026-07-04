@@ -14,13 +14,15 @@ export const PAGE_TYPES = {
 
 /**
  * Authentication constants
- * 
- * ⚠️  WARNING: DO NOT CHANGE THESE VALUES WITHOUT PRIOR USER CONSULTATION
- * These credentials must match the NiFi instance configuration
+ *
+ * ⚠️  WARNING: DO NOT CHANGE THESE DEFAULTS WITHOUT PRIOR USER CONSULTATION
+ * These credentials must match the NiFi instance configuration (throwaway
+ * docker/Keycloak test realm). Overridable via environment variables,
+ * mirroring how the service URLs are handled.
  */
 export const AUTH = {
-  USERNAME: 'testUser',
-  PASSWORD: 'drowssap'
+  USERNAME: process.env.PLAYWRIGHT_TEST_USERNAME || 'testUser',
+  PASSWORD: process.env.PLAYWRIGHT_TEST_PASSWORD || 'drowssap'
 };
 
 /**
@@ -38,8 +40,8 @@ export const KEYCLOAK_CONFIG = {
  * 'user' role — missing the 'read' role required by the processor.
  */
 export const LIMITED_USER_CONFIG = {
-  USERNAME: 'limitedUser',
-  PASSWORD: 'drowssap',
+  USERNAME: process.env.PLAYWRIGHT_LIMITED_USERNAME || 'limitedUser',
+  PASSWORD: process.env.PLAYWRIGHT_LIMITED_PASSWORD || 'drowssap',
 };
 
 /**
@@ -50,9 +52,9 @@ export const LIMITED_USER_CONFIG = {
 export const OTHER_REALM_CONFIG = {
   REALM: 'other_realm',
   CLIENT_ID: 'other_client',
-  CLIENT_SECRET: 'otherClientSecretValue123456789',
-  USERNAME: 'otherUser',
-  PASSWORD: 'drowssap',
+  CLIENT_SECRET: process.env.PLAYWRIGHT_OTHER_REALM_CLIENT_SECRET || 'otherClientSecretValue123456789',
+  USERNAME: process.env.PLAYWRIGHT_OTHER_REALM_USERNAME || 'otherUser',
+  PASSWORD: process.env.PLAYWRIGHT_OTHER_REALM_PASSWORD || 'drowssap',
   TOKEN_ENDPOINT: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085') + '/realms/other_realm/protocol/openid-connect/token'
 };
 

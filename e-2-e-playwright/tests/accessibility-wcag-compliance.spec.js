@@ -158,7 +158,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                             .locator(component.selector)
                             .count()) > 0;
                     expect(tabsExist).toBe(true);
-                    return; // Skip detailed check for tabs
                 }
 
                 // For configForm, check if it's visible (default tab)
@@ -167,24 +166,25 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                         .locator(component.selector)
                         .isVisible();
                     expect(configFormVisible).toBe(true);
-
-                    // Run accessibility check — let failures propagate
-                    const helper =
-                        await ensureValidAccessibilityHelper(testInfo);
-                    const result = await helper.checkComponent(
-                        component.selector,
-                        component.name,
-                    );
-
-                    if (!result.passed) {
-                        testLogger.warn(
-                            "A11y",
-                            `${component.name} issues: ${JSON.stringify(result, null, 2)}`,
-                        );
-                    }
-
-                    expect(result.passed).toBe(true);
                 }
+
+                // Run the axe component scan for every component —
+                // let failures propagate
+                const helper =
+                    await ensureValidAccessibilityHelper(testInfo);
+                const result = await helper.checkComponent(
+                    component.selector,
+                    component.name,
+                );
+
+                if (!result.passed) {
+                    testLogger.warn(
+                        "A11y",
+                        `${component.name} issues: ${JSON.stringify(result, null, 2)}`,
+                    );
+                }
+
+                expect(result.passed).toBe(true);
             });
         }
     });
@@ -290,7 +290,17 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                     i++
                 ) {
                     await page.keyboard.press("Tab");
-                    await page.waitForTimeout(100); // Small delay for focus to settle
+                    // Condition-based wait: focus must have settled on a
+                    // non-body element before the next Tab press
+                    await expect
+                        .poll(() =>
+                            customUIFrame.evaluate(
+                                () =>
+                                    document.activeElement !== null &&
+                                    document.activeElement !== document.body,
+                            ),
+                        )
+                        .toBe(true);
                 }
             }
         });
@@ -393,9 +403,13 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 .first();
             if (await validateButton.isVisible()) {
                 await validateButton.click();
-                await page.waitForTimeout(500);
 
+                // Condition-based wait: give the validation result time to
+                // render; the error is optional, so a missed appearance is fine
                 const errorMessage = customUIFrame.locator(".validation-error").first();
+                await errorMessage
+                    .waitFor({ state: "visible", timeout: 5000 })
+                    .catch(() => {});
                 if (await errorMessage.isVisible()) {
                     const contrast = await errorMessage.evaluate((el) => {
                         const styles = window.getComputedStyle(el);

@@ -70,7 +70,10 @@ export const accessibilityTest = test.extend({
     page: async ({ accessibilityPage }, use, _testInfo) => {
         await use(accessibilityPage);
 
-        // Run accessibility check after each test
+        // Run accessibility check after each test.
+        // NOTE: This per-test axe scan is ADVISORY ONLY — violations are logged
+        // but never fail the test. Enforced WCAG compliance lives in
+        // tests/accessibility-wcag-compliance.spec.js.
         await test.step("Accessibility check", async () => {
             try {
                 const results = await new AxeBuilder({
@@ -87,12 +90,17 @@ export const accessibilityTest = test.extend({
                                 `${v.id}: ${v.description} (${v.nodes.length} elements)`,
                         )
                         .join("\n");
-                     
-                    console.warn("Accessibility issues found:\n" + summary);
+
+                    testLogger.warn(
+                        "A11y",
+                        "Accessibility issues found (advisory):\n" + summary,
+                    );
                 }
             } catch (error) {
-                 
-                console.warn("Accessibility check failed:", error.message);
+                testLogger.warn(
+                    "A11y",
+                    `Accessibility check failed: ${error.message}`,
+                );
             }
         });
     },

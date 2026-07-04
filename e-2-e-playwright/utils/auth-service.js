@@ -181,14 +181,15 @@ export class AuthService {
         const authSuccess = mainCanvasVisible || logoutVisible || usernameVisible;
 
         if (!authSuccess) {
-          // Wait a bit more and try again
-          await this.page.waitForTimeout(2000);
-
-          const retryMainCanvas = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).isVisible().catch(() => false);
-          const retryLogout = await this.page.getByRole('button', { name: /log out|logout/i }).isVisible().catch(() => false);
-          const retryUsername = await this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).isVisible().catch(() => false);
-
-          const retrySuccess = retryMainCanvas || retryLogout || retryUsername;
+          // Condition-based wait: poll for any auth indicator to become visible
+          // instead of a fixed sleep followed by a single re-check
+          const waitForIndicator = (locator) =>
+            locator.waitFor({ state: 'visible', timeout: 5000 }).then(() => true);
+          const retrySuccess = await Promise.any([
+            waitForIndicator(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).first()),
+            waitForIndicator(this.page.getByRole('button', { name: /log out|logout/i }).first()),
+            waitForIndicator(this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).first())
+          ]).catch(() => false);
 
           if (!retrySuccess) {
             throw new Error('Authentication indicators not found after retry');

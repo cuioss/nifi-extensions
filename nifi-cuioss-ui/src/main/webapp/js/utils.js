@@ -127,6 +127,9 @@ export const TRANSLATIONS = {
         'issuer.table.issuer.uri': 'Issuer URI',
         'issuer.table.actions': 'Actions',
         'issuer.table.empty': 'No issuers configured. Click "Add Issuer" to create one.',
+        'issuer.table.edit.title': 'Edit issuer',
+        'issuer.table.remove.title': 'Delete issuer',
+        'issuer.remove.title': 'Delete this issuer configuration',
 
         // -- token verifier --
         'token.input.label': 'Enter Token',
@@ -160,10 +163,13 @@ export const TRANSLATIONS = {
         'route.table.enabled': 'Enabled',
         'route.table.actions': 'Actions',
         'route.table.empty': 'No routes configured. Click "Add Route" to create one.',
+        'route.table.edit.title': 'Edit route',
+        'route.table.remove.title': 'Delete route',
         'route.form.name.label': 'Route Name',
         'route.form.name.placeholder': 'e.g., health-check',
         'route.form.name.title': 'Unique identifier for this route configuration.',
         'route.form.enabled': 'Enabled',
+        'route.form.enabled.aria': 'Route Enabled',
         'route.form.path.label': 'Path',
         'route.form.path.placeholder': '/api/resource (required)',
         'route.form.roles.label': 'Required Roles',
@@ -541,6 +547,9 @@ export const TRANSLATIONS = {
         'issuer.table.issuer.uri': 'Issuer URI',
         'issuer.table.actions': 'Aktionen',
         'issuer.table.empty': 'Keine Issuer konfiguriert. Klicken Sie auf \u201eIssuer hinzuf\u00fcgen\u201c, um einen zu erstellen.',
+        'issuer.table.edit.title': 'Issuer bearbeiten',
+        'issuer.table.remove.title': 'Issuer l\u00f6schen',
+        'issuer.remove.title': 'Diese Issuer-Konfiguration l\u00f6schen',
 
         // -- token verifier --
         'token.input.label': 'Token eingeben',
@@ -574,10 +583,13 @@ export const TRANSLATIONS = {
         'route.table.enabled': 'Aktiviert',
         'route.table.actions': 'Aktionen',
         'route.table.empty': 'Keine Routen konfiguriert. Klicken Sie auf \u201eRoute hinzuf\u00fcgen\u201c, um eine zu erstellen.',
+        'route.table.edit.title': 'Route bearbeiten',
+        'route.table.remove.title': 'Route l\u00f6schen',
         'route.form.name.label': 'Route Name',
         'route.form.name.placeholder': 'z.B. health-check',
         'route.form.name.title': 'Eindeutiger Bezeichner f\u00fcr diese Route-Konfiguration.',
         'route.form.enabled': 'Aktiviert',
+        'route.form.enabled.aria': 'Route aktiviert',
         'route.form.path.label': 'Pfad',
         'route.form.path.placeholder': '/api/resource (erforderlich)',
         'route.form.roles.label': 'Erforderliche Rollen',
@@ -921,13 +933,13 @@ export const buildOriginBadge = (origin) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Format a number with locale-aware thousands separator.
+ * Format a number with locale-aware thousands separator (browser locale).
  * @param {number|null|undefined} n
  * @returns {string}
  */
 export const formatNumber = (n) => {
     if (n == null) return '';
-    return new Intl.NumberFormat('en-US').format(n);
+    return new Intl.NumberFormat(browserLang).format(n);
 };
 
 /**

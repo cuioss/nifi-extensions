@@ -139,9 +139,9 @@ describe('getProcessorProperties', () => {
     test('sends GET with processor ID using absolute path', async () => {
         mockJsonResponse({ revision: { version: 1 }, properties: {} });
 
-        const result = await getProcessorProperties('proc-123');
+        const result = await getProcessorProperties('44444444-4444-4444-4444-444444444444');
 
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/proc-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
         expect(result.revision.version).toBe(1);
     });
 });
@@ -153,23 +153,23 @@ describe('getProcessorProperties', () => {
 describe('updateProcessorProperties', () => {
     test('fetches current revision then sends PUT', async () => {
         // First call: GET current processor
-        mockJsonResponse({ revision: { version: 3 }, component: { id: 'proc-123' } });
+        mockJsonResponse({ revision: { version: 3 }, component: { id: '44444444-4444-4444-4444-444444444444' } });
         // Second call: PUT update
         mockJsonResponse({ revision: { version: 4 } });
 
-        const result = await updateProcessorProperties('proc-123', {
+        const result = await updateProcessorProperties('44444444-4444-4444-4444-444444444444', {
             'issuer.keycloak.issuer': 'https://auth.example.com'
         });
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 
         // First call: GET
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/proc-123');
+        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
         expect(globalThis.fetch.mock.calls[0][1].method).toBe('GET');
 
         // Second call: PUT
         const [putUrl, putOpts] = globalThis.fetch.mock.calls[1];
-        expect(putUrl).toBe('/nifi-api/processors/proc-123');
+        expect(putUrl).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(3);
@@ -191,7 +191,7 @@ describe('detectComponentType', () => {
             componentClass: 'de.cuioss.nifi.processors.auth.MultiIssuerJWTTokenAuthenticator'
         });
 
-        const info = await detectComponentType('comp-123');
+        const info = await detectComponentType('11111111-1111-1111-1111-111111111111');
 
         expect(info.type).toBe('PROCESSOR');
         expect(info.componentClass).toBe(
@@ -206,10 +206,10 @@ describe('detectComponentType', () => {
     test('should send explicit componentId as X-Processor-Id header', async () => {
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
 
-        await detectComponentType('my-explicit-id');
+        await detectComponentType('22222222-2222-2222-2222-222222222222');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
-        expect(headers['X-Processor-Id']).toBe('my-explicit-id');
+        expect(headers['X-Processor-Id']).toBe('22222222-2222-2222-2222-222222222222');
     });
 
     test('should detect controller service type via WAR servlet', async () => {
@@ -218,7 +218,7 @@ describe('detectComponentType', () => {
             componentClass: 'de.cuioss.nifi.jwt.config.StandardJwtIssuerConfigService'
         });
 
-        const info = await detectComponentType('cs-456');
+        const info = await detectComponentType('33333333-3333-3333-3333-333333333333');
 
         expect(info.type).toBe('CONTROLLER_SERVICE');
         expect(info.componentClass).toBe(
@@ -231,8 +231,8 @@ describe('detectComponentType', () => {
     test('should cache detection result per component ID', async () => {
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
 
-        await detectComponentType('comp-123');
-        const cached = await detectComponentType('comp-123');
+        await detectComponentType('11111111-1111-1111-1111-111111111111');
+        const cached = await detectComponentType('11111111-1111-1111-1111-111111111111');
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
         expect(cached.type).toBe('PROCESSOR');
@@ -245,16 +245,16 @@ describe('detectComponentType', () => {
             componentClass: 'ServiceB'
         });
 
-        const infoA = await detectComponentType('id-aaa');
-        const infoB = await detectComponentType('id-bbb');
+        const infoA = await detectComponentType('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        const infoB = await detectComponentType('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
         expect(infoA.type).toBe('PROCESSOR');
         expect(infoB.type).toBe('CONTROLLER_SERVICE');
 
         // Both should be cached independently
-        const cachedA = await detectComponentType('id-aaa');
-        const cachedB = await detectComponentType('id-bbb');
+        const cachedA = await detectComponentType('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        const cachedB = await detectComponentType('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
         expect(cachedA.type).toBe('PROCESSOR');
         expect(cachedB.type).toBe('CONTROLLER_SERVICE');
@@ -263,7 +263,13 @@ describe('detectComponentType', () => {
     test('should propagate errors from component-info endpoint', async () => {
         mockErrorResponse(500, 'Server Error');
 
-        await expect(detectComponentType('comp-123')).rejects.toThrow('HTTP 500');
+        await expect(detectComponentType('11111111-1111-1111-1111-111111111111')).rejects.toThrow('HTTP 500');
+    });
+
+    test('should reject non-UUID component IDs', async () => {
+        await expect(detectComponentType('../../admin'))
+            .rejects.toThrow('Invalid Component ID');
+        expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 });
 
@@ -273,7 +279,7 @@ describe('detectComponentType', () => {
 
 describe('getComponentProperties', () => {
     test('should extract processor properties via propsPath', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
+        globalThis.jwtAuthConfig = { processorId: '44444444-4444-4444-4444-444444444444' };
         // Detection call
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // Properties call — NiFi REST API response structure
@@ -282,15 +288,15 @@ describe('getComponentProperties', () => {
             component: { config: { properties: { 'key1': 'val1' } } }
         });
 
-        const result = await getComponentProperties('proc-123');
+        const result = await getComponentProperties('44444444-4444-4444-4444-444444444444');
 
         expect(result.properties).toEqual({ 'key1': 'val1' });
         expect(result.revision.version).toBe(1);
-        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/processors/proc-123');
+        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
     });
 
     test('should extract CS properties via propsPath', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
+        globalThis.jwtAuthConfig = { processorId: '33333333-3333-3333-3333-333333333333' };
         // Detection call
         mockJsonResponse({ type: 'CONTROLLER_SERVICE', componentClass: 'SomeCS' });
         // Properties call — CS response structure
@@ -299,20 +305,26 @@ describe('getComponentProperties', () => {
             component: { properties: { 'csKey': 'csVal' } }
         });
 
-        const result = await getComponentProperties('cs-456');
+        const result = await getComponentProperties('33333333-3333-3333-3333-333333333333');
 
         expect(result.properties).toEqual({ 'csKey': 'csVal' });
-        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/controller-services/cs-456');
+        expect(globalThis.fetch.mock.calls[1][0]).toBe('/nifi-api/controller-services/33333333-3333-3333-3333-333333333333');
     });
 
     test('should return empty properties when path yields null', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
+        globalThis.jwtAuthConfig = { processorId: '44444444-4444-4444-4444-444444444444' };
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         mockJsonResponse({ revision: { version: 1 }, component: {} });
 
-        const result = await getComponentProperties('proc-123');
+        const result = await getComponentProperties('44444444-4444-4444-4444-444444444444');
 
         expect(result.properties).toEqual({});
+    });
+
+    test('should reject non-UUID component IDs', async () => {
+        await expect(getComponentProperties('not-a-uuid'))
+            .rejects.toThrow('Invalid Component ID');
+        expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 });
 
@@ -322,20 +334,20 @@ describe('getComponentProperties', () => {
 
 describe('updateComponentProperties', () => {
     test('should use config.properties path for PROCESSOR type', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'proc-123' };
+        globalThis.jwtAuthConfig = { processorId: '44444444-4444-4444-4444-444444444444' };
         // Detection
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
         // GET current (processor not running)
-        mockJsonResponse({ revision: { version: 5 }, component: { id: 'proc-123', state: 'STOPPED' } });
+        mockJsonResponse({ revision: { version: 5 }, component: { id: '44444444-4444-4444-4444-444444444444', state: 'STOPPED' } });
         // PUT update
         mockJsonResponse({ revision: { version: 6 } });
 
-        await updateComponentProperties('proc-123', { 'key': 'value' });
+        await updateComponentProperties('44444444-4444-4444-4444-444444444444', { 'key': 'value' });
 
         // 3 fetch calls: detect + GET + PUT
         expect(globalThis.fetch).toHaveBeenCalledTimes(3);
         const [putUrl, putOpts] = globalThis.fetch.mock.calls[2];
-        expect(putUrl).toBe('/nifi-api/processors/proc-123');
+        expect(putUrl).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
         expect(putOpts.method).toBe('PUT');
         const putBody = JSON.parse(putOpts.body);
         expect(putBody.revision.version).toBe(5);
@@ -345,15 +357,15 @@ describe('updateComponentProperties', () => {
     });
 
     test('should use properties path for CONTROLLER_SERVICE type', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'cs-456' };
+        globalThis.jwtAuthConfig = { processorId: '33333333-3333-3333-3333-333333333333' };
         // Detection
         mockJsonResponse({ type: 'CONTROLLER_SERVICE', componentClass: 'SomeCS' });
         // GET current
-        mockJsonResponse({ revision: { version: 2 }, component: { id: 'cs-456' } });
+        mockJsonResponse({ revision: { version: 2 }, component: { id: '33333333-3333-3333-3333-333333333333' } });
         // PUT update
         mockJsonResponse({ revision: { version: 3 } });
 
-        await updateComponentProperties('cs-456', { 'csKey': 'csVal' });
+        await updateComponentProperties('33333333-3333-3333-3333-333333333333', { 'csKey': 'csVal' });
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(3);
         const putBody = JSON.parse(globalThis.fetch.mock.calls[2][1].body);
@@ -449,6 +461,12 @@ describe('updateComponentProperties', () => {
         const autoTermCall = globalThis.fetch.mock.calls[7];
         const autoTermBody = JSON.parse(autoTermCall[1].body);
         expect(autoTermBody.component.config.autoTerminatedRelationships).toEqual(['old-rel']);
+    });
+
+    test('should reject non-UUID component IDs', async () => {
+        await expect(updateComponentProperties('not-a-uuid', { 'key': 'value' }))
+            .rejects.toThrow('Invalid Component ID');
+        expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 });
 
@@ -815,10 +833,10 @@ describe('CSRF token handling', () => {
             get: () => '__Secure-Request-Token=test-csrf-token',
             configurable: true
         });
-        globalThis.jwtAuthConfig = { processorId: 'comp-123' };
+        globalThis.jwtAuthConfig = { processorId: '11111111-1111-1111-1111-111111111111' };
         mockJsonResponse({ type: 'PROCESSOR', componentClass: 'Test' });
 
-        await detectComponentType('comp-123');
+        await detectComponentType('11111111-1111-1111-1111-111111111111');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
         expect(headers['Request-Token']).toBeUndefined();
