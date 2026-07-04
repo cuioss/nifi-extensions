@@ -111,18 +111,27 @@ public class JwtValidationService {
         Map<String, String> issuerProperties = resolveIssuerProperties(
                 processorProperties, configReader, request);
 
-        // 2. Get or create a cached TokenValidator
-        TokenValidator validator = getOrCreateValidator(issuerProperties);
-
-        // 3. Validate token — metrics tracked by TokenValidator's SecurityEventCounter
+        // 2.+3. Resolve the cached TokenValidator and validate under the same lock, so a
+        // concurrent request with changed properties cannot close the validator between
+        // lookup and use. Serializing validation is acceptable for this admin-UI endpoint.
         try {
-            AccessTokenContent tokenContent = validator.createAccessToken(AccessTokenRequest.of(token));
+            AccessTokenContent tokenContent = validateWithCurrentValidator(issuerProperties, token);
             LOGGER.debug("Token validation successful for processor %s", processorId);
             return TokenValidationResult.success(tokenContent);
         } catch (TokenValidationException e) {
             LOGGER.debug("Token validation failed for processor %s: %s", processorId, e.getMessage());
             return TokenValidationResult.failure(e.getMessage());
         }
+    }
+
+    /**
+     * Validates the token with the validator matching the given issuer properties.
+     * Synchronized together with {@link #getOrCreateValidator(Map)} so the cached
+     * validator cannot be disposed while a validation is in flight.
+     */
+    private synchronized AccessTokenContent validateWithCurrentValidator(
+            Map<String, String> issuerProperties, String token) {
+        return getOrCreateValidator(issuerProperties).createAccessToken(AccessTokenRequest.of(token));
     }
 
     /**
@@ -152,10 +161,18 @@ public class JwtValidationService {
                     + " (properties: " + issuerProperties.keySet() + ")");
         }
 
-        cachedValidator = TokenValidator.builder()
+        // Build the replacement first: if builder() throws, the previous validator
+        // stays cached and usable instead of pointing at a closed instance
+        TokenValidator newValidator = TokenValidator.builder()
                 .parserConfig(parserConfig)
                 .issuerConfigs(issuerConfigs)
                 .build();
+        // Dispose the previous validator so its background JWKS refresh resources
+        // do not leak across configuration changes
+        if (cachedValidator != null) {
+            cachedValidator.close();
+        }
+        cachedValidator = newValidator;
         cachedIssuerProperties = Map.copyOf(issuerProperties);
         return cachedValidator;
     }
@@ -284,15 +301,15 @@ public class JwtValidationService {
         private final boolean valid;
         private final String error;
         private final AccessTokenContent tokenContent;
-        private String issuer;
-        private boolean authorized;
-        private List<String> scopes;
-        private List<String> roles;
+        private final boolean authorized;
 
         private TokenValidationResult(boolean valid, String error, AccessTokenContent tokenContent) {
             this.valid = valid;
             this.error = error;
             this.tokenContent = tokenContent;
+            // The UI verify-token endpoint has no separate role/scope requirements;
+            // a successfully validated token is authorized.
+            this.authorized = valid;
         }
 
         public static TokenValidationResult success(AccessTokenContent tokenContent) {
@@ -307,53 +324,31 @@ public class JwtValidationService {
             return valid;
         }
 
+        @Nullable
         public String getError() {
             return error;
         }
 
+        @Nullable
         public AccessTokenContent getTokenContent() {
             return tokenContent;
         }
 
-        public void setIssuer(String issuer) {
-            this.issuer = issuer;
-        }
-
+        @Nullable
         public String getIssuer() {
-            if (issuer != null) {
-                return issuer;
-            }
             return tokenContent != null ? tokenContent.getIssuer() : null;
-        }
-
-        public void setAuthorized(boolean authorized) {
-            this.authorized = authorized;
         }
 
         public boolean isAuthorized() {
             return authorized;
         }
 
-        public void setScopes(List<String> scopes) {
-            this.scopes = scopes;
-        }
-
         public List<String> getScopes() {
-            if (scopes != null) {
-                return scopes;
-            }
-            return tokenContent != null ? tokenContent.getScopes() : null;
-        }
-
-        public void setRoles(List<String> roles) {
-            this.roles = roles;
+            return tokenContent != null ? tokenContent.getScopes() : List.of();
         }
 
         public List<String> getRoles() {
-            if (roles != null) {
-                return roles;
-            }
-            return tokenContent != null ? tokenContent.getRoles() : null;
+            return tokenContent != null ? tokenContent.getRoles() : List.of();
         }
 
         /**

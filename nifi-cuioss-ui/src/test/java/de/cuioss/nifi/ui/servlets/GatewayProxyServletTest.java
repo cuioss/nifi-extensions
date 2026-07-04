@@ -77,6 +77,13 @@ class GatewayProxyServletTest {
     /** When true, all gateway operations throw IOException. */
     private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
 
+    /**
+     * When true, only the outgoing gateway HTTP calls (executeGatewayGet /
+     * executeGatewayRequest) throw IOException while port/property resolution
+     * succeeds — exercises the stale-cache invalidation on fetch failure.
+     */
+    private static final AtomicBoolean gatewayExecuteFailing = new AtomicBoolean(false);
+
     /** Configurable processor properties — reset before each test. */
     private static final AtomicReference<Map<String, String>> processorProperties =
             new AtomicReference<>(createDefaultProperties());
@@ -148,7 +155,9 @@ class GatewayProxyServletTest {
 
                     @Override
                     protected GatewayGetResponse executeGatewayGet(String url, String accept) throws IOException {
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                            throw new IOException("Connection refused");
+                        }
                         return new GatewayGetResponse(gatewayGetStatusCode.get(), gatewayGetResponse.get());
                     }
 
@@ -156,7 +165,9 @@ class GatewayProxyServletTest {
                     protected GatewayResponse executeGatewayRequest(
                             String url, String method, Map<String, String> headers, String body)
                             throws IOException {
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
+                        if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                            throw new IOException("Connection refused");
+                        }
                         return new GatewayResponse(200, "{\"result\":\"ok\"}",
                                 Map.of("Content-Type", "application/json"));
                     }
@@ -187,6 +198,7 @@ class GatewayProxyServletTest {
         gatewayGetResponse.set(SAMPLE_CONFIG_JSON);
         gatewayGetStatusCode.set(200);
         gatewayFailing.set(false);
+        gatewayExecuteFailing.set(false);
         processorProperties.set(createDefaultProperties());
         idpResponseBody.set("{\"access_token\":\"test-token\",\"expires_in\":300}");
         idpResponseStatus.set(200);
@@ -370,6 +382,38 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 and drop stale cache when gateway fetch fails after port resolution")
+        void shouldInvalidateCachesWhenMetricsFetchFails() {
+            // Prime the port/protocol cache with a successful request
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+
+            // Port resolution succeeds but the gateway fetch itself fails —
+            // exercises the invalidate-on-IOException path in doGet
+            gatewayExecuteFailing.set(true);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
+
+            // Cache was invalidated — the next request re-resolves and succeeds
+            gatewayExecuteFailing.set(false);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
         }
 
         @Test
@@ -575,6 +619,36 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 and drop stale cache when test call fails after port resolution")
+        void shouldInvalidateCachesWhenTestCallFails() {
+            // Port resolution succeeds but the proxied call itself fails —
+            // exercises the invalidate-on-IOException path in handleTestRequest
+            gatewayExecuteFailing.set(true);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway unavailable"));
+
+            // Cache was invalidated — the next request re-resolves and succeeds
+            gatewayExecuteFailing.set(false);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200);
         }
 
         @Test
