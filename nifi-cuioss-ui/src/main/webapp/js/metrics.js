@@ -106,12 +106,19 @@ const buildGatewayTemplate = () => `
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Default auto-refresh interval for gateway metrics (ms). */
+const DEFAULT_REFRESH_INTERVAL_MS = 10000;
+
 /**
  * Initialise the Metrics tab inside the given container element.
  * @param {HTMLElement} container  the #metrics pane
  * @param {boolean} [isGateway=false]  whether to show gateway metrics
+ * @param {Object} [options]  optional settings
+ * @param {number} [options.refreshIntervalMs=10000]  auto-refresh interval for
+ *     gateway metrics; pass 0 to disable periodic refresh (injection point for tests)
  */
-export const init = (container, isGateway = false) => {
+export const init = (container, isGateway = false,
+    { refreshIntervalMs = DEFAULT_REFRESH_INTERVAL_MS } = {}) => {
     if (!container || container.querySelector('#jwt-metrics-content')) return;
     _isGateway = isGateway;
 
@@ -137,8 +144,14 @@ export const init = (container, isGateway = false) => {
 
     // Initial load + periodic refresh (gateway only)
     refreshMetrics();
-    if (typeof jest === 'undefined' && isGateway) {
-        metricsInterval = setInterval(refreshMetrics, 10000);
+    // Re-init (tab re-render) must not stack or leak a previous interval,
+    // regardless of the new isGateway/refreshIntervalMs values
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+        metricsInterval = null;
+    }
+    if (isGateway && refreshIntervalMs > 0) {
+        metricsInterval = setInterval(refreshMetrics, refreshIntervalMs);
     }
 };
 
@@ -320,12 +333,24 @@ const exportAsCsv = (data) => {
         filename: `gateway-metrics-${Date.now()}.csv` };
 };
 
+/**
+ * Escape a Prometheus label value per the exposition format:
+ * backslash, double-quote, and line feed must be backslash-escaped.
+ * (HTML entity escaping would corrupt the exported metrics.)
+ * @param {string} value  raw label value
+ * @returns {string}
+ */
+const escapePrometheusLabel = (value) => String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"')
+    .replaceAll('\n', '\\n');
+
 /** Format a single Prometheus counter section. */
 const formatPrometheusSection = (metricName, helpText, counters, labelName) => {
     let output = `# HELP ${metricName} ${helpText}\n`;
     output += `# TYPE ${metricName} counter\n`;
     for (const [key, value] of Object.entries(counters)) {
-        output += `${metricName}{${labelName}="${sanitizeHtml(key)}"} ${value}\n`;
+        output += `${metricName}{${labelName}="${escapePrometheusLabel(key)}"} ${value}\n`;
     }
     return output + '\n';
 };

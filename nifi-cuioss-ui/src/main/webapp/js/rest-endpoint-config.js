@@ -12,7 +12,7 @@ import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
-    buildOriginBadge
+    buildOriginBadge, log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -81,6 +81,8 @@ export const init = async (element) => {
         const text = textarea.value;
         navigator.clipboard.writeText(text).then(() => {
             showCopyFeedback(exportSection);
+        }).catch((err) => {
+            log.error('Failed to copy properties to clipboard:', err);
         });
     });
 
@@ -583,11 +585,11 @@ const saveManagementEndpoint = async ({
  */
 const updateManagementTableRow = (row, enabled, authModeValue, rolesValue, scopesValue) => {
     const cells = row.querySelectorAll('td');
-    // cells: 0=name, 1=path, 2=enabled, 3=authmode, 4=actions
+    // cells: 0=name, 1=path, 2=methods, 3=enabled, 4=authmode, 5=actions
     const enabledClass = enabled ? 'status-enabled' : 'status-disabled';
     const enabledText = enabled ? t('common.status.enabled') : t('common.status.disabled');
-    cells[2].innerHTML = `<span class="${enabledClass}">${enabledText}</span>`;
-    cells[3].innerHTML = formatAuthModeBadges(authModeValue);
+    cells[3].innerHTML = `<span class="${enabledClass}">${enabledText}</span>`;
+    cells[4].innerHTML = formatAuthModeBadges(authModeValue);
     row.dataset.mgmtEnabled = String(enabled);
     row.dataset.mgmtAuthMode = authModeValue;
     row.dataset.mgmtRoles = rolesValue;
@@ -630,16 +632,14 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
         };
         await loadGatewayConfig();
 
-        const connectedRels = await api.getConnectedRelationships(componentId);
-
         if (gwRoutes) {
             // Convert /config route array to route map with source info
             const routes = convertGatewayRoutesToMap(gwRoutes);
-            renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
+            renderRouteSummaryTable(routesContainer, routes, componentId);
         } else {
             // Fallback: parse routes from NiFi processor properties only
             const routes = parseRouteProperties(props);
-            renderRouteSummaryTable(routesContainer, routes, componentId, connectedRels);
+            renderRouteSummaryTable(routesContainer, routes, componentId);
         }
     } catch {
         renderRouteSummaryTable(routesContainer, {}, componentId);
@@ -690,7 +690,7 @@ const buildGatewayRouteEntry = (route) => {
 const convertGatewayRoutesToMap = (gwRoutes) => {
     const routes = {};
     for (const route of gwRoutes) {
-        if (!route.name || !route.enabled) continue;
+        if (!route.name) continue;
         routes[route.name] = buildGatewayRouteEntry(route);
     }
     return routes;
@@ -705,9 +705,8 @@ const convertGatewayRoutesToMap = (gwRoutes) => {
  * @param {HTMLElement} container  the .routes-container element
  * @param {Object} routes  parsed route map {name: {path, methods, enabled, ...}}
  * @param {string} componentId  NiFi processor component ID
- * @param {Set<string>} [connectedRels]  set of relationship names wired on the NiFi canvas
  */
-const renderRouteSummaryTable = (container, routes, componentId, connectedRels) => {
+const renderRouteSummaryTable = (container, routes, componentId) => {
     // Remove any existing table
     const existing = container.querySelector('.route-summary-table');
     if (existing) existing.remove();
@@ -738,11 +737,9 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
     } else {
         for (const name of routeNames) {
             const routeProps = routes[name];
-            const outcome = routeProps?.['success-outcome']?.trim() || name;
-            const connected = !connectedRels || connectedRels.has(outcome);
             const source = routeProps?._source;
             const origin = (source === 'external' || source === 'both') ? 'external' : 'persisted';
-            const row = createTableRow(name, routeProps, componentId, container, origin, connected);
+            const row = createTableRow(name, routeProps, componentId, container, origin);
             tbody.appendChild(row);
         }
     }
@@ -759,10 +756,9 @@ const renderRouteSummaryTable = (container, routes, componentId, connectedRels) 
  * @param {string} componentId  NiFi processor component ID
  * @param {HTMLElement} routesContainer  the .routes-container element
  * @param {'persisted'|'modified'|'new'|'external'} origin  the route origin state
- * @param {boolean} [connected=true]  whether the route's relationship is wired on the NiFi canvas
  * @returns {HTMLTableRowElement}
  */
-const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted', connected = false) => {
+const createTableRow = (name, props, componentId, routesContainer, origin = 'persisted') => {
     const row = document.createElement('tr');
     row.dataset.routeName = name;
     row.dataset.origin = origin;
@@ -802,8 +798,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
     const actionsHtml = isExternalOnly
         ? `<button class="edit-route-button" title="${sanitizeHtml(t('route.source.external.edit.tooltip'))}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>`
-        : `<button class="edit-route-button" title="Edit route"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
-            <button class="remove-route-button" title="Delete route"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
+        : `<button class="edit-route-button" title="${t('route.table.edit.title')}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
+            <button class="remove-route-button" title="${t('route.table.remove.title')}"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
 
     row.innerHTML = `
         <td>${sanitizeHtml(name)}${originBadge}</td>
@@ -962,7 +958,7 @@ const buildEditorHeader = (idx, rn, routeName, enabledVal) => {
     enabledCheckbox.id = `route-enabled-${idx}`;
     enabledCheckbox.className = 'route-enabled';
     if (enabledVal) enabledCheckbox.checked = true;
-    enabledCheckbox.setAttribute('aria-label', 'Route Enabled');
+    enabledCheckbox.setAttribute('aria-label', t('route.form.enabled.aria'));
     enabledLabel.appendChild(enabledCheckbox);
     enabledLabel.append(` ${t('route.form.enabled')}`);
     const enabledHelp = createContextHelp({
@@ -1215,7 +1211,7 @@ const buildFlowFileFields = (section, idx, rn, properties,
     flowfileCheckbox.id = `create-flowfile-${idx}`;
     flowfileCheckbox.className = 'create-flowfile-checkbox';
     if (createFlowFileVal) flowfileCheckbox.checked = true;
-    flowfileCheckbox.setAttribute('aria-label', 'Create FlowFile');
+    flowfileCheckbox.setAttribute('aria-label', t('route.form.create.flowfile'));
     flowfileLabel.appendChild(flowfileCheckbox);
     flowfileLabel.append(` ${t('route.form.create.flowfile')}`);
 
@@ -1231,8 +1227,6 @@ const buildFlowFileFields = (section, idx, rn, properties,
 
     const existingNames = collectExistingConnectionNames(
         routesContainer, routeName);
-    const datalistOptions = existingNames
-        .map((n) => `<option value="${sanitizeHtml(n)}">`).join('');
 
     const outcomeContainer = document.createElement('div');
     outcomeContainer.className =
@@ -1264,7 +1258,13 @@ const buildFlowFileFields = (section, idx, rn, properties,
 
     const datalist = document.createElement('datalist');
     datalist.id = `connection-names-${idx}`;
-    datalist.innerHTML = datalistOptions;
+    // Build options via DOM APIs — connection names are user-controlled and must
+    // not be interpolated into HTML attribute strings (attribute injection/XSS).
+    for (const n of existingNames) {
+        const opt = document.createElement('option');
+        opt.value = n;
+        datalist.appendChild(opt);
+    }
     outcomeContainer.appendChild(datalist);
     section.appendChild(outcomeContainer);
 
@@ -1327,16 +1327,18 @@ const buildSchemaFields = (section, idx, rn, properties, hasSchema) => {
             <input type="text" id="field-schema-file-${idx}" name="schema-file"
                    class="field-schema-file form-input route-config-field"
                    placeholder="${t('route.form.schema.file.placeholder')}"
-                   value="${sanitizeHtml(fileVal)}"
                    aria-label="Schema file path">
         </div>
         <div class="schema-inline-input${mode === 'inline' ? '' : ' hidden'}">
             <textarea id="field-schema-inline-${idx}" name="schema-inline"
                       class="field-schema-inline form-input route-config-field"
                       placeholder="${t('route.form.schema.inline.placeholder')}"
-                      rows="5" aria-label="Inline JSON Schema"
-            >${sanitizeHtml(inlineVal)}</textarea>
+                      rows="5" aria-label="Inline JSON Schema"></textarea>
         </div>`;
+    // Set user-controlled schema values via DOM APIs after parsing — never
+    // interpolate them into HTML attribute strings (attribute injection/XSS).
+    schemaContainer.querySelector('.field-schema-file').value = fileVal;
+    schemaContainer.querySelector('.field-schema-inline').value = inlineVal;
     section.appendChild(schemaContainer);
 
     const fileRadio = schemaContainer.querySelector('.schema-mode-file');

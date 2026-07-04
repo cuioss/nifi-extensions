@@ -213,6 +213,8 @@ const loadRoutes = async (container) => {
     }
 };
 
+const DEFAULT_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
+
 const updateMethodsForRoute = (container) => {
     const selector = container.querySelector('.route-selector');
     const methodSelector = container.querySelector('.method-selector');
@@ -220,15 +222,13 @@ const updateMethodsForRoute = (container) => {
 
     if (!selected) return;
 
-    const methods = selected.dataset.methods;
-    if (methods) {
-        const allowed = methods.split(',').filter(Boolean);
-        if (allowed.length > 0) {
-            methodSelector.innerHTML = allowed.map((m) =>
-                `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
-            ).join('');
-        }
-    }
+    const allowed = (selected.dataset.methods || '').split(',').filter(Boolean);
+    // Routes without a methods restriction accept the default method set —
+    // rebuild the dropdown so no stale restriction from a previous route remains.
+    const methods = allowed.length > 0 ? allowed : DEFAULT_METHODS;
+    methodSelector.innerHTML = methods.map((m) =>
+        `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
+    ).join('');
 };
 
 const updateBodyVisibility = (container) => {
@@ -296,8 +296,9 @@ const displayResponse = (container, result) => {
     // Headers
     const headersEl = display.querySelector('.response-headers');
     const responseHeaders = result.headers || {};
+    // No escaping needed — textContent assignment never interprets HTML
     const headerLines = Object.entries(responseHeaders)
-        .map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(v)}`)
+        .map(([k, v]) => `${k}: ${v}`)
         .join('\n');
     headersEl.textContent = headerLines || t('tester.response.no.headers');
 

@@ -1879,7 +1879,7 @@ test.describe("REST API Gateway Tabs", () => {
         await cancelBtn.click();
     });
 
-    test("should not display disabled-test route from external config", async ({
+    test("should display disabled-test route from external config with Disabled status", async ({
         customUIFrame,
     }) => {
         // Navigate to Endpoint Configuration tab
@@ -1895,10 +1895,12 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Disabled route should not appear in the table
+        // Disabled routes stay listed (otherwise they could never be
+        // re-enabled or deleted via the UI) and show the Disabled status
         const disabledRow = summaryTable.locator(
             'tbody tr[data-route-name="disabled-test"]',
         );
-        await expect(disabledRow).toHaveCount(0);
+        await expect(disabledRow).toHaveCount(1);
+        await expect(disabledRow.locator(".status-disabled")).toBeVisible();
     });
 });

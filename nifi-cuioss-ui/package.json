@@ -2,7 +2,7 @@
   "name": "nifi-cuioss-ui",
   "version": "1.0.0",
   "type": "module",
-  "description": "Provides custom UI components for NiFi CU Boulder CUIOSS extensions.",
+  "description": "Provides custom UI components for the CUIOSS NiFi extensions.",
   "main": "src/main/webapp/js/app.js",
   "scripts": {
     "lint": "eslint .",
@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/CU-Boulder-OIT/nifi-cuioss.git"
+    "url": "https://github.com/cuioss/nifi-extensions.git"
   },
   "keywords": [
     "NiFi",
@@ -24,12 +24,12 @@
     "JWT",
     "CUIOSS"
   ],
-  "author": "OIT-CSS",
+  "author": "CUIOSS",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/CU-Boulder-OIT/nifi-cuioss/issues"
+    "url": "https://github.com/cuioss/nifi-extensions/issues"
   },
-  "homepage": "https://github.com/CU-Boulder-OIT/nifi-cuioss#readme",
+  "homepage": "https://github.com/cuioss/nifi-extensions#readme",
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/preset-env": "^8.0.2",
@@ -38,13 +38,10 @@
     "@testing-library/jest-dom": "^6.4.0",
     "babel-jest": "^30.4.1",
     "eslint": "^10.5.0",
-    "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-jest": "^29.15.2",
-    "eslint-plugin-prettier": "^5.5.6",
     "globals": "^17.7.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "prettier": "^3.8.4",
     "stylelint": "^17.13.0",
     "stylelint-config-standard": "^40.0.0",
     "stylelint-order": "^8.1.1"
@@ -90,9 +87,6 @@
     "resetMocks": true,
     "clearMocks": true,
     "restoreMocks": true,
-    "moduleNameMapper": {
-      "^nf.Common$": "<rootDir>/src/test/js/mocks/nf-common.js"
-    },
     "setupFiles": [
       "<rootDir>/src/test/js/jest.setup-fetch.js"
     ],

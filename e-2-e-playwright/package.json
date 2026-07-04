@@ -11,7 +11,6 @@
     "playwright:test": "NODE_EXTRA_CA_CERTS=../integration-testing/src/main/docker/certificates/localhost.crt playwright test",
     "playwright:test:headed": "playwright test --headed",
     "playwright:test:ui": "playwright test --ui",
-    "playwright:report": "playwright show-report",
     "playwright:codegen": "playwright codegen",
     "test": "NODE_EXTRA_CA_CERTS=../integration-testing/src/main/docker/certificates/localhost.crt node utils/run-tests-with-precheck.js",
     "test:self": "playwright test tests/self-*.spec.js --reporter=list",

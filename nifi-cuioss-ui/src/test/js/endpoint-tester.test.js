@@ -111,6 +111,31 @@ describe('endpoint-tester', () => {
         expect(options).toEqual(['GET']);
     });
 
+    it('should reset methods to defaults when switching to an unrestricted route', async () => {
+        api.fetchGatewayApi.mockResolvedValue({
+            ...SAMPLE_CONFIG,
+            routes: [
+                { name: 'health', path: '/api/health', methods: ['GET'], requiredRoles: [], requiredScopes: [] },
+                { name: 'open', path: '/api/open', methods: [], requiredRoles: [], requiredScopes: [] }
+            ]
+        });
+
+        await init(container);
+
+        const routeSelector = container.querySelector('.route-selector');
+        const methodSelector = container.querySelector('.method-selector');
+
+        // Initially the restricted health route limits methods to GET
+        expect(Array.from(methodSelector.options).map((o) => o.value)).toEqual(['GET']);
+
+        // Switching to the unrestricted route must restore the default set
+        routeSelector.selectedIndex = 1;
+        routeSelector.dispatchEvent(new Event('change'));
+
+        const options = Array.from(methodSelector.options).map((o) => o.value);
+        expect(options).toEqual(['GET', 'POST', 'PUT', 'DELETE']);
+    });
+
     it('should toggle body editor based on method', async () => {
         await init(container);
 
@@ -317,6 +342,23 @@ describe('endpoint-tester', () => {
 
         const headers = container.querySelector('.response-headers');
         expect(headers.textContent).toContain('Content-Type');
+    });
+
+    it('should not double-escape header names or values', async () => {
+        api.sendGatewayTestRequest.mockResolvedValue({
+            status: 200,
+            headers: { 'X-Custom': 'a&b <c>' },
+            body: '{}'
+        });
+
+        await init(container);
+
+        container.querySelector('.send-request-button').click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        const headers = container.querySelector('.response-headers');
+        // textContent renders literally — no &amp; / &lt; artifacts
+        expect(headers.textContent).toContain('X-Custom: a&b <c>');
     });
 
     it('should show body editor for POST method', async () => {

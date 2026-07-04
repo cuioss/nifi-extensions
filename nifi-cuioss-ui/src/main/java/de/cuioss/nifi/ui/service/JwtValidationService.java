@@ -334,9 +334,8 @@ public class JwtValidationService {
             return tokenContent;
         }
 
-        @Nullable
         public String getIssuer() {
-            return tokenContent != null ? tokenContent.getIssuer() : null;
+            return tokenContent != null ? tokenContent.getIssuer() : "";
         }
 
         public boolean isAuthorized() {

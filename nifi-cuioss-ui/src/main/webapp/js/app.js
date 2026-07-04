@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initCollapsibles();
     applyI18nToDom();
-    initComponents();
+    initComponents().catch((e) => log.error('Component initialisation failed:', e));
     log.info('Component UI ready');
 });
 

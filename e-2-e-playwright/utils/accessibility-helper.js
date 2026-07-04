@@ -653,7 +653,13 @@ export const a11yUtils = {
      */
     async waitForA11yReady(page) {
         await page.waitForLoadState("networkidle");
-        await page.waitForTimeout(500); // Allow for dynamic content
+        // Condition-based wait: the custom UI reveals its tab container once
+        // initialisation completes (app.js hides the loading indicator). Fall
+        // through silently when the context is not the custom UI frame.
+        await page
+            .locator("#jwt-validator-tabs")
+            .waitFor({ state: "visible", timeout: 5000 })
+            .catch(() => {});
     },
 
     /**

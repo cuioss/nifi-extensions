@@ -143,48 +143,50 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Component-level accessibility checks", async ({ page }, testInfo) => {
-        // Get the custom UI frame once
-        const customUIFrame = await navigateToJWTAuthenticatorUI(
-            page,
-            testInfo,
-        );
+        // Open the custom UI so the helper can attach to its frame
+        await navigateToJWTAuthenticatorUI(page, testInfo);
 
         for (const [key, component] of Object.entries(A11Y_CONFIG.components)) {
             await test.step(`Check ${component.name} accessibility`, async () => {
+                // Acquire the helper FIRST: it may re-navigate and re-create
+                // the frame, which would detach any frame reference captured
+                // earlier. All locators below must use the helper's live
+                // frame context (helper.page).
+                const helper =
+                    await ensureValidAccessibilityHelper(testInfo);
+
                 // For the tabs component, it should always be visible
                 if (key === "tabs") {
                     const tabsExist =
-                        (await customUIFrame
+                        (await helper.page
                             .locator(component.selector)
                             .count()) > 0;
                     expect(tabsExist).toBe(true);
-                    return; // Skip detailed check for tabs
                 }
 
                 // For configForm, check if it's visible (default tab)
                 if (key === "configForm") {
-                    const configFormVisible = await customUIFrame
+                    const configFormVisible = await helper.page
                         .locator(component.selector)
                         .isVisible();
                     expect(configFormVisible).toBe(true);
-
-                    // Run accessibility check — let failures propagate
-                    const helper =
-                        await ensureValidAccessibilityHelper(testInfo);
-                    const result = await helper.checkComponent(
-                        component.selector,
-                        component.name,
-                    );
-
-                    if (!result.passed) {
-                        testLogger.warn(
-                            "A11y",
-                            `${component.name} issues: ${JSON.stringify(result, null, 2)}`,
-                        );
-                    }
-
-                    expect(result.passed).toBe(true);
                 }
+
+                // Run the axe component scan for every component —
+                // let failures propagate
+                const result = await helper.checkComponent(
+                    component.selector,
+                    component.name,
+                );
+
+                if (!result.passed) {
+                    testLogger.warn(
+                        "A11y",
+                        `${component.name} issues: ${JSON.stringify(result, null, 2)}`,
+                    );
+                }
+
+                expect(result.passed).toBe(true);
             });
         }
     });
@@ -290,7 +292,17 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                     i++
                 ) {
                     await page.keyboard.press("Tab");
-                    await page.waitForTimeout(100); // Small delay for focus to settle
+                    // Condition-based wait: focus must have settled on a
+                    // non-body element before the next Tab press
+                    await expect
+                        .poll(() =>
+                            customUIFrame.evaluate(
+                                () =>
+                                    document.activeElement !== null &&
+                                    document.activeElement !== document.body,
+                            ),
+                        )
+                        .toBe(true);
                 }
             }
         });
@@ -393,9 +405,15 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 .first();
             if (await validateButton.isVisible()) {
                 await validateButton.click();
-                await page.waitForTimeout(500);
 
+                // Condition-based wait: give the validation result time to
+                // render; the error is optional, so a missed appearance is fine.
+                // Short timeout — when validation succeeds no error appears and
+                // this would otherwise block for the full duration every run.
                 const errorMessage = customUIFrame.locator(".validation-error").first();
+                await errorMessage
+                    .waitFor({ state: "visible", timeout: 500 })
+                    .catch(() => {});
                 if (await errorMessage.isVisible()) {
                     const contrast = await errorMessage.evaluate((el) => {
                         const styles = window.getComputedStyle(el);

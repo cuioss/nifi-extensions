@@ -182,6 +182,7 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
     addField({ container: fields, idx, name: 'jwks-url', label: t('issuer.form.jwks.url.label'),
         placeholder: t('issuer.form.jwks.url.placeholder'),
         value: properties?.['jwks-url'], extraClass: 'jwks-type-url',
+        hidden: jwksType !== 'url',
         helpKey: 'contexthelp.issuer.jwks.url', propertyKey: `issuer.${iName}.jwks-url`,
         currentValue: properties?.['jwks-url'] });
     addField({ container: fields, idx, name: 'jwks-file', label: t('issuer.form.jwks.file.label'),
@@ -297,7 +298,7 @@ const addIssuerForm = (container, issuerName, properties, componentId) => {
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-issuer-button';
-    removeBtn.title = 'Delete this issuer configuration';
+    removeBtn.title = t('issuer.remove.title');
     removeBtn.innerHTML = `<i class="fa fa-trash"></i> ${t('common.btn.remove')}`;
     header.appendChild(removeBtn);
 
@@ -571,10 +572,10 @@ const createIssuerTableRow = (name, props, ctx, issuersContainer, origin = 'pers
         <td><span class="method-badge">${typeBadgeHtml}</span></td>
         <td>${sanitizeHtml(issuerUri)}</td>
         <td>
-            <button class="edit-issuer-button" title="Edit issuer">
+            <button class="edit-issuer-button" title="${t('issuer.table.edit.title')}">
                 <i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
             <button class="remove-issuer-gw-button"
-                    title="Delete issuer">
+                    title="${t('issuer.table.remove.title')}">
                 <i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
         </td>`;
 

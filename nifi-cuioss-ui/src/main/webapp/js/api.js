@@ -209,6 +209,7 @@ const request = async (method, url, body = null, { componentId } = {}) => {
  * @returns {Promise<{type: string, componentClass: string, apiPath: string, propsPath: string[]}>}
  */
 const detectComponentType = async (componentId) => {
+    assertValidUuid(componentId);
     const cached = _componentInfoCache.get(componentId);
     if (cached) return cached;
 
@@ -257,6 +258,7 @@ export const verifyToken = (token) =>
  * @returns {Promise<Object>}  NiFi REST API response
  */
 export const getComponentProperties = async (componentId) => {
+    assertValidUuid(componentId);
     await getProxyContextPath();
     const info = await detectComponentType(componentId);
     const data = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
@@ -276,6 +278,7 @@ export const getComponentProperties = async (componentId) => {
  * @returns {Promise<Object>}  updated component response
  */
 export const updateComponentProperties = async (componentId, properties) => {
+    assertValidUuid(componentId);
     await getProxyContextPath();
     const info = await detectComponentType(componentId);
 
@@ -551,12 +554,14 @@ export const resolveJwtConfigServiceId = async (processorId) => {
 // Backward-compatible aliases
 /** @deprecated Use getComponentProperties instead */
 export const getProcessorProperties = async (processorId) => {
+    assertValidUuid(processorId, 'Processor ID');
     await getProxyContextPath();
     return request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
 };
 
 /** @deprecated Use updateComponentProperties instead */
 export const updateProcessorProperties = async (processorId, properties) => {
+    assertValidUuid(processorId, 'Processor ID');
     await getProxyContextPath();
     const proc = await request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
     return request('PUT', nifiApiUrl(`/nifi-api/processors/${processorId}`), {
