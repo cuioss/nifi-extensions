@@ -184,9 +184,10 @@ export class AuthService {
           // Condition-based wait: a single locator.or() chain waits for any
           // auth indicator to become visible without leaving the losing
           // waits running in the background (unlike Promise.any)
-          const retrySuccess = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS).first()
-            .or(this.page.getByRole('button', { name: /log out|logout/i }).first())
-            .or(this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`).first())
+          const retrySuccess = await this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS)
+            .or(this.page.getByRole('button', { name: /log out|logout/i }))
+            .or(this.page.locator(`text=${CONSTANTS.AUTH.USERNAME}`))
+            .first()
             .waitFor({ state: 'visible', timeout: 5000 })
             .then(() => true)
             .catch(() => false);

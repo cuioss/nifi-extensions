@@ -144,11 +144,13 @@ export const init = (container, isGateway = false,
 
     // Initial load + periodic refresh (gateway only)
     refreshMetrics();
+    // Re-init (tab re-render) must not stack or leak a previous interval,
+    // regardless of the new isGateway/refreshIntervalMs values
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+        metricsInterval = null;
+    }
     if (isGateway && refreshIntervalMs > 0) {
-        // Re-init (tab re-render) must not stack a second interval
-        if (metricsInterval) {
-            clearInterval(metricsInterval);
-        }
         metricsInterval = setInterval(refreshMetrics, refreshIntervalMs);
     }
 };
