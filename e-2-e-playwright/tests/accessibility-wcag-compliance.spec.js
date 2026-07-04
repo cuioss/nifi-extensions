@@ -143,18 +143,22 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Component-level accessibility checks", async ({ page }, testInfo) => {
-        // Get the custom UI frame once
-        const customUIFrame = await navigateToJWTAuthenticatorUI(
-            page,
-            testInfo,
-        );
+        // Open the custom UI so the helper can attach to its frame
+        await navigateToJWTAuthenticatorUI(page, testInfo);
 
         for (const [key, component] of Object.entries(A11Y_CONFIG.components)) {
             await test.step(`Check ${component.name} accessibility`, async () => {
+                // Acquire the helper FIRST: it may re-navigate and re-create
+                // the frame, which would detach any frame reference captured
+                // earlier. All locators below must use the helper's live
+                // frame context (helper.page).
+                const helper =
+                    await ensureValidAccessibilityHelper(testInfo);
+
                 // For the tabs component, it should always be visible
                 if (key === "tabs") {
                     const tabsExist =
-                        (await customUIFrame
+                        (await helper.page
                             .locator(component.selector)
                             .count()) > 0;
                     expect(tabsExist).toBe(true);
@@ -162,7 +166,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
 
                 // For configForm, check if it's visible (default tab)
                 if (key === "configForm") {
-                    const configFormVisible = await customUIFrame
+                    const configFormVisible = await helper.page
                         .locator(component.selector)
                         .isVisible();
                     expect(configFormVisible).toBe(true);
@@ -170,8 +174,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
 
                 // Run the axe component scan for every component —
                 // let failures propagate
-                const helper =
-                    await ensureValidAccessibilityHelper(testInfo);
                 const result = await helper.checkComponent(
                     component.selector,
                     component.name,
