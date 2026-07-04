@@ -89,17 +89,37 @@ public class JettyServerManager {
             LOGGER.info(RestApiLogMessages.INFO.SERVER_STARTED, getPort());
         } catch (IOException e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
-            server = null;
+            cleanupFailedServer();
             throw new IllegalStateException("Failed to start Jetty server on port " + port, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
-            server = null;
+            cleanupFailedServer();
             throw new IllegalStateException("Jetty server start interrupted on port " + port, e);
         } catch (Exception e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.SERVER_START_FAILED, port, e.getMessage());
-            server = null;
+            cleanupFailedServer();
             throw new IllegalStateException("Failed to start Jetty server on port " + port, e);
+        }
+    }
+
+    /**
+     * Best-effort stop of a partially-started server so a failed {@code start()}
+     * (e.g. bind failure) does not leak connector threads or sockets.
+     */
+    @SuppressWarnings("java:S2147") // Jetty LifeCycle.stop() declares 'throws Exception'
+    private void cleanupFailedServer() {
+        if (server == null) {
+            return;
+        }
+        try {
+            server.stop();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            LOGGER.debug("Ignoring failure while stopping partially-started server: %s", e.getMessage());
+        } finally {
+            server = null;
         }
     }
 

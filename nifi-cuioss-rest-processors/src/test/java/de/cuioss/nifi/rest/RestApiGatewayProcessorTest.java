@@ -114,6 +114,37 @@ class RestApiGatewayProcessorTest {
     }
 
     @Nested
+    @DisplayName("Empty Route Configuration")
+    class EmptyRouteConfiguration {
+
+        @Test
+        @DisplayName("Should clear relationships and skip server start when no routes are configured")
+        void shouldHandleScheduleWithoutRoutes() throws Exception {
+            var runner = TestRunners.newTestRunner(RestApiGatewayProcessor.class);
+            var configService = new TestJwtIssuerConfigService();
+            runner.addControllerService(CS_ID, configService);
+            runner.enableControllerService(configService);
+            runner.setProperty(RestApiGatewayConstants.Properties.JWT_ISSUER_CONFIG_SERVICE, CS_ID);
+            runner.setProperty(RestApiGatewayConstants.Properties.LISTENING_PORT, "0");
+
+            try {
+                runner.run(1, false, true);
+
+                var processor = (RestApiGatewayProcessor) runner.getProcessor();
+                assertFalse(processor.serverManager.isRunning(),
+                        "Embedded server must not start when no routes are configured");
+                assertEquals(
+                        Set.of(RestApiGatewayConstants.Relationships.FAILURE,
+                                RestApiGatewayConstants.Relationships.ATTACHMENTS),
+                        processor.getRelationships(),
+                        "Only the built-in relationships must remain without routes");
+            } finally {
+                runner.stop();
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("Property Descriptors")
     class PropertyDescriptors {
 

@@ -123,7 +123,14 @@ Set<String> requiredScopes) {
         return new AuthorizationRequirements(requireValid, roles, scopes);
     }
 
-    private static Set<String> parseCommaSeparated(@Nullable String value) {
+    /**
+     * Parses a comma-separated string into a set of trimmed, non-empty values.
+     * Shared by processors that read comma-separated role/scope properties.
+     *
+     * @param value the raw comma-separated value (may be null or blank)
+     * @return the parsed set, or an empty set for null/blank input
+     */
+    public static Set<String> parseCommaSeparated(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return Set.of();
         }

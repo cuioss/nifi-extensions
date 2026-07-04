@@ -147,6 +147,18 @@ public final class RestApiLogMessages {
                 .template("Route '%s' has createFlowFile=false — skipping FlowFile creation")
                 .build();
 
+        public static final LogRecord SCHEMA_REGISTERED_INLINE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(19)
+                .template("Registered inline JSON Schema for route '%s'")
+                .build();
+
+        public static final LogRecord SCHEMA_REGISTERED_FROM_FILE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(20)
+                .template("Registered JSON Schema for route '%s' from %s")
+                .build();
+
     }
 
     @UtilityClass

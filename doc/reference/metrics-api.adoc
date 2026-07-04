@@ -102,7 +102,7 @@ Security Events] table.
 |`MISSING_BEARER_TOKEN` |401 |No Authorization header or malformed Bearer prefix
 |`AUTH_FAILED` |401 |Token validation failed (expired, bad signature, etc.)
 |`AUTHZ_ROLE_DENIED` |403 |Valid token but missing required roles
-|`AUTHZ_SCOPE_DENIED` |401 |Valid token but missing required scopes (step-up)
+|`AUTHZ_SCOPE_DENIED` |403 |Valid token but missing required scopes (`insufficient_scope`, RFC 6750 Section 3.1)
 |`BODY_TOO_LARGE` |413 |Request body exceeds the configured maximum size
 |`ROUTE_NOT_FOUND` |404 |No route configured for the requested path
 |`METHOD_NOT_ALLOWED` |405 |Route exists but the HTTP method is not allowed

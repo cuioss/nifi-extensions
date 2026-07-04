@@ -24,7 +24,6 @@ import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
 import de.cuioss.nifi.rest.validation.SchemaViolation;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
@@ -159,7 +158,8 @@ public final class ApiRouteHandler implements EndpointHandler {
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
                 route.name(), method, path, Request.getRemoteAddr(request));
         if (tracked) {
-            sendTrackedResponse(response, callback, request, traceId, route.trackingMode());
+            RequestUtils.sendAcceptedResponse(request, response, callback, traceId,
+                    route.trackingMode() == TrackingMode.ATTACHMENTS);
         } else {
             sendSuccessResponse(response, callback, method);
         }
@@ -242,44 +242,6 @@ public final class ApiRouteHandler implements EndpointHandler {
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, ACCEPTED_RESPONSE.length);
         response.write(true, ByteBuffer.wrap(ACCEPTED_RESPONSE), callback);
-    }
-
-    private static void sendTrackedResponse(Response response, Callback callback,
-            Request request, String traceId, TrackingMode trackingMode) {
-        // Build absolute Location URI from the Jetty request
-        var httpUri = request.getHttpURI();
-        String scheme = httpUri.getScheme();
-        String host = Request.getServerName(request);
-        int port = Request.getServerPort(request);
-        String locationUri;
-        if (("http".equals(scheme) && port == 80) || ("https".equals(scheme) && port == 443)) {
-            locationUri = "%s://%s/status/%s".formatted(scheme, host, traceId);
-        } else {
-            locationUri = "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
-        }
-
-        // Build JSON body with HATEOAS _links (relative URI for proxy safety)
-        String statusPath = "/status/" + traceId;
-        var linksBuilder = Json.createObjectBuilder()
-                .add("status", Json.createObjectBuilder()
-                        .add("href", statusPath));
-        if (trackingMode == TrackingMode.ATTACHMENTS) {
-            linksBuilder.add("attachments", Json.createObjectBuilder()
-                    .add("href", "/attachments/" + traceId));
-        }
-        byte[] responseBody = Json.createObjectBuilder()
-                .add("status", "accepted")
-                .add("traceId", traceId)
-                .add("_links", linksBuilder)
-                .build()
-                .toString()
-                .getBytes(StandardCharsets.UTF_8);
-
-        response.setStatus(202);
-        response.getHeaders().put(HttpHeader.LOCATION, locationUri);
-        response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
-        response.write(true, ByteBuffer.wrap(responseBody), callback);
     }
 
     private static boolean isBodyMethod(String method) {
