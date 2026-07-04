@@ -405,10 +405,12 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 await validateButton.click();
 
                 // Condition-based wait: give the validation result time to
-                // render; the error is optional, so a missed appearance is fine
+                // render; the error is optional, so a missed appearance is fine.
+                // Short timeout — when validation succeeds no error appears and
+                // this would otherwise block for the full duration every run.
                 const errorMessage = customUIFrame.locator(".validation-error").first();
                 await errorMessage
-                    .waitFor({ state: "visible", timeout: 5000 })
+                    .waitFor({ state: "visible", timeout: 500 })
                     .catch(() => {});
                 if (await errorMessage.isVisible()) {
                     const contrast = await errorMessage.evaluate((el) => {
