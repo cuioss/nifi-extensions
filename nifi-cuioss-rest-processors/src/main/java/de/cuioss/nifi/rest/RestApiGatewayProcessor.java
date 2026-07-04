@@ -46,17 +46,20 @@ import org.apache.nifi.ssl.SSLContextProvider;
 import javax.net.ssl.SSLContext;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static de.cuioss.nifi.jwt.util.AuthorizationRequirements.parseCommaSeparated;
 
 /**
  * Multi-route REST API gateway with embedded HTTP server, JWT authentication,
@@ -205,6 +208,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         if (routes.isEmpty()) {
             LOGGER.warn(RestApiLogMessages.WARN.INVALID_ROUTE_CONFIG, "(none)");
+            // Clear relationships from a previous schedule so stale routes do not survive;
+            // the embedded server (incl. management endpoints) is intentionally not started.
+            updateDynamicRelationships(List.of());
             return;
         }
 
@@ -225,8 +231,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         int maxRequestSize = context.getProperty(RestApiGatewayConstants.Properties.MAX_REQUEST_SIZE).asInteger();
         int port = context.getProperty(RestApiGatewayConstants.Properties.LISTENING_PORT).asInteger();
 
-        // Build JSON Schema validator from route configurations
-        JsonSchemaValidator schemaValidator = buildSchemaValidator(routes);
+        // Build JSON Schema validator from route configurations (absent when no route uses one)
+        JsonSchemaValidator schemaValidator = buildSchemaValidator(routes).orElse(null);
 
         // Pre-create shared event counters so all handlers + dispatcher share them.
         // Held as fields so onTrigger can bridge their cumulative counts to NiFi counters.
@@ -370,8 +376,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             return;
         }
 
+        FlowFile flowFile = null;
         try {
-            FlowFile flowFile = session.create();
+            flowFile = session.create();
 
             // Set route attributes
             Map<String, String> attributes = new HashMap<>();
@@ -389,6 +396,15 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             // Set query parameters
             container.queryParameters().forEach((key, value) ->
                     attributes.put(RestApiAttributes.QUERY_PARAM_PREFIX + key, value));
+
+            // Set sanitized request headers (Authorization is excluded upstream);
+            // header names are lowercased for deterministic attribute keys.
+            // Null values are skipped — FlowFile attributes reject null.
+            container.headers().forEach((name, value) -> {
+                if (value != null) {
+                    attributes.put(RestApiAttributes.HEADER_PREFIX + name.toLowerCase(Locale.ROOT), value);
+                }
+            });
 
             // Set path parameters extracted from a pattern-matched route
             container.pathParameters().forEach((key, value) ->
@@ -445,6 +461,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         } catch (ProcessException e) {
             LOGGER.error(e, RestApiLogMessages.ERROR.FLOWFILE_CREATION_FAILED, container.routeName(), e.getMessage());
+            // Remove the partially-built FlowFile: leaving it neither transferred nor removed
+            // makes the session commit throw FlowFileHandlingException, which would roll back
+            // the error FlowFile too and the failure relationship would never receive anything.
+            if (flowFile != null) {
+                session.remove(flowFile);
+            }
             FlowFile errorFile = session.create();
             errorFile = session.putAttribute(errorFile, "error.message", e.getMessage());
             session.transfer(errorFile, RestApiGatewayConstants.Relationships.FAILURE);
@@ -531,7 +553,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_STOPPED, drained);
     }
 
-    private static JsonSchemaValidator buildSchemaValidator(List<RouteConfiguration> routes) {
+    private static Optional<JsonSchemaValidator> buildSchemaValidator(List<RouteConfiguration> routes) {
         Map<String, String> routeSchemas = new HashMap<>();
         for (RouteConfiguration route : routes) {
             if (route.hasSchemaValidation()) {
@@ -540,19 +562,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             }
         }
         if (routeSchemas.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
-        return new JsonSchemaValidator(routeSchemas);
-    }
-
-    private static Set<String> parseCommaSeparated(String value) {
-        if (value == null || value.isBlank()) {
-            return Set.of();
-        }
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toUnmodifiableSet());
+        return Optional.of(new JsonSchemaValidator(routeSchemas));
     }
 
     private void updateDynamicRelationships(List<RouteConfiguration> routes) {

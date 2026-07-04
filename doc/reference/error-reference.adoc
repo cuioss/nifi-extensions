@@ -36,9 +36,9 @@ The `type` field links to this documentation page. Error responses are produced 
 |Missing or invalid Bearer token. Includes `WWW-Authenticate: Bearer` header per RFC 6750.
 |`Missing or malformed Authorization header`
 
-|401
-|Unauthorized
-|Valid token but missing required scopes. Includes `WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`.
+|403
+|Forbidden
+|Valid token but missing required scopes (RFC 6750 Section 3.1). Includes `WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`.
 |`Insufficient scopes: Missing scopes: [read]`
 
 |403

@@ -359,6 +359,41 @@ class GatewayRequestHandlerTest {
                 smallServer.stop();
             }
         }
+
+        @Test
+        @DisplayName("Should reject unauthenticated oversized POST with 401 before reading the body")
+        void shouldRejectUnauthenticatedOversizedPostBeforeBodyRead() throws Exception {
+            // Auth runs before body buffering: an unauthenticated client must get
+            // 401 and must NOT trigger BODY_TOO_LARGE for its oversized payload
+            var smallHandler = new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
+                            .method("POST").build()), queue, 10),
+                    mockConfigService, 10); // 10 bytes max
+
+            Server smallServer = new Server();
+            ServerConnector connector = new ServerConnector(smallServer);
+            connector.setPort(0);
+            smallServer.addConnector(connector);
+            smallServer.setHandler(smallHandler);
+            smallServer.start();
+
+            int smallPort = connector.getLocalPort();
+            try {
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + smallPort + "/api/data"))
+                                .header("Content-Type", "application/json")
+                                .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofString());
+
+                assertEquals(401, response.statusCode());
+                assertEquals(0L, smallHandler.getGatewaySecurityEvents().getCount(EventType.BODY_TOO_LARGE),
+                        "Body size must not be evaluated for unauthenticated requests");
+                assertEquals(1L, smallHandler.getGatewaySecurityEvents().getCount(EventType.MISSING_BEARER_TOKEN));
+            } finally {
+                smallServer.stop();
+            }
+        }
     }
 
     @Nested
@@ -436,15 +471,15 @@ class GatewayRequestHandlerTest {
         }
 
         @Test
-        @DisplayName("Should return 401 step-up when scopes are missing")
-        void shouldReturn401StepUpWhenScopesMissing() throws Exception {
+        @DisplayName("Should return 403 with insufficient_scope challenge when scopes are missing")
+        void shouldReturn403WhenScopesMissing() throws Exception {
             // data route requires READ scope
             var response = httpClient.send(
                     requestBuilder("/api/data").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
-            // Step-up auth: 401 with insufficient_scope when scopes are missing
-            assertEquals(401, response.statusCode());
+            // RFC 6750 §3.1: insufficient_scope -> 403 with the WWW-Authenticate challenge
+            assertEquals(403, response.statusCode());
             assertTrue(response.headers().firstValue("WWW-Authenticate")
                     .orElse("").contains("insufficient_scope"));
             assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.AUTHZ_SCOPE_DENIED));

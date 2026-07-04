@@ -217,14 +217,8 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
 
-        // 4. Body read + size check
-        Optional<byte[]> bodyOpt = readAndValidateBody(request, handler, method, path, response, callback);
-        if (bodyOpt.isEmpty()) {
-            return;
-        }
-        byte[] body = bodyOpt.get();
-
-        // 5. Auth-mode dispatch
+        // 4. Auth-mode dispatch — authenticate BEFORE buffering the request body so
+        // unauthenticated clients cannot make the server buffer up to maxRequestSize bytes
         AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
                 method, path, remoteHost);
         if (authResult instanceof AuthResult.ErrorSent) {
@@ -232,12 +226,19 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         AccessTokenContent token = ((AuthResult.Success) authResult).token();
 
-        // 6. Authorization (shared — skipped when roles+scopes are empty)
+        // 5. Authorization (shared — skipped when roles+scopes are empty)
         if (token != null && hasAuthorizationRequirements(handler)
                 && !authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
             return;
         }
         LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
+
+        // 6. Body read + size check
+        Optional<byte[]> bodyOpt = readAndValidateBody(request, handler, method, path, response, callback);
+        if (bodyOpt.isEmpty()) {
+            return;
+        }
+        byte[] body = bodyOpt.get();
 
         // 7. Delegate to handler (attach extracted path parameters)
         handler.process(sanitized.get().withPathParameters(pathParameters), token, body, request, response, callback);
@@ -410,8 +411,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
             response.getHeaders().put(WWW_AUTHENTICATE,
                     BEARER_INSUFFICIENT_SCOPE_TEMPLATE
                             .formatted(String.join(" ", handler.requiredScopes())));
+            // RFC 6750 §3.1: insufficient_scope → 403 Forbidden (401 is for missing/invalid tokens)
             sendProblemResponse(response, callback,
-                    ProblemDetail.unauthorized("Insufficient scopes: " + authResult.reason()));
+                    ProblemDetail.forbidden("Insufficient scopes: " + authResult.reason()));
         } else {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.AUTHZ_ROLE_DENIED);
             sendProblemResponse(response, callback,
