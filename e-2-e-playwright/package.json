@@ -26,7 +26,7 @@
     "format:check": "prettier --check 'tests/**/*.js'"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.11.3",
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "eslint": "^10.6.0",
