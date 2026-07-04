@@ -36,6 +36,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -142,17 +143,23 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     private JsonObject parseJsonRequest(HttpServletRequest req) throws RequestException {
-        if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
+        // Read at most MAX+1 bytes instead of trusting Content-Length — with chunked
+        // transfer encoding getContentLength() is -1, which would bypass the limit.
+        byte[] body;
+        try {
+            body = req.getInputStream().readNBytes(MAX_REQUEST_BODY_SIZE + 1);
+        } catch (IOException e) {
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
+            throw new RequestException(500, "Error reading request");
+        }
+        if (body.length > MAX_REQUEST_BODY_SIZE) {
             throw new RequestException(413, "Request body too large");
         }
-        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
+        try (JsonReader reader = JSON_READER.createReader(new ByteArrayInputStream(body))) {
             return reader.readObject();
         } catch (JsonException e) {
             LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
             throw new RequestException(400, "Invalid JSON format");
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
-            throw new RequestException(500, "Error reading request");
         }
     }
 

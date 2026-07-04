@@ -36,12 +36,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.jspecify.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -90,6 +90,13 @@ public class JwksValidationServlet extends HttpServlet {
     private static final String DEFAULT_JWKS_BASE_PATH = "/opt/nifi/nifi-current/conf";
 
     @Nullable private transient NiFiWebConfigurationContext configContext;
+
+    /**
+     * cui-http URL/path security validator built once with the strict configuration
+     * (mirrors the other servlets) instead of rebuilding a pipeline per request.
+     */
+    private final transient HttpSecurityValidator urlPathValidator =
+            PipelineFactory.createUrlPathPipeline(SecurityConfiguration.strict(), new SecurityEventCounter());
 
     @Override
     public void init() throws ServletException {
@@ -235,15 +242,13 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
-            // Fetch JWKS content.
-            // When private addresses are allowed, use the original hostname directly.
-            // IP-based fetch (for DNS rebinding TOCTOU protection) fails with virtual-hosted
-            // services because Java's HttpClient restricts the Host header, so the server
-            // receives the IP as hostname instead of the original. Since the admin has
-            // explicitly trusted private addresses, DNS rebinding protection is unnecessary.
-            HttpResult<String> fetchResult = allowPrivateAddresses
-                    ? fetchJwksContentByOriginalUrl(jwksUrl)
-                    : fetchJwksContentByResolvedAddress(jwksUrl, uri, resolvedAddress);
+            // Fetch JWKS content by hostname. The former resolved-IP fetch (with a manual
+            // Host header) failed at runtime: java.net.http rejects the restricted Host
+            // header unless -Djdk.httpclient.allowRestrictedHeaders=host is set on the NiFi
+            // JVM, and HTTPS-by-IP breaks SNI/hostname verification. The pre-resolution
+            // check above still blocks private targets; the residual DNS-rebinding TOCTOU
+            // window is an accepted trade-off for this admin-facing validation endpoint.
+            HttpResult<String> fetchResult = fetchJwksContentByOriginalUrl(jwksUrl);
 
             if (!fetchResult.isSuccess()) {
                 return JwksValidationResult.failure(
@@ -281,10 +286,7 @@ public class JwksValidationServlet extends HttpServlet {
             InetAddress[] addresses = InetAddress.getAllByName(host);
             if (!allowPrivateAddresses) {
                 for (InetAddress address : addresses) {
-                    if (address.isLoopbackAddress()
-                            || address.isSiteLocalAddress()
-                            || address.isLinkLocalAddress()
-                            || address.isAnyLocalAddress()) {
+                    if (isPrivateOrLocalAddress(address)) {
                         LOGGER.debug("Private/loopback address detected for host %s: %s", host, address);
                         return null;
                     }
@@ -295,6 +297,36 @@ public class JwksValidationServlet extends HttpServlet {
             LOGGER.debug("Cannot resolve host for SSRF check: %s", host);
             return null;
         }
+    }
+
+    /**
+     * Returns {@code true} for addresses that must not be reachable via URL validation
+     * when private addresses are disallowed: loopback, RFC 1918 site-local, link-local,
+     * wildcard, multicast, IPv6 unique-local (fc00::/7 — not covered by
+     * {@link InetAddress#isSiteLocalAddress()}, which only matches deprecated fec0::/10),
+     * carrier-grade NAT (100.64.0.0/10), and the benchmarking range (198.18.0.0/15).
+     * A JWKS endpoint is legitimately reachable only on a global-unicast address.
+     */
+    static boolean isPrivateOrLocalAddress(InetAddress address) {
+        if (address.isLoopbackAddress() || address.isSiteLocalAddress()
+                || address.isLinkLocalAddress() || address.isAnyLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+        byte[] bytes = address.getAddress();
+        // IPv6 unique-local fc00::/7
+        if (bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC) {
+            return true;
+        }
+        if (bytes.length == 4) {
+            // IPv4 carrier-grade NAT 100.64.0.0/10
+            if ((bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 64) {
+                return true;
+            }
+            // Benchmarking range 198.18.0.0/15 (RFC 2544)
+            return (bytes[0] & 0xFF) == 198 && (bytes[1] & 0xFE) == 18;
+        }
+        return false;
     }
 
     /**
@@ -386,54 +418,10 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Fetches JWKS content using a pre-resolved IP address to prevent DNS rebinding attacks.
-     * The HTTP request is made to the resolved IP with the original Host header,
-     * ensuring the same IP validated by {@link #resolveAndValidateAddress} is used.
-     *
-     * @param jwksUrl          Original URL (for logging and Host header)
-     * @param originalUri      Parsed URI of the original URL
-     * @param resolvedAddress  Pre-validated IP address to connect to
-     * @return {@link HttpResult} containing JWKS content on success, or failure details
-     * @throws IOException if HTTP request fails
-     * @throws InterruptedException if HTTP request is interrupted
-     */
-    HttpResult<String> fetchJwksContentByResolvedAddress(String jwksUrl, URI originalUri,
-            InetAddress resolvedAddress) throws IOException, InterruptedException {
-        // Build URL using resolved IP to prevent DNS rebinding TOCTOU attacks
-        URI ipBasedUri;
-        try {
-            int port = originalUri.getPort();
-            ipBasedUri = new URI(originalUri.getScheme(), null, resolvedAddress.getHostAddress(),
-                    port, originalUri.getPath(), originalUri.getQuery(), null);
-        } catch (URISyntaxException e) {
-            LOGGER.warn(UILogMessages.WARN.JWKS_IP_URI_CONSTRUCTION_FAILED, jwksUrl);
-            return HttpResult.failure("Failed to construct IP-based URI", e,
-                    HttpErrorCategory.CONFIGURATION_ERROR);
-        }
-
-        HttpHandler httpHandler = HttpHandler.builder()
-                .uri(ipBasedUri.toString())
-                .connectionTimeoutSeconds(5)
-                .readTimeoutSeconds(10)
-                .build();
-
-        try (HttpClient httpClient = httpHandler.createHttpClient()) {
-            HttpRequest request = httpHandler.requestBuilder()
-                    .header("Accept", CONTENT_TYPE_JSON)
-                    .header("Host", originalUri.getHost())
-                    .GET()
-                    .build();
-
-            HttpResponse<InputStream> response = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofInputStream());
-            return readSizeLimitedBody(response, jwksUrl);
-        }
-    }
-
-    /**
-     * Fetches JWKS content using the original URL directly.
-     * Used when private addresses are allowed, bypassing IP-based fetch since
-     * DNS rebinding protection is unnecessary when private addresses are trusted.
+     * Fetches JWKS content using the original URL directly. The target host has
+     * already passed {@link #resolveAndValidateAddress} when private addresses are
+     * disallowed; fetching by hostname keeps SNI/hostname verification working for
+     * HTTPS endpoints and avoids java.net.http's restricted {@code Host} header.
      *
      * @param jwksUrl Original JWKS URL
      * @return {@link HttpResult} containing JWKS content on success, or failure details
@@ -596,11 +584,8 @@ public class JwksValidationServlet extends HttpServlet {
      * @return a failure result if validation fails, or null if the URL is safe
      */
     private JwksValidationResult validateUrlSecurity(String jwksUrl) {
-        SecurityEventCounter counter = new SecurityEventCounter();
-        SecurityConfiguration secConfig = SecurityConfiguration.strict();
-        HttpSecurityValidator urlValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
         try {
-            urlValidator.validate(jwksUrl);
+            urlPathValidator.validate(jwksUrl);
         } catch (UrlSecurityException e) {
             LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, jwksUrl, e.getFailureType());
             return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
@@ -615,11 +600,8 @@ public class JwksValidationServlet extends HttpServlet {
      * @return a failure result if validation fails, or null if the path is safe
      */
     private JwksValidationResult validatePathSecurity(String jwksFilePath) {
-        SecurityEventCounter counter = new SecurityEventCounter();
-        SecurityConfiguration secConfig = SecurityConfiguration.strict();
-        HttpSecurityValidator pathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
         try {
-            pathValidator.validate(jwksFilePath);
+            urlPathValidator.validate(jwksFilePath);
         } catch (UrlSecurityException e) {
             LOGGER.warn(UILogMessages.WARN.PATH_SECURITY_VIOLATION, jwksFilePath, e.getFailureType());
             return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
@@ -664,19 +646,25 @@ public class JwksValidationServlet extends HttpServlet {
      */
     @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
     private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        if (req.getContentLength() > MAX_REQUEST_BODY_SIZE) {
+        // Read at most MAX+1 bytes instead of trusting Content-Length — with chunked
+        // transfer encoding getContentLength() is -1, which would bypass the limit.
+        byte[] body;
+        try {
+            body = req.getInputStream().readNBytes(MAX_REQUEST_BODY_SIZE + 1);
+        } catch (IOException e) {
+            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
+            sendErrorResponse(resp, 500, "Error reading request");
+            return null;
+        }
+        if (body.length > MAX_REQUEST_BODY_SIZE) {
             sendErrorResponse(resp, 413, "Request body too large");
             return null;
         }
-        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
+        try (JsonReader reader = JSON_READER.createReader(new ByteArrayInputStream(body))) {
             return reader.readObject();
         } catch (JsonException e) {
             LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
             sendErrorResponse(resp, 400, "Invalid JSON format");
-            return null;
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.ERROR_READING_REQUEST_BODY);
-            sendErrorResponse(resp, 500, "Error reading request");
             return null;
         }
     }

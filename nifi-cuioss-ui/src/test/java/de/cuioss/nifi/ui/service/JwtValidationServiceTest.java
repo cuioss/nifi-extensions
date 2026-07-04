@@ -93,19 +93,7 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should get issuer from field when set")
-        void shouldGetIssuerFromField() {
-            JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(null);
-            String issuer = strings().next();
-
-            result.setIssuer(issuer);
-
-            assertEquals(issuer, result.getIssuer(), "Issuer should match set value");
-        }
-
-        @Test
-        @DisplayName("Should get issuer from token content when field not set")
+        @DisplayName("Should get issuer from token content")
         void shouldGetIssuerFromTokenContent() {
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
@@ -121,7 +109,7 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should return null issuer when neither field nor token content available")
+        @DisplayName("Should return null issuer when no token content is available")
         void shouldReturnNullIssuerWhenNotAvailable() {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
@@ -132,30 +120,26 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should set and get authorized flag")
-        void shouldSetAndGetAuthorized() {
-            JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(null);
-
-            result.setAuthorized(true);
-
-            assertTrue(result.isAuthorized(), "Authorized flag should be true");
+        @DisplayName("Should derive authorized from validation outcome")
+        void shouldDeriveAuthorizedFromOutcome() {
+            assertTrue(JwtValidationService.TokenValidationResult.success(null).isAuthorized(),
+                    "Successful validation should be authorized");
+            assertFalse(JwtValidationService.TokenValidationResult.failure("error").isAuthorized(),
+                    "Failed validation must not be authorized");
         }
 
         @Test
-        @DisplayName("Should set and get scopes from field")
-        void shouldSetAndGetScopesFromField() {
+        @DisplayName("Should return empty scopes for failure result")
+        void shouldReturnEmptyScopesForFailure() {
             JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(null);
-            List<String> scopes = Arrays.asList("read", "write");
+                    JwtValidationService.TokenValidationResult.failure("error");
 
-            result.setScopes(scopes);
-
-            assertEquals(scopes, result.getScopes(), "Scopes should match set value");
+            assertTrue(result.getScopes().isEmpty(), "Scopes must be empty, not null, on failure");
+            assertTrue(result.getRoles().isEmpty(), "Roles must be empty, not null, on failure");
         }
 
         @Test
-        @DisplayName("Should get scopes from token content when field not set")
+        @DisplayName("Should get scopes from token content")
         void shouldGetScopesFromTokenContent() {
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
@@ -171,19 +155,7 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should set and get roles from field")
-        void shouldSetAndGetRolesFromField() {
-            JwtValidationService.TokenValidationResult result =
-                    JwtValidationService.TokenValidationResult.success(null);
-            List<String> roles = Arrays.asList("admin", "user");
-
-            result.setRoles(roles);
-
-            assertEquals(roles, result.getRoles(), "Roles should match set value");
-        }
-
-        @Test
-        @DisplayName("Should get roles from token content when field not set")
+        @DisplayName("Should get roles from token content")
         void shouldGetRolesFromTokenContent() {
             var tokenHolder = new TestTokenHolder(TokenType.ACCESS_TOKEN,
                     ClaimControlParameter.defaultForTokenType(TokenType.ACCESS_TOKEN));
@@ -243,19 +215,19 @@ class JwtValidationServiceTest {
         }
 
         @Test
-        @DisplayName("Should return null scopes when no token content")
+        @DisplayName("Should return empty scopes when no token content")
         void shouldReturnNullScopesWhenNoTokenContent() {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
-            assertNull(result.getScopes(), "Scopes should be null when token content is null");
+            assertTrue(result.getScopes().isEmpty(), "Scopes should be empty when token content is null");
         }
 
         @Test
-        @DisplayName("Should return null roles when no token content")
+        @DisplayName("Should return empty roles when no token content")
         void shouldReturnNullRolesWhenNoTokenContent() {
             JwtValidationService.TokenValidationResult result =
                     JwtValidationService.TokenValidationResult.failure("error");
-            assertNull(result.getRoles(), "Roles should be null when token content is null");
+            assertTrue(result.getRoles().isEmpty(), "Roles should be empty when token content is null");
         }
 
         @Test
