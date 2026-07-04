@@ -21,9 +21,6 @@
         <keycloak.url>https://localhost:9085</keycloak.url>
         <!-- Fail-fast configuration -->
         <maven.test.failure.ignore>false</maven.test.failure.ignore>
-        <maven.build.timeout>180</maven.build.timeout> <!-- 3 minutes max -->
-        <nifi.startup.timeout>120</nifi.startup.timeout> <!-- 2 minutes for NiFi startup -->
-        <playwright.timeout>120</playwright.timeout> <!-- 2 minutes for Playwright tests -->
         <!-- Code quality configuration -->
         <skip.lint>false</skip.lint> <!-- Run linting by default, skip only for integration tests -->
         <!-- skipPlaywrightTests default inherited from root POM, overridden by integration-tests profile -->
@@ -159,7 +156,7 @@
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
                                 <NODE_EXTRA_CA_CERTS>${docker.script.dir}/certificates/localhost.crt</NODE_EXTRA_CA_CERTS>
                             </environmentVariables>
-                            <skip>${skip.docker.deployment}</skip>
+                            <skip>${skipPlaywrightTests}</skip>
                         </configuration>
                     </execution>
                     

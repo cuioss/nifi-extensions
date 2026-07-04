@@ -59,6 +59,7 @@ Project-specific conventions (not covered by the skills above):
 Language-level prohibitions are owned by the skills referenced under [Conventions](#conventions) (no Mockito/PowerMock → `pm-dev-java-cui:cui-testing`; no log4j/slf4j/System.out → `pm-dev-java-cui:cui-logging`; no `var` → `pm-dev-frontend:javascript`; no null returns → `pm-dev-java:java-null-safety`). Project-specific prohibitions:
 
 - **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
+- **EasyMock is an approved exception** to the no-mocking-framework rule (which bans Mockito/PowerMock) — used only in nifi-cuioss-ui for NiFi web-context/servlet mocks where hand-rolled doubles are impractical; version-managed in the root pom
 - **No raw `console.log`** in JavaScript — use the `log` utility from `utils.js` (`log.info`, `log.warn`, `log.error`, `log.debug`)
 - **No commits without pre-commit checks** — always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`
 - **No hardcoded credentials or secrets**
