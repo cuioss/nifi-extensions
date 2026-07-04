@@ -136,9 +136,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
             return;
         }
 
-        processedFlowFilesCount.incrementAndGet();
-        if (processedFlowFilesCount.get() % JwtConstants.LOG_METRICS_INTERVAL == 0) {
-            LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedFlowFilesCount);
+        // Use the returned count so concurrent tasks cannot skip or duplicate the interval log
+        long processedCount = processedFlowFilesCount.incrementAndGet();
+        if (processedCount % JwtConstants.LOG_METRICS_INTERVAL == 0) {
+            LOGGER.info(AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS, processedCount);
         }
 
         try {
@@ -157,6 +158,13 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         } catch (TokenValidationException e) {
             handleTokenValidationException(session, flowFile, e);
+        } catch (IllegalStateException e) {
+            // Controller service not enabled (yet) — route to failure and yield instead of
+            // letting the exception escape and roll back the session repeatedly
+            LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
+            handleError(session, flowFile, "AUTH-002",
+                    "JWT validation unavailable: " + e.getMessage(), "SERVICE_UNAVAILABLE");
+            context.yield();
         }
     }
 

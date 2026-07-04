@@ -16,11 +16,6 @@
  */
 package de.cuioss.nifi.integration;
 
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.config.RestAssuredConfig;
-import io.restassured.config.SSLConfig;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import de.cuioss.http.security.database.ApacheCVEAttackDatabase;
 import de.cuioss.http.security.database.AttackTestCase;
 import de.cuioss.http.security.database.ModSecurityCRSAttackDatabase;
@@ -28,6 +23,11 @@ import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.test.generator.domain.UUIDStringGenerator;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.cuioss.test.generator.junit.parameterized.TypeGeneratorSource;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.config.RestAssuredConfig;
+import io.restassured.config.SSLConfig;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;

@@ -33,9 +33,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Integration tests verifying that the gateway's application metrics are bridged

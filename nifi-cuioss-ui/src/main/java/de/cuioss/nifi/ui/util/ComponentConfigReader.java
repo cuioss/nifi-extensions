@@ -23,11 +23,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReaderFactory;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.nifi.web.ComponentDetails;
-import org.apache.nifi.web.NiFiWebConfigurationContext;
-import org.apache.nifi.web.NiFiWebRequestContext;
-import org.apache.nifi.web.ResourceNotFoundException;
-import org.apache.nifi.web.UiExtensionType;
+import org.apache.nifi.web.*;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
@@ -37,11 +33,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Utility class for reading NiFi component configuration via the framework's

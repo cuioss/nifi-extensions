@@ -33,9 +33,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Tests for {@link ComponentInfoServlet} using embedded Jetty + REST Assured.
