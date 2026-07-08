@@ -432,6 +432,10 @@ public class JwksValidationServlet extends HttpServlet {
             throws IOException, InterruptedException {
         HttpHandler httpHandler = HttpHandler.builder()
                 .uri(jwksUrl)
+                // The admin-facing validation endpoint deliberately supports plain http
+                // JWKS URLs (see validateUrlScheme); cui-http 2.0.0 requires opting in
+                // explicitly for any http:// target. SSRF protection above still applies.
+                .allowInsecureHttp(true)
                 .connectionTimeoutSeconds(5)
                 .readTimeoutSeconds(10)
                 .build();
