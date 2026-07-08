@@ -504,6 +504,27 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should allow non-HTTPS JWKS URL when requirement is disabled")
         void shouldAllowHttpJwksUrlWhenHttpsNotRequired() {
+            // cui-http 2.0.0 refuses to build a cleartext HTTP handler and the token-sheriff
+            // JWKS loader offers no opt-in, so an https:// JWKS URL is required even when the
+            // NiFi-level "Require HTTPS for JWKS URLs" guard and private-address checks are
+            // both lifted. The plaintext-HTTP rejection is covered by the loopback tests below.
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://localhost:8080/jwks");
+            properties.put(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(), "JWKS URL should pass when both restrictions are lifted");
+        }
+
+        @Test
+        @DisplayName("Should reject plaintext HTTP JWKS URL even when the HTTPS requirement is disabled")
+        void shouldRejectHttpJwksUrlEvenWhenHttpsNotRequired() {
+            // Even with the NiFi-level HTTPS requirement disabled, cui-http 2.0.0 refuses to
+            // build a plaintext HTTP handler (no allowInsecureHttp opt-in is exposed by the
+            // token-sheriff JWKS loader), so the issuer configuration fails closed.
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
             properties.put("issuer.test.jwks-url", "http://localhost:8080/jwks");
@@ -512,7 +533,8 @@ class IssuerConfigurationParserTest {
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
-            assertEquals(1, configs.size(), "HTTP JWKS URL should pass when both restrictions are lifted");
+            assertTrue(configs.isEmpty(), "Plaintext HTTP JWKS URL must not yield an issuer configuration");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "Error creating issuer configuration");
         }
 
         @Test
