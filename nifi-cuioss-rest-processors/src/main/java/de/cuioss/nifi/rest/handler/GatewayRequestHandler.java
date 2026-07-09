@@ -24,6 +24,7 @@ import de.cuioss.http.security.pipeline.PipelineFactory.PipelineSet;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.util.AuthorizationRequirements;
 import de.cuioss.nifi.jwt.util.AuthorizationValidator;
+import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RoutePattern;
@@ -197,6 +198,16 @@ public class GatewayRequestHandler extends Handler.Abstract {
             return;
         }
         String path = sanitized.get().path();
+
+        // Strip the reverse-proxy context path (if any) from the already-sanitized
+        // path before routing, so a proxied request such as /nifi-proxy/health with
+        // X-ProxyContextPath: /nifi-proxy resolves to the /health handler. An
+        // unprefixed request resolves to an empty prefix and is byte-identical to
+        // today.
+        String proxyPrefix = ProxyContextPathResolver.resolve(name -> request.getHeaders().get(name));
+        if (!proxyPrefix.isEmpty()) {
+            path = stripProxyPrefix(path, proxyPrefix);
+        }
 
         // 2. Lookup handler (exact → prefix → pattern)
         ResolvedRoute resolved = resolveHandler(path);
@@ -458,6 +469,27 @@ public class GatewayRequestHandler extends Handler.Abstract {
     }
 
     // --- Utility methods ---
+
+    /**
+     * Strips the reverse-proxy context path from the front of the sanitized path.
+     * The prefix is dropped only when the path equals it (routing to the proxied
+     * root {@code "/"}) or the path continues with a {@code "/"} after it, so a
+     * prefix of {@code /nifi} never truncates an unrelated {@code /nifiXyz} path.
+     *
+     * @param path        the sanitized request path
+     * @param proxyPrefix the non-empty, normalized proxy context path
+     * @return the path with the prefix removed, or the original path when it does
+     *         not carry the prefix
+     */
+    private static String stripProxyPrefix(String path, String proxyPrefix) {
+        if (path.equals(proxyPrefix)) {
+            return "/";
+        }
+        if (path.startsWith(proxyPrefix + "/")) {
+            return path.substring(proxyPrefix.length());
+        }
+        return path;
+    }
 
     private static boolean hasAuthorizationRequirements(EndpointHandler handler) {
         return !handler.requiredRoles().isEmpty() || !handler.requiredScopes().isEmpty();

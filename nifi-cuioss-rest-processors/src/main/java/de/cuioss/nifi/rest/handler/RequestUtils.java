@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 import lombok.experimental.UtilityClass;
@@ -90,7 +91,8 @@ class RequestUtils {
      * Builds the absolute {@code Location} URI for the status endpoint of the given traceId,
      * omitting default ports (80/443).
      *
-     * @param request the originating Jetty request (source of scheme/host/port)
+     * @param request the originating Jetty request (source of scheme/host/port and
+     *                the reverse-proxy context path)
      * @param traceId the trace ID
      * @return the absolute status URI
      */
@@ -98,12 +100,13 @@ class RequestUtils {
         String scheme = request.getHttpURI().getScheme();
         String host = Request.getServerName(request);
         int port = Request.getServerPort(request);
+        String prefix = ProxyContextPathResolver.resolve(request.getHeaders()::get);
         boolean isDefaultPort = ("http".equals(scheme) && port == 80)
                 || ("https".equals(scheme) && port == 443);
         if (isDefaultPort) {
-            return "%s://%s/status/%s".formatted(scheme, host, traceId);
+            return "%s://%s%s/status/%s".formatted(scheme, host, prefix, traceId);
         }
-        return "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
+        return "%s://%s:%d%s/status/%s".formatted(scheme, host, port, prefix, traceId);
     }
 
     /**
@@ -119,12 +122,13 @@ class RequestUtils {
      */
     public static void sendAcceptedResponse(Request request, Response response, Callback callback,
             String traceId, boolean includeAttachmentsLink) {
-        String statusPath = "/status/" + traceId;
+        String prefix = ProxyContextPathResolver.resolve(request.getHeaders()::get);
+        String statusPath = prefix + "/status/" + traceId;
         JsonObjectBuilder linksBuilder = Json.createObjectBuilder()
                 .add("status", Json.createObjectBuilder().add("href", statusPath));
         if (includeAttachmentsLink) {
             linksBuilder.add("attachments", Json.createObjectBuilder()
-                    .add("href", "/attachments/" + traceId));
+                    .add("href", prefix + "/attachments/" + traceId));
         }
         byte[] responseBody = Json.createObjectBuilder()
                 .add("status", "accepted")

@@ -1011,4 +1011,60 @@ class GatewayRequestHandlerTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("Proxy Context Path")
+    class ProxyContextPath {
+
+        @Test
+        @DisplayName("Should strip X-ProxyContextPath prefix and route to the handler")
+        void shouldStripProxyContextPathPrefix() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/nifi-proxy/api/health")
+                            .header("X-ProxyContextPath", "/nifi-proxy")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertFalse(queue.isEmpty(), "Prefixed request must route to the health handler");
+            assertEquals("health", queue.poll().routeName());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should strip X-Forwarded-Prefix fallback and route to the handler")
+        void shouldStripForwardedPrefix() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/gw/api/health")
+                            .header("X-Forwarded-Prefix", "/gw")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertEquals("health", queue.poll().routeName());
+        }
+
+        @Test
+        @DisplayName("Should route an unprefixed request unchanged when no proxy header is present")
+        void shouldRouteUnprefixedRequestUnchanged() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/api/health").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertEquals("health", queue.poll().routeName());
+            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should 404 a prefixed path when the proxy header is absent")
+        void shouldNotStripWithoutHeader() throws Exception {
+            var response = httpClient.send(
+                    requestBuilder("/nifi-proxy/api/health").GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(404, response.statusCode());
+            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+        }
+    }
 }
