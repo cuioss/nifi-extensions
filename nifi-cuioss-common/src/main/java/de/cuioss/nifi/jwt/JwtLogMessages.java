@@ -190,6 +190,18 @@ public final class JwtLogMessages {
                         + "private-network restriction; deferring to the JWKS loader")
                 .build();
 
+        public static final LogRecord CONTEXT_PATH_CONTROL_CHARACTERS_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(111)
+                .template("Rejecting proxy context path with control characters: %s")
+                .build();
+
+        public static final LogRecord CONTEXT_PATH_PROTOCOL_RELATIVE_REJECTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(112)
+                .template("Rejecting proxy context path to prevent protocol-relative URL injection: %s")
+                .build();
+
     }
 
     @UtilityClass
