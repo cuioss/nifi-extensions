@@ -37,6 +37,8 @@ jest_stdout.log
 # Runtime state (plans, run-configuration, lessons-learned, memory, logs — managed by plan-marshall)
 .plan/*
 !.plan/marshal.json
-!.plan/project-structure.json
 !.plan/project-architecture/
 .plan/local/worktrees/
+!.plan/plugin-doctor.yml
+!.plan/project-structure.json
+
