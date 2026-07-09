@@ -17,6 +17,7 @@
 package de.cuioss.nifi.processors.auth;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
+import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.sheriff.token.validation.domain.claim.ClaimValue;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
@@ -33,10 +34,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Properties;
 import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships;
@@ -335,6 +340,75 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
             flowFile.assertAttributeExists(JwtAttributes.Error.REASON);
             flowFile.assertAttributeExists(JwtAttributes.Error.CODE);
+        }
+    }
+
+    @Nested
+    @DisplayName("Error-Code Mapping and onTrigger Edge Cases")
+    class ErrorCodeMappingAndEdgeCaseTests {
+
+        @Test
+        @DisplayName("Should be a no-op when triggered with an empty queue")
+        void shouldNoOpOnEmptyQueue() {
+            // No FlowFile enqueued — session.get() returns null and onTrigger returns early.
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
+        }
+
+        @Test
+        @DisplayName("Should log validation metrics once LOG_METRICS_INTERVAL FlowFiles are processed")
+        void shouldLogMetricsAtInterval() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
+            int interval = (int) JwtConstants.LOG_METRICS_INTERVAL;
+            for (int i = 0; i < interval; i++) {
+                enqueueWithToken(tokenHolder.getRawToken());
+            }
+
+            testRunner.run(interval);
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, interval);
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
+                    AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS.resolveIdentifierString());
+        }
+
+        @Test
+        @DisplayName("Should treat a blank (whitespace-only) token as a missing token")
+        void shouldTreatBlankTokenAsMissing() {
+            enqueueWithToken("   ");
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            flowFile.assertAttributeEquals(JwtAttributes.Error.CODE, "AUTH-001");
+        }
+
+        @ParameterizedTest(name = "{0} -> {1}")
+        @MethodSource("eventTypeToErrorCode")
+        @DisplayName("Should map the validation event type to its specific AUTH error code")
+        void shouldMapEventTypeToErrorCode(SecurityEventCounter.EventType eventType, String expectedCode) {
+            mockConfigService.configureValidationFailure(
+                    new TokenValidationException(eventType, "Token validation failed"));
+            enqueueWithToken("a.b.c");
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            flowFile.assertAttributeEquals(JwtAttributes.Error.CODE, expectedCode);
+        }
+
+        static Stream<Arguments> eventTypeToErrorCode() {
+            return Stream.of(
+                    Arguments.of(SecurityEventCounter.EventType.TOKEN_EXPIRED, "AUTH-005"),
+                    Arguments.of(SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED, "AUTH-006"),
+                    Arguments.of(SecurityEventCounter.EventType.ISSUER_MISMATCH, "AUTH-007"),
+                    Arguments.of(SecurityEventCounter.EventType.AUDIENCE_MISMATCH, "AUTH-008"),
+                    Arguments.of(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT, "AUTH-002"));
         }
     }
 }
