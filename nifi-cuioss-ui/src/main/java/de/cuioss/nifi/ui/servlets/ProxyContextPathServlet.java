@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
+import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
@@ -42,18 +43,9 @@ import java.util.Map;
  * {@link ProcessorIdValidationFilter} (which requires a UUID processor-ID
  * header), since the context-path request carries no processor ID.
  *
- * <p>Header precedence (first present non-empty value wins):
- * <ol>
- *     <li>{@code X-ProxyContextPath} — NiFi-native, most specific</li>
- *     <li>{@code X-Forwarded-Prefix} — de-facto reverse-proxy prefix header</li>
- *     <li>RFC 7239 {@code Forwarded} — resolves empty (no standard prefix directive)</li>
- * </ol>
- *
- * <p>The resolved value is normalized: exactly one leading slash, no trailing
- * slash, and an empty string when no header is present (so direct, non-proxied
- * deployments are byte-identical to prior behaviour). Values carrying CR, LF, or
- * other control characters are rejected (resolved to empty) to guard against
- * header injection.
+ * <p>The header precedence, normalization, and injection guard live in the shared
+ * {@link ProxyContextPathResolver} so the UI servlet, the REST processors, and the
+ * integration tests resolve the prefix identically.
  *
  * <p>Response format (always HTTP 200):
  * <pre>{@code
@@ -65,13 +57,9 @@ public class ProxyContextPathServlet extends HttpServlet {
     private static final CuiLogger LOGGER = new CuiLogger(ProxyContextPathServlet.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
-    private static final String HEADER_PROXY_CONTEXT_PATH = "X-ProxyContextPath";
-    private static final String HEADER_FORWARDED_PREFIX = "X-Forwarded-Prefix";
-    private static final String HEADER_FORWARDED = "Forwarded";
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-        String contextPath = normalize(resolveRawPrefix(req));
+        String contextPath = ProxyContextPathResolver.resolve(req::getHeader);
 
         var json = Json.createObjectBuilder()
                 .add("contextPath", contextPath)
@@ -91,85 +79,18 @@ public class ProxyContextPathServlet extends HttpServlet {
     }
 
     /**
-     * Resolves the raw (un-normalized) prefix from the request headers in strict
-     * precedence order, returning the first present non-empty value. Returns
-     * {@code null} when no header carries a usable value.
-     */
-    private static String resolveRawPrefix(HttpServletRequest req) {
-        String proxyContextPath = req.getHeader(HEADER_PROXY_CONTEXT_PATH);
-        if (isPresent(proxyContextPath)) {
-            return proxyContextPath;
-        }
-        String forwardedPrefix = req.getHeader(HEADER_FORWARDED_PREFIX);
-        if (isPresent(forwardedPrefix)) {
-            return forwardedPrefix;
-        }
-        // RFC 7239 Forwarded has no standard prefix/context-path directive, so it
-        // resolves empty by design; the first two headers carry the prefix.
-        String forwarded = req.getHeader(HEADER_FORWARDED);
-        if (isPresent(forwarded)) {
-            LOGGER.debug("Forwarded header present but carries no context-path directive: %s", forwarded);
-        }
-        return null;
-    }
-
-    private static boolean isPresent(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    /**
-     * Normalizes a raw prefix to exactly one leading slash and no trailing slash.
-     * Returns an empty string when the value is absent, blank, carries control
-     * characters (CR/LF or other), starts with {@code //} (protocol-relative), or
-     * contains a backslash — guarding against header and protocol-relative URL
-     * injection.
+     * Delegates to {@link ProxyContextPathResolver#normalize(String)}.
      *
      * <p>Package-private so the injection guard and normalization rules can be
      * unit-tested directly: a real HTTP round-trip sanitizes control characters
      * in header values before the servlet sees them, so the guard cannot be
      * exercised through the transport path.
+     *
+     * @param raw the raw header value (may be {@code null})
+     * @return the normalized prefix, or an empty string when the value is absent
+     *         or rejected
      */
     static String normalize(String raw) {
-        if (raw == null) {
-            return "";
-        }
-        String trimmed = raw.strip();
-        if (trimmed.isEmpty()) {
-            return "";
-        }
-        if (containsControlCharacter(trimmed)) {
-            LOGGER.warn(UILogMessages.WARN.CONTEXT_PATH_CONTROL_CHARACTERS_REJECTED, trimmed);
-            return "";
-        }
-        // Reject protocol-relative values ("//host") and backslashes (which some
-        // browsers normalize to "/"). Otherwise a value such as "//attacker.com"
-        // would compose into "//attacker.com/nifi-api/..." in the browser — a
-        // protocol-relative URL that exfiltrates the request (with its CSRF token
-        // and processor-id headers) to an attacker-controlled host.
-        if (trimmed.startsWith("//") || trimmed.contains("\\")) {
-            LOGGER.warn(UILogMessages.WARN.CONTEXT_PATH_PROTOCOL_RELATIVE_REJECTED, trimmed);
-            return "";
-        }
-        String withLeadingSlash = trimmed.startsWith("/") ? trimmed : "/" + trimmed;
-        String withoutTrailingSlash = stripTrailingSlashes(withLeadingSlash);
-        // A value of only slashes (e.g. "/") collapses to empty.
-        return "/".equals(withoutTrailingSlash) ? "" : withoutTrailingSlash;
-    }
-
-    private static boolean containsControlCharacter(String value) {
-        for (int i = 0; i < value.length(); i++) {
-            if (Character.isISOControl(value.charAt(i))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static String stripTrailingSlashes(String value) {
-        int end = value.length();
-        while (end > 1 && value.charAt(end - 1) == '/') {
-            end--;
-        }
-        return value.substring(0, end);
+        return ProxyContextPathResolver.normalize(raw);
     }
 }
