@@ -158,7 +158,7 @@ public final class ApiRouteHandler implements EndpointHandler {
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
                 route.name(), method, path, Request.getRemoteAddr(request));
         if (tracked) {
-            RequestUtils.sendAcceptedResponse(request, response, callback, traceId,
+            RequestUtils.sendAcceptedResponse(request, sanitized.proxyContextPath(), response, callback, traceId,
                     route.trackingMode() == TrackingMode.ATTACHMENTS);
         } else {
             sendSuccessResponse(response, callback, method);

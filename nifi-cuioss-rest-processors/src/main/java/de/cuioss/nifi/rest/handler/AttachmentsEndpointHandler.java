@@ -175,7 +175,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
 
         autoTransitionToProcessedIfMinMet(parentTraceId.get(), parent.get(), attachmentCount.get());
 
-        RequestUtils.sendAcceptedResponse(request, response, callback, traceId, false);
+        RequestUtils.sendAcceptedResponse(request, sanitized.proxyContextPath(), response, callback, traceId, false);
     }
 
     private Optional<String> extractAndValidateParentTraceId(String path, Response response, Callback callback) {

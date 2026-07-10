@@ -70,11 +70,11 @@ class StatusEndpointHandlerTest {
         var httpSecurityEvents = new SecurityEventCounter();
         var gatewaySecurityEvents = new GatewaySecurityEvents();
 
-        List<EndpointHandler> handlers = new ArrayList<>();
-        handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
-                Set.of(), Set.of()));
-        handlers.add(new StatusEndpointHandler(statusStore, true,
-                Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of()));
+        List<EndpointHandler> handlers = new ArrayList<>(List.of(
+                new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                        Set.of(), Set.of()),
+                new StatusEndpointHandler(statusStore, true,
+                        Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of())));
 
         // Add a tracked user route
         var trackedRoute = RouteConfiguration.builder()
@@ -95,7 +95,7 @@ class StatusEndpointHandlerTest {
                 null, gatewaySecurityEvents));
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                httpSecurityEvents, gatewaySecurityEvents);
+                httpSecurityEvents, gatewaySecurityEvents, Set.of(), false);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);

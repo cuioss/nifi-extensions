@@ -159,6 +159,12 @@ public final class RestApiLogMessages {
                 .template("Registered JSON Schema for route '%s' from %s")
                 .build();
 
+        public static final LogRecord PROXY_WHITELIST_CONFIGURED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(21)
+                .template("Proxy context-path allowlist configured: %s")
+                .build();
+
     }
 
     @UtilityClass
@@ -295,6 +301,15 @@ public final class RestApiLogMessages {
                 .prefix(PREFIX)
                 .identifier(121)
                 .template("Attachment window closed for parentTraceId '%s' — status is %s")
+                .build();
+
+        public static final LogRecord PROXY_CONTEXT_PATH_IGNORED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(122)
+                .template("Received reverse-proxy context path '%s' but it is not honored: the allowlist "
+                        + "'rest.gateway.proxy.context-path.whitelist' is empty and "
+                        + "'rest.gateway.proxy.context-path.trust-all' is false. Set one of these to honor "
+                        + "proxy context paths.")
                 .build();
     }
 

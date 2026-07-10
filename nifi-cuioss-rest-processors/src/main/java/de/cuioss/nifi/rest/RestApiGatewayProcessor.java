@@ -19,6 +19,7 @@ package de.cuioss.nifi.rest;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
 import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
@@ -104,7 +105,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_SCOPES,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE,
-            RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_HARD_LIMIT);
+            RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_HARD_LIMIT,
+            RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_WHITELIST,
+            RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_TRUST_ALL);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Injectable for testing — when null, a new instance is created in onScheduled. */
@@ -251,9 +254,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         RequestStatusStore statusStore = (cacheClient != null) ? new RequestStatusStore(cacheClient) : null;
 
         // Build endpoint handlers: built-in management first, then user routes
-        List<EndpointHandler> handlers = new ArrayList<>();
-        handlers.add(createHealthHandler(context));
-        handlers.add(createMetricsHandler(context, configService, httpSecurityEvents, gatewaySecurityEvents));
+        List<EndpointHandler> handlers = new ArrayList<>(List.of(
+                createHealthHandler(context),
+                createMetricsHandler(context, configService, httpSecurityEvents, gatewaySecurityEvents)));
         if (statusStore != null) {
             handlers.add(createStatusHandler(context, statusStore));
         }
@@ -276,8 +279,18 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                     schemaValidator, gatewaySecurityEvents, statusStore));
         }
 
+        // Trusted reverse-proxy context-path allowlist (secure by default: empty honors
+        // nothing, so a direct client on the 0.0.0.0 listener cannot spoof the prefix).
+        Set<String> allowedContextPaths = ProxyContextPathResolver.parseAllowlist(
+                context.getProperty(RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_WHITELIST).getValue());
+        boolean trustAllProxyContextPaths = context.getProperty(
+                RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_TRUST_ALL).asBoolean();
+        LOGGER.info(RestApiLogMessages.INFO.PROXY_WHITELIST_CONFIGURED,
+                trustAllProxyContextPaths ? "(trust-all — any proxy context path honored)"
+                        : allowedContextPaths.isEmpty() ? "(none — proxy headers ignored)" : allowedContextPaths);
+
         var gatewayHandler = new GatewayRequestHandler(handlers, configService, maxRequestSize,
-                httpSecurityEvents, gatewaySecurityEvents);
+                httpSecurityEvents, gatewaySecurityEvents, allowedContextPaths, trustAllProxyContextPaths);
 
         // Resolve optional SSL context for HTTPS
         SSLContextProvider sslProvider = context.getProperty(
@@ -381,12 +394,12 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             flowFile = session.create();
 
             // Set route attributes
-            Map<String, String> attributes = new HashMap<>();
-            attributes.put(RestApiAttributes.ROUTE_NAME, container.routeName());
-            attributes.put(RestApiAttributes.ROUTE_PATH, container.requestUri());
-            attributes.put(RestApiAttributes.HTTP_METHOD, container.method());
-            attributes.put(RestApiAttributes.HTTP_REQUEST_URI, container.requestUri());
-            attributes.put(RestApiAttributes.HTTP_REMOTE_HOST, container.remoteHost());
+            Map<String, String> attributes = new HashMap<>(Map.of(
+                    RestApiAttributes.ROUTE_NAME, container.routeName(),
+                    RestApiAttributes.ROUTE_PATH, container.requestUri(),
+                    RestApiAttributes.HTTP_METHOD, container.method(),
+                    RestApiAttributes.HTTP_REQUEST_URI, container.requestUri(),
+                    RestApiAttributes.HTTP_REMOTE_HOST, container.remoteHost()));
 
             // Set content type
             if (container.contentType() != null) {

@@ -282,6 +282,37 @@ public final class RestApiGatewayConstants {
                 .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
                 .build();
 
+        public static final PropertyDescriptor PROXY_CONTEXT_PATH_WHITELIST = new PropertyDescriptor.Builder()
+                .name("rest.gateway.proxy.context-path.whitelist")
+                .displayName("Proxy Context Path Whitelist")
+                .description("Comma-separated allowlist of reverse-proxy context paths honored from the "
+                        + "X-ProxyContextPath / X-Forwarded-Prefix headers (e.g. '/nifi-proxy'). When empty "
+                        + "(the default) the gateway ignores client-supplied proxy context-path headers and "
+                        + "does NOT trust them — routing and generated URLs use the raw request path. Only "
+                        + "prefixes listed here are honored for inbound route matching and for the context "
+                        + "prefix prepended to the 202 Location header and HATEOAS _links. Mirrors NiFi's "
+                        + "nifi.web.proxy.context.path allowlist; configure it only when the gateway sits "
+                        + "behind a reverse proxy that sets these headers.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor PROXY_CONTEXT_PATH_TRUST_ALL = new PropertyDescriptor.Builder()
+                .name("rest.gateway.proxy.context-path.trust-all")
+                .displayName("Proxy Context Path Trust All")
+                .description("When true, the gateway honors ANY reverse-proxy context path supplied in the "
+                        + "X-ProxyContextPath / X-Forwarded-Prefix headers WITHOUT checking the allowlist (the "
+                        + "value is still normalized and injection-guarded). Enable this ONLY when the gateway is "
+                        + "exclusively reachable through a trusted reverse proxy that sets these headers — a "
+                        + "directly-reachable listener (0.0.0.0) with trust-all enabled lets any client spoof the "
+                        + "context path. When false (the default) the allowlist in "
+                        + "'rest.gateway.proxy.context-path.whitelist' governs which context paths are honored. "
+                        + "Secure default: false.")
+                .required(false)
+                .allowableValues("true", FALSE_VALUE)
+                .defaultValue(FALSE_VALUE)
+                .build();
+
     }
 
     /**

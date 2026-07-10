@@ -26,6 +26,7 @@ import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
 import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.TestLoggerFactory;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.apache.nifi.util.MockFlowFile;
 import org.apache.nifi.util.TestRunner;
@@ -372,6 +373,28 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, interval);
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
                     AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS.resolveIdentifierString());
+        }
+
+        @Test
+        @DisplayName("Should NOT log validation metrics before LOG_METRICS_INTERVAL FlowFiles are processed")
+        void shouldNotLogMetricsBeforeInterval() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
+            int belowInterval = (int) JwtConstants.LOG_METRICS_INTERVAL - 1;
+            for (int i = 0; i < belowInterval; i++) {
+                enqueueWithToken(tokenHolder.getRawToken());
+            }
+
+            testRunner.run(belowInterval);
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, belowInterval);
+            // The metrics line fires only at exact multiples of LOG_METRICS_INTERVAL — one
+            // FlowFile short of the interval must not emit it (guards the modulo off-by-one).
+            assertTrue(TestLoggerFactory.getTestHandler()
+                            .resolveLogMessagesContaining(TestLogLevel.INFO,
+                                    AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS.resolveIdentifierString())
+                            .isEmpty(),
+                    "Metrics must not be logged before LOG_METRICS_INTERVAL FlowFiles are processed");
         }
 
         @Test

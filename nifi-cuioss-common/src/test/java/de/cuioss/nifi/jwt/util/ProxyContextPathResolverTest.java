@@ -25,11 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link ProxyContextPathResolver}.
@@ -216,6 +215,150 @@ class ProxyContextPathResolverTest {
                     "A leading backslash sequence must be rejected");
             assertEquals("", ProxyContextPathResolver.normalize("/\\attacker.com"),
                     "An embedded backslash must be rejected (browsers may normalize it to '/')");
+        }
+    }
+
+    @Nested
+    @DisplayName("Allowlist-gated resolution")
+    class AllowlistGatedResolution {
+
+        @Test
+        @DisplayName("Honors the prefix when the normalized header value is in the allowlist")
+        void honorsAllowlistedPrefix() {
+            var lookup = headers(Map.of(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy"));
+
+            assertEquals("/nifi-proxy",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/nifi-proxy")),
+                    "An allowlisted prefix must be honored");
+        }
+
+        @Test
+        @DisplayName("Honors the prefix after normalization matches an allowlist entry")
+        void honorsAllowlistedPrefixAfterNormalization() {
+            // Header carries a trailing slash; normalization strips it to /nifi-proxy
+            var lookup = headers(Map.of(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy/"));
+
+            assertEquals("/nifi-proxy",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/nifi-proxy")),
+                    "The normalized header value must be matched against the allowlist");
+        }
+
+        @Test
+        @DisplayName("Returns empty when the prefix is present but not in the allowlist (spoof ignored)")
+        void ignoresNonAllowlistedPrefix() {
+            var lookup = headers(Map.of(HEADER_PROXY_CONTEXT_PATH, "/attacker"));
+
+            assertEquals("",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/nifi-proxy")),
+                    "A prefix absent from the allowlist must not be honored");
+        }
+
+        @Test
+        @DisplayName("Returns empty when the allowlist is empty (secure by default)")
+        void ignoresEverythingWithEmptyAllowlist() {
+            var lookup = headers(Map.of(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy"));
+
+            assertEquals("",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of()),
+                    "An empty allowlist must honor nothing");
+        }
+
+        @Test
+        @DisplayName("Returns empty when the allowlist is null")
+        void ignoresEverythingWithNullAllowlist() {
+            var lookup = headers(Map.of(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy"));
+
+            assertEquals("",
+                    ProxyContextPathResolver.resolveAllowed(lookup, null),
+                    "A null allowlist must honor nothing");
+        }
+
+        @Test
+        @DisplayName("Header precedence still applies before the allowlist check")
+        void headerPrecedenceAppliesBeforeAllowlist() {
+            // X-ProxyContextPath wins; the fallback prefix (allowlisted) must be ignored
+            var lookup = headers(Map.of(
+                    HEADER_PROXY_CONTEXT_PATH, "/primary",
+                    HEADER_FORWARDED_PREFIX, "/fallback"));
+
+            assertEquals("",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/fallback")),
+                    "The most specific header is resolved first, so an allowlisted fallback is not reached");
+            assertEquals("/primary",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/primary")),
+                    "The precedence-selected primary header is honored when allowlisted");
+        }
+
+        @Test
+        @DisplayName("Returns empty when no proxy header is present, regardless of allowlist")
+        void returnsEmptyWithoutHeader() {
+            var lookup = headers(Map.of());
+
+            assertEquals("",
+                    ProxyContextPathResolver.resolveAllowed(lookup, Set.of("/nifi-proxy")),
+                    "Absent proxy headers resolve to empty even with a populated allowlist");
+        }
+    }
+
+    @Nested
+    @DisplayName("Allowlist parsing")
+    class AllowlistParsing {
+
+        @Test
+        @DisplayName("Normalizes each entry (adds leading slash, strips trailing slash)")
+        void normalizesEntries() {
+            Set<String> allowed = ProxyContextPathResolver.parseAllowlist("nifi-proxy, /gw/");
+
+            assertTrue(allowed.contains("/nifi-proxy"),
+                    "A missing leading slash must be added");
+            assertTrue(allowed.contains("/gw"),
+                    "A trailing slash must be stripped");
+            assertEquals(2, allowed.size());
+        }
+
+        @Test
+        @DisplayName("Preserves multiple entries in input order")
+        void preservesMultipleEntries() {
+            Set<String> allowed = ProxyContextPathResolver.parseAllowlist("/a,/b,/c");
+
+            assertEquals(Set.of("/a", "/b", "/c"), allowed);
+            assertEquals(List.of("/a", "/b", "/c"),
+                    new ArrayList<>(allowed),
+                    "Entries must retain deterministic input order");
+        }
+
+        @Test
+        @DisplayName("Drops entries that normalize to empty")
+        void dropsBlankAndSlashOnlyEntries() {
+            Set<String> allowed = ProxyContextPathResolver.parseAllowlist("/nifi-proxy, , /, //attacker.com");
+
+            assertEquals(Set.of("/nifi-proxy"), allowed,
+                    "Blank, slash-only, and injection-guard-rejected entries must be dropped");
+        }
+
+        @Test
+        @DisplayName("Returns an empty set for null input")
+        void returnsEmptyForNull() {
+            assertTrue(ProxyContextPathResolver.parseAllowlist(null).isEmpty(),
+                    "A null input must yield an empty set");
+        }
+
+        @Test
+        @DisplayName("Returns an empty set for blank input")
+        void returnsEmptyForBlank() {
+            assertTrue(ProxyContextPathResolver.parseAllowlist("   ").isEmpty(),
+                    "A blank input must yield an empty set");
+        }
+
+        @Test
+        @DisplayName("Returns an unmodifiable set")
+        void returnsUnmodifiableSet() {
+            Set<String> allowed = ProxyContextPathResolver.parseAllowlist("/nifi-proxy");
+
+            assertThrows(UnsupportedOperationException.class,
+                    () -> allowed.add("/other"),
+                    "The returned set must be unmodifiable");
+            assertFalse(allowed.isEmpty());
         }
     }
 }

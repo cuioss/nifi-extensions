@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
 import de.cuioss.nifi.rest.validation.JsonSchemaValidator;
@@ -25,6 +26,9 @@ import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
 import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
+import de.cuioss.test.juli.TestLoggerFactory;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
@@ -42,6 +46,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -548,7 +553,7 @@ class GatewayRequestHandlerTest {
                     toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
                             .method("GET").build()), tinyQueue, GLOBAL_MAX_REQUEST_SIZE, null, tinyEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
-                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents);
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents, Set.of(), false);
 
             Server tinyServer = new Server();
             ServerConnector connector = new ServerConnector(tinyServer);
@@ -808,7 +813,7 @@ class GatewayRequestHandlerTest {
             schemaHandler = new GatewayRequestHandler(
                     toHandlers(routes, schemaQueue, GLOBAL_MAX_REQUEST_SIZE, schemaValidator, schemaEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
-                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents);
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents, Set.of(), false);
 
             schemaServer = new Server();
             ServerConnector connector = new ServerConnector(schemaServer);
@@ -1016,55 +1021,197 @@ class GatewayRequestHandlerTest {
     @DisplayName("Proxy Context Path")
     class ProxyContextPath {
 
-        @Test
-        @DisplayName("Should strip X-ProxyContextPath prefix and route to the handler")
-        void shouldStripProxyContextPathPrefix() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/nifi-proxy/api/health")
-                            .header("X-ProxyContextPath", "/nifi-proxy")
-                            .GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
+        // The gateway is secure-by-default: a proxy prefix is honored only when it is
+        // in the operator-configured allowlist. This handler allowlists /nifi-proxy and
+        // /gw so the honored-prefix cases route, while a spoofed /attacker prefix does not.
+        private Server proxyServer;
+        private LinkedBlockingQueue<HttpRequestContainer> proxyQueue;
+        private GatewayRequestHandler proxyHandler;
+        private int proxyPort;
 
-            assertEquals(200, response.statusCode());
-            assertFalse(queue.isEmpty(), "Prefixed request must route to the health handler");
-            assertEquals("health", queue.poll().routeName());
-            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
+        @BeforeEach
+        void setUpProxy() throws Exception {
+            proxyQueue = new LinkedBlockingQueue<>(50);
+            var proxyEvents = new GatewaySecurityEvents();
+            proxyHandler = new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
+                            .method("GET").build()), proxyQueue, GLOBAL_MAX_REQUEST_SIZE, null, proxyEvents),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), proxyEvents,
+                    Set.of("/nifi-proxy", "/gw"), false);
+            proxyServer = new Server();
+            ServerConnector connector = new ServerConnector(proxyServer);
+            connector.setPort(0);
+            proxyServer.addConnector(connector);
+            proxyServer.setHandler(proxyHandler);
+            proxyServer.start();
+            proxyPort = connector.getLocalPort();
+        }
+
+        @AfterEach
+        void tearDownProxy() throws Exception {
+            if (proxyServer != null && proxyServer.isRunning()) {
+                proxyServer.stop();
+            }
+        }
+
+        private HttpResponse<String> get(String path, String headerName, String headerValue) throws Exception {
+            var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + proxyPort + path))
+                    .header("Authorization", "Bearer " + tokenHolder.getRawToken());
+            if (headerName != null) {
+                builder.header(headerName, headerValue);
+            }
+            return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
         }
 
         @Test
-        @DisplayName("Should strip X-Forwarded-Prefix fallback and route to the handler")
-        void shouldStripForwardedPrefix() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/gw/api/health")
-                            .header("X-Forwarded-Prefix", "/gw")
-                            .GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
+        @DisplayName("Should strip an allowlisted X-ProxyContextPath prefix and route to the handler")
+        void shouldStripProxyContextPathPrefix() throws Exception {
+            var response = get("/nifi-proxy/api/health", "X-ProxyContextPath", "/nifi-proxy");
 
             assertEquals(200, response.statusCode());
-            assertEquals("health", queue.poll().routeName());
+            assertFalse(proxyQueue.isEmpty(), "Prefixed request must route to the health handler");
+            assertEquals("health", proxyQueue.poll().routeName());
+            assertEquals(0L, proxyHandler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should strip an allowlisted X-Forwarded-Prefix fallback and route to the handler")
+        void shouldStripForwardedPrefix() throws Exception {
+            var response = get("/gw/api/health", "X-Forwarded-Prefix", "/gw");
+
+            assertEquals(200, response.statusCode());
+            assertEquals("health", proxyQueue.poll().routeName());
         }
 
         @Test
         @DisplayName("Should route an unprefixed request unchanged when no proxy header is present")
         void shouldRouteUnprefixedRequestUnchanged() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/api/health").GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
+            var response = get("/api/health", null, null);
 
             assertEquals(200, response.statusCode());
-            assertEquals("health", queue.poll().routeName());
-            assertEquals(0L, handler.getGatewaySecurityEvents().getTotalCount());
+            assertEquals("health", proxyQueue.poll().routeName());
+            assertEquals(0L, proxyHandler.getGatewaySecurityEvents().getTotalCount());
         }
 
         @Test
         @DisplayName("Should 404 a prefixed path when the proxy header is absent")
         void shouldNotStripWithoutHeader() throws Exception {
-            var response = httpClient.send(
-                    requestBuilder("/nifi-proxy/api/health").GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
+            var response = get("/nifi-proxy/api/health", null, null);
 
             assertEquals(404, response.statusCode());
-            assertEquals(1L, handler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+            assertEquals(1L, proxyHandler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("Should ignore a spoofed prefix that is not in the allowlist (404, prefix not stripped)")
+        void shouldIgnoreNonAllowlistedPrefix() throws Exception {
+            // A direct client spoofs X-ProxyContextPath with a prefix the operator never
+            // allowlisted. The gateway must NOT strip it — the path stays /attacker/api/health,
+            // which matches no route, so the spoof yields a 404 rather than reaching /api/health.
+            var response = get("/attacker/api/health", "X-ProxyContextPath", "/attacker");
+
+            assertEquals(404, response.statusCode());
+            assertTrue(proxyQueue.isEmpty(), "A spoofed, unallowlisted prefix must not route to any handler");
+            assertEquals(1L, proxyHandler.getGatewaySecurityEvents().getCount(EventType.ROUTE_NOT_FOUND));
+        }
+
+        // Identifier ("REST-122") of the one-shot WARN emitted for the empty-allowlist,
+        // trust-all-off misconfiguration; asserted present/absent by the trust-all cases.
+        private final String ignoredWarnIdentifier =
+                RestApiLogMessages.WARN.PROXY_CONTEXT_PATH_IGNORED.resolveIdentifierString();
+
+        /**
+         * Builds a health-only handler with the given allowlist and trust-all flag,
+         * mirroring the setUpProxy harness but parameterized so the trust-all cases can
+         * vary the policy.
+         */
+        private GatewayRequestHandler buildHandler(Set<String> allowlist, boolean trustAll,
+                LinkedBlockingQueue<HttpRequestContainer> q, GatewaySecurityEvents events) {
+            return new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
+                            .method("GET").build()), q, GLOBAL_MAX_REQUEST_SIZE, null, events),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), events,
+                    allowlist, trustAll);
+        }
+
+        /**
+         * Starts a throwaway server for the given handler, issues one GET with an
+         * optional proxy header, and stops the server. Isolates each trust-all case
+         * from the shared proxyServer harness.
+         */
+        private HttpResponse<String> sendVia(GatewayRequestHandler h, String path,
+                String headerName, String headerValue) throws Exception {
+            Server srv = new Server();
+            ServerConnector connector = new ServerConnector(srv);
+            connector.setPort(0);
+            srv.addConnector(connector);
+            srv.setHandler(h);
+            srv.start();
+            try {
+                int localPort = connector.getLocalPort();
+                var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + localPort + path))
+                        .header("Authorization", "Bearer " + tokenHolder.getRawToken());
+                if (headerName != null) {
+                    builder.header(headerName, headerValue);
+                }
+                return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
+            } finally {
+                srv.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should honor ANY proxy prefix when trust-all is on and the allowlist is empty")
+        void shouldHonorAnyPrefixWhenTrustAllEnabled() throws Exception {
+            var queue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            var events = new GatewaySecurityEvents();
+            var trustAllHandler = buildHandler(Set.of(), true, queue, events);
+
+            var response = sendVia(trustAllHandler, "/anything/api/health", "X-ProxyContextPath", "/anything");
+
+            assertEquals(200, response.statusCode(),
+                    "Trust-all must honor a non-allowlisted prefix and route to /api/health");
+            assertFalse(queue.isEmpty(), "Trust-all prefixed request must route to the health handler");
+            assertEquals("health", queue.poll().routeName());
+            assertEquals(0L, events.getTotalCount());
+            LogAsserts.assertNoLogMessagePresent(TestLogLevel.WARN, GatewayRequestHandler.class);
+        }
+
+        @Test
+        @DisplayName("Should ignore a proxy prefix and WARN once when the allowlist is empty and trust-all is off")
+        void shouldWarnWhenAllowlistEmptyAndTrustAllOff() throws Exception {
+            var queue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            var events = new GatewaySecurityEvents();
+            var handlerUnderTest = buildHandler(Set.of(), false, queue, events);
+
+            var response = sendVia(handlerUnderTest, "/anything/api/health", "X-ProxyContextPath", "/anything");
+
+            assertEquals(404, response.statusCode(),
+                    "With an empty allowlist and trust-all off the prefix must not be honored");
+            assertTrue(queue.isEmpty(), "An unhonored prefix must not route to any handler");
+            assertEquals(1L, events.getCount(EventType.ROUTE_NOT_FOUND));
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, ignoredWarnIdentifier);
+        }
+
+        @Test
+        @DisplayName("Should NOT WARN when a non-empty allowlist deliberately rejects an unlisted prefix")
+        void shouldNotWarnWhenAllowlistNonEmptyRejects() throws Exception {
+            var queue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            var events = new GatewaySecurityEvents();
+            // Allowlist is configured but does not contain the received prefix — a
+            // deliberate reject, not a misconfiguration, so no WARN must fire.
+            var handlerUnderTest = buildHandler(Set.of("/nifi-proxy"), false, queue, events);
+
+            var response = sendVia(handlerUnderTest, "/attacker/api/health", "X-ProxyContextPath", "/attacker");
+
+            assertEquals(404, response.statusCode(),
+                    "A prefix absent from a non-empty allowlist must not be honored");
+            assertTrue(queue.isEmpty(), "A rejected prefix must not route to any handler");
+            assertTrue(TestLoggerFactory.getTestHandler()
+                            .resolveLogMessagesContaining(TestLogLevel.WARN, ignoredWarnIdentifier).isEmpty(),
+                    "A deliberate allowlist reject must not emit the misconfiguration WARN");
         }
     }
 }

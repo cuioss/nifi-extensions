@@ -19,6 +19,9 @@ package de.cuioss.nifi.jwt.util;
 import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -64,6 +67,66 @@ public final class ProxyContextPathResolver {
      */
     public static String resolve(Function<String, String> headerLookup) {
         return normalize(resolveRawPrefix(headerLookup));
+    }
+
+    /**
+     * Resolves the normalized proxy context path from the supplied header lookup,
+     * but honors it ONLY when it is present in the operator-configured allowlist.
+     *
+     * <p>This is the security-hardened counterpart to {@link #resolve(Function)}:
+     * the gateway may listen on {@code 0.0.0.0}, so a direct client can spoof the
+     * {@code X-ProxyContextPath} / {@code X-Forwarded-Prefix} headers to manipulate
+     * routing and the reflected prefix in generated URLs. Resolution and
+     * normalization follow the exact header-precedence and injection-guard rules of
+     * {@link #resolve(Function)}; the resolved prefix is then honored only when the
+     * allowlist contains it. An empty or {@code null} allowlist (the secure default)
+     * therefore honors nothing, mirroring NiFi's {@code nifi.web.proxy.context.path}
+     * allowlist model.
+     *
+     * @param headerLookup        maps a header name to its value (or {@code null}
+     *                            when absent); typically {@code request::getHeader}
+     * @param allowedContextPaths the set of normalized context paths the operator
+     *                            trusts (as produced by {@link #parseAllowlist(String)});
+     *                            {@code null} or empty honors nothing
+     * @return the normalized prefix when it is present in {@code allowedContextPaths},
+     *         otherwise an empty string (not honored)
+     */
+    public static String resolveAllowed(Function<String, String> headerLookup,
+            Set<String> allowedContextPaths) {
+        String normalized = normalize(resolveRawPrefix(headerLookup));
+        if (normalized.isEmpty() || allowedContextPaths == null
+                || !allowedContextPaths.contains(normalized)) {
+            return "";
+        }
+        return normalized;
+    }
+
+    /**
+     * Parses a comma-separated allowlist of proxy context paths into a normalized,
+     * deterministically-ordered, unmodifiable set.
+     *
+     * <p>Each entry is trimmed and passed through {@link #normalize(String)} so the
+     * stored form matches the normalized prefix produced by
+     * {@link #resolveAllowed(Function, Set)} at request time. Entries that normalize
+     * to an empty string (blank entries, slash-only values, or values rejected by the
+     * injection guard) are dropped. A {@code null} or blank input yields an empty set.
+     *
+     * @param commaSeparated the raw comma-separated allowlist (may be {@code null})
+     * @return an unmodifiable {@link LinkedHashSet} of normalized context paths in
+     *         input order, empty when no usable entry is present
+     */
+    public static Set<String> parseAllowlist(String commaSeparated) {
+        Set<String> allowed = new LinkedHashSet<>();
+        if (commaSeparated == null || commaSeparated.isBlank()) {
+            return Collections.unmodifiableSet(allowed);
+        }
+        for (String entry : commaSeparated.split(",")) {
+            String normalized = normalize(entry);
+            if (!normalized.isEmpty()) {
+                allowed.add(normalized);
+            }
+        }
+        return Collections.unmodifiableSet(allowed);
     }
 
     /**

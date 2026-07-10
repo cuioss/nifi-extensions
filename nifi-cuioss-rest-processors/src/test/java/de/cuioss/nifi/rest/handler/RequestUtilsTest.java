@@ -17,38 +17,30 @@
 package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.test.juli.junit5.EnableTestLogger;
-import org.eclipse.jetty.server.Handler;
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.Response;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link RequestUtils#buildStatusLocationUri} and
  * {@link RequestUtils#sendAcceptedResponse}, driving the methods through a real
- * embedded Jetty request so the reverse-proxy context path is read from the same
- * {@code request.getHeaders()} accessor used in production.
+ * embedded Jetty request so the {@code Location} header and body are produced by the
+ * same request accessors used in production.
  *
- * <p>The test handler invokes {@code sendAcceptedResponse}; its 202 {@code Location}
- * header is produced by {@code buildStatusLocationUri}, so a single round-trip
- * asserts both methods prepend the proxy prefix to the {@code Location} header and
- * to the HATEOAS {@code _links} hrefs when a proxy header is present, and leave the
- * output unchanged when it is not.
+ * <p>The honored reverse-proxy prefix is now resolved (and allowlist-gated) upstream
+ * in {@code GatewayRequestHandler} and passed to these methods as an explicit
+ * argument. The test carries the intended prefix in a test-only {@code X-Test-Prefix}
+ * header that the embedded handler forwards verbatim as the {@code proxyContextPath}
+ * argument, so a single round-trip asserts both methods prepend a supplied prefix to
+ * the {@code Location} header and the HATEOAS {@code _links} hrefs, and leave the
+ * output unchanged when the supplied prefix is empty.
  */
 @EnableTestLogger
 @DisplayName("RequestUtils")
@@ -56,6 +48,7 @@ class RequestUtilsTest {
 
     private static final String TRACE_ID = "d1e2f3a4-b5c6-4788-9a0b-1c2d3e4f5a6b";
     private static final String ATTACHMENTS_PATH = "/with-attachments";
+    private static final String TEST_PREFIX_HEADER = "X-Test-Prefix";
 
     private Server server;
     private HttpClient httpClient;
@@ -71,7 +64,11 @@ class RequestUtilsTest {
             @Override
             public boolean handle(Request request, Response response, Callback callback) {
                 boolean includeAttachments = ATTACHMENTS_PATH.equals(request.getHttpURI().getPath());
-                RequestUtils.sendAcceptedResponse(request, response, callback, TRACE_ID, includeAttachments);
+                // Emulate the upstream resolution: whatever prefix the caller decided to
+                // honor is passed explicitly. An absent header means an empty prefix.
+                String prefix = request.getHeaders().get(TEST_PREFIX_HEADER);
+                RequestUtils.sendAcceptedResponse(request, prefix == null ? "" : prefix,
+                        response, callback, TRACE_ID, includeAttachments);
                 return true;
             }
         });
@@ -87,23 +84,22 @@ class RequestUtilsTest {
         }
     }
 
-    private HttpResponse<String> send(String path, String prefixHeaderName, String prefixHeaderValue)
-            throws Exception {
+    private HttpResponse<String> send(String path, String prefixValue) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path));
-        if (prefixHeaderName != null) {
-            builder.header(prefixHeaderName, prefixHeaderValue);
+        if (prefixValue != null) {
+            builder.header(TEST_PREFIX_HEADER, prefixValue);
         }
         return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
     @Nested
-    @DisplayName("With proxy prefix")
+    @DisplayName("With honored proxy prefix")
     class WithProxyPrefix {
 
         @Test
-        @DisplayName("Prepends the X-ProxyContextPath prefix to Location and status link")
+        @DisplayName("Prepends the supplied prefix to Location and status link")
         void prependsProxyContextPathPrefix() throws Exception {
-            var response = send("/plain", "X-ProxyContextPath", "/nifi-proxy");
+            var response = send("/plain", "/nifi-proxy");
 
             assertEquals(202, response.statusCode());
             assertTrue(response.headers().firstValue("Location").orElse("")
@@ -114,22 +110,22 @@ class RequestUtilsTest {
         }
 
         @Test
-        @DisplayName("Prepends the X-Forwarded-Prefix fallback prefix to Location and links")
+        @DisplayName("Prepends a different supplied prefix to Location and links")
         void prependsForwardedPrefix() throws Exception {
-            var response = send("/plain", "X-Forwarded-Prefix", "/gw");
+            var response = send("/plain", "/gw");
 
             assertEquals(202, response.statusCode());
             assertTrue(response.headers().firstValue("Location").orElse("")
                             .endsWith("/gw/status/" + TRACE_ID),
-                    "Location must carry the fallback prefix");
+                    "Location must carry the supplied prefix");
             assertTrue(response.body().contains("\"href\":\"/gw/status/" + TRACE_ID + "\""),
-                    "status link href must carry the fallback prefix");
+                    "status link href must carry the supplied prefix");
         }
 
         @Test
         @DisplayName("Prepends the prefix to the attachments link when included")
         void prependsPrefixToAttachmentsLink() throws Exception {
-            var response = send(ATTACHMENTS_PATH, "X-ProxyContextPath", "/nifi-proxy");
+            var response = send(ATTACHMENTS_PATH, "/nifi-proxy");
 
             assertEquals(202, response.statusCode());
             assertTrue(response.body().contains("\"href\":\"/nifi-proxy/status/" + TRACE_ID + "\""),
@@ -140,13 +136,13 @@ class RequestUtilsTest {
     }
 
     @Nested
-    @DisplayName("Without proxy prefix")
+    @DisplayName("Without honored proxy prefix")
     class WithoutProxyPrefix {
 
         @Test
-        @DisplayName("Leaves Location and status link unprefixed when no proxy header present")
+        @DisplayName("Leaves Location and status link unprefixed when the supplied prefix is empty")
         void leavesOutputUnchanged() throws Exception {
-            var response = send("/plain", null, null);
+            var response = send("/plain", null);
 
             assertEquals(202, response.statusCode());
             assertTrue(response.headers().firstValue("Location").orElse("")
@@ -157,15 +153,15 @@ class RequestUtilsTest {
         }
 
         @Test
-        @DisplayName("Leaves the attachments link unprefixed when no proxy header present")
+        @DisplayName("Leaves the attachments link unprefixed when the supplied prefix is empty")
         void leavesAttachmentsLinkUnchanged() throws Exception {
-            var response = send(ATTACHMENTS_PATH, null, null);
+            var response = send(ATTACHMENTS_PATH, null);
 
             assertEquals(202, response.statusCode());
             assertTrue(response.body().contains("\"href\":\"/attachments/" + TRACE_ID + "\""),
                     "attachments link href must be unprefixed");
             assertFalse(response.body().contains("/nifi-proxy"),
-                    "no proxy prefix must appear when the header is absent");
+                    "no proxy prefix must appear when the supplied prefix is empty");
         }
     }
 }

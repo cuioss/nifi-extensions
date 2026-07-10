@@ -43,6 +43,8 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * Thin dispatcher implementing the command-pattern for endpoint handling.
@@ -77,6 +79,27 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private final JwtIssuerConfigService configService;
     private final int globalMaxRequestSize;
     private final PipelineSet securityPipelines;
+    /**
+     * Operator-configured allowlist of reverse-proxy context paths honored from the
+     * {@code X-ProxyContextPath} / {@code X-Forwarded-Prefix} headers. Empty (the
+     * secure default) honors nothing, so a direct client cannot spoof the prefix.
+     */
+    private final Set<String> allowedContextPaths;
+    /**
+     * When {@code true}, any resolved+normalized proxy context path is honored
+     * WITHOUT the {@link #allowedContextPaths} check. The header value is still
+     * cui-http-sanitized and injection-guarded by the resolver's normalization.
+     * Secure default is {@code false} (the allowlist governs).
+     */
+    private final boolean trustAllProxyContextPaths;
+    /**
+     * Guards the one-shot WARN emitted when a proxy context-path header arrives but
+     * is not honored because the allowlist is empty and trust-all is off (the
+     * "positive-list active but empty" misconfiguration). Logged once per handler
+     * instance so a proxied deployment surfaces the fix without log spam.
+     */
+    private final AtomicBoolean proxyContextPathIgnoredWarned =
+            new AtomicBoolean(false);
 
     /** Transport-level HTTP security event counters from cui-http. */
     @Getter private final SecurityEventCounter httpSecurityEvents;
@@ -124,11 +147,12 @@ public class GatewayRequestHandler extends Handler.Abstract {
             JwtIssuerConfigService configService,
             int globalMaxRequestSize) {
         this(handlers, configService, globalMaxRequestSize,
-                new SecurityEventCounter(), new GatewaySecurityEvents());
+                new SecurityEventCounter(), new GatewaySecurityEvents(), Set.of(), false);
     }
 
     /**
-     * Creates a new dispatcher with pre-created event counters.
+     * Creates a new dispatcher with pre-created event counters and the honored
+     * proxy-context-path allowlist.
      * Use this when handlers need access to the same event counter instances.
      *
      * @param handlers               ordered list of endpoint handlers
@@ -136,15 +160,24 @@ public class GatewayRequestHandler extends Handler.Abstract {
      * @param globalMaxRequestSize   global maximum request body size in bytes
      * @param httpSecurityEvents     pre-created transport security event counter
      * @param gatewaySecurityEvents  pre-created gateway event counter
+     * @param allowedContextPaths    normalized allowlist of reverse-proxy context paths
+     *                               honored from the proxy headers (empty honors nothing)
+     * @param trustAllProxyContextPaths when {@code true}, honor ANY resolved proxy context
+     *                               path without the allowlist check; {@code false} (secure
+     *                               default) defers to {@code allowedContextPaths}
      */
     public GatewayRequestHandler(
             List<EndpointHandler> handlers,
             JwtIssuerConfigService configService,
             int globalMaxRequestSize,
             SecurityEventCounter httpSecurityEvents,
-            GatewaySecurityEvents gatewaySecurityEvents) {
+            GatewaySecurityEvents gatewaySecurityEvents,
+            Set<String> allowedContextPaths,
+            boolean trustAllProxyContextPaths) {
         this.configService = Objects.requireNonNull(configService);
         this.globalMaxRequestSize = globalMaxRequestSize;
+        this.allowedContextPaths = Set.copyOf(allowedContextPaths);
+        this.trustAllProxyContextPaths = trustAllProxyContextPaths;
         this.httpSecurityEvents = Objects.requireNonNull(httpSecurityEvents);
         this.gatewaySecurityEvents = Objects.requireNonNull(gatewaySecurityEvents);
         // The gateway is the system's most external HTTP boundary (raw inbound
@@ -201,10 +234,15 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
         // Strip the reverse-proxy context path (if any) from the already-sanitized
         // path before routing, so a proxied request such as /nifi-proxy/health with
-        // X-ProxyContextPath: /nifi-proxy resolves to the /health handler. An
-        // unprefixed request resolves to an empty prefix and is byte-identical to
-        // today.
-        String proxyPrefix = ProxyContextPathResolver.resolve(name -> request.getHeaders().get(name));
+        // X-ProxyContextPath: /nifi-proxy resolves to the /health handler. The prefix
+        // was resolved once — against the operator-configured allowlist — in
+        // validateAndSanitizeInput and stored on the SanitizedRequest, so a client
+        // cannot spoof an unallowlisted prefix (it resolves to empty). An unprefixed
+        // or unallowlisted request has an empty prefix and is byte-identical to today.
+        // The pre-strip path is retained for the no-route diagnostics below so a
+        // proxy-misconfiguration surfaces the original request path, not the stripped one.
+        String rawSanitizedPath = path;
+        String proxyPrefix = sanitized.get().proxyContextPath();
         if (!proxyPrefix.isEmpty()) {
             path = stripProxyPrefix(path, proxyPrefix);
         }
@@ -213,9 +251,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
         ResolvedRoute resolved = resolveHandler(path);
         if (resolved == null || !resolved.handler().enabled()) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.ROUTE_NOT_FOUND);
-            LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, path);
+            LOGGER.warn(RestApiLogMessages.WARN.ROUTE_NOT_FOUND, rawSanitizedPath);
             sendProblemResponse(response, callback,
-                    ProblemDetail.notFound("No route configured for path: " + path));
+                    ProblemDetail.notFound("No route configured for path: " + rawSanitizedPath));
             return;
         }
         EndpointHandler handler = resolved.handler();
@@ -459,13 +497,61 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 }
             }
 
-            return Optional.of(new SanitizedRequest(sanitizedPath, sanitizedParams, sanitizedHeaders, Map.of()));
+            // Resolve the honored reverse-proxy context path ONCE here — this is the
+            // single place that has both the cui-http header pipeline and the allowlist.
+            // The raw proxy header is routed through the header-value pipeline so the
+            // value used is cui-http-sanitized; a hard UrlSecurityException in any header
+            // has already produced a 400 in the loop above, so the .orElse(raw) soft path
+            // never sees a hard-attack value here.
+            String proxyContextPath = resolveHonoredProxyPrefix(
+                    name -> {
+                        String raw = request.getHeaders().get(name);
+                        return raw == null ? null
+                                : securityPipelines.headerValuePipeline().validate(raw).orElse(raw);
+                    });
+
+            return Optional.of(new SanitizedRequest(
+                    sanitizedPath, sanitizedParams, sanitizedHeaders, proxyContextPath, Map.of()));
         } catch (UrlSecurityException e) {
             LOGGER.warn(RestApiLogMessages.WARN.SECURITY_VIOLATION, method, path, remoteHost, e.getMessage());
             sendProblemResponse(response, callback,
                     ProblemDetail.badRequest("Request rejected: " + e.getFailureType().getDescription()));
             return Optional.empty();
         }
+    }
+
+    /**
+     * Resolves the reverse-proxy context path that this handler will honor, applying
+     * the trust-all / allowlist policy. Returns the normalized prefix when honored,
+     * or an empty string when it must not be trusted.
+     *
+     * <p>When trust-all is enabled every normalized prefix is honored (the value is
+     * already cui-http-sanitized and injection-guarded by the resolver's
+     * normalization). Otherwise the prefix is honored only when the operator-configured
+     * allowlist contains it. When a prefix arrives but is not honored specifically
+     * because the allowlist is empty and trust-all is off — the "positive-list active
+     * but empty" misconfiguration — a WARN naming both config keys is emitted once so
+     * the prefix is not silently dropped.
+     *
+     * @param headerLookup the sanitizing header-value lookup shared with input
+     *                     sanitization
+     * @return the honored normalized prefix, or an empty string when not honored
+     */
+    private String resolveHonoredProxyPrefix(Function<String, String> headerLookup) {
+        String normalized = ProxyContextPathResolver.resolve(headerLookup);
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        if (trustAllProxyContextPaths || allowedContextPaths.contains(normalized)) {
+            return normalized;
+        }
+        // A proxy context-path header arrived but is not honored. When the allowlist is
+        // empty AND trust-all is off, the gateway is behind a proxy but not configured to
+        // honor it — surface the fix ONCE so the prefix is not silently dropped.
+        if (allowedContextPaths.isEmpty() && proxyContextPathIgnoredWarned.compareAndSet(false, true)) {
+            LOGGER.warn(RestApiLogMessages.WARN.PROXY_CONTEXT_PATH_IGNORED, normalized);
+        }
+        return "";
     }
 
     // --- Utility methods ---

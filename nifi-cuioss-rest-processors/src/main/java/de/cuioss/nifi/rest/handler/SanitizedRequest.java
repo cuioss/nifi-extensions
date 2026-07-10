@@ -31,18 +31,28 @@ import java.util.Map;
  * is attached after route resolution via {@link #withPathParameters(Map)}, since
  * the sanitized request is built before the handler is resolved.
  *
- * @param path            the normalized URL path
- * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
- * @param headers         the normalized header values (Authorization excluded, values sanitized)
- * @param pathParameters  the path parameters extracted from a pattern-matched route (empty otherwise)
+ * <p>{@code proxyContextPath} is the reverse-proxy context prefix honored for this
+ * request — resolved once, at sanitization time, against the operator-configured
+ * allowlist. It is {@code ""} when no proxy header is present or the client-supplied
+ * prefix is not allowlisted (secure by default). Downstream consumers prepend it to
+ * generated URLs (202 {@code Location}, HATEOAS {@code _links}) and use it to strip
+ * the prefix before route matching.
+ *
+ * @param path             the normalized URL path
+ * @param queryParameters  the normalized query parameter values (keys preserved, values sanitized)
+ * @param headers          the normalized header values (Authorization excluded, values sanitized)
+ * @param proxyContextPath the allowlist-honored, normalized reverse-proxy context prefix ({@code ""} when none)
+ * @param pathParameters   the path parameters extracted from a pattern-matched route (empty otherwise)
  */
 record SanitizedRequest(
 String path,
 Map<String, String> queryParameters,
 Map<String, String> headers,
+String proxyContextPath,
 Map<String, String> pathParameters) {
 
     SanitizedRequest {
+        proxyContextPath = proxyContextPath == null ? "" : proxyContextPath;
         pathParameters = pathParameters == null ? Map.of() : Map.copyOf(pathParameters);
     }
 
@@ -53,6 +63,6 @@ Map<String, String> pathParameters) {
      * @return a new immutable {@code SanitizedRequest} carrying the path parameters
      */
     SanitizedRequest withPathParameters(Map<String, String> extractedPathParameters) {
-        return new SanitizedRequest(path, queryParameters, headers, extractedPathParameters);
+        return new SanitizedRequest(path, queryParameters, headers, proxyContextPath, extractedPathParameters);
     }
 }
