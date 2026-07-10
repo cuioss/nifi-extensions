@@ -263,12 +263,87 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |20
 |Global ceiling for any route's `attachments-max-count`
 |No
+
+|rest.gateway.proxy.context-path.whitelist
+|-- (empty)
+|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<Reverse-Proxy Context Path (Trusted-Proxy Allowlist)>>.
+|No
+
+|rest.gateway.proxy.context-path.trust-all
+|false
+|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<Reverse-Proxy Context Path (Trusted-Proxy Allowlist)>>.
+|No
 |===
 
 NOTE: The `/metrics` management endpoint backs the custom UI Metrics view and
 also publishes its gateway counters to NiFi-native monitoring endpoints. See
 link:metrics-api.adoc[Metrics API] for the full endpoint contract, response
 schemas, and the recommended external-monitoring surface.
+
+=== Reverse-Proxy Context Path (Trusted-Proxy Allowlist)
+
+When the gateway sits behind a reverse proxy (nginx, HAProxy, an ingress
+controller) that forwards requests under a path prefix, the proxy advertises that
+prefix via the `X-ProxyContextPath` header (NiFi-native) or the de-facto
+`X-Forwarded-Prefix` header. The gateway uses the honored prefix for two things:
+
+* *Inbound route matching* — the prefix is stripped before routing, so a proxied
+request such as `GET /nifi-proxy/health` resolves to the `/health` handler.
+* *Outbound URL generation* — the prefix is prepended to the 202 `Location` header
+and to the HATEOAS `_links` hrefs, so the URLs the client receives point back
+through the proxy.
+
+Because the embedded Jetty server can listen on `0.0.0.0`, a direct client could
+otherwise *spoof* these headers to manipulate routing and the reflected prefix.
+The gateway therefore honors a proxy context path *only when it appears in the
+operator-configured allowlist* `rest.gateway.proxy.context-path.whitelist`
+(comma-separated). This mirrors NiFi's own `nifi.web.proxy.context.path` allowlist
+model.
+
+* *Default (empty allowlist)* — the gateway *ignores* client-supplied proxy
+context-path headers entirely and does not trust them. Routing and generated URLs
+use the raw request path. This is secure by default: a direct-exposure deployment
+cannot be spoofed.
+* *Behind a reverse proxy* — list the prefix(es) the proxy sets, e.g.
+`rest.gateway.proxy.context-path.whitelist = /nifi-proxy`. Only listed prefixes are
+honored; an unlisted (spoofed) prefix is ignored and the request is matched against
+its raw path (typically yielding a 404).
+
+The allowlist gates *both* inbound route matching *and* the outbound
+`Location` / `_links` prefix, so the two always agree.
+
+==== Trust-All Override
+
+The `rest.gateway.proxy.context-path.trust-all` toggle (boolean, default `false`)
+sits on top of the allowlist. When set to `true`, the gateway honors *any*
+resolved-and-normalized proxy context path from the headers *without* checking the
+allowlist — the header value is still normalized and injection-guarded (CR/LF,
+protocol-relative `//host`, and backslash values are rejected), but the allowlist
+membership check is bypassed entirely.
+
+[WARNING]
+====
+Enable trust-all *only* when the gateway is exclusively reachable through a trusted
+reverse proxy that sets these headers. A directly-reachable listener (for example
+bound to `0.0.0.0`) with trust-all enabled lets *any* client spoof the context path,
+manipulating routing and the reflected prefix in generated URLs. When in doubt, leave
+trust-all `false` and use the allowlist.
+====
+
+* *`trust-all = false` (default)* — the allowlist in
+`rest.gateway.proxy.context-path.whitelist` governs which context paths are honored,
+as described above.
+* *`trust-all = true`* — every normalized prefix is honored and the allowlist is
+ignored.
+
+When a proxy context-path header arrives but is *not* honored specifically because
+the allowlist is empty *and* trust-all is `false` — the "positive-list active but
+empty" misconfiguration, i.e. the gateway is behind a proxy but has not been
+configured to honor it — the gateway logs a one-shot `WARN` (per handler instance)
+naming *both* config keys so the operator can fix it. No warning is logged when
+trust-all is `true`, when no proxy header is present, or when a *non-empty* allowlist
+simply does not contain the received prefix (that is a deliberate reject, not a
+misconfiguration).
 
 == Route Configuration via Dynamic Properties
 

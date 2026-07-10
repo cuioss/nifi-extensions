@@ -112,7 +112,7 @@ class AttachmentsEndpointHandlerTest {
                 Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of()));
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                httpSecurityEvents, gatewaySecurityEvents);
+                httpSecurityEvents, gatewaySecurityEvents, Set.of(), false);
 
         server = new Server();
         var connector = new ServerConnector(server);

@@ -240,22 +240,28 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         LOGGER.warn(AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG, e.getMessage());
         String errorMessage = i18nResolver.getTranslatedString(
                 JwtTranslationKeys.Error.TOKEN_VALIDATION_FAILED, e.getMessage());
-        String category = e.getCategory().name();
-        String errorCode = mapValidationCategoryToErrorCode(category);
-        handleError(session, flowFile, errorCode, errorMessage, category);
+        // Map the specific event type (e.g. TOKEN_EXPIRED, ISSUER_MISMATCH,
+        // AUDIENCE_MISMATCH) to a fine-grained AUTH-xxx code. getEventType() — not
+        // getCategory() — is the correct source: getCategory() returns the coarse
+        // EventCategory (INVALID_STRUCTURE / INVALID_SIGNATURE / SEMANTIC_ISSUES),
+        // whose names never contain "EXPIRED", "ISSUER", or "AUDIENCE", so those
+        // codes would silently collapse to the AUTH-002 default. The coarse category
+        // is still surfaced verbatim as the error.category attribute.
+        String errorCode = mapEventTypeToErrorCode(e.getEventType().name());
+        handleError(session, flowFile, errorCode, errorMessage, e.getCategory().name());
     }
 
-    private String mapValidationCategoryToErrorCode(String category) {
-        if (category.contains("EXPIRED")) {
+    private String mapEventTypeToErrorCode(String eventType) {
+        if (eventType.contains("EXPIRED")) {
             return "AUTH-005";
         }
-        if (category.contains("SIGNATURE")) {
+        if (eventType.contains("SIGNATURE")) {
             return "AUTH-006";
         }
-        if (category.contains("ISSUER")) {
+        if (eventType.contains("ISSUER")) {
             return "AUTH-007";
         }
-        if (category.contains("AUDIENCE")) {
+        if (eventType.contains("AUDIENCE")) {
             return "AUTH-008";
         }
         return "AUTH-002";

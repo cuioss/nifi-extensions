@@ -750,4 +750,47 @@ class RestApiGatewayIT {
         }
     }
 
+    // ── Proxy Context Path ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Proxy Context Path")
+    class ProxyContextPathTests {
+
+        // Simulates nginx proxy_pass with no trailing slash: the reverse proxy
+        // forwards the prefixed path (/nifi-proxy/...) and advertises the prefix
+        // via X-ProxyContextPath. The gateway must strip the prefix before routing
+        // (DEFECT A) and prepend it to the status URLs it returns (DEFECT B).
+        private static final String PROXY_PREFIX = "/nifi-proxy";
+        private static final String PROXY_HEADER = "X-ProxyContextPath";
+
+        @Test
+        @DisplayName("DEFECT A: GET /nifi-proxy/health with X-ProxyContextPath resolves to the health handler (200)")
+        void shouldRouteProxiedManagementEndpoint() {
+            given().spec(authSpec)
+                    .header(PROXY_HEADER, PROXY_PREFIX)
+                    .when()
+                    .get(PROXY_PREFIX + "/health")
+                    .then()
+                    .statusCode(200)
+                    .contentType(containsString("application/json"))
+                    .body("status", equalTo("UP"));
+        }
+
+        @Test
+        @DisplayName("DEFECT A+B: POST /nifi-proxy/api/data returns 202 with the prefix in Location and status link")
+        void shouldRouteProxiedDataEndpointAndPrefixStatusLinks() {
+            given().spec(authSpec)
+                    .header(PROXY_HEADER, PROXY_PREFIX)
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post(PROXY_PREFIX + "/api/data")
+                    .then()
+                    .statusCode(202)
+                    .header("Location", containsString(PROXY_PREFIX + "/status/"))
+                    .body("status", equalTo("accepted"))
+                    .body("traceId", notNullValue())
+                    .body("_links.status.href", startsWith(PROXY_PREFIX + "/status/"));
+        }
+    }
+
 }

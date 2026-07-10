@@ -90,20 +90,22 @@ class RequestUtils {
      * Builds the absolute {@code Location} URI for the status endpoint of the given traceId,
      * omitting default ports (80/443).
      *
-     * @param request the originating Jetty request (source of scheme/host/port)
-     * @param traceId the trace ID
+     * @param request          the originating Jetty request (source of scheme/host/port)
+     * @param proxyContextPath the allowlist-honored reverse-proxy context prefix to
+     *                         prepend ({@code ""} leaves the URI unchanged)
+     * @param traceId          the trace ID
      * @return the absolute status URI
      */
-    public static String buildStatusLocationUri(Request request, String traceId) {
+    public static String buildStatusLocationUri(Request request, String proxyContextPath, String traceId) {
         String scheme = request.getHttpURI().getScheme();
         String host = Request.getServerName(request);
         int port = Request.getServerPort(request);
         boolean isDefaultPort = ("http".equals(scheme) && port == 80)
                 || ("https".equals(scheme) && port == 443);
         if (isDefaultPort) {
-            return "%s://%s/status/%s".formatted(scheme, host, traceId);
+            return "%s://%s%s/status/%s".formatted(scheme, host, proxyContextPath, traceId);
         }
-        return "%s://%s:%d/status/%s".formatted(scheme, host, port, traceId);
+        return "%s://%s:%d%s/status/%s".formatted(scheme, host, port, proxyContextPath, traceId);
     }
 
     /**
@@ -111,20 +113,24 @@ class RequestUtils {
      * HATEOAS {@code _links} body used by tracked routes and the attachments endpoint.
      *
      * @param request                the originating Jetty request
+     * @param proxyContextPath       the allowlist-honored reverse-proxy context prefix to
+     *                               prepend to the {@code Location} header and the
+     *                               {@code _links} hrefs ({@code ""} leaves them unprefixed)
      * @param response               the response
      * @param callback               the Jetty callback
      * @param traceId                the accepted request's trace ID
      * @param includeAttachmentsLink whether to add the {@code attachments} link
      *                               (routes in ATTACHMENTS tracking mode)
      */
-    public static void sendAcceptedResponse(Request request, Response response, Callback callback,
+    public static void sendAcceptedResponse(Request request, String proxyContextPath,
+            Response response, Callback callback,
             String traceId, boolean includeAttachmentsLink) {
-        String statusPath = "/status/" + traceId;
+        String statusPath = proxyContextPath + "/status/" + traceId;
         JsonObjectBuilder linksBuilder = Json.createObjectBuilder()
                 .add("status", Json.createObjectBuilder().add("href", statusPath));
         if (includeAttachmentsLink) {
             linksBuilder.add("attachments", Json.createObjectBuilder()
-                    .add("href", "/attachments/" + traceId));
+                    .add("href", proxyContextPath + "/attachments/" + traceId));
         }
         byte[] responseBody = Json.createObjectBuilder()
                 .add("status", "accepted")
@@ -135,7 +141,8 @@ class RequestUtils {
                 .getBytes(StandardCharsets.UTF_8);
 
         response.setStatus(202);
-        response.getHeaders().put(HttpHeader.LOCATION, buildStatusLocationUri(request, traceId));
+        response.getHeaders().put(HttpHeader.LOCATION,
+                buildStatusLocationUri(request, proxyContextPath, traceId));
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
         response.write(true, ByteBuffer.wrap(responseBody), callback);

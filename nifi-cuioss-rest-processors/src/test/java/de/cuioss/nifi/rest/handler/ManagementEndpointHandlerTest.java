@@ -75,13 +75,13 @@ class ManagementEndpointHandlerTest {
         gatewaySecurityEvents = new GatewaySecurityEvents();
 
         // Build handler list: built-in endpoints first, then user routes
-        List<EndpointHandler> handlers = new ArrayList<>();
-        handlers.add(new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
-                Set.of(), Set.of()));
-        handlers.add(new MetricsEndpointHandler(
-                configService, httpSecurityEvents, gatewaySecurityEvents,
-                true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
-                Set.of(), Set.of()));
+        List<EndpointHandler> handlers = new ArrayList<>(List.of(
+                new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                        Set.of(), Set.of()),
+                new MetricsEndpointHandler(
+                        configService, httpSecurityEvents, gatewaySecurityEvents,
+                        true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
+                        Set.of(), Set.of())));
 
         // Add user routes
         List<RouteConfiguration> routes = List.of(
@@ -96,7 +96,7 @@ class ManagementEndpointHandlerTest {
 
         handler = new GatewayRequestHandler(
                 handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                httpSecurityEvents, gatewaySecurityEvents);
+                httpSecurityEvents, gatewaySecurityEvents, Set.of(), false);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -395,7 +395,7 @@ class ManagementEndpointHandlerTest {
                     Set.of(), Set.of()));
             localOnlyHandler = new GatewayRequestHandler(
                     handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                    new SecurityEventCounter(), new GatewaySecurityEvents());
+                    new SecurityEventCounter(), new GatewaySecurityEvents(), Set.of(), false);
 
             localOnlyServer = new Server();
             ServerConnector connector = new ServerConnector(localOnlyServer);
