@@ -362,10 +362,10 @@ public class JwksValidationServlet extends HttpServlet {
         // ProcessorIdValidationFilter in production, but this servlet also uses the value
         // directly as a component lookup key. Reject any value that is not a valid
         // processor identifier (mirrors the guard the other JWT servlets apply) and fall
-        // back to the safe default rather than passing it to the config reader.
+        // back to the safe default rather than passing it to the config reader. The
+        // allow-list check also covers null/blank/empty (isValidIdentifier returns false).
         String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-        if (processorId == null || processorId.isBlank()
-                || !ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
+        if (!ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
             return false;
         }
 
