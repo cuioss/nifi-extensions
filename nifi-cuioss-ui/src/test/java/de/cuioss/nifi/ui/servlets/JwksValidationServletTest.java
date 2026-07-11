@@ -831,6 +831,49 @@ class JwksValidationServletTest {
         }
 
         @Test
+        @DisplayName("Should force SSRF-safe default when X-Processor-Id is not a valid identifier")
+        void maliciousProcessorIdForcesSsrfSafeDefault() throws Exception {
+            // Arrange — config WOULD allow private addresses, but the request carries a
+            // traversal-style X-Processor-Id header. The servlet-level identifier guard must
+            // reject it and fall back to the safe default (allowPrivateAddresses=false), so
+            // the loopback JWKS URL stays blocked by SSRF protection (valid=false), rather
+            // than being reached as a component lookup key.
+            String processorId = UUID.randomUUID().toString();
+            Map<String, String> props = Map.of(
+                    "jwt.validation.jwks.allow.private.network.addresses", "true");
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(props)
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+
+            // SSRF protection blocks the loopback address before any HTTP fetch, so no mock
+            // response is enqueued (enqueuing one would leak into sibling tests' shared queue).
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     var holder = new ServletHolder(
+                             new JwksValidationServlet());
+                     ctx.addServlet(holder, URL_ENDPOINT);
+                 })) {
+                serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", "../../../etc/passwd")
+                        .body("""
+                                {"jwksUrl":"https://127.0.0.1/.well-known/jwks.json","processorId":"%s"}"""
+                                .formatted(processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200)
+                        .body("valid", equalTo(false));
+            }
+        }
+
+        @Test
         @DisplayName("Should reject oversized JWKS URL response end-to-end via servlet")
         void shouldRejectOversizedResponseEndToEnd() throws Exception {
             // Arrange — mock config allowing private addresses
