@@ -358,8 +358,14 @@ public class JwksValidationServlet extends HttpServlet {
             return false;
         }
 
+        // Defense-in-depth: the X-Processor-Id header is UUID-validated by
+        // ProcessorIdValidationFilter in production, but this servlet also uses the value
+        // directly as a component lookup key. Reject any value that is not a valid
+        // processor identifier (mirrors the guard the other JWT servlets apply) and fall
+        // back to the safe default rather than passing it to the config reader.
         String processorId = req.getHeader(PROCESSOR_ID_HEADER);
-        if (processorId == null || processorId.isBlank()) {
+        if (processorId == null || processorId.isBlank()
+                || !ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
             return false;
         }
 
