@@ -147,8 +147,9 @@ class GatewayRequestHandlerTest {
     /**
      * Sends a request, retrying on the rare transient connection error (a pooled keep-alive
      * connection reset by the server). Belt-and-suspenders on top of {@link #newHttpClient()}: on
-     * {@code IOException} it replaces the client with a fresh connection pool and backs off briefly
-     * before retrying.
+     * {@code IOException} it backs off briefly and retries on the same client — the JDK
+     * {@link HttpClient} discards the broken pooled connection and opens a fresh one on the next
+     * send, so re-creating the client (and leaking its selector/manager threads) is unnecessary.
      */
     private HttpResponse<String> sendWithRetry(HttpRequest request,
             HttpResponse.BodyHandler<String> handler) throws Exception {
@@ -158,7 +159,6 @@ class GatewayRequestHandlerTest {
                 return httpClient.send(request, handler);
             } catch (IOException e) {
                 last = e;
-                httpClient = newHttpClient();
                 Thread.sleep(50L * attempt);
             }
         }
