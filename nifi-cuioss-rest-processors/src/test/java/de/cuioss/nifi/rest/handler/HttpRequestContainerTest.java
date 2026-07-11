@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -162,6 +163,112 @@ class HttpRequestContainerTest {
             mutable.put("id", "mutated");
 
             assertEquals("1", container.pathParameters().get("id"), "Container should hold an independent copy");
+        }
+    }
+
+    @Nested
+    @DisplayName("Equality, hashCode and toString")
+    class EqualityContract {
+
+        // Mutable baseline fields; each inequality test flips exactly one before rebuilding,
+        // so the corresponding short-circuit branch in the hand-written equals() is exercised.
+        private String routeName = "users";
+        private String method = "POST";
+        private String requestUri = "/api/users";
+        private String remoteHost = "127.0.0.1";
+        private String contentType = "application/json";
+        private String traceId = "trace-1";
+        private String parentTraceId = "parent-1";
+        private Map<String, String> queryParameters = Map.of("page", "1");
+        private Map<String, String> headers = Map.of("H", "v");
+        private Map<String, String> pathParameters = Map.of("id", "42");
+        private byte[] body = "body".getBytes(StandardCharsets.UTF_8);
+        private AccessTokenContent token =
+                TestTokenGenerators.accessTokens().next().asAccessTokenContent();
+
+        private HttpRequestContainer build() {
+            return new HttpRequestContainer(routeName, method, requestUri, queryParameters, headers,
+                    remoteHost, body, contentType, token, traceId, parentTraceId, pathParameters);
+        }
+
+        @Test
+        @DisplayName("Equal containers are equal, share a hashCode, and equal themselves")
+        void equalContainers() {
+            var a = build();
+            var b = build();
+            assertEquals(a, b);
+            assertEquals(a.hashCode(), b.hashCode());
+            assertEquals(a, a);
+        }
+
+        @Test
+        @DisplayName("Not equal to null or a foreign type")
+        void notEqualToForeign() {
+            var a = build();
+            assertNotEquals(a, null);
+            assertNotEquals("not a container", a);
+        }
+
+        @Test
+        @DisplayName("toString exposes key identifying fields")
+        void toStringExposesFields() {
+            String s = build().toString();
+            assertTrue(s.contains("users"), "route name");
+            assertTrue(s.contains("POST"), "method");
+            assertTrue(s.contains("/api/users"), "request URI");
+        }
+
+        @Test
+        @DisplayName("Differs by each field independently")
+        void differsByEachField() {
+            var base = build();
+            routeName = "other";
+            assertNotEquals(base, build());
+            routeName = "users";
+
+            method = "GET";
+            assertNotEquals(base, build());
+            method = "POST";
+
+            requestUri = "/other";
+            assertNotEquals(base, build());
+            requestUri = "/api/users";
+
+            queryParameters = Map.of("page", "2");
+            assertNotEquals(base, build());
+            queryParameters = Map.of("page", "1");
+
+            headers = Map.of("H", "w");
+            assertNotEquals(base, build());
+            headers = Map.of("H", "v");
+
+            remoteHost = "10.0.0.1";
+            assertNotEquals(base, build());
+            remoteHost = "127.0.0.1";
+
+            body = "different".getBytes(StandardCharsets.UTF_8);
+            assertNotEquals(base, build());
+            body = "body".getBytes(StandardCharsets.UTF_8);
+
+            contentType = null;
+            assertNotEquals(base, build());
+            contentType = "application/json";
+
+            token = null;
+            assertNotEquals(base, build());
+            token = base.token();
+
+            traceId = null;
+            assertNotEquals(base, build());
+            traceId = "trace-1";
+
+            parentTraceId = null;
+            assertNotEquals(base, build());
+            parentTraceId = "parent-1";
+
+            pathParameters = Map.of("id", "99");
+            assertNotEquals(base, build());
+            pathParameters = Map.of("id", "42");
         }
     }
 }

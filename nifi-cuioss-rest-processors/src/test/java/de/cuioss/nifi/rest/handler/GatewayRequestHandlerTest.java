@@ -37,6 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -113,7 +114,7 @@ class GatewayRequestHandlerTest {
         server.start();
 
         port = connector.getLocalPort();
-        httpClient = HttpClient.newHttpClient();
+        httpClient = newHttpClient();
     }
 
     @AfterEach
@@ -132,6 +133,56 @@ class GatewayRequestHandlerTest {
                 .header("Authorization", "Bearer " + tokenHolder.getRawToken());
     }
 
+    /**
+     * Builds the HTTP client used by the tests. The client is pinned to HTTP/1.1: the JDK client
+     * defaults to HTTP/2 and its cleartext {@code http://} negotiation against the embedded Jetty
+     * server has an intermittent race that surfaces as {@code "HTTP/1.1 header parser received no
+     * bytes"} / {@code EOFException}, made more likely by the CPU contention of a parallel
+     * ({@code -T}) build. Pinning HTTP/1.1 removes the negotiation entirely.
+     */
+    private static HttpClient newHttpClient() {
+        return HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+    }
+
+    /**
+     * Sends a request, retrying on the rare transient connection error (a pooled keep-alive
+     * connection reset by the server). Belt-and-suspenders on top of {@link #newHttpClient()}: on
+     * {@code IOException} it backs off briefly and retries on the same client — the JDK
+     * {@link HttpClient} discards the broken pooled connection and opens a fresh one on the next
+     * send, so re-creating the client (and leaking its selector/manager threads) is unnecessary.
+     */
+    private HttpResponse<String> sendWithRetry(HttpRequest request,
+            HttpResponse.BodyHandler<String> handler) throws Exception {
+        IOException last = null;
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            try {
+                return httpClient.send(request, handler);
+            } catch (IOException e) {
+                last = e;
+                Thread.sleep(50L * attempt);
+            }
+        }
+        throw last;
+    }
+
+    /**
+     * Asserts that a malicious/malformed request is rejected. A request is "rejected" when the
+     * server either returns a non-200 status or refuses it at the connection level — Jetty rejects
+     * some malformed URIs (e.g. an encoded {@code %00}) by closing the connection without an HTTP
+     * response, surfacing as {@link IOException} ("received no bytes"). Both outcomes mean the
+     * malicious request was never served, so both pass. {@link IllegalArgumentException} covers
+     * attack strings that are illegal to even parse into a URI. No retry here: for a rejection test
+     * a connection-level refusal is the expected result, not a transient flake to retry.
+     */
+    private void assertRejected(HttpRequest request, String description) throws Exception {
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            assertNotEquals(200, response.statusCode(), "Expected rejection for: " + description);
+        } catch (IllegalArgumentException | IOException e) {
+            // Rejected at the transport/connection level — a valid rejection of the input.
+        }
+    }
+
     @Nested
     @DisplayName("Route Matching")
     class RouteMatching {
@@ -139,7 +190,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 404 for unknown path")
         void shouldReturn404ForUnknownPath() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/unknown").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -153,7 +204,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 405 for disallowed method")
         void shouldReturn405ForDisallowedMethod() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health")
                             .POST(HttpRequest.BodyPublishers.ofString("{}"))
                             .header("Content-Type", "application/json")
@@ -169,7 +220,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should match exact path")
         void shouldMatchExactPath() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -196,7 +247,7 @@ class GatewayRequestHandlerTest {
             disabledServer.start();
             try {
                 int disabledPort = connector.getLocalPort();
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + disabledPort + "/api/disabled"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
@@ -237,7 +288,7 @@ class GatewayRequestHandlerTest {
         }
 
         private HttpResponse<String> get(String path) throws Exception {
-            return httpClient.send(
+            return sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + patternPort + path))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .GET().build(),
@@ -349,7 +400,7 @@ class GatewayRequestHandlerTest {
 
             int smallPort = connector.getLocalPort();
             try {
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + smallPort + "/api/data"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
@@ -384,7 +435,7 @@ class GatewayRequestHandlerTest {
 
             int smallPort = connector.getLocalPort();
             try {
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + smallPort + "/api/data"))
                                 .header("Content-Type", "application/json")
                                 .POST(HttpRequest.BodyPublishers.ofString("a]".repeat(100)))
@@ -408,7 +459,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 401 when no Authorization header")
         void shouldReturn401WhenNoAuthorizationHeader() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(uri("/api/health")).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -424,7 +475,7 @@ class GatewayRequestHandlerTest {
                     new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
                             "Invalid token"));
 
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -436,7 +487,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 401 for malformed Bearer header")
         void shouldReturn401ForMalformedBearerHeader() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(uri("/api/health"))
                             .header("Authorization", "Bearer ")
                             .GET().build(),
@@ -449,7 +500,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should accept valid token")
         void shouldAcceptValidToken() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -466,7 +517,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 403 when roles are missing")
         void shouldReturn403WhenRolesMissing() throws Exception {
             // users route requires ADMIN role — default test token doesn't have it
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/users").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -479,7 +530,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should return 403 with insufficient_scope challenge when scopes are missing")
         void shouldReturn403WhenScopesMissing() throws Exception {
             // data route requires READ scope
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/data").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -494,7 +545,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should pass when no auth requirements")
         void shouldPassWhenNoAuthRequirements() throws Exception {
             // health route has no roles/scopes requirements
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -510,7 +561,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should enqueue successful GET request")
         void shouldEnqueueSuccessfulGetRequest() throws Exception {
-            httpClient.send(
+            sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -530,7 +581,7 @@ class GatewayRequestHandlerTest {
             // But data requires READ scope. Let's make a minimal setup.
             // Instead, test the response for a successfully authed POST route
             // by verifying the response status for the existing health route
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -566,14 +617,14 @@ class GatewayRequestHandlerTest {
 
             try {
                 // Fill the queue
-                httpClient.send(
+                sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + tinyPort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
 
                 // This one should get 503
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + tinyPort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
@@ -611,7 +662,7 @@ class GatewayRequestHandlerTest {
             int noFlowFilePort = connector.getLocalPort();
 
             try {
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + noFlowFilePort + "/api/health"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
@@ -634,7 +685,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 200 when route is matched")
         void shouldReturn200WhenRouteMatched() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -649,7 +700,7 @@ class GatewayRequestHandlerTest {
                     new TokenValidationException(SecurityEventCounter.EventType.FAILED_TO_DECODE_JWT,
                             "bad token"));
 
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -671,17 +722,13 @@ class GatewayRequestHandlerTest {
                 "/api/health%00.html"
         })
         void shouldRejectMaliciousPath(String path) throws Exception {
-            var response = httpClient.send(
-                    requestBuilder(path).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertNotEquals(200, response.statusCode());
+            assertRejected(requestBuilder(path).GET().build(), path);
         }
 
         @Test
         @DisplayName("Should accept legitimate paths")
         void shouldAcceptLegitimatePaths() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -700,17 +747,13 @@ class GatewayRequestHandlerTest {
         })
         @DisplayName("Should reject malicious query parameter under strict posture")
         void shouldRejectMaliciousQueryParameter(String pathWithQuery) throws Exception {
-            var response = httpClient.send(
-                    requestBuilder(pathWithQuery).GET().build(),
-                    HttpResponse.BodyHandlers.ofString());
-
-            assertNotEquals(200, response.statusCode());
+            assertRejected(requestBuilder(pathWithQuery).GET().build(), pathWithQuery);
         }
 
         @Test
         @DisplayName("Should accept legitimate query parameters under strict posture")
         void shouldAcceptLegitimateQueryParameter() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     requestBuilder("/api/health?page=2&size=50").GET().build(),
                     HttpResponse.BodyHandlers.ofString());
 
@@ -762,16 +805,16 @@ class GatewayRequestHandlerTest {
      */
     private void assertAttackRejected(AttackTestCase testCase) throws Exception {
         String attackUrl = "http://127.0.0.1:" + port + "/api/health" + testCase.attackString();
+        HttpRequest request;
         try {
-            var request = HttpRequest.newBuilder(URI.create(attackUrl))
+            request = HttpRequest.newBuilder(URI.create(attackUrl))
                     .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                     .GET().build();
-            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            assertNotEquals(200, response.statusCode(),
-                    "Expected rejection for: " + testCase.attackDescription());
         } catch (IllegalArgumentException e) {
-            // Attack string contains characters illegal for URI — rejected at transport level
+            // Attack string is not even a legal URI — rejected at parse level.
+            return;
         }
+        assertRejected(request, testCase.attackDescription());
     }
 
     @Nested
@@ -835,7 +878,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 422 for invalid body")
         void shouldReturn422ForInvalidBody() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
@@ -856,7 +899,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 422 with violations array in response")
         void shouldReturn422WithViolationsArray() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
@@ -875,7 +918,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should return 202 for valid body")
         void shouldReturn202ForValidBody() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
@@ -891,7 +934,7 @@ class GatewayRequestHandlerTest {
         @Test
         @DisplayName("Should skip validation when no schema configured")
         void shouldSkipValidationWhenNoSchema() throws Exception {
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/noschema"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
@@ -906,7 +949,7 @@ class GatewayRequestHandlerTest {
         @DisplayName("Should reject empty body when schema is configured")
         void shouldRejectEmptyBody() throws Exception {
             // POST with empty body should fail schema validation
-            var response = httpClient.send(
+            var response = sendWithRetry(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + schemaPort + "/api/validated"))
                             .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                             .header("Content-Type", "application/json")
@@ -954,7 +997,7 @@ class GatewayRequestHandlerTest {
 
             try {
                 // Valid body
-                var validResponse = httpClient.send(
+                var validResponse = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + inlinePort + "/api/inline"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
@@ -964,7 +1007,7 @@ class GatewayRequestHandlerTest {
                 assertEquals(202, validResponse.statusCode());
 
                 // Invalid body — missing required field
-                var invalidResponse = httpClient.send(
+                var invalidResponse = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + inlinePort + "/api/inline"))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .header("Content-Type", "application/json")
@@ -1002,7 +1045,7 @@ class GatewayRequestHandlerTest {
             int testPort = connector.getLocalPort();
 
             try {
-                var response = httpClient.send(
+                var response = sendWithRetry(
                         HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + testPort + testCase.legitimatePattern()))
                                 .header("Authorization", "Bearer " + tokenHolder.getRawToken())
                                 .GET().build(),
@@ -1061,7 +1104,7 @@ class GatewayRequestHandlerTest {
             if (headerName != null) {
                 builder.header(headerName, headerValue);
             }
-            return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
+            return sendWithRetry(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
         }
 
         @Test
@@ -1156,7 +1199,7 @@ class GatewayRequestHandlerTest {
                 if (headerName != null) {
                     builder.header(headerName, headerValue);
                 }
-                return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
+                return sendWithRetry(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
             } finally {
                 srv.stop();
             }
