@@ -138,13 +138,17 @@ public class GatewayProxyServlet extends HttpServlet {
      * not the rest-processors sanitize-and-fall-through shape.
      */
     private final transient HttpSecurityValidator urlPathValidator;
-    private final transient HttpSecurityValidator headerValueValidator;
+    /**
+     * Shared strict/throw validator for the externally-sourced {@code X-Processor-Id}
+     * header (cui-http header-value pipeline plus identifier allow-list).
+     */
+    private final transient ProcessorIdHeaderValidator processorIdValidator =
+            new ProcessorIdHeaderValidator();
 
     public GatewayProxyServlet() {
         SecurityEventCounter counter = new SecurityEventCounter();
         SecurityConfiguration secConfig = SecurityConfiguration.strict();
         urlPathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
-        headerValueValidator = PipelineFactory.createHeaderValuePipeline(secConfig, counter);
     }
 
     private transient NiFiWebConfigurationContext configContext;
@@ -167,7 +171,7 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
-            if (!validateHeaderSecurity(processorId, resp)) {
+            if (!processorIdValidator.validate(processorId, resp)) {
                 return;
             }
 
@@ -261,7 +265,7 @@ public class GatewayProxyServlet extends HttpServlet {
                     MSG_MISSING_PROCESSOR_ID);
             return;
         }
-        if (!validateHeaderSecurity(processorId, resp)) {
+        if (!processorIdValidator.validate(processorId, resp)) {
             return;
         }
 
@@ -537,7 +541,7 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
-            if (!validateHeaderSecurity(processorId, resp)) {
+            if (!processorIdValidator.validate(processorId, resp)) {
                 return;
             }
 
@@ -615,7 +619,7 @@ public class GatewayProxyServlet extends HttpServlet {
                         MSG_MISSING_PROCESSOR_ID);
                 return;
             }
-            if (!validateHeaderSecurity(processorId, resp)) {
+            if (!processorIdValidator.validate(processorId, resp)) {
                 return;
             }
 
@@ -1127,27 +1131,6 @@ public class GatewayProxyServlet extends HttpServlet {
             LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, value, e.getFailureType());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid URL: " + e.getFailureType().getDescription());
-            return false;
-        }
-    }
-
-    /**
-     * Validates an externally-sourced header value (the {@code X-Processor-Id}
-     * header) through the cui-http header-value security pipeline. On violation,
-     * rejects with HTTP 400 and a {@code WARN} log entry.
-     *
-     * @param value the header value to validate
-     * @param resp  the response to write a 400 error to on violation
-     * @return {@code true} when the value is safe, {@code false} when rejected
-     */
-    private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
-        try {
-            headerValueValidator.validate(value);
-            return true;
-        } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid header value: " + e.getFailureType().getDescription());
             return false;
         }
     }

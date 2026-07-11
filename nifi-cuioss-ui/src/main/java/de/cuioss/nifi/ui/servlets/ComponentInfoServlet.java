@@ -16,11 +16,6 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.http.security.config.SecurityConfiguration;
-import de.cuioss.http.security.core.HttpSecurityValidator;
-import de.cuioss.http.security.exceptions.UrlSecurityException;
-import de.cuioss.http.security.monitoring.SecurityEventCounter;
-import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
@@ -60,17 +55,11 @@ public class ComponentInfoServlet extends HttpServlet {
     private transient NiFiWebConfigurationContext configContext;
 
     /**
-     * cui-http header-value security validator built once with a strict
-     * configuration. This servlet is a validation boundary, so it follows the
-     * {@code JwksValidationServlet} strict/throw baseline (reject-on-violation).
+     * Shared strict/throw validator for the externally-sourced {@code X-Processor-Id}
+     * header (cui-http header-value pipeline plus identifier allow-list).
      */
-    private final transient HttpSecurityValidator headerValueValidator;
-
-    public ComponentInfoServlet() {
-        SecurityEventCounter counter = new SecurityEventCounter();
-        SecurityConfiguration secConfig = SecurityConfiguration.strict();
-        headerValueValidator = PipelineFactory.createHeaderValuePipeline(secConfig, counter);
-    }
+    private final transient ProcessorIdHeaderValidator processorIdValidator =
+            new ProcessorIdHeaderValidator();
 
     @Override
     public void init() throws ServletException {
@@ -86,7 +75,7 @@ public class ComponentInfoServlet extends HttpServlet {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, "Missing processor ID");
             return;
         }
-        if (!validateHeaderSecurity(processorId, resp)) {
+        if (!processorIdValidator.validate(processorId, resp)) {
             return;
         }
 
@@ -117,28 +106,6 @@ public class ComponentInfoServlet extends HttpServlet {
             // likely broken, so handle here rather than letting it escape the servlet
             // method (java:S1989); a further error response would also fail.
             LOGGER.warn(UILogMessages.WARN.FAILED_WRITE_COMPONENT_INFO_RESPONSE, processorId, e.getMessage());
-        }
-    }
-
-    /**
-     * Validates the externally-sourced {@code X-Processor-Id} header value
-     * through the cui-http header-value security pipeline. On violation, rejects
-     * with HTTP 400 and a {@code WARN} log entry, mirroring the
-     * {@code JwksValidationServlet} baseline.
-     *
-     * @param value the header value to validate
-     * @param resp  the response to write a 400 error to on violation
-     * @return {@code true} when the value is safe, {@code false} when rejected
-     */
-    private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
-        try {
-            headerValueValidator.validate(value);
-            return true;
-        } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
-            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid header value: " + e.getFailureType().getDescription());
-            return false;
         }
     }
 

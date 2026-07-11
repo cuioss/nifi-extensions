@@ -220,6 +220,17 @@ public class JwtVerificationServlet extends HttpServlet {
             throw new RequestException(400,
                     "Invalid processor ID: " + e.getFailureType().getDescription());
         }
+        // A processor ID is a NiFi component identifier restricted to letters, digits,
+        // hyphens and underscores. Since cui-http 2.1.0 the header-value pipeline no
+        // longer resolves RFC 3986 dot-segments for header values (dot-segment resolution
+        // is path-only), so a traversal-style value such as "../../../etc/passwd" is a
+        // legitimate header value and passes the pipeline. Enforce the identifier
+        // allow-list here so such a value is rejected with 400 before it is used as a
+        // component lookup key.
+        if (!ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, processorId);
+            throw new RequestException(400, "Invalid processor ID: contains illegal characters");
+        }
     }
 
     private TokenValidationResult performTokenVerification(
