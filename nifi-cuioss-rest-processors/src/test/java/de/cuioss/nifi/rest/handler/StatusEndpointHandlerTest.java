@@ -105,7 +105,7 @@ class StatusEndpointHandlerTest {
         server.start();
 
         port = connector.getLocalPort();
-        httpClient = HttpClient.newHttpClient();
+        httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
     }
 
     @AfterEach

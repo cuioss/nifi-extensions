@@ -102,7 +102,7 @@ class RestApiGatewayProcessorTest {
         tokenHolder = TestTokenGenerators.accessTokens().next();
         mockConfigService.configureValidToken(tokenHolder.asAccessTokenContent());
 
-        httpClient = HttpClient.newHttpClient();
+        httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
     }
 
     @AfterEach

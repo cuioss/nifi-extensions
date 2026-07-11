@@ -23,6 +23,9 @@ import de.cuioss.http.security.database.OWASPTop10AttackDatabase;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 import jakarta.servlet.http.HttpServletRequest;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
@@ -101,26 +104,26 @@ class GatewayProxyServletTest {
             new AtomicReference<>(createDefaultCsProperties());
 
     private static Map<String, String> createDefaultCsProperties() {
-        Map<String, String> props = new HashMap<>();
-        props.put("issuer.primary.issuer", "https://keycloak:8443/realms/master");
-        props.put("issuer.primary.jwks-url", "https://keycloak:8443/realms/master/protocol/openid-connect/certs");
+        Map<String, String> props = new HashMap<>(Map.of(
+                "issuer.primary.issuer", "https://keycloak:8443/realms/master",
+                "issuer.primary.jwks-url", "https://keycloak:8443/realms/master/protocol/openid-connect/certs"));
         return props;
     }
 
     private static Map<String, String> createDefaultProperties() {
-        Map<String, String> props = new HashMap<>();
-        props.put("rest.gateway.listening.port", "9443");
-        props.put("rest.gateway.max.request.size", "1048576");
-        props.put("rest.gateway.request.queue.size", "50");
-        props.put("rest.gateway.listening.host", "0.0.0.0");
-        props.put("rest.gateway.management.health.enabled", "true");
-        props.put("rest.gateway.management.health.auth-mode", "local-only,bearer");
-        props.put("rest.gateway.management.metrics.enabled", "true");
-        props.put("rest.gateway.management.metrics.auth-mode", "local-only,bearer");
-        props.put("rest.gateway.jwt.config.service", "cs-id-1234");
-        props.put("restapi.users.path", "/api/users");
-        props.put("restapi.users.methods", "GET,POST");
-        props.put("restapi.users.required-roles", "ADMIN");
+        Map<String, String> props = new HashMap<>(Map.ofEntries(
+                Map.entry("rest.gateway.listening.port", "9443"),
+                Map.entry("rest.gateway.max.request.size", "1048576"),
+                Map.entry("rest.gateway.request.queue.size", "50"),
+                Map.entry("rest.gateway.listening.host", "0.0.0.0"),
+                Map.entry("rest.gateway.management.health.enabled", "true"),
+                Map.entry("rest.gateway.management.health.auth-mode", "local-only,bearer"),
+                Map.entry("rest.gateway.management.metrics.enabled", "true"),
+                Map.entry("rest.gateway.management.metrics.auth-mode", "local-only,bearer"),
+                Map.entry("rest.gateway.jwt.config.service", "cs-id-1234"),
+                Map.entry("restapi.users.path", "/api/users"),
+                Map.entry("restapi.users.methods", "GET,POST"),
+                Map.entry("restapi.users.required-roles", "ADMIN")));
         return props;
     }
 
@@ -739,6 +742,19 @@ class GatewayProxyServletTest {
             assertFalse(GatewayProxyServlet.isLocalhostTarget(
                     URI.create("http://192.168.1.1:9443/config")));
         }
+
+        @Test
+        @DisplayName("Should reject URI with null host")
+        void shouldRejectNullHost() {
+            assertFalse(GatewayProxyServlet.isLocalhostTarget(URI.create("/config")));
+        }
+
+        @Test
+        @DisplayName("Should reject bracketed non-loopback IPv6")
+        void shouldRejectBracketedNonLoopbackIpv6() {
+            // startsWith('[') && endsWith(']') is true, but the normalized host is not a loopback.
+            assertFalse(GatewayProxyServlet.isLocalhostTarget(URI.create("http://[fe80::1]:9443/x")));
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1283,13 +1299,13 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should mark routes present in both sources with source 'both'")
         void shouldMarkBothSourceRoutes() {
-            Map<String, String> externalProps = new HashMap<>();
-            externalProps.put("restapi.data.path", "/api/data-ext");
-            externalProps.put("restapi.data.methods", "GET");
+            Map<String, String> externalProps = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data-ext",
+                    "restapi.data.methods", "GET"));
 
-            Map<String, String> nifiProps = new HashMap<>();
-            nifiProps.put("restapi.data.path", "/api/data");
-            nifiProps.put("restapi.data.methods", "GET,POST");
+            Map<String, String> nifiProps = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.methods", "GET,POST"));
 
             var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
             assertEquals(1, result.size());
@@ -1376,14 +1392,14 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should have NiFi properties override external config for same route")
         void shouldHaveNifiOverrideExternal() {
-            Map<String, String> externalProps = new HashMap<>();
-            externalProps.put("restapi.data.path", "/api/data-ext");
-            externalProps.put("restapi.data.methods", "GET");
-            externalProps.put("restapi.data.required-roles", "USER");
+            Map<String, String> externalProps = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data-ext",
+                    "restapi.data.methods", "GET",
+                    "restapi.data.required-roles", "USER"));
 
-            Map<String, String> nifiProps = new HashMap<>();
-            nifiProps.put("restapi.data.path", "/api/data");
-            nifiProps.put("restapi.data.methods", "GET,POST");
+            Map<String, String> nifiProps = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.methods", "GET,POST"));
 
             var result = GatewayProxyServlet.buildMergedRoutesArray(externalProps, nifiProps).build();
             var dataRoute = result.getJsonObject(0);
@@ -1573,6 +1589,111 @@ class GatewayProxyServletTest {
                     .post("/gateway/test")
                     .then()
                     .statusCode(not(equalTo(200)));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Route array building (pure static helpers) — exercises buildMergedRoutesArray
+    // and its private helpers (buildRouteObject, addSuccessOutcome, addNonBlankString,
+    // addOptionalInt, buildStringArray, extractRouteNames, groupRouteProperties).
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("Merged routes array building")
+    class MergedRoutesArray {
+
+        private Map<String, JsonObject> routesByName(Map<String, String> external, Map<String, String> nifi) {
+            JsonArray array = GatewayProxyServlet.buildMergedRoutesArray(external, nifi).build();
+            Map<String, JsonObject> byName = new HashMap<>();
+            for (JsonValue value : array) {
+                JsonObject route = value.asJsonObject();
+                byName.put(route.getString("name"), route);
+            }
+            return byName;
+        }
+
+        @Test
+        @DisplayName("Should mark external-only route with source 'external' and honor all optional fields")
+        void shouldBuildExternalOnlyRoute() {
+            Map<String, String> external = new HashMap<>(Map.of(
+                    "restapi.alpha.path", "/alpha",
+                    // Empty items around commas must be dropped by buildStringArray.
+                    "restapi.alpha.methods", "GET, ,POST,",
+                    "restapi.alpha.required-roles", "admin",
+                    "restapi.alpha.required-scopes", "read",
+                    "restapi.alpha.schema", "mySchema",
+                    "restapi.alpha.success-outcome", "done",
+                    "restapi.alpha.max-request-size", "1024",
+                    // Non-numeric optional int must be ignored (NumberFormatException path).
+                    "restapi.alpha.attachments-min-count", "not-a-number",
+                    // A key without a '.' after the prefix must be ignored by name extraction/grouping.
+                    "restapi.nodotkey", "ignored"));
+
+            JsonObject alpha = routesByName(external, Map.of()).get("alpha");
+
+            assertNotNull(alpha);
+            assertEquals("external", alpha.getString("source"));
+            assertEquals("/alpha", alpha.getString("path"));
+            assertEquals("mySchema", alpha.getString("schema"));
+            assertEquals("done", alpha.getString("successOutcome"));
+            assertEquals(1024, alpha.getInt("maxRequestSize"));
+            assertFalse(alpha.containsKey("attachmentsMinCount"), "invalid int must not be added");
+            assertEquals(2, alpha.getJsonArray("methods").size(), "blank method items dropped");
+            assertTrue(alpha.getBoolean("enabled"));
+        }
+
+        @Test
+        @DisplayName("Should mark nifi-only route 'nifi', drop blank fields, and skip success outcome when create-flowfile=false")
+        void shouldBuildNifiOnlyRoute() {
+            Map<String, String> nifi = new HashMap<>(Map.of(
+                    "restapi.beta.path", "/beta",
+                    "restapi.beta.enabled", "false",
+                    "restapi.beta.schema", "   ",
+                    "restapi.beta.success-outcome", "  ",
+                    "restapi.beta.create-flowfile", "false",
+                    // Blank (non-null) methods must produce an empty array (buildStringArray blank branch).
+                    "restapi.beta.methods", "",
+                    // Blank (non-null) optional int must be skipped (addOptionalInt blank branch).
+                    "restapi.beta.attachments-max-count", "  "));
+
+            JsonObject beta = routesByName(Map.of(), nifi).get("beta");
+
+            assertNotNull(beta);
+            assertEquals("nifi", beta.getString("source"));
+            assertFalse(beta.getBoolean("enabled"));
+            assertFalse(beta.getBoolean("createFlowFile"));
+            assertFalse(beta.containsKey("schema"), "blank schema must not be added");
+            assertFalse(beta.containsKey("successOutcome"),
+                    "blank success-outcome with create-flowfile=false must not derive an outcome");
+            assertFalse(beta.containsKey("attachmentsMaxCount"), "blank optional int must not be added");
+            assertEquals(0, beta.getJsonArray("methods").size());
+        }
+
+        @Test
+        @DisplayName("Should mark route in both sources 'both', let nifi override, and derive success outcome from route name")
+        void shouldBuildBothSourceRoute() {
+            Map<String, String> external = new HashMap<>();
+            external.put("restapi.gamma.path", "/gamma-external");
+            Map<String, String> nifi = new HashMap<>();
+            nifi.put("restapi.gamma.path", "/gamma");
+
+            JsonObject gamma = routesByName(external, nifi).get("gamma");
+
+            assertNotNull(gamma);
+            assertEquals("both", gamma.getString("source"));
+            assertEquals("/gamma", gamma.getString("path"), "nifi props override external");
+            // No explicit success-outcome + create-flowfile defaults to true => outcome is the route name.
+            assertEquals("gamma", gamma.getString("successOutcome"));
+        }
+
+        @Test
+        @DisplayName("Should skip routes with a blank path")
+        void shouldSkipBlankPathRoute() {
+            Map<String, String> external = new HashMap<>(Map.of(
+                    "restapi.delta.path", "  ",
+                    "restapi.delta.methods", "GET"));
+
+            assertFalse(routesByName(external, Map.of()).containsKey("delta"));
         }
     }
 }

@@ -161,7 +161,7 @@ class JettyServerManagerTest {
         void shouldAcceptHttpRequest() throws Exception {
             manager.start(0, echoHandler());
 
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
             var response = client.send(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
@@ -183,7 +183,7 @@ class JettyServerManagerTest {
 
             assertTrue(manager.isRunning());
 
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
             var response = client.send(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
@@ -200,7 +200,7 @@ class JettyServerManagerTest {
 
             assertTrue(manager.isRunning());
 
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
             var response = client.send(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
                             .GET().build(),
@@ -225,6 +225,7 @@ class JettyServerManagerTest {
 
             // Create client that trusts the self-signed cert
             HttpClient client = HttpClient.newBuilder()
+                    .version(HttpClient.Version.HTTP_1_1)
                     .sslContext(createTestTrustSslContext())
                     .build();
 
@@ -243,7 +244,7 @@ class JettyServerManagerTest {
             SSLContext serverSslContext = createSelfSignedSslContext();
             manager.start(0, echoHandler(), serverSslContext);
 
-            HttpClient client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
 
             assertThrows(Exception.class, () -> client.send(
                     HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + manager.getPort() + "/test"))
