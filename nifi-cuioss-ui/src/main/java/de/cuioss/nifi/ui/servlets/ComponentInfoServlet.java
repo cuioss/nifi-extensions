@@ -35,6 +35,7 @@ import org.apache.nifi.web.NiFiWebConfigurationContext;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Lightweight servlet that returns the component type and class for a NiFi
@@ -56,6 +57,8 @@ public class ComponentInfoServlet extends HttpServlet {
     private static final CuiLogger LOGGER = new CuiLogger(ComponentInfoServlet.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
+    /** Processor IDs are NiFi component identifiers: letters, digits, hyphens, underscores. */
+    private static final Pattern PROCESSOR_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
 
     private transient NiFiWebConfigurationContext configContext;
 
@@ -133,13 +136,26 @@ public class ComponentInfoServlet extends HttpServlet {
     private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
         try {
             headerValueValidator.validate(value);
-            return true;
         } catch (UrlSecurityException e) {
             LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid header value: " + e.getFailureType().getDescription());
             return false;
         }
+        // A processor ID is a NiFi component identifier restricted to letters, digits,
+        // hyphens and underscores. Since cui-http 2.1.0 the header-value pipeline no
+        // longer resolves RFC 3986 dot-segments for header values (dot-segment resolution
+        // is path-only), so a traversal-style value such as "../../../etc/passwd" is a
+        // legitimate header value and passes the pipeline. Enforce the identifier
+        // allow-list here so such a value is rejected with 400 before it is used as a
+        // component lookup key.
+        if (!PROCESSOR_ID_PATTERN.matcher(value).matches()) {
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, value);
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid header value: processor ID contains illegal characters");
+            return false;
+        }
+        return true;
     }
 
     /**

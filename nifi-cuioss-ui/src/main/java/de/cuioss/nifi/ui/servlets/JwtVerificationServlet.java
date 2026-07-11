@@ -40,6 +40,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
@@ -85,6 +86,8 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final String JSON_KEY_VALID = "valid";
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
+    /** Processor IDs are NiFi component identifiers: letters, digits, hyphens, underscores. */
+    private static final Pattern PROCESSOR_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
     /** Reusable parser for decoding already-validated tokens (no signature check). */
     private static final NonValidatingJwtParser DECODE_PARSER = NonValidatingJwtParser.builder()
             .securityEventCounter(new SecurityEventCounter())
@@ -219,6 +222,17 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, processorId, e.getFailureType());
             throw new RequestException(400,
                     "Invalid processor ID: " + e.getFailureType().getDescription());
+        }
+        // A processor ID is a NiFi component identifier restricted to letters, digits,
+        // hyphens and underscores. Since cui-http 2.1.0 the header-value pipeline no
+        // longer resolves RFC 3986 dot-segments for header values (dot-segment resolution
+        // is path-only), so a traversal-style value such as "../../../etc/passwd" is a
+        // legitimate header value and passes the pipeline. Enforce the identifier
+        // allow-list here so such a value is rejected with 400 before it is used as a
+        // component lookup key.
+        if (!PROCESSOR_ID_PATTERN.matcher(processorId).matches()) {
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, processorId);
+            throw new RequestException(400, "Invalid processor ID: contains illegal characters");
         }
     }
 

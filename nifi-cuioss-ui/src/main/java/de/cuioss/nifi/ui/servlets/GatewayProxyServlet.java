@@ -48,6 +48,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -112,6 +113,8 @@ public class GatewayProxyServlet extends HttpServlet {
     static final Set<String> ALLOWED_GRANT_TYPES = Set.of(GRANT_TYPE_ROPC, "client_credentials");
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
+    /** Processor IDs are NiFi component identifiers: letters, digits, hyphens, underscores. */
+    private static final Pattern PROCESSOR_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
     private static final String FALSE_STRING = "false";
     private static final String KEY_ENABLED = "enabled";
@@ -1143,13 +1146,26 @@ public class GatewayProxyServlet extends HttpServlet {
     private boolean validateHeaderSecurity(String value, HttpServletResponse resp) {
         try {
             headerValueValidator.validate(value);
-            return true;
         } catch (UrlSecurityException e) {
             LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, e.getFailureType());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid header value: " + e.getFailureType().getDescription());
             return false;
         }
+        // A processor ID is a NiFi component identifier restricted to letters, digits,
+        // hyphens and underscores. Since cui-http 2.1.0 the header-value pipeline no
+        // longer resolves RFC 3986 dot-segments for header values (dot-segment resolution
+        // is path-only), so a traversal-style value such as "../../../etc/passwd" is a
+        // legitimate header value and passes the pipeline. Enforce the identifier
+        // allow-list here so such a value is rejected with 400 before it is used to
+        // resolve the gateway target.
+        if (!PROCESSOR_ID_PATTERN.matcher(value).matches()) {
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, value);
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    "Invalid header value: processor ID contains illegal characters");
+            return false;
+        }
+        return true;
     }
 
     private void sendErrorResponse(HttpServletResponse resp, int status, String message) {
