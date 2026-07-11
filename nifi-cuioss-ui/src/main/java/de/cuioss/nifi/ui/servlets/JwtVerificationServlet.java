@@ -40,7 +40,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import static de.cuioss.nifi.jwt.util.TokenMasking.maskToken;
 
@@ -86,8 +85,6 @@ public class JwtVerificationServlet extends HttpServlet {
     private static final String JSON_KEY_VALID = "valid";
     /** Maximum request body size: 1 MB */
     private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
-    /** Processor IDs are NiFi component identifiers: letters, digits, hyphens, underscores. */
-    private static final Pattern PROCESSOR_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
     /** Reusable parser for decoding already-validated tokens (no signature check). */
     private static final NonValidatingJwtParser DECODE_PARSER = NonValidatingJwtParser.builder()
             .securityEventCounter(new SecurityEventCounter())
@@ -230,7 +227,7 @@ public class JwtVerificationServlet extends HttpServlet {
         // legitimate header value and passes the pipeline. Enforce the identifier
         // allow-list here so such a value is rejected with 400 before it is used as a
         // component lookup key.
-        if (!PROCESSOR_ID_PATTERN.matcher(processorId).matches()) {
+        if (!ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
             LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, processorId);
             throw new RequestException(400, "Invalid processor ID: contains illegal characters");
         }
