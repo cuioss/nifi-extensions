@@ -713,7 +713,10 @@
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotPresentToIsEmpty</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.ReplaceStreamCollectWithToList</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.UseLocaleOf</recipe>
-                                <recipe>org.openrewrite.java.migrate.util.UseMapOf</recipe>
+                                <!-- UseMapOf intentionally omitted: it rewrites HashMap.put() chains into
+                                     Map.of(...), which throws on null values/keys and duplicate keys, has
+                                     unspecified iteration order, and previously rewrote unrelated files
+                                     during whole-repo pre-commit runs. -->
                                 <recipe>org.openrewrite.java.OrderImports</recipe>
                                 <recipe>org.openrewrite.java.RemoveUnusedImports</recipe>
                                 <recipe>org.openrewrite.java.ShortenFullyQualifiedTypeReferences</recipe>
