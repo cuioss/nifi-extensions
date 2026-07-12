@@ -94,13 +94,52 @@ public final class ForwardedRequestResolver {
             Set<String> allowedContextPaths,
             Set<String> trustedProxies,
             String securityConfigPreset) {
+        return create(trustAll, allowedContextPaths, trustedProxies, securityConfigPreset,
+                new SecurityEventCounter());
+    }
+
+    /**
+     * Builds a resolver from the project's four config inputs, publishing forwarded-header
+     * sanitization security events (control-character rejection, protocol-relative URL rejection,
+     * etc.) through an externally-supplied {@link SecurityEventCounter} rather than an isolated
+     * internal one.
+     *
+     * <p>Use this overload when the caller already threads a shared {@link SecurityEventCounter}
+     * into a metrics/monitoring surface (for example {@code RestApiGatewayProcessor}'s
+     * {@code httpSecurityEvents} counter, which is published to NiFi metrics and counters) so that
+     * forwarded-header security events are surfaced through the same counter rather than being lost
+     * in a resolver-local instance. The 4-arg overload delegates here with a fresh counter for
+     * callers that have no shared counter to contribute.
+     *
+     * @param trustAll             honor the sanitized scheme / host / port and any sanitized
+     *                             context-path (use only behind a fully trusted proxy)
+     * @param allowedContextPaths  normalized context paths honored even when {@code trustAll} is
+     *                             {@code false}; {@code null} or empty honors no context path.
+     *                             Callers typically produce this via
+     *                             {@link ForwardedResolverConfig#parseAllowlist(String)}
+     * @param trustedProxies       CIDR ranges / IP literals defining trusted proxy hops required for
+     *                             {@code X-Forwarded-For} client-IP resolution; {@code null} or
+     *                             empty honors no client IP
+     * @param securityConfigPreset the sanitization-pipeline preset selector — {@code "strict"},
+     *                             {@code "lenient"}, or {@code "defaults"} (any other value, or
+     *                             {@code null}, falls back to {@code defaults})
+     * @param securityEventCounter the shared counter that receives forwarded-header sanitization
+     *                             security events; must not be {@code null}
+     * @return an immutable, configured resolver
+     * @throws IllegalArgumentException if a {@code trustedProxies} entry is not a valid IP / CIDR
+     */
+    public static ForwardedRequestResolver create(boolean trustAll,
+            Set<String> allowedContextPaths,
+            Set<String> trustedProxies,
+            String securityConfigPreset,
+            SecurityEventCounter securityEventCounter) {
         ForwardedResolverConfig config = ForwardedResolverConfig.builder()
                 .trustAll(trustAll)
                 .allowedContextPaths(allowedContextPaths == null ? Set.of() : allowedContextPaths)
                 .trustedProxies(trustedProxies == null ? Set.of() : trustedProxies)
                 .securityConfig(securityConfigFor(securityConfigPreset))
                 .build();
-        return new ForwardedRequestResolver(new ForwardedHeaderResolver(config, new SecurityEventCounter()));
+        return new ForwardedRequestResolver(new ForwardedHeaderResolver(config, securityEventCounter));
     }
 
     /**

@@ -295,7 +295,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         String securityConfigPreset = context.getProperty(
                 RestApiGatewayConstants.Properties.PROXY_SECURITY_CONFIG_PRESET).getValue();
         ForwardedRequestResolver forwardedResolver = ForwardedRequestResolver.create(
-                trustAllProxyContextPaths, allowedContextPaths, trustedProxies, securityConfigPreset);
+                trustAllProxyContextPaths, allowedContextPaths, trustedProxies, securityConfigPreset,
+                httpSecurityEvents);
         LOGGER.info(RestApiLogMessages.INFO.PROXY_WHITELIST_CONFIGURED,
                 trustAllProxyContextPaths ? "(trust-all — any proxy context path honored)"
                         : allowedContextPaths.isEmpty() ? "(none — proxy headers ignored)" : allowedContextPaths);
