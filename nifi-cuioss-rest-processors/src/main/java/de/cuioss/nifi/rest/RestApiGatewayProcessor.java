@@ -16,10 +16,11 @@
  */
 package de.cuioss.nifi.rest;
 
+import de.cuioss.http.forwarded.ForwardedResolverConfig;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
-import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
+import de.cuioss.nifi.jwt.util.ForwardedRequestResolver;
 import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
@@ -49,6 +50,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -107,7 +109,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_MAX_REQUEST_SIZE,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_HARD_LIMIT,
             RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_WHITELIST,
-            RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_TRUST_ALL);
+            RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_TRUST_ALL,
+            RestApiGatewayConstants.Properties.PROXY_TRUSTED_PROXIES,
+            RestApiGatewayConstants.Properties.PROXY_SECURITY_CONFIG_PRESET);
 
     final JettyServerManager serverManager = new JettyServerManager();
     /** Injectable for testing — when null, a new instance is created in onScheduled. */
@@ -279,18 +283,29 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                     schemaValidator, gatewaySecurityEvents, statusStore));
         }
 
-        // Trusted reverse-proxy context-path allowlist (secure by default: empty honors
-        // nothing, so a direct client on the 0.0.0.0 listener cannot spoof the prefix).
-        Set<String> allowedContextPaths = ProxyContextPathResolver.parseAllowlist(
+        // Build the configured forwarded-header resolver from the full proxy config surface
+        // (secure by default: with no opt-in nothing is honored, so a direct client on the
+        // 0.0.0.0 listener cannot spoof any forwarded value).
+        Set<String> allowedContextPaths = ForwardedResolverConfig.parseAllowlist(
                 context.getProperty(RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_WHITELIST).getValue());
         boolean trustAllProxyContextPaths = context.getProperty(
                 RestApiGatewayConstants.Properties.PROXY_CONTEXT_PATH_TRUST_ALL).asBoolean();
+        Set<String> trustedProxies = parseTrustedProxies(context.getProperty(
+                RestApiGatewayConstants.Properties.PROXY_TRUSTED_PROXIES).getValue());
+        String securityConfigPreset = context.getProperty(
+                RestApiGatewayConstants.Properties.PROXY_SECURITY_CONFIG_PRESET).getValue();
+        ForwardedRequestResolver forwardedResolver = ForwardedRequestResolver.create(
+                trustAllProxyContextPaths, allowedContextPaths, trustedProxies, securityConfigPreset);
         LOGGER.info(RestApiLogMessages.INFO.PROXY_WHITELIST_CONFIGURED,
                 trustAllProxyContextPaths ? "(trust-all — any proxy context path honored)"
                         : allowedContextPaths.isEmpty() ? "(none — proxy headers ignored)" : allowedContextPaths);
+        LOGGER.info(RestApiLogMessages.INFO.PROXY_FORWARDED_CONFIGURED,
+                trustedProxies.isEmpty() ? "(none — forwarded client IP ignored)" : trustedProxies,
+                securityConfigPreset);
 
+        boolean contextPathHonoringConfigured = trustAllProxyContextPaths || !allowedContextPaths.isEmpty();
         var gatewayHandler = new GatewayRequestHandler(handlers, configService, maxRequestSize,
-                httpSecurityEvents, gatewaySecurityEvents, allowedContextPaths, trustAllProxyContextPaths);
+                httpSecurityEvents, gatewaySecurityEvents, forwardedResolver, contextPathHonoringConfigured);
 
         // Resolve optional SSL context for HTTPS
         SSLContextProvider sslProvider = context.getProperty(
@@ -304,6 +319,29 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         serverManager.start(port, host, gatewayHandler, sslContext);
 
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_INITIALIZED);
+    }
+
+    /**
+     * Parses the comma-separated trusted-proxies property into a set of trimmed, non-blank
+     * IP / CIDR specs. A {@code null} or blank value yields an empty set (secure default: no
+     * forwarded client IP is honored). Malformed specs are rejected downstream by
+     * {@link ForwardedRequestResolver#create} when the resolver config is built.
+     *
+     * @param commaSeparated the raw property value (may be {@code null})
+     * @return the parsed trusted-proxy specs, empty when none are configured
+     */
+    private static Set<String> parseTrustedProxies(String commaSeparated) {
+        if (commaSeparated == null || commaSeparated.isBlank()) {
+            return Set.of();
+        }
+        Set<String> trustedProxies = new LinkedHashSet<>();
+        for (String entry : commaSeparated.split(",")) {
+            String trimmed = entry.strip();
+            if (!trimmed.isEmpty()) {
+                trustedProxies.add(trimmed);
+            }
+        }
+        return trustedProxies;
     }
 
     private StatusEndpointHandler createStatusHandler(ProcessContext context,

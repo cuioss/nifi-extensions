@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.forwarded.ResolvedForwarding;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
@@ -25,6 +26,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -34,13 +38,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * embedded Jetty request so the {@code Location} header and body are produced by the
  * same request accessors used in production.
  *
- * <p>The honored reverse-proxy prefix is now resolved (and allowlist-gated) upstream
- * in {@code GatewayRequestHandler} and passed to these methods as an explicit
- * argument. The test carries the intended prefix in a test-only {@code X-Test-Prefix}
- * header that the embedded handler forwards verbatim as the {@code proxyContextPath}
- * argument, so a single round-trip asserts both methods prepend a supplied prefix to
- * the {@code Location} header and the HATEOAS {@code _links} hrefs, and leave the
- * output unchanged when the supplied prefix is empty.
+ * <p>The honored reverse-proxy view is resolved upstream in {@code GatewayRequestHandler}
+ * and carried on the {@link SanitizedRequest#forwarding()} view. The embedded handler here
+ * emulates that resolution: test-only {@code X-Test-*} headers are mapped verbatim into a
+ * {@link ResolvedForwarding} (context prefix plus optional honored scheme/host/port) that is
+ * threaded into the sanitized request, so a single round-trip asserts both methods prepend a
+ * honored prefix to the {@code Location} header / HATEOAS {@code _links} hrefs, reflect a
+ * honored forwarded scheme/host/port in the absolute {@code Location} URI, and fall back to the
+ * raw Jetty request when nothing is honored.
  */
 @EnableTestLogger
 @DisplayName("RequestUtils")
@@ -49,6 +54,9 @@ class RequestUtilsTest {
     private static final String TRACE_ID = "d1e2f3a4-b5c6-4788-9a0b-1c2d3e4f5a6b";
     private static final String ATTACHMENTS_PATH = "/with-attachments";
     private static final String TEST_PREFIX_HEADER = "X-Test-Prefix";
+    private static final String TEST_SCHEME_HEADER = "X-Test-Scheme";
+    private static final String TEST_HOST_HEADER = "X-Test-Host";
+    private static final String TEST_PORT_HEADER = "X-Test-Port";
 
     private Server server;
     private HttpClient httpClient;
@@ -64,11 +72,17 @@ class RequestUtilsTest {
             @Override
             public boolean handle(Request request, Response response, Callback callback) {
                 boolean includeAttachments = ATTACHMENTS_PATH.equals(request.getHttpURI().getPath());
-                // Emulate the upstream resolution: whatever prefix the caller decided to
-                // honor is passed explicitly. An absent header means an empty prefix.
-                String prefix = request.getHeaders().get(TEST_PREFIX_HEADER);
-                RequestUtils.sendAcceptedResponse(request, prefix == null ? "" : prefix,
-                        response, callback, TRACE_ID, includeAttachments);
+                // Emulate the upstream resolution: whatever the caller decided to honor is carried
+                // on the SanitizedRequest's forwarding view. Absent test headers mean not-honored.
+                ResolvedForwarding forwarding = new ResolvedForwarding(
+                        optional(request.getHeaders().get(TEST_SCHEME_HEADER)),
+                        optional(request.getHeaders().get(TEST_HOST_HEADER)),
+                        optionalInt(request.getHeaders().get(TEST_PORT_HEADER)),
+                        orEmpty(request.getHeaders().get(TEST_PREFIX_HEADER)),
+                        Optional.empty());
+                SanitizedRequest sanitized = new SanitizedRequest(
+                        request.getHttpURI().getPath(), Map.of(), Map.of(), forwarding, Map.of());
+                RequestUtils.sendAcceptedResponse(request, sanitized, response, callback, TRACE_ID, includeAttachments);
                 return true;
             }
         });
@@ -84,11 +98,32 @@ class RequestUtilsTest {
         }
     }
 
+    private static String orEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static Optional<String> optional(String value) {
+        return value == null || value.isBlank() ? Optional.empty() : Optional.of(value);
+    }
+
+    private static OptionalInt optionalInt(String value) {
+        return value == null || value.isBlank() ? OptionalInt.empty() : OptionalInt.of(Integer.parseInt(value));
+    }
+
     private HttpResponse<String> send(String path, String prefixValue) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path));
         if (prefixValue != null) {
             builder.header(TEST_PREFIX_HEADER, prefixValue);
         }
+        return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpResponse<String> sendForwarded(String path, String scheme, String host, String forwardedPort)
+            throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header(TEST_SCHEME_HEADER, scheme)
+                .header(TEST_HOST_HEADER, host)
+                .header(TEST_PORT_HEADER, forwardedPort);
         return httpClient.send(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
@@ -162,6 +197,46 @@ class RequestUtilsTest {
                     "attachments link href must be unprefixed");
             assertFalse(response.body().contains("/nifi-proxy"),
                     "no proxy prefix must appear when the supplied prefix is empty");
+        }
+    }
+
+    @Nested
+    @DisplayName("With honored forwarded scheme/host/port")
+    class WithForwardedSchemeHostPort {
+
+        @Test
+        @DisplayName("Reflects the honored forwarded scheme, host, and non-default port in the Location URI")
+        void reflectsForwardedSchemeHostPortInLocation() throws Exception {
+            var response = sendForwarded("/plain", "https", "proxy.example.com", "8443");
+
+            assertEquals(202, response.statusCode());
+            assertEquals("https://proxy.example.com:8443/status/" + TRACE_ID,
+                    response.headers().firstValue("Location").orElse(""),
+                    "Location must reflect the honored reverse-proxy-facing scheme/host/port");
+        }
+
+        @Test
+        @DisplayName("Omits the default HTTPS port from the honored forwarded Location URI")
+        void omitsDefaultForwardedPort() throws Exception {
+            var response = sendForwarded("/plain", "https", "proxy.example.com", "443");
+
+            assertEquals(202, response.statusCode());
+            assertEquals("https://proxy.example.com/status/" + TRACE_ID,
+                    response.headers().firstValue("Location").orElse(""),
+                    "The default HTTPS port must be omitted from the honored Location URI");
+        }
+
+        @Test
+        @DisplayName("Falls back to the raw Jetty host when no forwarded value is honored")
+        void fallsBackToRawJettyWhenNotHonored() throws Exception {
+            var response = send("/plain", null);
+
+            assertEquals(202, response.statusCode());
+            String location = response.headers().firstValue("Location").orElse("");
+            assertTrue(location.startsWith("http://127.0.0.1:" + port + "/status/"),
+                    "Location must fall back to the raw Jetty scheme/host/port when nothing is honored");
+            assertFalse(location.contains("proxy.example.com"),
+                    "no forwarded host must appear when nothing is honored");
         }
     }
 }

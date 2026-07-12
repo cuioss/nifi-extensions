@@ -175,7 +175,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
 
         autoTransitionToProcessedIfMinMet(parentTraceId.get(), parent.get(), attachmentCount.get());
 
-        RequestUtils.sendAcceptedResponse(request, sanitized.proxyContextPath(), response, callback, traceId, false);
+        RequestUtils.sendAcceptedResponse(request, sanitized, response, callback, traceId, false);
     }
 
     private Optional<String> extractAndValidateParentTraceId(String path, Response response, Callback callback) {
@@ -263,10 +263,11 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             byte[] body, Request request, TrackingContext tracking,
             Response response, Callback callback) {
         String parentTraceId = tracking.parentTraceId();
+        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
         var container = new HttpRequestContainer(
                 ATTACHMENTS_ROUTE_NAME, "POST", sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
-                Request.getRemoteAddr(request),
+                remoteHost,
                 body,
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
@@ -278,7 +279,7 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             rollbackAttachmentCount(parentTraceId);
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, "POST", sanitized.path(),
-                    Request.getRemoteAddr(request));
+                    remoteHost);
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return false;

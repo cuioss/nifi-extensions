@@ -52,6 +52,9 @@ public final class RestApiGatewayConstants {
         private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
         private static final String BEARER_RELEVANCE_DESC = "Only relevant when auth-mode includes 'bearer'.";
         private static final String FALSE_VALUE = "false";
+        private static final String PROXY_PRESET_STRICT = "strict";
+        private static final String PROXY_PRESET_LENIENT = "lenient";
+        private static final String PROXY_PRESET_DEFAULTS = "defaults";
 
         public static final PropertyDescriptor LISTENING_PORT = new PropertyDescriptor.Builder()
                 .name("rest.gateway.listening.port")
@@ -311,6 +314,33 @@ public final class RestApiGatewayConstants {
                 .required(false)
                 .allowableValues("true", FALSE_VALUE)
                 .defaultValue(FALSE_VALUE)
+                .build();
+
+        public static final PropertyDescriptor PROXY_TRUSTED_PROXIES = new PropertyDescriptor.Builder()
+                .name("rest.gateway.proxy.trusted-proxies")
+                .displayName("Proxy Trusted Proxies")
+                .description("Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR "
+                        + "ranges (e.g. '10.0.0.0/8, 192.168.1.5'). Required to honor the forwarded client IP "
+                        + "from the X-Forwarded-For / Forwarded headers for audit and rate-limit logging: the "
+                        + "chain is walked right-to-left, skipping these trusted hops, and the first untrusted "
+                        + "address is used as the client IP. When empty (the default) NO forwarded client IP is "
+                        + "honored and the raw socket remote address is used. Enable this ONLY when the gateway "
+                        + "is exclusively reachable through the listed proxies — a directly-reachable listener "
+                        + "lets any client forge the X-Forwarded-For chain. Secure default: empty.")
+                .required(false)
+                .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+                .build();
+
+        public static final PropertyDescriptor PROXY_SECURITY_CONFIG_PRESET = new PropertyDescriptor.Builder()
+                .name("rest.gateway.proxy.security-config.preset")
+                .displayName("Proxy Security Config Preset")
+                .description("Security posture for the forwarded-header sanitization pipeline: 'strict' "
+                        + "(tightest restrictions), 'lenient' (maximum compatibility, trusted environments only), "
+                        + "or 'defaults' (balanced). Governs how X-Forwarded-* / Forwarded header values are "
+                        + "sanitized before they are honored. Default: defaults.")
+                .required(false)
+                .allowableValues(PROXY_PRESET_STRICT, PROXY_PRESET_LENIENT, PROXY_PRESET_DEFAULTS)
+                .defaultValue(PROXY_PRESET_DEFAULTS)
                 .build();
 
     }

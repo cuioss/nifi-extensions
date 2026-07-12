@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.ForwardedRequestResolver;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
@@ -96,7 +97,8 @@ class ManagementEndpointHandlerTest {
 
         handler = new GatewayRequestHandler(
                 handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                httpSecurityEvents, gatewaySecurityEvents, Set.of(), false);
+                httpSecurityEvents, gatewaySecurityEvents,
+                ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
 
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
@@ -395,7 +397,8 @@ class ManagementEndpointHandlerTest {
                     Set.of(), Set.of()));
             localOnlyHandler = new GatewayRequestHandler(
                     handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                    new SecurityEventCounter(), new GatewaySecurityEvents(), Set.of(), false);
+                    new SecurityEventCounter(), new GatewaySecurityEvents(),
+                    ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
 
             localOnlyServer = new Server();
             ServerConnector connector = new ServerConnector(localOnlyServer);

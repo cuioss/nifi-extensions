@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.ForwardedRequestResolver;
 import de.cuioss.nifi.rest.config.AuthMode;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.TrackingMode;
@@ -112,7 +113,8 @@ class AttachmentsEndpointHandlerTest {
                 Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of()));
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
-                httpSecurityEvents, gatewaySecurityEvents, Set.of(), false);
+                httpSecurityEvents, gatewaySecurityEvents,
+                ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
 
         server = new Server();
         var connector = new ServerConnector(server);

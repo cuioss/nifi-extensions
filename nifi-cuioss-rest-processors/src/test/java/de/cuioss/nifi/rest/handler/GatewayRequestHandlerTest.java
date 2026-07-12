@@ -18,6 +18,7 @@ package de.cuioss.nifi.rest.handler;
 
 import de.cuioss.http.security.database.*;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
+import de.cuioss.nifi.jwt.util.ForwardedRequestResolver;
 import de.cuioss.nifi.rest.RestApiLogMessages;
 import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents.EventType;
@@ -604,7 +605,8 @@ class GatewayRequestHandlerTest {
                     toHandlers(List.of(RouteConfiguration.builder().name("health").path("/api/health")
                             .method("GET").build()), tinyQueue, GLOBAL_MAX_REQUEST_SIZE, null, tinyEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
-                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents, Set.of(), false);
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents,
+                    ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
 
             Server tinyServer = new Server();
             ServerConnector connector = new ServerConnector(tinyServer);
@@ -856,7 +858,8 @@ class GatewayRequestHandlerTest {
             schemaHandler = new GatewayRequestHandler(
                     toHandlers(routes, schemaQueue, GLOBAL_MAX_REQUEST_SIZE, schemaValidator, schemaEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
-                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents, Set.of(), false);
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents,
+                    ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
 
             schemaServer = new Server();
             ServerConnector connector = new ServerConnector(schemaServer);
@@ -1081,7 +1084,7 @@ class GatewayRequestHandlerTest {
                             .method("GET").build()), proxyQueue, GLOBAL_MAX_REQUEST_SIZE, null, proxyEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
                     new de.cuioss.http.security.monitoring.SecurityEventCounter(), proxyEvents,
-                    Set.of("/nifi-proxy", "/gw"), false);
+                    ForwardedRequestResolver.create(false, Set.of("/nifi-proxy", "/gw"), Set.of(), "defaults"), true);
             proxyServer = new Server();
             ServerConnector connector = new ServerConnector(proxyServer);
             connector.setPort(0);
@@ -1176,7 +1179,8 @@ class GatewayRequestHandlerTest {
                             .method("GET").build()), q, GLOBAL_MAX_REQUEST_SIZE, null, events),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
                     new de.cuioss.http.security.monitoring.SecurityEventCounter(), events,
-                    allowlist, trustAll);
+                    ForwardedRequestResolver.create(trustAll, allowlist, Set.of(), "defaults"),
+                    trustAll || !allowlist.isEmpty());
         }
 
         /**
@@ -1255,6 +1259,78 @@ class GatewayRequestHandlerTest {
             assertTrue(TestLoggerFactory.getTestHandler()
                             .resolveLogMessagesContaining(TestLogLevel.WARN, ignoredWarnIdentifier).isEmpty(),
                     "A deliberate allowlist reject must not emit the misconfiguration WARN");
+        }
+    }
+
+    @Nested
+    @DisplayName("Forwarded client IP")
+    class ForwardedClientIp {
+
+        private Server srv;
+        private LinkedBlockingQueue<HttpRequestContainer> forwardedQueue;
+        private int localPort;
+
+        private GatewayRequestHandler handlerWithTrustedProxies(Set<String> trustedProxies) {
+            forwardedQueue = new LinkedBlockingQueue<>(50);
+            var events = new GatewaySecurityEvents();
+            return new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("data").path("/api/data")
+                            .method("GET").build()), forwardedQueue, GLOBAL_MAX_REQUEST_SIZE, null, events),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), events,
+                    ForwardedRequestResolver.create(false, Set.of(), trustedProxies, "defaults"), false);
+        }
+
+        private void start(GatewayRequestHandler handler) throws Exception {
+            srv = new Server();
+            ServerConnector connector = new ServerConnector(srv);
+            connector.setPort(0);
+            srv.addConnector(connector);
+            srv.setHandler(handler);
+            srv.start();
+            localPort = connector.getLocalPort();
+        }
+
+        private HttpResponse<String> getWithXff(String xff) throws Exception {
+            var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + localPort + "/api/data"))
+                    .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                    .header("X-Forwarded-For", xff);
+            return sendWithRetry(builder.GET().build(), HttpResponse.BodyHandlers.ofString());
+        }
+
+        @AfterEach
+        void stopServer() throws Exception {
+            if (srv != null && srv.isRunning()) {
+                srv.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Honors the forwarded client IP (first untrusted hop) as remoteHost under trusted proxies")
+        void honorsForwardedClientIp() throws Exception {
+            start(handlerWithTrustedProxies(Set.of("10.0.0.0/8")));
+
+            var response = getWithXff("203.0.113.7, 10.0.0.1");
+
+            assertEquals(200, response.statusCode());
+            HttpRequestContainer container = forwardedQueue.poll();
+            assertNotNull(container, "Request must enqueue a container");
+            assertEquals("203.0.113.7", container.remoteHost(),
+                    "The rightmost untrusted forwarded hop must be honored as remoteHost");
+        }
+
+        @Test
+        @DisplayName("Falls back to the raw remote address when no trusted proxies are configured")
+        void fallsBackToRawRemoteAddrWithoutTrustedProxies() throws Exception {
+            start(handlerWithTrustedProxies(Set.of()));
+
+            var response = getWithXff("203.0.113.7");
+
+            assertEquals(200, response.statusCode());
+            HttpRequestContainer container = forwardedQueue.poll();
+            assertNotNull(container, "Request must enqueue a container");
+            assertEquals("127.0.0.1", container.remoteHost(),
+                    "Without trusted proxies the raw socket remote address must be used");
         }
     }
 }

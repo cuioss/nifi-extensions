@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.forwarded.ResolvedForwarding;
 import jakarta.json.Json;
 import jakarta.json.JsonObjectBuilder;
 import lombok.experimental.UtilityClass;
@@ -90,16 +91,23 @@ class RequestUtils {
      * Builds the absolute {@code Location} URI for the status endpoint of the given traceId,
      * omitting default ports (80/443).
      *
-     * @param request          the originating Jetty request (source of scheme/host/port)
-     * @param proxyContextPath the allowlist-honored reverse-proxy context prefix to
-     *                         prepend ({@code ""} leaves the URI unchanged)
-     * @param traceId          the trace ID
+     * <p>Each of scheme / host / port prefers the honored forwarded value from the request's
+     * {@link SanitizedRequest#forwarding()} view, falling back per-field to the raw Jetty accessor
+     * when that field was not honored — so a reverse-proxy-facing URL is reflected under opt-in and
+     * the URI is byte-identical to the raw request otherwise. The honored reverse-proxy context
+     * prefix ({@link SanitizedRequest#proxyContextPath()}) is prepended.
+     *
+     * @param request   the originating Jetty request (raw scheme/host/port fallback source)
+     * @param sanitized the sanitized request carrying the honored forwarding view
+     * @param traceId   the trace ID
      * @return the absolute status URI
      */
-    public static String buildStatusLocationUri(Request request, String proxyContextPath, String traceId) {
-        String scheme = request.getHttpURI().getScheme();
-        String host = Request.getServerName(request);
-        int port = Request.getServerPort(request);
+    public static String buildStatusLocationUri(Request request, SanitizedRequest sanitized, String traceId) {
+        ResolvedForwarding forwarding = sanitized.forwarding();
+        String scheme = forwarding.scheme().orElseGet(() -> request.getHttpURI().getScheme());
+        String host = forwarding.host().orElseGet(() -> Request.getServerName(request));
+        int port = forwarding.port().orElseGet(() -> Request.getServerPort(request));
+        String proxyContextPath = sanitized.proxyContextPath();
         boolean isDefaultPort = ("http".equals(scheme) && port == 80)
                 || ("https".equals(scheme) && port == 443);
         if (isDefaultPort) {
@@ -113,18 +121,20 @@ class RequestUtils {
      * HATEOAS {@code _links} body used by tracked routes and the attachments endpoint.
      *
      * @param request                the originating Jetty request
-     * @param proxyContextPath       the allowlist-honored reverse-proxy context prefix to
-     *                               prepend to the {@code Location} header and the
-     *                               {@code _links} hrefs ({@code ""} leaves them unprefixed)
+     * @param sanitized              the sanitized request carrying the honored forwarding view;
+     *                               its context prefix is prepended to the {@code Location} header
+     *                               and the {@code _links} hrefs, and its honored scheme/host/port
+     *                               are reflected in the absolute {@code Location} URI
      * @param response               the response
      * @param callback               the Jetty callback
      * @param traceId                the accepted request's trace ID
      * @param includeAttachmentsLink whether to add the {@code attachments} link
      *                               (routes in ATTACHMENTS tracking mode)
      */
-    public static void sendAcceptedResponse(Request request, String proxyContextPath,
+    public static void sendAcceptedResponse(Request request, SanitizedRequest sanitized,
             Response response, Callback callback,
             String traceId, boolean includeAttachmentsLink) {
+        String proxyContextPath = sanitized.proxyContextPath();
         String statusPath = proxyContextPath + "/status/" + traceId;
         JsonObjectBuilder linksBuilder = Json.createObjectBuilder()
                 .add("status", Json.createObjectBuilder().add("href", statusPath));
@@ -142,7 +152,7 @@ class RequestUtils {
 
         response.setStatus(202);
         response.getHeaders().put(HttpHeader.LOCATION,
-                buildStatusLocationUri(request, proxyContextPath, traceId));
+                buildStatusLocationUri(request, sanitized, traceId));
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
         response.write(true, ByteBuffer.wrap(responseBody), callback);
