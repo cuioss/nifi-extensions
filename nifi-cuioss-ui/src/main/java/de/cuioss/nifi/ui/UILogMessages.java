@@ -261,18 +261,6 @@ public final class UILogMessages {
                 .identifier(133)
                 .template("Failed to write proxy context-path response")
                 .build();
-
-        public static final LogRecord CONTEXT_PATH_CONTROL_CHARACTERS_REJECTED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(134)
-                .template("Rejecting proxy context path with control characters: %s")
-                .build();
-
-        public static final LogRecord CONTEXT_PATH_PROTOCOL_RELATIVE_REJECTED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(135)
-                .template("Rejecting proxy context path to prevent protocol-relative URL injection: %s")
-                .build();
     }
 
     public static final class ERROR {

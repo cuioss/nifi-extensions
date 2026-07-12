@@ -107,10 +107,27 @@
     </servlet-mapping>
 
     <!-- Proxy context-path resolver - mapped OUTSIDE /nifi-api/processors/jwt/*
-         so ProcessorIdValidationFilter does not require a processor-ID header. -->
+         so ProcessorIdValidationFilter does not require a processor-ID header.
+
+         The honored context-path allowlist is derived by default from NiFi's
+         nifi.web.proxy.context.path property. The optional init-params below are the
+         operator override and take precedence over the derived value when present;
+         leave them unset so the servlet uses the NiFi-derived allowlist:
+           - allowedContextPaths: comma-separated prefixes honored (empty = honor nothing)
+           - trustAll: when "true", any sanitized proxy prefix is honored -->
     <servlet>
         <servlet-name>ProxyContextPathServlet</servlet-name>
         <servlet-class>de.cuioss.nifi.ui.servlets.ProxyContextPathServlet</servlet-class>
+        <!--
+        <init-param>
+            <param-name>allowedContextPaths</param-name>
+            <param-value></param-value>
+        </init-param>
+        <init-param>
+            <param-name>trustAll</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        -->
     </servlet>
     <servlet-mapping>
         <servlet-name>ProxyContextPathServlet</servlet-name>

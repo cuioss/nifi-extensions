@@ -18,22 +18,36 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.Matchers.hasKey;
 
 /**
  * Tests for {@link ProxyContextPathServlet} using embedded Jetty + REST Assured.
  *
- * <p>The servlet resolves the reverse-proxy context path from request headers in
- * strict precedence order, normalizes the result (one leading slash, no trailing
- * slash), and guards against header injection. Each case is exercised through a
- * real HTTP round-trip so the header-reading and JSON-serialization paths are
- * covered end-to-end.
+ * <p>The servlet resolves the reverse-proxy context path through the shared
+ * {@link de.cuioss.nifi.jwt.util.ForwardedRequestResolver} (a thin wrapper over cui-http
+ * {@code de.cuioss.http.forwarded}). The honored context-path allowlist is derived at
+ * servlet {@code init()} from NiFi's {@code nifi.web.proxy.context.path} property, with an
+ * optional {@code allowedContextPaths} / {@code trustAll} servlet init-param override that
+ * takes precedence. Header precedence, normalization, and the injection guard now live in
+ * cui-http and are exercised directly at {@code ForwardedRequestResolverTest}; here they are
+ * observed only through the servlet's end-to-end HTTP + JSON path.
+ *
+ * <p>Each scenario starts a dedicated embedded server whose servlet is configured through the
+ * NiFi property (a temporary {@code nifi.properties} file addressed by the
+ * {@code nifi.properties.file.path} system property) and/or init-params, then drives a real
+ * HTTP round-trip so the header-reading and JSON-serialization paths are covered end-to-end.
  */
 @EnableTestLogger
 @DisplayName("ProxyContextPathServlet tests")
@@ -41,219 +55,258 @@ class ProxyContextPathServletTest {
 
     private static final String HEADER_PROXY_CONTEXT_PATH = "X-ProxyContextPath";
     private static final String HEADER_FORWARDED_PREFIX = "X-Forwarded-Prefix";
-    private static final String HEADER_FORWARDED = "Forwarded";
+    private static final String NIFI_PROPERTIES_FILE_PATH = "nifi.properties.file.path";
 
-    private static EmbeddedServletTestSupport.ServerHandle handle;
+    @TempDir
+    static Path tempDir;
 
-    @BeforeAll
-    static void startServer() throws Exception {
-        handle = EmbeddedServletTestSupport.startServer(ctx ->
-                ctx.addServlet(new ServletHolder(new ProxyContextPathServlet()), "/context-path"));
-    }
+    private static final AtomicInteger PROPERTIES_FILE_COUNTER = new AtomicInteger();
 
-    @AfterAll
-    static void stopServer() throws Exception {
-        handle.close();
-    }
-
-    @Nested
-    @DisplayName("Header precedence")
-    class HeaderPrecedence {
-
-        @Test
-        @DisplayName("X-ProxyContextPath wins over both fallbacks")
-        void proxyContextPathWins() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "/primary")
-                    .header(HEADER_FORWARDED_PREFIX, "/secondary")
-                    .header(HEADER_FORWARDED, "for=192.0.2.1")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .contentType(containsString("application/json"))
-                    .body("contextPath", equalTo("/primary"));
+    /**
+     * Starts an embedded server whose {@link ProxyContextPathServlet} is configured from an
+     * optional NiFi {@code nifi.web.proxy.context.path} value and optional servlet init-params.
+     *
+     * <p>The servlet is loaded eagerly ({@code setInitOrder(0)}) so its {@code init()} reads the
+     * NiFi property while the {@code nifi.properties.file.path} system property is still set — the
+     * property is cleared before the request round-trip, proving the value was captured at init.
+     *
+     * @param nifiProxyContextPath the {@code nifi.web.proxy.context.path} value to stub, or
+     *                             {@code null} to leave the property unset (secure default)
+     * @param initParams           servlet init-params ({@code allowedContextPaths} / {@code trustAll})
+     * @return a running server handle
+     */
+    private static EmbeddedServletTestSupport.ServerHandle startServer(
+            String nifiProxyContextPath, Map<String, String> initParams) throws Exception {
+        if (nifiProxyContextPath != null) {
+            Path propertiesFile = tempDir.resolve(
+                    "nifi-" + PROPERTIES_FILE_COUNTER.incrementAndGet() + ".properties");
+            Files.writeString(propertiesFile, "nifi.web.proxy.context.path=" + nifiProxyContextPath + "\n");
+            System.setProperty(NIFI_PROPERTIES_FILE_PATH, propertiesFile.toString());
         }
-
-        @Test
-        @DisplayName("X-Forwarded-Prefix used as fallback when primary absent")
-        void forwardedPrefixFallback() {
-            handle.spec()
-                    .header(HEADER_FORWARDED_PREFIX, "/fallback")
-                    .header(HEADER_FORWARDED, "for=192.0.2.1")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/fallback"));
-        }
-
-        @Test
-        @DisplayName("X-Forwarded-Prefix used when primary present but blank")
-        void blankPrimaryFallsThroughToPrefix() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "   ")
-                    .header(HEADER_FORWARDED_PREFIX, "/fallback")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/fallback"));
-        }
-
-        @Test
-        @DisplayName("Forwarded header alone resolves to empty (no prefix directive)")
-        void forwardedSecondaryResolvesEmpty() {
-            handle.spec()
-                    .header(HEADER_FORWARDED, "for=192.0.2.1;proto=https")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo(""));
+        try {
+            return EmbeddedServletTestSupport.startServer(ctx -> {
+                var holder = new ServletHolder(new ProxyContextPathServlet());
+                initParams.forEach(holder::setInitParameter);
+                holder.setInitOrder(0);
+                ctx.addServlet(holder, "/context-path");
+            });
+        } finally {
+            System.clearProperty(NIFI_PROPERTIES_FILE_PATH);
         }
     }
 
     @Nested
-    @DisplayName("No-header case")
-    class NoHeader {
+    @DisplayName("Allowlist derived from nifi.web.proxy.context.path")
+    class DerivedAllowlist {
+
+        @Test
+        @DisplayName("Honors a prefix present in the derived allowlist")
+        void honorsDerivedPrefix() throws Exception {
+            try (var handle = startServer("/nifi-proxy", Map.of())) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .contentType(containsString("application/json"))
+                        .body("contextPath", equalTo("/nifi-proxy"));
+            }
+        }
+
+        @Test
+        @DisplayName("Ignores a spoofed prefix absent from the derived allowlist")
+        void ignoresNonAllowlistedPrefix() throws Exception {
+            try (var handle = startServer("/nifi-proxy", Map.of())) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/attacker")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
+        }
+
+        @Test
+        @DisplayName("Uses X-Forwarded-Prefix as fallback when both prefixes are allowlisted")
+        void forwardedPrefixFallbackHonored() throws Exception {
+            try (var handle = startServer("/nifi-proxy,/fallback", Map.of())) {
+                handle.spec()
+                        .header(HEADER_FORWARDED_PREFIX, "/fallback")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo("/fallback"));
+            }
+        }
+
+        @Test
+        @DisplayName("X-ProxyContextPath wins over the X-Forwarded-Prefix fallback")
+        void proxyContextPathWinsOverPrefix() throws Exception {
+            try (var handle = startServer("/nifi-proxy,/fallback", Map.of())) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy")
+                        .header(HEADER_FORWARDED_PREFIX, "/fallback")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo("/nifi-proxy"));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Servlet init-param override")
+    class InitParamOverride {
+
+        @Test
+        @DisplayName("Init-param allowlist overrides the NiFi-derived value")
+        void overrideHonored() throws Exception {
+            try (var handle = startServer("/derived", Map.of("allowedContextPaths", "/override"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/override")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo("/override"));
+            }
+        }
+
+        @Test
+        @DisplayName("NiFi-derived value is ignored once an init-param override is present")
+        void derivedValueIgnoredWhenOverridden() throws Exception {
+            try (var handle = startServer("/derived", Map.of("allowedContextPaths", "/override"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/derived")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Secure default (no NiFi property, no init-param)")
+    class SecureDefault {
+
+        @Test
+        @DisplayName("Honors nothing when neither the property nor an init-param is set")
+        void noConfigHonorsNothing() throws Exception {
+            try (var handle = startServer(null, Map.of())) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/anything")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
+        }
 
         @Test
         @DisplayName("Returns empty string when no proxy header is present")
-        void noHeaderReturnsEmpty() {
-            handle.spec()
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .contentType(containsString("application/json"))
-                    .body("contextPath", equalTo(""));
+        void noHeaderReturnsEmpty() throws Exception {
+            try (var handle = startServer(null, Map.of())) {
+                handle.spec()
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .contentType(containsString("application/json"))
+                        .body("contextPath", equalTo(""));
+            }
         }
     }
 
     @Nested
-    @DisplayName("Normalization")
+    @DisplayName("Normalization (delegated to cui-http, exercised under trustAll)")
     class Normalization {
 
         @Test
         @DisplayName("Strips a single trailing slash")
-        void stripsTrailingSlash() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "/my-app/")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/my-app"));
-        }
-
-        @Test
-        @DisplayName("Strips multiple trailing slashes")
-        void stripsMultipleTrailingSlashes() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "/my-app///")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/my-app"));
-        }
-
-        @Test
-        @DisplayName("Adds a leading slash when missing")
-        void addsLeadingSlash() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "my-app/ui")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/my-app/ui"));
-        }
-
-        @Test
-        @DisplayName("Trims surrounding whitespace before normalizing")
-        void trimsSurroundingWhitespace() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "  /my-app/ui  ")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo("/my-app/ui"));
+        void stripsTrailingSlash() throws Exception {
+            try (var handle = startServer(null, Map.of("trustAll", "true"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/my-app/")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo("/my-app"));
+            }
         }
 
         @Test
         @DisplayName("Collapses a slash-only value to empty")
-        void slashOnlyCollapsesToEmpty() {
-            handle.spec()
-                    .header(HEADER_PROXY_CONTEXT_PATH, "/")
-                    .when()
-                    .get("/context-path")
-                    .then()
-                    .statusCode(200)
-                    .body("contextPath", equalTo(""));
+        void slashOnlyCollapsesToEmpty() throws Exception {
+            try (var handle = startServer(null, Map.of("trustAll", "true"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
         }
     }
 
     @Nested
-    @DisplayName("Injection guard")
+    @DisplayName("Injection guard delegated to cui-http")
     class InjectionGuard {
 
-        // The injection guard is exercised against ProxyContextPathServlet.normalize
-        // directly rather than through a real HTTP round-trip: the HTTP client and
-        // Jetty's header parser sanitize control characters in header values
-        // (replacing CR/LF/VT with a space, or rejecting the request) before the
-        // servlet ever sees them, so the servlet's own containsControlCharacter
-        // guard — defense-in-depth on top of container sanitization — cannot be
-        // reached through transport. The direct call is the only way to assert it.
-
-        @ParameterizedTest(name = "control character U+{0} is rejected")
-        @ValueSource(ints = {0x00, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1B, 0x7F})
-        @DisplayName("Rejects a value carrying any embedded control character")
-        void rejectsControlCharacter(int controlChar) {
-            var raw = "/app" + (char) controlChar + "Set-Cookie: x=1";
-
-            var normalized = ProxyContextPathServlet.normalize(raw);
-
-            assertEquals("", normalized,
-                    "A value carrying a control character must resolve to empty");
+        @Test
+        @DisplayName("Rejects a protocol-relative //host prefix under trustAll")
+        void rejectsProtocolRelative() throws Exception {
+            try (var handle = startServer(null, Map.of("trustAll", "true"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "//attacker.com")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
         }
 
         @Test
-        @DisplayName("Rejects a value carrying a CR/LF injection sequence")
-        void rejectsCrlfInjection() {
-            var raw = "/app\r\nSet-Cookie: x=1";
-
-            var normalized = ProxyContextPathServlet.normalize(raw);
-
-            assertEquals("", normalized,
-                    "A CR/LF header-injection sequence must resolve to empty");
+        @DisplayName("Rejects a value carrying a backslash under trustAll")
+        void rejectsBackslash() throws Exception {
+            try (var handle = startServer(null, Map.of("trustAll", "true"))) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/\\attacker.com")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .body("contextPath", equalTo(""));
+            }
         }
+    }
+
+    @Nested
+    @DisplayName("JSON response contract")
+    class JsonContract {
 
         @Test
-        @DisplayName("Accepts a clean value carrying no control characters")
-        void acceptsCleanValue() {
-            var normalized = ProxyContextPathServlet.normalize("/clean/app");
-
-            assertEquals("/clean/app", normalized,
-                    "A value free of control characters must be preserved");
-        }
-
-        @Test
-        @DisplayName("Rejects a protocol-relative value starting with double slashes")
-        void rejectsProtocolRelativeDoubleSlash() {
-            assertEquals("", ProxyContextPathServlet.normalize("//attacker.com"),
-                    "A '//host' value must be rejected to prevent protocol-relative URL injection");
-        }
-
-        @Test
-        @DisplayName("Rejects values carrying a backslash")
-        void rejectsBackslash() {
-            assertEquals("", ProxyContextPathServlet.normalize("\\\\attacker.com"),
-                    "A leading backslash sequence must be rejected");
-            assertEquals("", ProxyContextPathServlet.normalize("/\\attacker.com"),
-                    "An embedded backslash must be rejected (browsers may normalize it to '/')");
+        @DisplayName("Response is application/json carrying a contextPath field")
+        void responseCarriesContextPathField() throws Exception {
+            try (var handle = startServer("/nifi-proxy", Map.of())) {
+                handle.spec()
+                        .header(HEADER_PROXY_CONTEXT_PATH, "/nifi-proxy")
+                        .when()
+                        .get("/context-path")
+                        .then()
+                        .statusCode(200)
+                        .contentType(containsString("application/json"))
+                        .body("$", hasKey("contextPath"));
+            }
         }
     }
 }

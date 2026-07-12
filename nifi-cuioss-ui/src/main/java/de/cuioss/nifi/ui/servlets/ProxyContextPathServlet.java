@@ -16,17 +16,24 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.nifi.jwt.util.ProxyContextPathResolver;
+import de.cuioss.http.forwarded.ForwardedResolverConfig;
+import de.cuioss.nifi.jwt.util.ForwardedRequestResolver;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonWriterFactory;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * Resolves the reverse-proxy context path from the incoming request headers and
@@ -43,9 +50,19 @@ import java.util.Map;
  * {@link ProcessorIdValidationFilter} (which requires a UUID processor-ID
  * header), since the context-path request carries no processor ID.
  *
- * <p>The header precedence, normalization, and injection guard live in the shared
- * {@link ProxyContextPathResolver} so the UI servlet, the REST processors, and the
- * integration tests resolve the prefix identically.
+ * <p>The header precedence, normalization, injection guard, and trust model live
+ * in the shared {@link ForwardedRequestResolver} (a thin wrapper over cui-http
+ * {@code de.cuioss.http.forwarded}), so the UI servlet, the REST processors, and
+ * the integration tests resolve the prefix identically.
+ *
+ * <p><strong>Secure by default.</strong> The honored context-path allowlist is
+ * derived at {@link #init()} from NiFi's {@code nifi.web.proxy.context.path}
+ * property (mirroring the platform's own whitelist) via
+ * {@link ForwardedResolverConfig#parseAllowlist(String)}. A servlet
+ * {@code allowedContextPaths} init-param, when present, overrides that derived
+ * value; an optional {@code trustAll} init-param honors any sanitized prefix.
+ * When neither the property nor the init-param is set the allowlist is empty, so
+ * the resolver honors nothing and every prefix resolves to {@code ""}.
  *
  * <p>Response format (always HTTP 200):
  * <pre>{@code
@@ -57,9 +74,43 @@ public class ProxyContextPathServlet extends HttpServlet {
     private static final CuiLogger LOGGER = new CuiLogger(ProxyContextPathServlet.class);
     private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
+    /** NiFi property whose value seeds the honored context-path allowlist. */
+    private static final String NIFI_PROXY_CONTEXT_PATH_PROPERTY = "nifi.web.proxy.context.path";
+    /** System property locating the active {@code nifi.properties} file. */
+    private static final String NIFI_PROPERTIES_FILE_PATH = "nifi.properties.file.path";
+    /** Servlet init-param overriding the NiFi-derived allowlist. */
+    private static final String INIT_PARAM_ALLOWED_CONTEXT_PATHS = "allowedContextPaths";
+    /** Servlet init-param enabling trust-all context-path honoring. */
+    private static final String INIT_PARAM_TRUST_ALL = "trustAll";
+
+    /**
+     * The configured resolver that resolves the honored context-path prefix from the
+     * request headers against the operator's trust model. Built once in {@link #init()};
+     * {@code transient} because it is not part of the servlet's serializable state.
+     */
+    private transient ForwardedRequestResolver resolver;
+
+    /**
+     * Builds the context-path resolver from the operator's trust configuration.
+     *
+     * <p>Allowlist precedence: an explicit {@value #INIT_PARAM_ALLOWED_CONTEXT_PATHS}
+     * servlet init-param overrides the value derived from NiFi's
+     * {@code nifi.web.proxy.context.path} property. When neither is set the allowlist is
+     * empty, so the resolver honors nothing (secure default).
+     */
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        String initParamAllowlist = getInitParameter(INIT_PARAM_ALLOWED_CONTEXT_PATHS);
+        String rawAllowlist = initParamAllowlist != null ? initParamAllowlist : readNifiProxyContextPath();
+        Set<String> allowedContextPaths = ForwardedResolverConfig.parseAllowlist(rawAllowlist);
+        boolean trustAll = Boolean.parseBoolean(getInitParameter(INIT_PARAM_TRUST_ALL));
+        resolver = ForwardedRequestResolver.create(trustAll, allowedContextPaths, Set.of(), "defaults");
+    }
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-        String contextPath = ProxyContextPathResolver.resolve(req::getHeader);
+        String contextPath = resolver.resolve(req::getHeader).contextPath();
 
         var json = Json.createObjectBuilder()
                 .add("contextPath", contextPath)
@@ -79,18 +130,30 @@ public class ProxyContextPathServlet extends HttpServlet {
     }
 
     /**
-     * Delegates to {@link ProxyContextPathResolver#normalize(String)}.
+     * Reads {@code nifi.web.proxy.context.path} from the NiFi properties file located via the
+     * {@value #NIFI_PROPERTIES_FILE_PATH} system property. Returns {@code null} when the file or
+     * property is absent or unreadable, so the caller falls through to the secure (empty allowlist)
+     * default.
      *
-     * <p>Package-private so the injection guard and normalization rules can be
-     * unit-tested directly: a real HTTP round-trip sanitizes control characters
-     * in header values before the servlet sees them, so the guard cannot be
-     * exercised through the transport path.
-     *
-     * @param raw the raw header value (may be {@code null})
-     * @return the normalized prefix, or an empty string when the value is absent
-     *         or rejected
+     * @return the raw {@code nifi.web.proxy.context.path} value, or {@code null} when unavailable
      */
-    static String normalize(String raw) {
-        return ProxyContextPathResolver.normalize(raw);
+    private static String readNifiProxyContextPath() {
+        String nifiPropertiesPath = System.getProperty(NIFI_PROPERTIES_FILE_PATH);
+        if (nifiPropertiesPath == null || nifiPropertiesPath.isBlank()) {
+            return null;
+        }
+        Path path = Path.of(nifiPropertiesPath);
+        if (!Files.isRegularFile(path)) {
+            return null;
+        }
+        Properties properties = new Properties();
+        try (InputStream in = Files.newInputStream(path)) {
+            properties.load(in);
+        } catch (IOException e) {
+            LOGGER.debug(e, "Unable to read %s from %s; honoring no proxy context path",
+                    NIFI_PROXY_CONTEXT_PATH_PROPERTY, nifiPropertiesPath);
+            return null;
+        }
+        return properties.getProperty(NIFI_PROXY_CONTEXT_PATH_PROPERTY);
     }
 }
