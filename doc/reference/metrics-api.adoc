@@ -110,6 +110,14 @@ Security Events] table.
 |`QUEUE_FULL` |503 |Request queue at capacity, back-pressure applied
 |===
 
+NOTE: The per-request audit and rate-limit log entries behind these events identify
+the caller by *client IP*. When `rest.gateway.proxy.trusted-proxies` is configured the
+gateway uses the forwarded client IP resolved from the `X-Forwarded-For` / `Forwarded`
+chain (the first untrusted hop, walking right-to-left past the trusted proxies);
+otherwise it uses the raw socket remote address. See
+link:configuration.adoc#reverse-proxy-forwarded-header-resolution[Reverse-Proxy /
+Forwarded Header Resolution] for the trust model.
+
 == Response Schemas
 
 === Prometheus Format (default)

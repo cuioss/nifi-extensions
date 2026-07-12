@@ -266,12 +266,22 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 
 |rest.gateway.proxy.context-path.whitelist
 |-- (empty)
-|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<Reverse-Proxy Context Path (Trusted-Proxy Allowlist)>>.
+|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.context-path.trust-all
 |false
-|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<Reverse-Proxy Context Path (Trusted-Proxy Allowlist)>>.
+|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|No
+
+|rest.gateway.proxy.trusted-proxies
+|-- (empty)
+|Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR ranges (e.g. `10.0.0.0/8, 192.168.1.5`). Required to honor the forwarded client IP from the `X-Forwarded-For` / `Forwarded` headers for audit and rate-limit logging: the chain is walked right-to-left, skipping these trusted hops, and the first untrusted address is used as the client IP. Empty (the default) honors no forwarded client IP and uses the raw socket remote address. Enable only when the gateway is exclusively reachable through the listed proxies. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|No
+
+|rest.gateway.proxy.security-config.preset
+|defaults
+|Security posture for the forwarded-header sanitization pipeline: `strict` (tightest restrictions), `lenient` (maximum compatibility, trusted environments only), or `defaults` (balanced). Governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized before they are honored. See <<Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 |===
 
@@ -280,12 +290,34 @@ also publishes its gateway counters to NiFi-native monitoring endpoints. See
 link:metrics-api.adoc[Metrics API] for the full endpoint contract, response
 schemas, and the recommended external-monitoring surface.
 
-=== Reverse-Proxy Context Path (Trusted-Proxy Allowlist)
+[#reverse-proxy-forwarded-header-resolution]
+=== Reverse-Proxy / Forwarded Header Resolution
 
 When the gateway sits behind a reverse proxy (nginx, HAProxy, an ingress
-controller) that forwards requests under a path prefix, the proxy advertises that
-prefix via the `X-ProxyContextPath` header (NiFi-native) or the de-facto
-`X-Forwarded-Prefix` header. The gateway uses the honored prefix for two things:
+controller), the proxy advertises the original request context via the
+`X-Forwarded-*` / `Forwarded` header family. All of this resolution is delegated to
+the shared `ForwardedRequestResolver` (a thin wrapper over the cui-http
+`de.cuioss.http.forwarded.ForwardedHeaderResolver`), so the trust model, header
+precedence, sanitization, and injection guards live in exactly one place and the UI
+servlet, the REST gateway, and the integration tests resolve identically.
+
+The resolver honors four independent forwarded aspects, each *secure by default*
+(honored only under explicit opt-in):
+
+* *Context-path prefix* (`X-ProxyContextPath` / `X-Forwarded-Prefix`) — gated by the
+allowlist or trust-all (below).
+* *Scheme / host / port* (`X-Forwarded-Proto` / `-Host` / `-Port`) — reflected in the
+absolute 202 `Location` header; honored only under trust-all.
+* *Client IP* (`X-Forwarded-For` / `Forwarded`) — used for audit and rate-limit
+logging; honored only when `rest.gateway.proxy.trusted-proxies` is configured.
+* *Sanitization posture* (`rest.gateway.proxy.security-config.preset`) — governs how
+strictly the header values are sanitized before any of the above are honored.
+
+==== Context Path (Trusted-Proxy Allowlist)
+
+The proxy advertises its path prefix via the `X-ProxyContextPath` header
+(NiFi-native) or the de-facto `X-Forwarded-Prefix` header. The gateway uses the
+honored prefix for two things:
 
 * *Inbound route matching* — the prefix is stripped before routing, so a proxied
 request such as `GET /nifi-proxy/health` resolves to the `/health` handler.
@@ -344,6 +376,65 @@ naming *both* config keys so the operator can fix it. No warning is logged when
 trust-all is `true`, when no proxy header is present, or when a *non-empty* allowlist
 simply does not contain the received prefix (that is a deliberate reject, not a
 misconfiguration).
+
+==== Forwarded Scheme / Host / Port (Location header)
+
+When the gateway accepts a tracked request it returns a 202 `Accepted` with an
+absolute `Location` header pointing at the request-status endpoint. Each of the
+scheme, host, and port prefers the honored forwarded value
+(`X-Forwarded-Proto` / `X-Forwarded-Host` / `X-Forwarded-Port`), falling back
+per-field to the raw Jetty request value when that field was not honored — so a
+reverse-proxy-facing URL is reflected under opt-in and the URI is byte-identical to
+the raw request otherwise. The honored context-path prefix (above) is prepended.
+
+The forwarded scheme/host/port are honored *only when
+`rest.gateway.proxy.context-path.trust-all` is `true`* (the same trust gate as the
+context path). Under the secure default (`trust-all = false`) the `Location` header
+uses the raw request scheme/host/port, exactly as before.
+
+==== Forwarded Client IP (audit / rate-limit logging)
+
+The gateway's audit log entries and rate-limit keys use the *client IP*. By default
+this is the raw socket remote address. When
+`rest.gateway.proxy.trusted-proxies` is configured (a comma-separated list of IP
+literals or CIDR ranges), the gateway instead resolves the client IP from the
+`X-Forwarded-For` / `Forwarded` chain: the chain is walked *right-to-left*, skipping
+every hop that matches a trusted-proxy entry, and the first *untrusted* address is
+used as the client IP.
+
+* *Default (empty)* — no forwarded client IP is honored; the raw socket remote
+address is used. This is secure by default: a direct client cannot forge the
+`X-Forwarded-For` chain.
+* *Configured* — list the trusted proxy hops, e.g.
+`rest.gateway.proxy.trusted-proxies = 10.0.0.0/8, 192.168.1.5`. Enable this *only*
+when the gateway is exclusively reachable through the listed proxies — a
+directly-reachable listener lets any client forge the chain.
+
+==== Sanitization Preset (security-config)
+
+`rest.gateway.proxy.security-config.preset` selects the security posture of the
+forwarded-header sanitization pipeline that runs *before* any forwarded value is
+honored:
+
+* `strict` — tightest restrictions.
+* `lenient` — maximum compatibility; trusted environments only.
+* `defaults` (the default) — balanced.
+
+The preset governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized
+(control-character, CR/LF-injection, protocol-relative, and backslash rejection)
+regardless of which forwarded aspects are opted into above.
+
+==== UI Context-Path Servlet
+
+The custom UI resolves the reverse-proxy context path through the same shared
+`ForwardedRequestResolver`. The UI `ProxyContextPathServlet` derives its honored
+allowlist from NiFi's own `nifi.web.proxy.context.path` property (parsed the same way
+as NiFi's native proxy-context-path allowlist), so an existing proxied UI deployment
+that already sets that property keeps working with no extra configuration. An optional
+`allowedContextPaths` (and `trustAll`) servlet init-param in the UI `web.xml` overrides
+the NiFi-derived value when present. With neither the property nor the init-param set
+the allowlist is empty and the servlet honors nothing — every prefix resolves to the
+empty string (secure default).
 
 == Route Configuration via Dynamic Properties
 
