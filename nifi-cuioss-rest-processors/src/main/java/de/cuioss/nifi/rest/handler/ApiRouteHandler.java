@@ -154,11 +154,12 @@ public final class ApiRouteHandler implements EndpointHandler {
             return;
         }
 
-        // Success response
+        // Success response — audit logging prefers the honored forwarded client IP.
+        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
-                route.name(), method, path, Request.getRemoteAddr(request));
+                route.name(), method, path, remoteHost);
         if (tracked) {
-            RequestUtils.sendAcceptedResponse(request, sanitized.proxyContextPath(), response, callback, traceId,
+            RequestUtils.sendAcceptedResponse(request, sanitized, response, callback, traceId,
                     route.trackingMode() == TrackingMode.ATTACHMENTS);
         } else {
             sendSuccessResponse(response, callback, method);
@@ -215,10 +216,11 @@ public final class ApiRouteHandler implements EndpointHandler {
             LOGGER.info(RestApiLogMessages.INFO.ROUTE_FLOWFILE_SKIPPED, route.name());
             return true;
         }
+        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
         var container = new HttpRequestContainer(
                 route.name(), request.getMethod(), sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),
-                Request.getRemoteAddr(request),
+                remoteHost,
                 body,
                 request.getHeaders().get(HttpHeader.CONTENT_TYPE),
                 token,
@@ -228,7 +230,7 @@ public final class ApiRouteHandler implements EndpointHandler {
 
         if (!queue.offer(container)) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
-            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), Request.getRemoteAddr(request));
+            LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), remoteHost);
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return false;

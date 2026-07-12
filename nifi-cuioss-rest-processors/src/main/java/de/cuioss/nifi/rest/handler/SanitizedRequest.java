@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import de.cuioss.http.forwarded.ResolvedForwarding;
+
 import java.util.Map;
 
 /**
@@ -31,29 +33,43 @@ import java.util.Map;
  * is attached after route resolution via {@link #withPathParameters(Map)}, since
  * the sanitized request is built before the handler is resolved.
  *
- * <p>{@code proxyContextPath} is the reverse-proxy context prefix honored for this
- * request — resolved once, at sanitization time, against the operator-configured
- * allowlist. It is {@code ""} when no proxy header is present or the client-supplied
- * prefix is not allowlisted (secure by default). Downstream consumers prepend it to
- * generated URLs (202 {@code Location}, HATEOAS {@code _links}) and use it to strip
- * the prefix before route matching.
+ * <p>{@code forwarding} is the honored reverse-proxy / forwarded view — resolved once,
+ * at sanitization time, by the {@code ForwardedRequestResolver} against the operator's
+ * trust model. Each field is present only when the deployment opted in (allowlist,
+ * trust-all, or trusted-proxies); absent/un-honored fields are empty (secure by default).
+ * Downstream consumers use the honored context-path (via {@link #proxyContextPath()}) to
+ * strip the prefix before routing and to prepend it to generated URLs (202 {@code Location},
+ * HATEOAS {@code _links}), the honored scheme/host/port to reflect the reverse-proxy-facing
+ * URL, and the honored client IP for audit / rate-limit logging.
  *
- * @param path             the normalized URL path
- * @param queryParameters  the normalized query parameter values (keys preserved, values sanitized)
- * @param headers          the normalized header values (Authorization excluded, values sanitized)
- * @param proxyContextPath the allowlist-honored, normalized reverse-proxy context prefix ({@code ""} when none)
- * @param pathParameters   the path parameters extracted from a pattern-matched route (empty otherwise)
+ * @param path            the normalized URL path
+ * @param queryParameters the normalized query parameter values (keys preserved, values sanitized)
+ * @param headers         the normalized header values (Authorization excluded, values sanitized)
+ * @param forwarding      the honored reverse-proxy / forwarded view (never {@code null};
+ *                        {@link ResolvedForwarding#empty()} when nothing is honored)
+ * @param pathParameters  the path parameters extracted from a pattern-matched route (empty otherwise)
  */
 record SanitizedRequest(
 String path,
 Map<String, String> queryParameters,
 Map<String, String> headers,
-String proxyContextPath,
+ResolvedForwarding forwarding,
 Map<String, String> pathParameters) {
 
     SanitizedRequest {
-        proxyContextPath = proxyContextPath == null ? "" : proxyContextPath;
+        forwarding = forwarding == null ? ResolvedForwarding.empty() : forwarding;
         pathParameters = pathParameters == null ? Map.of() : Map.copyOf(pathParameters);
+    }
+
+    /**
+     * The allowlist / trust-honored, normalized reverse-proxy context prefix ({@code ""} when no
+     * proxy header is present or the client-supplied prefix is not honored). Convenience accessor
+     * over {@link #forwarding()}.
+     *
+     * @return the honored context-path prefix, or {@code ""} when none is honored
+     */
+    String proxyContextPath() {
+        return forwarding.contextPath();
     }
 
     /**
@@ -63,6 +79,6 @@ Map<String, String> pathParameters) {
      * @return a new immutable {@code SanitizedRequest} carrying the path parameters
      */
     SanitizedRequest withPathParameters(Map<String, String> extractedPathParameters) {
-        return new SanitizedRequest(path, queryParameters, headers, proxyContextPath, extractedPathParameters);
+        return new SanitizedRequest(path, queryParameters, headers, forwarding, extractedPathParameters);
     }
 }

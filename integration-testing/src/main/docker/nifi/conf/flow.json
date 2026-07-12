@@ -965,7 +965,10 @@
               "rest.gateway.distributed-map-cache-client": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
               "rest.gateway.management.status.enabled": "true",
               "rest.gateway.management.status.auth-mode": "local-only,bearer",
-              "rest.gateway.proxy.context-path.whitelist": "/nifi-proxy"
+              "rest.gateway.proxy.context-path.whitelist": "/nifi-proxy",
+              "rest.gateway.proxy.context-path.trust-all": "true",
+              "rest.gateway.proxy.trusted-proxies": "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16",
+              "rest.gateway.proxy.security-config.preset": "defaults"
             },
             "propertyDescriptors": {
               "rest.gateway.listening.port": {
@@ -1000,6 +1003,21 @@
               },
               "rest.gateway.proxy.context-path.whitelist": {
                 "name": "rest.gateway.proxy.context-path.whitelist",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.proxy.context-path.trust-all": {
+                "name": "rest.gateway.proxy.context-path.trust-all",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.proxy.trusted-proxies": {
+                "name": "rest.gateway.proxy.trusted-proxies",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "rest.gateway.proxy.security-config.preset": {
+                "name": "rest.gateway.proxy.security-config.preset",
                 "identifiesControllerService": false,
                 "sensitive": false
               }

@@ -17,6 +17,7 @@ package "nifi-cuioss-common" {
   [AuthorizationValidator] as AuthzValidator
   [TokenClaimMapper] as ClaimMapper
   [ErrorContext] as ErrorContext
+  [ForwardedRequestResolver\n(cui-http ForwardedHeaderResolver)] as FwdResolver
 }
 
 package "nifi-cuioss-processors" {
@@ -69,6 +70,7 @@ Gateway --> JettyMgr : manages server
 JettyMgr --> Jetty : starts/stops
 
 ReqHandler --> AuthzValidator : authorizes
+ReqHandler --> FwdResolver : resolves forwarded headers
 ReqHandler --> RouteHandler : data routes
 ReqHandler --> HealthHandler : /health
 ReqHandler --> MetricsHandler : /metrics
@@ -82,4 +84,5 @@ TokenValidator --> IDP2 : retrieves JWKS
 
 UI --> MultiIssuer : configures
 UI --> Gateway : configures
+UI --> FwdResolver : resolves proxy context path
 @enduml

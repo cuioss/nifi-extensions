@@ -165,6 +165,12 @@ public final class RestApiLogMessages {
                 .template("Proxy context-path allowlist configured: %s")
                 .build();
 
+        public static final LogRecord PROXY_FORWARDED_CONFIGURED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(22)
+                .template("Forwarded resolution configured: trusted-proxies=%s, security-config preset=%s")
+                .build();
+
     }
 
     @UtilityClass

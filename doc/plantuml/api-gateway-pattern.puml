@@ -11,7 +11,7 @@ package "RestApiGatewayProcessor" {
   component "GatewayRequestHandler" as handler
 
   component "Request Pipeline" as pipeline {
-    component "1. Input Sanitization\n(cui-http)" as sanitize
+    component "1. Input Sanitization\n+ Forwarded Resolution\n(cui-http)" as sanitize
     component "2. Route Matching" as route
     component "3. Method Check" as methodchk
     component "4. Body Validation\n(size limit)" as body
