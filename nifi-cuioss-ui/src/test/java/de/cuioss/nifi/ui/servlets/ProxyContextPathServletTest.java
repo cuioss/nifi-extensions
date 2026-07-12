@@ -77,11 +77,18 @@ class ProxyContextPathServletTest {
      */
     private static EmbeddedServletTestSupport.ServerHandle startServer(
             String nifiProxyContextPath, Map<String, String> initParams) throws Exception {
+        // Capture and restore the surrounding value so this helper isolates the global
+        // system property instead of leaking/clobbering it across tests. When no proxy
+        // context path is requested, clear the property so secure-default scenarios truly
+        // see no property (an inherited value would invalidate the secure-default assertion).
+        String previous = System.getProperty(NIFI_PROPERTIES_FILE_PATH);
         if (nifiProxyContextPath != null) {
             Path propertiesFile = tempDir.resolve(
                     "nifi-" + PROPERTIES_FILE_COUNTER.incrementAndGet() + ".properties");
             Files.writeString(propertiesFile, "nifi.web.proxy.context.path=" + nifiProxyContextPath + "\n");
             System.setProperty(NIFI_PROPERTIES_FILE_PATH, propertiesFile.toString());
+        } else {
+            System.clearProperty(NIFI_PROPERTIES_FILE_PATH);
         }
         try {
             return EmbeddedServletTestSupport.startServer(ctx -> {
@@ -91,7 +98,11 @@ class ProxyContextPathServletTest {
                 ctx.addServlet(holder, "/context-path");
             });
         } finally {
-            System.clearProperty(NIFI_PROPERTIES_FILE_PATH);
+            if (previous != null) {
+                System.setProperty(NIFI_PROPERTIES_FILE_PATH, previous);
+            } else {
+                System.clearProperty(NIFI_PROPERTIES_FILE_PATH);
+            }
         }
     }
 

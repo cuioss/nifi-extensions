@@ -49,6 +49,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -1119,6 +1120,38 @@ class GatewayRequestHandlerTest {
             assertFalse(proxyQueue.isEmpty(), "Prefixed request must route to the health handler");
             assertEquals("health", proxyQueue.poll().routeName());
             assertEquals(0L, proxyHandler.getGatewaySecurityEvents().getTotalCount());
+        }
+
+        @Test
+        @DisplayName("Should hand the endpoint handler the prefix-stripped path (so /status/{id} parsing works)")
+        void shouldHandStrippedPathToHandler() throws Exception {
+            // Regression: dispatch stripped the reverse-proxy prefix only for route LOOKUP but
+            // handed the handler the un-stripped sanitized path. StatusEndpointHandler /
+            // AttachmentsEndpointHandler parse their path parameter off sanitized.path(), so the
+            // leak broke /status/{traceId} (and /attachments) behind a proxy context path. This
+            // asserts the handler receives the stripped path via the enqueued container's URI.
+            var statusQueue = new LinkedBlockingQueue<HttpRequestContainer>(50);
+            var statusEvents = new GatewaySecurityEvents();
+            var statusHandler = new GatewayRequestHandler(
+                    toHandlers(List.of(RouteConfiguration.builder().name("status").path("/status/{traceId}")
+                            .method("GET").build()), statusQueue, GLOBAL_MAX_REQUEST_SIZE, null, statusEvents),
+                    mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
+                    new de.cuioss.http.security.monitoring.SecurityEventCounter(), statusEvents,
+                    ForwardedRequestResolver.create(false, Set.of("/nifi-proxy"), Set.of(), "defaults"), true);
+
+            String traceId = UUID.randomUUID().toString();
+            var response = sendVia(statusHandler, "/nifi-proxy/status/" + traceId,
+                    "X-ProxyContextPath", "/nifi-proxy");
+
+            assertEquals(200, response.statusCode(),
+                    "Prefixed /status request must route to the status handler");
+            HttpRequestContainer container = statusQueue.poll();
+            assertNotNull(container, "Prefixed request must reach the handler");
+            assertEquals("/status/" + traceId, container.requestUri(),
+                    "Handler must receive the prefix-stripped path; the un-stripped "
+                            + "/nifi-proxy/status/... path breaks StatusEndpointHandler traceId extraction");
+            assertEquals(traceId, container.pathParameters().get("traceId"),
+                    "The extracted {traceId} path parameter must be the segment after the stripped prefix");
         }
 
         @Test
