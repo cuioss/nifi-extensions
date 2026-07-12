@@ -850,6 +850,14 @@ class RestApiGatewayIT {
             // in ForwardedRequestResolverTest. Here we verify the forwarded chain is accepted
             // end-to-end and the request still succeeds, proving the new trusted-proxies and
             // security-config.preset properties are valid and honored by the live processor.
+            //
+            // NOTE: this asserts only that the forwarded chain is accepted, not that 203.0.113.7
+            // is the RESOLVED client IP. The resolved client IP is currently surfaced only in
+            // (a) audit logs and (b) the http.remote.host FlowFile attribute, which flows into the
+            // downstream NiFi pipeline — neither is present in the gateway's direct HTTPS response
+            // that this IT observes on port 9443. So an end-to-end assertion of the honored client
+            // IP is not available here; strengthening it requires exposing the resolved client IP
+            // as an observable surface on the gateway response (or a FlowFile-attribute readback).
             given().spec(authSpec)
                     .header("X-Forwarded-For", "203.0.113.7, 10.0.0.1")
                     .when()

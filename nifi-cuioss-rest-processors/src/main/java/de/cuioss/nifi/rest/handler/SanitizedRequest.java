@@ -73,6 +73,19 @@ Map<String, String> pathParameters) {
     }
 
     /**
+     * Returns a copy of this request with the given path, preserving all other
+     * components. Used to hand the endpoint handler the reverse-proxy-prefix-stripped
+     * path so downstream path parsing (e.g. {@code /status/{traceId}} extraction) sees
+     * the same path the router resolved, not the un-stripped {@code /{prefix}/...} path.
+     *
+     * @param newPath the normalized path to carry (typically the prefix-stripped path)
+     * @return a new immutable {@code SanitizedRequest} carrying the given path
+     */
+    SanitizedRequest withPath(String newPath) {
+        return new SanitizedRequest(newPath, queryParameters, headers, forwarding, pathParameters);
+    }
+
+    /**
      * Returns a copy of this request with the given path parameters attached.
      *
      * @param extractedPathParameters the parameters extracted from the matched route

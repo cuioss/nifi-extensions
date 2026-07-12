@@ -299,8 +299,13 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         byte[] body = bodyOpt.get();
 
-        // 7. Delegate to handler (attach extracted path parameters)
-        handler.process(sanitized.get().withPathParameters(pathParameters), token, body, request, response, callback);
+        // 7. Delegate to handler (hand it the prefix-stripped path + extracted path parameters).
+        // `path` is the reverse-proxy-prefix-stripped path resolved above; when no prefix was
+        // honored it equals the original sanitized path, so unproxied requests are byte-identical.
+        // Handlers (StatusEndpointHandler / AttachmentsEndpointHandler) parse their path parameter
+        // off sanitized.path(), so they must see the stripped path, not the /{prefix}/... one.
+        handler.process(sanitized.get().withPath(path).withPathParameters(pathParameters),
+                token, body, request, response, callback);
     }
 
     /**
