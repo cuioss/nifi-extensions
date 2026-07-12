@@ -71,7 +71,7 @@ class ForwardedRequestResolverTest {
     }
 
     private static ForwardedRequestResolver secureDefaultResolver() {
-        return ForwardedRequestResolver.create(false, Set.of(), Set.of(), PRESET_DEFAULTS);
+        return ForwardedRequestResolver.secureDefault();
     }
 
     private static ForwardedRequestResolver trustAllResolver() {

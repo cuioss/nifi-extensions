@@ -114,7 +114,7 @@ class AttachmentsEndpointHandlerTest {
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
                 httpSecurityEvents, gatewaySecurityEvents,
-                ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
+                ForwardedRequestResolver.secureDefault(), false);
 
         server = new Server();
         var connector = new ServerConnector(server);

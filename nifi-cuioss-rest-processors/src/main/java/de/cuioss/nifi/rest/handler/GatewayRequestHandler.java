@@ -153,7 +153,7 @@ public class GatewayRequestHandler extends Handler.Abstract {
             int globalMaxRequestSize) {
         this(handlers, configService, globalMaxRequestSize,
                 new SecurityEventCounter(), new GatewaySecurityEvents(),
-                ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
+                ForwardedRequestResolver.secureDefault(), false);
     }
 
     /**

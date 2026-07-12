@@ -53,11 +53,23 @@ public final class ForwardedRequestResolver {
 
     private static final String PRESET_STRICT = "strict";
     private static final String PRESET_LENIENT = "lenient";
+    private static final String PRESET_DEFAULTS = "defaults";
 
     private final ForwardedHeaderResolver resolver;
 
     private ForwardedRequestResolver(ForwardedHeaderResolver resolver) {
         this.resolver = resolver;
+    }
+
+    /**
+     * The secure-by-default resolver: honors nothing (no context-path allowlist, no trust-all, no
+     * trusted proxies) with the {@code defaults} sanitization preset. Equivalent to
+     * {@code create(false, Set.of(), Set.of(), "defaults")}.
+     *
+     * @return an immutable resolver that honors no forwarded value
+     */
+    public static ForwardedRequestResolver secureDefault() {
+        return create(false, Set.of(), Set.of(), PRESET_DEFAULTS);
     }
 
     /**

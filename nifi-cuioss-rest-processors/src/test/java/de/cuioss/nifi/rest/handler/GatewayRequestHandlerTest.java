@@ -606,7 +606,7 @@ class GatewayRequestHandlerTest {
                             .method("GET").build()), tinyQueue, GLOBAL_MAX_REQUEST_SIZE, null, tinyEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
                     new de.cuioss.http.security.monitoring.SecurityEventCounter(), tinyEvents,
-                    ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
+                    ForwardedRequestResolver.secureDefault(), false);
 
             Server tinyServer = new Server();
             ServerConnector connector = new ServerConnector(tinyServer);
@@ -859,7 +859,7 @@ class GatewayRequestHandlerTest {
                     toHandlers(routes, schemaQueue, GLOBAL_MAX_REQUEST_SIZE, schemaValidator, schemaEvents),
                     mockConfigService, GLOBAL_MAX_REQUEST_SIZE,
                     new de.cuioss.http.security.monitoring.SecurityEventCounter(), schemaEvents,
-                    ForwardedRequestResolver.create(false, Set.of(), Set.of(), "defaults"), false);
+                    ForwardedRequestResolver.secureDefault(), false);
 
             schemaServer = new Server();
             ServerConnector connector = new ServerConnector(schemaServer);
