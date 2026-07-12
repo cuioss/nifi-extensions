@@ -793,4 +793,71 @@ class RestApiGatewayIT {
         }
     }
 
+    // ── Forwarded Header Resolution (full adoption) ─────────────────────────
+
+    @Nested
+    @DisplayName("Forwarded Header Resolution")
+    class ForwardedHeaderResolutionTests {
+
+        // The IT flow configures the RestApiGateway with trust-all (honors the forwarded
+        // scheme/host/port), trusted-proxies (honors the forwarded client IP), and the
+        // 'defaults' security preset — see flow.json.gz. These cases exercise the newly
+        // adopted scheme/host/port (Location header) and client-IP (audit) forwarded paths
+        // end-to-end against the live container; the resolution semantics themselves are
+        // unit-tested in ForwardedRequestResolverTest.
+
+        @Test
+        @DisplayName("reflects X-Forwarded-Proto/-Host/-Port in the 202 Location header under trust-all")
+        void shouldReflectForwardedSchemeHostPortInLocation() {
+            given().spec(authSpec)
+                    .header("X-Forwarded-Proto", "https")
+                    .header("X-Forwarded-Host", "proxy.example.com")
+                    .header("X-Forwarded-Port", "8443")
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post("/api/data")
+                    .then()
+                    .statusCode(202)
+                    .header("Location", startsWith("https://proxy.example.com:8443"))
+                    .header("Location", containsString("/status/"))
+                    .body("status", equalTo("accepted"))
+                    .body("traceId", notNullValue());
+        }
+
+        @Test
+        @DisplayName("combines forwarded scheme/host/port with the proxy context-path prefix in Location")
+        void shouldReflectForwardedSchemeHostPortAndContextPathTogether() {
+            given().spec(authSpec)
+                    .header("X-Forwarded-Proto", "https")
+                    .header("X-Forwarded-Host", "proxy.example.com")
+                    .header("X-Forwarded-Port", "8443")
+                    .header("X-ProxyContextPath", "/nifi-proxy")
+                    .body("{\"key\": \"value\"}")
+                    .when()
+                    .post("/nifi-proxy/api/data")
+                    .then()
+                    .statusCode(202)
+                    .header("Location", startsWith("https://proxy.example.com:8443/nifi-proxy/status/"))
+                    .body("status", equalTo("accepted"))
+                    .body("_links.status.href", startsWith("/nifi-proxy/status/"));
+        }
+
+        @Test
+        @DisplayName("honors an X-Forwarded-For chain end-to-end with trusted-proxies configured")
+        void shouldHonorForwardedClientIpWithTrustedProxies() {
+            // With trusted-proxies configured the gateway resolves the forwarded client IP for
+            // audit / rate-limit logging (asserted at the unit level in ForwardedRequestResolverTest);
+            // here we verify the forwarded chain is accepted end-to-end and the request still succeeds,
+            // proving the new trusted-proxies / security-config.preset properties are VALID and honored
+            // by the live processor.
+            given().spec(authSpec)
+                    .header("X-Forwarded-For", "203.0.113.7, 10.0.0.1")
+                    .when()
+                    .get("/api/data")
+                    .then()
+                    .statusCode(200)
+                    .body(not(emptyString()));
+        }
+    }
+
 }
