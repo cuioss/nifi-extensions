@@ -30,6 +30,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
@@ -142,14 +143,16 @@ public class ProxyContextPathServlet extends HttpServlet {
         if (nifiPropertiesPath == null || nifiPropertiesPath.isBlank()) {
             return null;
         }
-        Path path = Path.of(nifiPropertiesPath);
-        if (!Files.isRegularFile(path)) {
-            return null;
-        }
         Properties properties = new Properties();
-        try (InputStream in = Files.newInputStream(path)) {
-            properties.load(in);
-        } catch (IOException e) {
+        try {
+            Path path = Path.of(nifiPropertiesPath);
+            if (!Files.isRegularFile(path)) {
+                return null;
+            }
+            try (InputStream in = Files.newInputStream(path)) {
+                properties.load(in);
+            }
+        } catch (IOException | InvalidPathException e) {
             LOGGER.debug(e, "Unable to read %s from %s; honoring no proxy context path",
                     NIFI_PROXY_CONTEXT_PATH_PROPERTY, nifiPropertiesPath);
             return null;
