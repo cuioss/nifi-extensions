@@ -150,6 +150,10 @@ public final class ForwardedRequestResolver {
      * @return the resolved forwarding view; never {@code null}, {@link ResolvedForwarding#empty()}
      *         when nothing is present or honored
      */
+    @SuppressWarnings("java:S4276")
+    // Function<String, String> intentionally mirrors the delegate's own
+    // ForwardedHeaderResolver#resolve(Function<String, String>) signature (cui-http); narrowing
+    // to UnaryOperator<String> here would diverge from the wrapped library's own parameter type.
     public ResolvedForwarding resolve(Function<String, String> headerLookup) {
         return resolver.resolve(headerLookup);
     }

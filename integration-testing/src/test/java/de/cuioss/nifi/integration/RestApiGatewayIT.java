@@ -846,10 +846,10 @@ class RestApiGatewayIT {
         @DisplayName("honors an X-Forwarded-For chain end-to-end with trusted-proxies configured")
         void shouldHonorForwardedClientIpWithTrustedProxies() {
             // With trusted-proxies configured the gateway resolves the forwarded client IP for
-            // audit / rate-limit logging (asserted at the unit level in ForwardedRequestResolverTest);
-            // here we verify the forwarded chain is accepted end-to-end and the request still succeeds,
-            // proving the new trusted-proxies / security-config.preset properties are VALID and honored
-            // by the live processor.
+            // audit and rate-limit logging. That resolution logic is asserted at the unit level
+            // in ForwardedRequestResolverTest. Here we verify the forwarded chain is accepted
+            // end-to-end and the request still succeeds, proving the new trusted-proxies and
+            // security-config.preset properties are valid and honored by the live processor.
             given().spec(authSpec)
                     .header("X-Forwarded-For", "203.0.113.7, 10.0.0.1")
                     .when()
