@@ -304,13 +304,15 @@ public final class RestApiGatewayConstants {
                 .name("rest.gateway.proxy.context-path.trust-all")
                 .displayName("Proxy Context Path Trust All")
                 .description("When true, the gateway honors ANY reverse-proxy context path supplied in the "
-                        + "X-ProxyContextPath / X-Forwarded-Prefix headers WITHOUT checking the allowlist (the "
-                        + "value is still normalized and injection-guarded). Enable this ONLY when the gateway is "
-                        + "exclusively reachable through a trusted reverse proxy that sets these headers — a "
-                        + "directly-reachable listener (0.0.0.0) with trust-all enabled lets any client spoof the "
-                        + "context path. When false (the default) the allowlist in "
-                        + "'rest.gateway.proxy.context-path.whitelist' governs which context paths are honored. "
-                        + "Secure default: false.")
+                        + "X-ProxyContextPath / X-Forwarded-Prefix headers WITHOUT checking the allowlist, AND "
+                        + "additionally honors the forwarded scheme/host/port (X-Forwarded-Proto/-Host/-Port, "
+                        + "X-ProxyScheme/-Host/-Port, RFC 7239 Forwarded) that build the 202 Location header and "
+                        + "HATEOAS _links (all values are still normalized and injection-guarded). Enable this ONLY "
+                        + "when the gateway is exclusively reachable through a trusted reverse proxy that sets these "
+                        + "headers — a directly-reachable listener (0.0.0.0) with trust-all enabled lets any client "
+                        + "spoof the context path AND the Location-header scheme/host/port. When false (the default) "
+                        + "the allowlist in 'rest.gateway.proxy.context-path.whitelist' governs which context paths "
+                        + "are honored and forwarded scheme/host/port are NOT honored. Secure default: false.")
                 .required(false)
                 .allowableValues("true", FALSE_VALUE)
                 .defaultValue(FALSE_VALUE)

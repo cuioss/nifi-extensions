@@ -184,6 +184,27 @@ class ForwardedRequestResolverTest {
             assertEquals("", resolver.resolve(lookup).contextPath(),
                     "An embedded backslash must be rejected (browsers may normalize it to '/')");
         }
+
+        @Test
+        @DisplayName("Rejects a CR/LF injection sequence in X-Forwarded-Host")
+        void rejectsCrlfInForwardedHost() {
+            var resolver = trustAllResolver();
+            var lookup = headers(Map.of(HEADER_FORWARDED_HOST, "proxy.example.com\r\nSet-Cookie: x=1"));
+
+            assertTrue(resolver.resolve(lookup).host().isEmpty(),
+                    "A CR/LF header-injection sequence in the forwarded host must not be honored");
+        }
+
+        @ParameterizedTest(name = "malformed host \"{0}\" is not honored")
+        @ValueSource(strings = {"proxy.example.com/path", "proxy.example.com\\evil", "proxy example.com"})
+        @DisplayName("Rejects an X-Forwarded-Host carrying a separator, backslash, or whitespace (Location-header sink)")
+        void rejectsMalformedForwardedHost(String rawHost) {
+            var resolver = trustAllResolver();
+            var lookup = headers(Map.of(HEADER_FORWARDED_HOST, rawHost));
+
+            assertTrue(resolver.resolve(lookup).host().isEmpty(),
+                    "A host carrying a path separator, backslash, or whitespace must not be honored");
+        }
     }
 
     @Nested
