@@ -168,12 +168,8 @@ public final class ApiRouteHandler implements EndpointHandler {
 
         if (!enqueueFlowFile(sanitized, token, body, request,
                 new TrackingContext(traceId, parentTraceId), response, callback)) {
-            // M5: the tracking entry was persisted before enqueue; a queue-full 503 must not
-            // leave a non-terminal ACCEPTED/COLLECTING_ATTACHMENTS entry orphaned in the cache
-            // (the client got a 503 and will never poll it).
-            if (tracked) {
-                removeTracking(traceId);
-            }
+            // M5: enqueueFlowFile has already evicted the tracking entry (before flushing the 503),
+            // so a queue-full response never leaves an orphaned non-terminal entry in the cache.
             return;
         }
 
@@ -296,6 +292,12 @@ public final class ApiRouteHandler implements EndpointHandler {
         if (!queue.offer(container)) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, request.getMethod(), sanitized.path(), remoteHost);
+            // M5: evict the tracking entry BEFORE the 503 is flushed. Doing it after the response
+            // (in the caller) races the client — which can observe the orphaned non-terminal entry
+            // in the window between receiving the 503 and the eviction completing on the server.
+            if (tracking.traceId() != null) {
+                removeTracking(tracking.traceId());
+            }
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return false;
