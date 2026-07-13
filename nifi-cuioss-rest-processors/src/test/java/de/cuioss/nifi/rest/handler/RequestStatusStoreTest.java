@@ -17,6 +17,8 @@
 package de.cuioss.nifi.rest.handler;
 
 import org.apache.nifi.controller.AbstractControllerService;
+import org.apache.nifi.distributed.cache.client.AtomicCacheEntry;
+import org.apache.nifi.distributed.cache.client.AtomicDistributedMapCacheClient;
 import org.apache.nifi.distributed.cache.client.Deserializer;
 import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.distributed.cache.client.Serializer;
@@ -30,12 +32,13 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("RequestStatusStore")
-class RequestStatusStoreTest {
+public class RequestStatusStoreTest {
 
     private InMemoryMapCacheClient cacheClient;
     private RequestStatusStore store;
@@ -122,6 +125,73 @@ class RequestStatusStoreTest {
             assertDoesNotThrow(() ->
                     store.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING));
         }
+
+        @Test
+        @DisplayName("Should remove an entry (M5 — evict leaked tracking entries)")
+        void shouldRemoveEntry() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            store.accept(traceId, null);
+            assertTrue(store.getStatus(traceId).isPresent());
+
+            store.remove(traceId);
+
+            assertTrue(store.getStatus(traceId).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Should not fail removing an unknown traceId")
+        void shouldNotFailRemovingUnknownTraceId() {
+            assertDoesNotThrow(() -> store.remove(UUID.randomUUID().toString()));
+        }
+    }
+
+    @Nested
+    @DisplayName("Atomic Update (N16 — compare-and-swap)")
+    class AtomicUpdate {
+
+        @Test
+        @DisplayName("Should update status via compare-and-swap when the client is atomic")
+        void shouldUpdateStatusViaCompareAndSwap() throws Exception {
+            var atomicClient = new InMemoryAtomicMapCacheClient();
+            var atomicStore = new RequestStatusStore(atomicClient);
+            String traceId = UUID.randomUUID().toString();
+            atomicStore.collectingAttachments(traceId, null, "upload", 5, 1);
+            long revisionBefore = atomicClient.revisionOf(traceId);
+
+            atomicStore.updateStatus(traceId, RequestStatus.PROCESSED);
+
+            var result = atomicStore.getStatus(traceId);
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.PROCESSED, result.get().status());
+            assertEquals("upload", result.get().routeName());
+            assertEquals(5, result.get().attachmentsMaxCount());
+            assertTrue(atomicClient.revisionOf(traceId) > revisionBefore,
+                    "compare-and-swap must bump the cache revision");
+        }
+
+        @Test
+        @DisplayName("Should not lose sequential updates on an atomic client")
+        void shouldNotLoseSequentialUpdates() throws Exception {
+            var atomicClient = new InMemoryAtomicMapCacheClient();
+            var atomicStore = new RequestStatusStore(atomicClient);
+            String traceId = UUID.randomUUID().toString();
+            atomicStore.accept(traceId, null);
+
+            atomicStore.updateStatus(traceId, RequestStatus.PROCESSING);
+            atomicStore.updateStatus(traceId, RequestStatus.PROCESSED);
+
+            var result = atomicStore.getStatus(traceId);
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.PROCESSED, result.get().status());
+        }
+
+        @Test
+        @DisplayName("Should handle atomic update for unknown traceId gracefully")
+        void shouldHandleAtomicUpdateForUnknownTraceId() {
+            var atomicStore = new RequestStatusStore(new InMemoryAtomicMapCacheClient());
+            assertDoesNotThrow(() ->
+                    atomicStore.updateStatus(UUID.randomUUID().toString(), RequestStatus.PROCESSING));
+        }
     }
 
     @Nested
@@ -174,9 +244,14 @@ class RequestStatusStoreTest {
      * Simple in-memory implementation of DistributedMapCacheClient for testing.
      * Extends AbstractControllerService to satisfy NiFi's ControllerService contract.
      */
-    static class InMemoryMapCacheClient extends AbstractControllerService implements DistributedMapCacheClient {
+    public static class InMemoryMapCacheClient extends AbstractControllerService implements DistributedMapCacheClient {
 
-        private final Map<String, byte[]> store = new HashMap<>();
+        protected final Map<String, byte[]> store = new HashMap<>();
+
+        /** Test helper: number of entries currently stored (used to assert no leaked entries). */
+        int size() {
+            return store.size();
+        }
 
         @Override
         public <K, V> boolean putIfAbsent(K key, V value, Serializer<K> keySerializer,
@@ -233,16 +308,65 @@ class RequestStatusStoreTest {
             return store.remove(serializeToString(key, keySerializer)) != null;
         }
 
-        private <T> String serializeToString(T value, Serializer<T> serializer) throws IOException {
+        protected <T> String serializeToString(T value, Serializer<T> serializer) throws IOException {
             var out = new ByteArrayOutputStream();
             serializer.serialize(value, out);
             return out.toString(StandardCharsets.UTF_8);
         }
 
-        private <T> byte[] serializeToBytes(T value, Serializer<T> serializer) throws IOException {
+        protected <T> byte[] serializeToBytes(T value, Serializer<T> serializer) throws IOException {
             var out = new ByteArrayOutputStream();
             serializer.serialize(value, out);
             return out.toByteArray();
+        }
+    }
+
+    /**
+     * In-memory client that additionally implements the atomic fetch/replace contract so the
+     * {@link RequestStatusStore#updateStatus} compare-and-swap path (N16) can be exercised. Each
+     * key carries a monotonically increasing revision; {@code replace} only succeeds when the
+     * supplied revision matches the stored one (optimistic concurrency).
+     */
+    static class InMemoryAtomicMapCacheClient extends InMemoryMapCacheClient
+            implements AtomicDistributedMapCacheClient<Long> {
+
+        private final Map<String, Long> revisions = new HashMap<>();
+
+        long revisionOf(String key) {
+            return revisions.getOrDefault(key, 0L);
+        }
+
+        @Override
+        public <K, V> void put(K key, V value, Serializer<K> keySerializer,
+                Serializer<V> valueSerializer) throws IOException {
+            String k = serializeToString(key, keySerializer);
+            super.put(key, value, keySerializer, valueSerializer);
+            revisions.merge(k, 1L, Long::sum);
+        }
+
+        @Override
+        public <K, V> AtomicCacheEntry<K, V, Long> fetch(K key, Serializer<K> keySerializer,
+                Deserializer<V> valueDeserializer) throws IOException {
+            String k = serializeToString(key, keySerializer);
+            byte[] bytes = store.get(k);
+            if (bytes == null) {
+                return null;
+            }
+            return new AtomicCacheEntry<>(key, valueDeserializer.deserialize(bytes), revisions.getOrDefault(k, 0L));
+        }
+
+        @Override
+        public <K, V> boolean replace(AtomicCacheEntry<K, V, Long> entry, Serializer<K> keySerializer,
+                Serializer<V> valueSerializer) throws IOException {
+            String k = serializeToString(entry.getKey(), keySerializer);
+            Long expected = entry.getRevision().orElse(null);
+            Long actual = revisions.get(k);
+            if (expected == null ? store.containsKey(k) : !Objects.equals(expected, actual)) {
+                return false;
+            }
+            store.put(k, serializeToBytes(entry.getValue(), valueSerializer));
+            revisions.merge(k, 1L, Long::sum);
+            return true;
         }
     }
 }

@@ -48,6 +48,7 @@ public final class ApiRouteHandler implements EndpointHandler {
 
     private static final CuiLogger LOGGER = new CuiLogger(ApiRouteHandler.class);
     private static final byte[] ACCEPTED_RESPONSE = "{\"status\":\"accepted\"}".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] OK_RESPONSE = "{\"status\":\"ok\"}".getBytes(StandardCharsets.UTF_8);
 
     private static final String X_PARENT_TRACE_ID = "X-Parent-Trace-Id";
 
@@ -57,13 +58,14 @@ public final class ApiRouteHandler implements EndpointHandler {
     @Nullable private final JsonSchemaValidator schemaValidator;
     private final GatewaySecurityEvents gatewaySecurityEvents;
     @Nullable private final RequestStatusStore statusStore;
+    private final int attachmentsHardLimit;
 
     public ApiRouteHandler(RouteConfiguration route,
             BlockingQueue<HttpRequestContainer> queue,
             int globalMaxRequestSize,
             @Nullable JsonSchemaValidator schemaValidator,
             GatewaySecurityEvents gatewaySecurityEvents) {
-        this(route, queue, globalMaxRequestSize, schemaValidator, gatewaySecurityEvents, null);
+        this(route, queue, globalMaxRequestSize, schemaValidator, gatewaySecurityEvents, null, 0);
     }
 
     public ApiRouteHandler(RouteConfiguration route,
@@ -72,12 +74,23 @@ public final class ApiRouteHandler implements EndpointHandler {
             @Nullable JsonSchemaValidator schemaValidator,
             GatewaySecurityEvents gatewaySecurityEvents,
             @Nullable RequestStatusStore statusStore) {
+        this(route, queue, globalMaxRequestSize, schemaValidator, gatewaySecurityEvents, statusStore, 0);
+    }
+
+    public ApiRouteHandler(RouteConfiguration route,
+            BlockingQueue<HttpRequestContainer> queue,
+            int globalMaxRequestSize,
+            @Nullable JsonSchemaValidator schemaValidator,
+            GatewaySecurityEvents gatewaySecurityEvents,
+            @Nullable RequestStatusStore statusStore,
+            int attachmentsHardLimit) {
         this.route = route;
         this.queue = queue;
         this.globalMaxRequestSize = globalMaxRequestSize;
         this.schemaValidator = schemaValidator;
         this.gatewaySecurityEvents = gatewaySecurityEvents;
         this.statusStore = statusStore;
+        this.attachmentsHardLimit = attachmentsHardLimit;
     }
 
     @Override
@@ -155,6 +168,12 @@ public final class ApiRouteHandler implements EndpointHandler {
 
         if (!enqueueFlowFile(sanitized, token, body, request,
                 new TrackingContext(traceId, parentTraceId), response, callback)) {
+            // M5: the tracking entry was persisted before enqueue; a queue-full 503 must not
+            // leave a non-terminal ACCEPTED/COLLECTING_ATTACHMENTS entry orphaned in the cache
+            // (the client got a 503 and will never poll it).
+            if (tracked) {
+                removeTracking(traceId);
+            }
             return;
         }
 
@@ -217,8 +236,15 @@ public final class ApiRouteHandler implements EndpointHandler {
             Response response, Callback callback) {
         try {
             if (route.trackingMode() == TrackingMode.ATTACHMENTS) {
+                // C1: attachments-max-count = 0 means "use the global hard limit" (per the docs).
+                // Resolve the effective cap here so the persisted COLLECTING_ATTACHMENTS entry always
+                // carries a positive maximum; a docs-exact route (max-count unset/0) then accepts
+                // attachments up to the hard limit instead of being 409-rejected downstream.
+                int effectiveMax = route.attachmentsMaxCount() > 0
+                        ? route.attachmentsMaxCount()
+                        : attachmentsHardLimit;
                 statusStore.collectingAttachments(traceId, parentTraceId, route.name(),
-                        route.attachmentsMaxCount(), route.attachmentsMinCount());
+                        effectiveMax, route.attachmentsMinCount());
             } else {
                 statusStore.accept(traceId, parentTraceId);
             }
@@ -230,6 +256,22 @@ public final class ApiRouteHandler implements EndpointHandler {
         }
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_TRACKED, traceId, route.name());
         return true;
+    }
+
+    /**
+     * Removes a tracking entry that was persisted by {@link #registerTracking} but whose FlowFile
+     * enqueue then failed (queue-full 503). Null-safe on the status store: only tracked routes
+     * reach this path.
+     */
+    private void removeTracking(String traceId) {
+        if (statusStore == null) {
+            return;
+        }
+        try {
+            statusStore.remove(traceId);
+        } catch (IOException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+        }
     }
 
     private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
@@ -262,11 +304,16 @@ public final class ApiRouteHandler implements EndpointHandler {
     }
 
     private static void sendSuccessResponse(Response response, Callback callback, String method) {
-        int statusCode = isBodyMethod(method) ? 202 : 200;
+        // I6: a body method (POST/PUT/PATCH) is 202 Accepted with {"status":"accepted"}; a body-less
+        // method (GET/DELETE) is a synchronous 200 OK and must NOT reuse the misleading "accepted"
+        // payload — it returns {"status":"ok"}.
+        boolean bodyMethod = isBodyMethod(method);
+        int statusCode = bodyMethod ? 202 : 200;
+        byte[] payload = bodyMethod ? ACCEPTED_RESPONSE : OK_RESPONSE;
         response.setStatus(statusCode);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, "application/json");
-        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, ACCEPTED_RESPONSE.length);
-        response.write(true, ByteBuffer.wrap(ACCEPTED_RESPONSE), callback);
+        response.getHeaders().put(HttpHeader.CONTENT_LENGTH, payload.length);
+        response.write(true, ByteBuffer.wrap(payload), callback);
     }
 
     private static boolean isBodyMethod(String method) {

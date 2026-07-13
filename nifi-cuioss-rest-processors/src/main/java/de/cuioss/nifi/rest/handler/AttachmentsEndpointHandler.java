@@ -51,7 +51,6 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
     static final String ATTACHMENTS_PATH = "/attachments";
     @SuppressWarnings("java:S1075") // URL path, not filesystem path
     private static final String ATTACHMENTS_PATH_PREFIX = ATTACHMENTS_PATH + "/";
-    private static final String JSON_CONTENT_TYPE = "application/json";
     public static final String ATTACHMENTS_ROUTE_NAME = "_attachments";
 
     private final RequestStatusStore statusStore;
@@ -201,6 +200,10 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             return Optional.empty();
         }
         RequestStatusEntry parent = parentEntry.get();
+        // C1: attachments routes always persist a positive effective max (attachments-max-count=0
+        // is resolved to the global hard limit at registration in ApiRouteHandler.registerTracking).
+        // A max of 0 therefore identifies a non-attachments (simple-tracked) parent, which genuinely
+        // does not accept attachments — reject it with 409.
         if (parent.attachmentsMaxCount() == 0) {
             LOGGER.warn(RestApiLogMessages.WARN.ATTACHMENTS_NOT_SUPPORTED, parentTraceId);
             ProblemDetail.conflict("Parent request does not accept attachments")
@@ -308,6 +311,14 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
                 statusStore.updateStatus(parentTraceId, RequestStatus.PROCESSED);
                 LOGGER.info(RestApiLogMessages.INFO.ATTACHMENTS_MIN_MET,
                         parentTraceId, count, parent.attachmentsMinCount());
+                // N18: the counter is deliberately NOT evicted here. The attachment window stays open
+                // for PROCESSED (attachments up to attachments-max-count are still accepted after min
+                // is met), so the counter remains authoritative for max enforcement — evicting it
+                // would reset the count and let a parent exceed its max. The counter IS evicted when
+                // the window is observed closed (parent gone / status past the open window) in
+                // lookupAndValidateParent. The residual leak for a parent whose attachments simply
+                // stop is one bounded AtomicInteger and would require a time-based sweeper (a TTL) to
+                // reclaim eagerly — out of the lean scope of this change; accepted as a bounded risk.
             } catch (IOException e) {
                 LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
             }

@@ -134,10 +134,10 @@ class RestApiGatewayProcessorTest {
                 assertFalse(processor.serverManager.isRunning(),
                         "Embedded server must not start when no routes are configured");
                 assertEquals(
-                        Set.of(RestApiGatewayConstants.Relationships.FAILURE,
-                                RestApiGatewayConstants.Relationships.ATTACHMENTS),
+                        Set.of(RestApiGatewayConstants.Relationships.FAILURE),
                         processor.getRelationships(),
-                        "Only the built-in relationships must remain without routes");
+                        "Only the FAILURE relationship remains without routes; ATTACHMENTS is advertised "
+                                + "only when a cache client is configured (I14)");
             } finally {
                 runner.stop();
             }
@@ -185,6 +185,44 @@ class RestApiGatewayProcessorTest {
         void shouldIncludeFailureRelationship() {
             var relationships = testRunner.getProcessor().getRelationships();
             assertTrue(relationships.contains(RestApiGatewayConstants.Relationships.FAILURE));
+        }
+    }
+
+    @Nested
+    @DisplayName("Tracking / Cache Client Contract (M4, I14)")
+    class CacheClientContract {
+
+        @Test
+        @DisplayName("M4: a tracked route without a cache client is invalid")
+        void shouldBeInvalidWhenTrackingWithoutCacheClient() {
+            testRunner.setProperty("restapi.tracked.path", "/api/tracked");
+            testRunner.setProperty("restapi.tracked.methods", "POST");
+            testRunner.setProperty("restapi.tracked.tracking-mode", "simple");
+
+            testRunner.assertNotValid();
+        }
+
+        @Test
+        @DisplayName("M4/I14: a tracked route with a cache client is valid and advertises ATTACHMENTS")
+        void shouldBeValidAndAdvertiseAttachmentsWithCacheClient() throws Exception {
+            var cache = new de.cuioss.nifi.rest.handler.RequestStatusStoreTest.InMemoryMapCacheClient();
+            testRunner.addControllerService("cache", cache);
+            testRunner.enableControllerService(cache);
+            testRunner.setProperty(
+                    RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT, "cache");
+            testRunner.setProperty("restapi.tracked.path", "/api/tracked");
+            testRunner.setProperty("restapi.tracked.methods", "POST");
+            testRunner.setProperty("restapi.tracked.tracking-mode", "simple");
+
+            testRunner.assertValid();
+            testRunner.run(1, false, true);
+            try {
+                assertTrue(testRunner.getProcessor().getRelationships()
+                                .contains(RestApiGatewayConstants.Relationships.ATTACHMENTS),
+                        "ATTACHMENTS must be advertised when a cache client is configured");
+            } finally {
+                testRunner.stop();
+            }
         }
     }
 
