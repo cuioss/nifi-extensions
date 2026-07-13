@@ -323,34 +323,50 @@ export class ProcessorService {
 
   async openAdvancedUI(processor) {
     testLogger.info('Processor',"Opening Advanced UI via right-click menu");
-    
-    // Right-click on processor
-    await this.interact(processor, { action: "rightclick" });
-    
-    // Look for Advanced menu item
-    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
-    
-    if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
-      await advancedMenuItem.click();
-      testLogger.info('Processor',"Clicked Advanced menu item");
-      
-      // Wait for navigation to advanced page
-      try {
-        await this.page.waitForURL('**/advanced', { timeout: 10000 });
-        testLogger.info('Processor',"Successfully navigated to Advanced UI");
-        
-        // Wait for iframe to be injected into the page
-        await this.page.waitForSelector('iframe', { timeout: 5000 });
-        testLogger.info('Processor',"Advanced UI iframe detected in DOM");
 
-        return true;
-      } catch (error) {
-        testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
-        return false;
+    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
+    const locator = processor.locator || this.page.locator(processor.element);
+    const MAX_ATTEMPTS = 3;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // The processor may have matched its thin name-label, whose centre can sit under an
+      // overlapping connection line — a centre right-click there hits the connection (whose
+      // menu has no "Advanced"). Right-click the enclosing processor GROUP centre instead,
+      // which is clear of connections, so NiFi shows the processor context menu.
+      const center = await locator.evaluate((el) => {
+        const group = el.closest('g.processor, g.component, [data-component-type="processor"]') || el;
+        const rect = group.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }).catch(() => null);
+
+      if (center) {
+        await this.page.mouse.click(center.x, center.y, { button: 'right' });
+      } else {
+        await this.interact(processor, { action: "rightclick" });
       }
+
+      if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
+        await advancedMenuItem.click();
+        testLogger.info('Processor',"Clicked Advanced menu item");
+        try {
+          await this.page.waitForURL('**/advanced', { timeout: 10000 });
+          testLogger.info('Processor',"Successfully navigated to Advanced UI");
+          await this.page.waitForSelector('iframe', { timeout: 5000 });
+          testLogger.info('Processor',"Advanced UI iframe detected in DOM");
+          return true;
+        } catch (error) {
+          testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
+          return false;
+        }
+      }
+
+      testLogger.warn('Processor',
+        `Advanced menu item not visible (attempt ${attempt}/${MAX_ATTEMPTS}); dismissing and retrying`);
+      await this.page.keyboard.press('Escape').catch(() => { /* no menu open */ });
+      await this.page.waitForTimeout(400);
     }
-    
-    testLogger.error('Processor',"Could not find Advanced menu item");
+
+    testLogger.error('Processor',"Could not find Advanced menu item after retries");
     return false;
   }
 
