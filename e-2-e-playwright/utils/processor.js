@@ -329,7 +329,12 @@ export class ProcessorService {
     const MAX_ATTEMPTS = 3;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      // The processor may have matched its thin name-label, whose centre can sit under an
+      // Make sure the matched element is attached/visible before evaluating its geometry —
+      // otherwise evaluate() can fire before the SVG node settles and fall through to the
+      // (connection-prone) fallback below.
+      await locator.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => { /* best-effort */ });
+
+      // The processor may have matched its thin name/type label, whose centre can sit under an
       // overlapping connection line — a centre right-click there hits the connection (whose
       // menu has no "Advanced"). Right-click the enclosing processor GROUP centre instead,
       // which is clear of connections, so NiFi shows the processor context menu.
@@ -342,7 +347,10 @@ export class ProcessorService {
       if (center) {
         await this.page.mouse.click(center.x, center.y, { button: 'right' });
       } else {
-        await this.interact(processor, { action: "rightclick" });
+        // Geometry lookup failed; fall back to a direct right-click (may hit a connection).
+        try {
+          await this.interact(processor, { action: "rightclick" });
+        } catch { /* handled by the retry / final-failure path below */ }
       }
 
       if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
