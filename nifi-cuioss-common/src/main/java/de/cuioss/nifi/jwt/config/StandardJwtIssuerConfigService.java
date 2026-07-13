@@ -67,6 +67,10 @@ import java.util.stream.Collectors;
         "so that multiple processors can share the same JWT configuration.")
 @SupportsSensitiveDynamicProperties
 @RequiresInstanceClassLoading
+// S2160: NiFi components use identity equality (component identifier) inherited from
+// AbstractControllerService; the added fields are transient runtime state, not part of identity,
+// so overriding equals/hashCode would be incorrect for the NiFi lifecycle contract.
+@SuppressWarnings("java:S2160")
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
@@ -146,8 +150,14 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     // via validateToken()/getAuthenticationConfig(); declared volatile to establish a
     // happens-before edge and safely publish the fully constructed instances.
 
+    // S3077: volatile-on-reference is intentional — these fields only publish a fully constructed,
+    // effectively immutable instance reference (safe publication); no compound state mutation is
+    // performed through the reference, so a thread-safe container would add no guarantee.
+    @SuppressWarnings("java:S3077")
     @Nullable private volatile TokenValidator tokenValidator;
+    @SuppressWarnings("java:S3077")
     @Nullable private volatile JwtAuthenticationConfig authenticationConfig;
+    @SuppressWarnings("java:S3077")
     @Nullable private volatile ConfigurationManager configurationManager;
 
     @Override

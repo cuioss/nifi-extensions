@@ -62,11 +62,14 @@ import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships
  *
  * @see JwtIssuerConfigService
  */
-@SuppressWarnings("NotNullFieldNotInitialized")
-// i18nResolver is initialized in init(); the remaining fields are initialized in onScheduled.
-// The NiFi lifecycle guarantees onTrigger runs only after onScheduled, so the fields are always
-// set before use; onStopped resets the processed-file counter but intentionally leaves the fields
-// in place so a subsequent onScheduled restart can reinitialize them.
+// NotNullFieldNotInitialized: i18nResolver is initialized in init(); the remaining fields are
+// initialized in onScheduled. The NiFi lifecycle guarantees onTrigger runs only after onScheduled,
+// so the fields are always set before use; onStopped resets the processed-file counter but
+// intentionally leaves the fields in place so a subsequent onScheduled restart can reinitialize them.
+// S2160: NiFi processors use identity equality (component identifier) inherited from
+// AbstractProcessor; the added fields are transient runtime state, not part of identity, so
+// overriding equals/hashCode would be incorrect for the NiFi lifecycle contract.
+@SuppressWarnings({"NotNullFieldNotInitialized", "java:S2160"})
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers using a shared JWT Issuer Config Service. " +
         "Reads a raw JWT token from a configurable FlowFile attribute, validates it against configured issuers, " +

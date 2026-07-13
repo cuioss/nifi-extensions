@@ -127,6 +127,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
      * reference to the concurrent onTrigger reads (the queue's own operations are already
      * thread-safe; {@code volatile} covers publication of the reference itself).
      */
+    // S3077: the referenced queue is already thread-safe; volatile only safely publishes the
+    // reference on @OnScheduled reassignment, which is the intended and sufficient guarantee.
+    @SuppressWarnings("java:S3077")
     private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
@@ -145,6 +148,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
      * entries of queued-but-discarded containers (M5). {@code volatile} safely publishes the reference
      * between the @OnScheduled writer thread and the @OnStopped reader thread.
      */
+    // S3077: volatile only safely publishes the reference between the @OnScheduled writer and the
+    // @OnStopped reader; the store itself is thread-safe, so a thread-safe container adds nothing.
+    @SuppressWarnings("java:S3077")
     private volatile RequestStatusStore trackingStore;
 
     /**
@@ -547,8 +553,9 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             }
 
             // Map JWT claims (guard against null token for unauthenticated routes)
-            if (container.token() != null) {
-                attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
+            var token = container.token();
+            if (token != null) {
+                attributes.putAll(TokenClaimMapper.mapToAttributes(token));
             }
 
             attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);

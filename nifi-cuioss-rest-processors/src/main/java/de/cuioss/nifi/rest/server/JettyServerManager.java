@@ -43,6 +43,9 @@ public class JettyServerManager {
      * and query methods from different framework threads) establish a happens-before edge rather
      * than relying on an undocumented framework convention.
      */
+    // S3077: volatile safely publishes the server reference across the lifecycle/query threads;
+    // the reference is only assigned on start/stop, so a thread-safe container adds no guarantee.
+    @SuppressWarnings("java:S3077")
     private volatile Server server;
 
     /**

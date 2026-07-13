@@ -212,14 +212,8 @@ public class IssuerConfigurationParser {
             if (!isJwksUrlAllowed(issuerId, jwksSource.get(), globalProperties)) {
                 return Optional.empty();
             }
-            var httpConfigBuilder = HttpJwksLoaderConfig.builder()
-                    .jwksUrl(jwksSource.get())
-                    .issuerIdentifier(issuerName.get());
-            if (parserConfig != null) {
-                httpConfigBuilder.parserConfig(parserConfig);
-            }
-            applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
-            builder.httpJwksLoaderConfig(httpConfigBuilder.build());
+            builder.httpJwksLoaderConfig(buildHttpJwksLoaderConfig(
+                    jwksSource.get(), issuerName.get(), globalProperties, parserConfig));
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
@@ -234,6 +228,22 @@ public class IssuerConfigurationParser {
             builder.expectedClientId(clientId.trim());
         }
         return Optional.of(builder.build());
+    }
+
+    /**
+     * Builds the HTTP JWKS loader configuration for a URL-sourced issuer, applying the optional
+     * pre-initialized {@link ParserConfig} and the global JWKS connection settings.
+     */
+    private static HttpJwksLoaderConfig buildHttpJwksLoaderConfig(String jwksUrl, String issuerName,
+            Map<String, String> globalProperties, @Nullable ParserConfig parserConfig) {
+        var httpConfigBuilder = HttpJwksLoaderConfig.builder()
+                .jwksUrl(jwksUrl)
+                .issuerIdentifier(issuerName);
+        if (parserConfig != null) {
+            httpConfigBuilder.parserConfig(parserConfig);
+        }
+        applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
+        return httpConfigBuilder.build();
     }
 
     private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {

@@ -84,7 +84,7 @@ public class NiFiI18nResolver implements I18nResolver {
     public String getTranslatedString(String key, Object... args) {
         Objects.requireNonNull(key, "key must not be null");
         String pattern = getTranslatedString(key);
-        if (args == null || args.length == 0) {
+        if (args.length == 0) {
             // No arguments to substitute; return the pattern verbatim so MessageFormat
             // quote-processing ('' -> ') is not applied to argument-less strings.
             return pattern;
