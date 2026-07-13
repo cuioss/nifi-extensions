@@ -285,7 +285,8 @@ public class JwksValidationServlet extends HttpServlet {
      * @param allowPrivateAddresses when true, skip checks for private/loopback addresses
      * @return the first resolved InetAddress if all pass validation, null otherwise
      */
-    InetAddress resolveAndValidateAddress(String host, boolean allowPrivateAddresses) {
+    @Nullable
+    InetAddress resolveAndValidateAddress(@Nullable String host, boolean allowPrivateAddresses) {
         if (host == null || host.isEmpty()) {
             return null;
         }
@@ -424,6 +425,7 @@ public class JwksValidationServlet extends HttpServlet {
      * @param jwksUrl URL to validate
      * @return URI if valid, null otherwise
      */
+    @Nullable
     private URI validateUrlScheme(String jwksUrl) {
         URI uri = URI.create(jwksUrl);
         if (!"http".equalsIgnoreCase(uri.getScheme()) && !"https".equalsIgnoreCase(uri.getScheme())) {
@@ -602,6 +604,7 @@ public class JwksValidationServlet extends HttpServlet {
      * @param jwksUrl the URL to validate
      * @return a failure result if validation fails, or null if the URL is safe
      */
+    @Nullable
     private JwksValidationResult validateUrlSecurity(String jwksUrl) {
         try {
             urlPathValidator.validate(jwksUrl);
@@ -618,6 +621,7 @@ public class JwksValidationServlet extends HttpServlet {
      * @param jwksFilePath the file path to validate
      * @return a failure result if validation fails, or null if the path is safe
      */
+    @Nullable
     private JwksValidationResult validatePathSecurity(String jwksFilePath) {
         try {
             urlPathValidator.validate(jwksFilePath);
@@ -684,6 +688,7 @@ public class JwksValidationServlet extends HttpServlet {
     /**
      * Parses the JSON request body.
      */
+    @Nullable
     @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
     private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) {
         // Read at most MAX+1 bytes instead of trusting Content-Length — with chunked
@@ -770,9 +775,9 @@ public class JwksValidationServlet extends HttpServlet {
      */
     private record JwksValidationResult(
     boolean valid,
-    String error,
+    @Nullable String error,
     int keyCount,
-    List<String> algorithms
+    @Nullable List<String> algorithms
     ) {
         public static JwksValidationResult success(int keyCount, List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);
@@ -786,6 +791,7 @@ public class JwksValidationServlet extends HttpServlet {
             return valid;
         }
 
+        @Nullable
         public String getError() {
             return error;
         }
@@ -794,6 +800,7 @@ public class JwksValidationServlet extends HttpServlet {
             return keyCount;
         }
 
+        @Nullable
         public List<String> getAlgorithms() {
             return algorithms;
         }

@@ -31,6 +31,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -86,6 +87,7 @@ public class JwtVerificationServlet extends HttpServlet {
             .securityEventCounter(new SecurityEventCounter())
             .build();
 
+    @Nullable
     private transient JwtValidationService validationService;
 
     /**
@@ -114,6 +116,19 @@ public class JwtVerificationServlet extends HttpServlet {
                     .getAttribute("nifi-web-configuration-context");
             validationService = new JwtValidationService(configContext);
         }
+    }
+
+    /**
+     * Returns the validation service, or throws when it has not been published yet. {@link #init()}
+     * and the injecting constructor set it before any request is served; this guard keeps the
+     * reference non-null for the {@code @NullMarked} contract without a redundant defensive branch.
+     */
+    private JwtValidationService requireService() {
+        JwtValidationService service = validationService;
+        if (service == null) {
+            throw new IllegalStateException("JWT validation service is unavailable");
+        }
+        return service;
     }
 
     @Override
@@ -219,7 +234,7 @@ public class JwtVerificationServlet extends HttpServlet {
             HttpServletRequest req) throws RequestException {
 
         try {
-            return validationService.verifyToken(
+            return requireService().verifyToken(
                     verificationRequest.token(),
                     verificationRequest.processorId(),
                     req
@@ -271,7 +286,7 @@ public class JwtVerificationServlet extends HttpServlet {
         addCollectionField(builder, "scopes", result.getScopes());
         addCollectionField(builder, "roles", result.getRoles());
 
-        if (result.isValid() && result.getClaims() != null) {
+        if (result.isValid()) {
             builder.add(JSON_KEY_CLAIMS, mapToJsonObject(result.getClaims()));
         } else {
             builder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
@@ -393,7 +408,7 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     private static void addCollectionField(JsonObjectBuilder builder, String fieldName, List<String> values) {
-        if (values != null && !values.isEmpty()) {
+        if (!values.isEmpty()) {
             JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
             values.forEach(arrayBuilder::add);
             builder.add(fieldName, arrayBuilder);

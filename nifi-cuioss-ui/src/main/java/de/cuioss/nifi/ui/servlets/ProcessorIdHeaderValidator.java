@@ -26,6 +26,7 @@ import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonWriterFactory;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -63,7 +64,7 @@ final class ProcessorIdHeaderValidator {
      * @param value the candidate processor ID
      * @return {@code true} when the value matches the identifier allow-list
      */
-    static boolean isValidIdentifier(String value) {
+    static boolean isValidIdentifier(@Nullable String value) {
         return value != null && PROCESSOR_ID_PATTERN.matcher(value).matches();
     }
 

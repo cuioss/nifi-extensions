@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.ClusterRequestException;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -129,6 +130,8 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String KEY_HEADERS = "headers";
     private static final String CHARSET_UTF8 = "UTF-8";
     private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
+    /** Placeholder for the processor ID in fail-secure error logs when it cannot be resolved. */
+    private static final String UNKNOWN = "unknown";
 
     /**
      * Cached gateway endpoint (port plus protocol) by processor ID. Storing both in one
@@ -161,6 +164,7 @@ public class GatewayProxyServlet extends HttpServlet {
         urlPathValidator = PipelineFactory.createUrlPathPipeline(secConfig, counter);
     }
 
+    @Nullable
     private transient NiFiWebConfigurationContext configContext;
 
     @Override
@@ -168,6 +172,20 @@ public class GatewayProxyServlet extends HttpServlet {
         super.init();
         configContext = (NiFiWebConfigurationContext) getServletContext()
                 .getAttribute("nifi-web-configuration-context");
+    }
+
+    /**
+     * Returns the NiFi web configuration context, or throws when it has not been published yet.
+     * Every request entry point calls {@link #requireConfigContext} first, so this guard only
+     * covers the servlet-lifecycle window before {@link #init()} runs; it keeps the config reads
+     * non-null for the {@code @NullMarked} contract without a redundant per-call defensive branch.
+     */
+    private NiFiWebConfigurationContext requireContext() {
+        NiFiWebConfigurationContext ctx = configContext;
+        if (ctx == null) {
+            throw new IllegalStateException("NiFi web configuration context is unavailable");
+        }
+        return ctx;
     }
 
     @Override
@@ -232,11 +250,11 @@ public class GatewayProxyServlet extends HttpServlet {
         } catch (ClusterRequestException | IllegalStateException e) {
             // Fail-secure: a NiFi cluster-request failure (or unexpected component-state error)
             // while resolving config must not escape as a container 500 page.
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway configuration unavailable");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
         }
@@ -276,11 +294,11 @@ public class GatewayProxyServlet extends HttpServlet {
         } catch (ClusterRequestException | IllegalStateException e) {
             // Fail-secure: a NiFi cluster-request failure (or unexpected component-state error)
             // while resolving config must not escape as a container 500 page.
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway configuration unavailable");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
         }
@@ -358,12 +376,10 @@ public class GatewayProxyServlet extends HttpServlet {
     private void writeTestResponse(HttpServletResponse resp, GatewayResponse gatewayResp) throws IOException {
         JsonObjectBuilder result = Json.createObjectBuilder()
                 .add("status", gatewayResp.statusCode())
-                .add("body", gatewayResp.body() != null ? gatewayResp.body() : "");
+                .add("body", gatewayResp.body());
 
         JsonObjectBuilder respHeaders = Json.createObjectBuilder();
-        if (gatewayResp.headers() != null) {
-            gatewayResp.headers().forEach(respHeaders::add);
-        }
+        gatewayResp.headers().forEach(respHeaders::add);
         result.add(KEY_HEADERS, respHeaders);
 
         resp.setContentType(CONTENT_TYPE_JSON);
@@ -399,14 +415,12 @@ public class GatewayProxyServlet extends HttpServlet {
      * @param processorId the NiFi processor UUID
      * @param request     the current HTTP servlet request (for authentication context)
      * @return the resolved gateway endpoint
-     * @throws IOException if unable to fetch component config
      */
-    private GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request)
-            throws IOException {
+    private GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request) {
         GatewayEndpoint cached = endpointCache.get(processorId);
         if (cached != null) return cached;
 
-        var reader = new ComponentConfigReader(configContext);
+        var reader = new ComponentConfigReader(requireContext());
         var config = reader.getComponentConfig(processorId, request);
         Map<String, String> properties = config.properties();
 
@@ -449,7 +463,7 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     protected Map<String, String> resolveProcessorProperties(String processorId,
             HttpServletRequest request) throws IOException {
-        var reader = new ComponentConfigReader(configContext);
+        var reader = new ComponentConfigReader(requireContext());
         return reader.getProcessorProperties(processorId, request);
     }
 
@@ -463,7 +477,7 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     protected ComponentConfigReader.ComponentConfig resolveComponentConfig(String processorId,
             HttpServletRequest request) throws IOException {
-        var reader = new ComponentConfigReader(configContext);
+        var reader = new ComponentConfigReader(requireContext());
         return reader.getComponentConfig(processorId, request);
     }
 
@@ -486,7 +500,7 @@ public class GatewayProxyServlet extends HttpServlet {
                     .uri(URI.create(url))
                     .timeout(HTTP_TIMEOUT)
                     .GET();
-            if (accept != null && !accept.isBlank()) {
+            if (!accept.isBlank()) {
                 builder.header("Accept", accept);
             }
 
@@ -511,7 +525,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected GatewayResponse executeGatewayRequest(String url, String method,
-            Map<String, String> headers, String body) throws IOException {
+            Map<String, String> headers, @Nullable String body) throws IOException {
         try {
             HttpClient client = ComponentConfigReader.buildHttpClient();
 
@@ -557,7 +571,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException on communication error
      */
     protected IdpResponse executeIdpRequest(String url, String method,
-            String contentType, String body) throws IOException {
+            @Nullable String contentType, @Nullable String body) throws IOException {
         try {
             HttpClient client = ComponentConfigReader.buildHttpClient();
 
@@ -711,7 +725,7 @@ public class GatewayProxyServlet extends HttpServlet {
             IdpResponse idpResp = executeIdpRequest(discoveryUrl, "GET",
                     null, null);
 
-            if (idpResp.statusCode() != 200 || idpResp.body() == null) {
+            if (idpResp.statusCode() != 200) {
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
                         "OIDC discovery failed (HTTP " + idpResp.statusCode() + ")");
                 return;
@@ -772,7 +786,7 @@ public class GatewayProxyServlet extends HttpServlet {
      * Parses the IDP token response and adds fields to the result builder.
      */
     private static void parseTokenResponse(IdpResponse idpResp, JsonObjectBuilder result) {
-        if (idpResp.statusCode() == 200 && idpResp.body() != null) {
+        if (idpResp.statusCode() == 200) {
             try (var jsonReader = JSON_READER.createReader(
                          new StringReader(idpResp.body()))) {
                 JsonObject tokenResponse = jsonReader.readObject();
@@ -844,7 +858,7 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     protected Map<String, String> resolveControllerServiceProperties(
             String csId, HttpServletRequest request) {
-        var reader = new ComponentConfigReader(configContext);
+        var reader = new ComponentConfigReader(requireContext());
         return reader.getControllerServicePropertiesViaRest(csId, request);
     }
 
@@ -1073,13 +1087,13 @@ public class GatewayProxyServlet extends HttpServlet {
         }
     }
 
-    private static void addNonBlankString(JsonObjectBuilder obj, String key, String value) {
+    private static void addNonBlankString(JsonObjectBuilder obj, String key, @Nullable String value) {
         if (value != null && !value.isBlank()) {
             obj.add(key, value);
         }
     }
 
-    private static void addOptionalInt(JsonObjectBuilder obj, String key, String value) {
+    private static void addOptionalInt(JsonObjectBuilder obj, String key, @Nullable String value) {
         if (value == null || value.isBlank()) {
             return;
         }
@@ -1134,7 +1148,7 @@ public class GatewayProxyServlet extends HttpServlet {
         return endpoint;
     }
 
-    private static JsonArrayBuilder buildStringArray(String commaSeparated) {
+    private static JsonArrayBuilder buildStringArray(@Nullable String commaSeparated) {
         JsonArrayBuilder array = Json.createArrayBuilder();
         if (commaSeparated != null && !commaSeparated.isBlank()) {
             for (String item : commaSeparated.split(",")) {
@@ -1203,6 +1217,7 @@ public class GatewayProxyServlet extends HttpServlet {
      *         has already been written); callers MUST return early on a {@code null} result
      * @throws IOException if reading the request stream fails
      */
+    @Nullable
     private JsonObject readLimitedJsonBody(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
         byte[] body = req.getInputStream().readNBytes(MAX_REQUEST_BODY_SIZE + 1);
