@@ -82,12 +82,17 @@
           "auto_rebase_threshold": "no_overlap_only"
         },
         "default:pre-push-quality-gate": {},
+        "default:pre-submission-self-review": {
+          "self_review": "auto",
+          "drop_review_on_scope_gate": false
+        },
         "default:finalize-step-simplify": {
           "simplify": "auto"
         },
+        "default:finalize-step-security-audit": {
+          "security_audit": "auto"
+        },
         "default:push": {},
-        "default:create-pr": {},
-        "default:ci-verify": {},
         "plan-marshall:automatic-review": {
           "review_bot_buffer_seconds": 180,
           "re_review_on_loopback": false,
@@ -97,6 +102,9 @@
           "review_rate_window_await": false,
           "review_rate_window_timeout_seconds": 3600
         },
+        "default:create-pr": {},
+        "default:ci-verify": {},
+        "default:architecture-refresh": {},
         "default:sonar-roundtrip": {
           "touched_file_cleanup": "new_code_only",
           "do_transition": false,
@@ -111,22 +119,15 @@
           "merge_hold_window": "full_window_release_at_waits",
           "merge_hold_budget_seconds": 3600,
           "use_merge_queue": false,
-          "admin_merge_on_stuck_state": false
+          "admin_merge_on_stuck_state": false,
+          "pre_merge_comment_barrier": "fail_into_loopback"
         },
-        "default:record-metrics": {},
-        "default:finalize-step-print-phase-breakdown": {},
-        "default:archive-plan": {},
-        "default:finalize-step-security-audit": {
-          "security_audit": "auto"
-        },
-        "default:architecture-refresh": {},
         "default:finalize-step-preference-emitter": {
           "preference_min_recurrence": 2
         },
-        "default:pre-submission-self-review": {
-          "self_review": "auto",
-          "drop_review_on_scope_gate": false
-        }
+        "default:record-metrics": {},
+        "default:finalize-step-print-phase-breakdown": {},
+        "default:archive-plan": {}
       },
       "effort": {
         "default": "level-3",
@@ -197,7 +198,9 @@
       "feature/",
       "fix/",
       "chore/"
-    ]
+    ],
+    "pr_strategy": "compact",
+    "pr_compact_max_changed_files": 150
   },
   "providers": [
     {
@@ -267,7 +270,7 @@
       "lessons_superseded_days": 0,
       "temp_on_maintenance": true
     },
-    "provisioned_version": "0.1.1090",
-    "config_seed_fingerprint": "dde4bc0c"
+    "provisioned_version": "0.1.1101",
+    "config_seed_fingerprint": "d30886a0"
   }
 }
