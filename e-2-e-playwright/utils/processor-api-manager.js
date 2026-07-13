@@ -983,14 +983,43 @@ export class ProcessorApiManager {
    * @returns {Promise<boolean>} true when the processor is gone (deleted or 404)
    */
   async removeProcessorById(processorId) {
-    const details = await this.getProcessorDetails(processorId);
-    if (!details) return true; // already gone
-    const version = details.revision?.version || 0;
-    const result = await this.makeApiCall(
-      `/nifi-api/processors/${processorId}?version=${version}`,
-      { method: 'DELETE' }
-    );
-    return result.ok || result.status === 404;
+    const initial = await this.getProcessorDetails(processorId);
+    if (!initial) return true; // already gone
+
+    // NiFi rejects a processor DELETE (409) while the processor is RUNNING or
+    // still has active threads terminating. Ensure it is stopped, then poll
+    // until the thread count settles before attempting deletion.
+    const initialState =
+      initial.status?.aggregateSnapshot?.runStatus || initial.component?.state || '';
+    if (initialState.toUpperCase() === 'RUNNING') {
+      await this.setProcessorRunStatusById(processorId, 'STOPPED');
+    }
+
+    const deadline = Date.now() + TIMEOUTS.MEDIUM;
+    while (Date.now() < deadline) {
+      const d = await this.getProcessorDetails(processorId);
+      if (!d) return true; // disappeared while we polled
+      const runStatus =
+        d.status?.aggregateSnapshot?.runStatus || d.component?.state || '';
+      const activeThreads = d.status?.aggregateSnapshot?.activeThreadCount ?? 0;
+      if (runStatus.toUpperCase() !== 'RUNNING' && activeThreads === 0) break;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+
+    // Delete with a freshly-fetched revision, retrying once on a 409 (a stale
+    // revision or a still-settling thread count).
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const details = await this.getProcessorDetails(processorId);
+      if (!details) return true; // already gone
+      const version = details.revision?.version || 0;
+      const result = await this.makeApiCall(
+        `/nifi-api/processors/${processorId}?version=${version}`,
+        { method: 'DELETE' }
+      );
+      if (result.ok || result.status === 404) return true;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    return false;
   }
 }
 
