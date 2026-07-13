@@ -10,8 +10,8 @@ maven-build:
   java-versions: '["21","25"]'
   java-version: '21'
   enable-snapshot-deploy: true
-  maven-profiles-snapshot: 'release-snapshot,javadoc'
-  maven-profiles-release: 'release,javadoc'
+  maven-profiles-snapshot: 'release-snapshot'
+  maven-profiles-release: 'release'
   npm-cache: true
 
 sonar:

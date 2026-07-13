@@ -6,6 +6,13 @@ on:
   # pull-request analysis). The reusable workflow's gate skips a push build when an
   # open PR already covers that commit, so there is no push/PR duplicate — no caller
   # `if:` is needed. The gate reads open PRs, hence `pull-requests: read` below.
+  # IMPORTANT — branch-name constraint for contributors:
+  # Only branches matching the prefixes below trigger the push build (the
+  # required `build` status check). A branch on any OTHER prefix (e.g.
+  # `refactor/*`, `docs/*`, `test/*`) silently gets NO build check, which then
+  # BLOCKS auto-merge because the required check never reports. Always name
+  # feature branches with one of: `feature/*`, `fix/*`, `chore/*`, `release/*`
+  # (or `dependabot/**`, `main`). Add any new prefix here before using it.
   push:
     branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
   pull_request:
