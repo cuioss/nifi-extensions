@@ -206,15 +206,15 @@ test.describe("Configuration Tab", () => {
         await expect(removeButton).toBeVisible({ timeout: 5000 });
         await removeButton.click();
 
-        // Handle confirmation dialog if it appears
+        // The remove button always opens a confirmation dialog; wait for it rather
+        // than probing with a short timeout (slower CI can take >2s to render it).
         const confirmButton = customUIFrame
             .locator(
                 '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
             )
             .first();
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-        }
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
 
         // Verify the issuer "delete-me-issuer" is removed. Removal is async
         // (confirm dialog → API update → re-render); a one-shot read of the input
@@ -389,14 +389,16 @@ test.describe("Configuration Tab", () => {
         // Remove first added issuer (issuer-one) via its own Remove button
         await firstForm.getByRole("button", { name: "Remove" }).click();
 
+        // The remove button always opens a confirmation dialog; wait for it rather
+        // than probing with a short timeout (slower CI can take >2s to render it,
+        // which previously skipped the confirm and left the issuer in place).
         const confirmButton = customUIFrame
             .locator(
                 '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
             )
             .first();
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-        }
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
 
         // Verify only issuer-two remains among the added issuers. Removal is async
         // (confirm → API update → re-render), so poll rather than reading input
@@ -414,7 +416,7 @@ test.describe("Configuration Tab", () => {
         };
         await expect
             .poll(async () => (await readIssuerNames()).includes("issuer-one"), {
-                timeout: 10000,
+                timeout: 15000,
             })
             .toBe(false);
         expect(await readIssuerNames()).toContain("issuer-two");
@@ -422,10 +424,8 @@ test.describe("Configuration Tab", () => {
         // Clean up: remove issuer-two — it's now the last form
         const lastForm = issuerForms.last();
         await lastForm.getByRole("button", { name: "Remove" }).click();
-
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-        }
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
     });
 
     test("should save issuer with inline JWKS content", async ({
