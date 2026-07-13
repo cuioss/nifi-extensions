@@ -209,6 +209,9 @@ class MultiIssuerJWTTokenAuthenticatorTest {
             testRunner.assertTransferCount(Relationships.SUCCESS, 1);
             MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.SUCCESS).getFirst();
             flowFile.assertAttributeEquals(JwtAttributes.Token.PRESENT, "false");
+            // A missing token routed to success is an accepted outcome, not an error, so the
+            // error-reason attribute must not be written onto the success FlowFile.
+            flowFile.assertAttributeNotExists(JwtAttributes.Error.REASON);
 
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.INFO,
                     AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED.resolveIdentifierString());
@@ -293,6 +296,23 @@ class MultiIssuerJWTTokenAuthenticatorTest {
 
             testRunner.assertTransferCount(Relationships.SUCCESS, 0);
             testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+        }
+
+        @Test
+        @DisplayName("Should enforce the max size in UTF-8 bytes, not UTF-16 characters")
+        void shouldEnforceMaxSizeInBytes() {
+            // Five euro signs: 5 UTF-16 chars but 15 UTF-8 bytes. With a 10-byte limit the token
+            // is under the character count yet over the byte budget, so the byte-based check must
+            // reject it (a char-based check would wrongly let it through to validation).
+            mockConfigService.configureMaxTokenSize(10);
+            enqueueWithToken("€€€€€");
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 1);
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship(Relationships.AUTHENTICATION_FAILED).getFirst();
+            flowFile.assertAttributeEquals(JwtAttributes.Error.CODE, "AUTH-003");
         }
 
         @Test
@@ -395,6 +415,25 @@ class MultiIssuerJWTTokenAuthenticatorTest {
                                     AuthLogMessages.INFO.TOKEN_VALIDATION_METRICS.resolveIdentifierString())
                             .isEmpty(),
                     "Metrics must not be logged before LOG_METRICS_INTERVAL FlowFiles are processed");
+        }
+
+        @Test
+        @DisplayName("Should yield and keep the FlowFile queued when the config service is unavailable")
+        void shouldYieldAndRequeueWhenServiceUnavailable() {
+            // Controller service unavailable: validateToken throws IllegalStateException. The
+            // processor must yield and roll back so the FlowFile stays queued for retry, rather
+            // than routing it to SUCCESS or AUTHENTICATION_FAILED.
+            mockConfigService.configureServiceUnavailable();
+            enqueueWithToken("a.b.c");
+
+            testRunner.run();
+
+            testRunner.assertTransferCount(Relationships.SUCCESS, 0);
+            testRunner.assertTransferCount(Relationships.AUTHENTICATION_FAILED, 0);
+            testRunner.assertQueueNotEmpty();
+
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN,
+                    AuthLogMessages.WARN.TOKEN_VALIDATION_FAILED_MSG.resolveIdentifierString());
         }
 
         @Test

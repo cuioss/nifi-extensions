@@ -29,14 +29,12 @@ import de.cuioss.nifi.jwt.util.TokenClaimMapper;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.tools.logging.CuiLogger;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
 import org.apache.nifi.annotation.behavior.ReadsAttributes;
 import org.apache.nifi.annotation.behavior.WritesAttribute;
 import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
-import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
@@ -44,6 +42,7 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,12 +63,14 @@ import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships
  * @see JwtIssuerConfigService
  */
 @SuppressWarnings("NotNullFieldNotInitialized")
-// Initialized in onScheduled, cleared in onStopped
+// i18nResolver is initialized in init(); the remaining fields are initialized in onScheduled.
+// The NiFi lifecycle guarantees onTrigger runs only after onScheduled, so the fields are always
+// set before use; onStopped resets the processed-file counter but intentionally leaves the fields
+// in place so a subsequent onScheduled restart can reinitialize them.
 @Tags({"jwt", "oauth", "authentication", "authorization", "security", "token"})
 @CapabilityDescription("Validates JWT tokens from multiple issuers using a shared JWT Issuer Config Service. " +
         "Reads a raw JWT token from a configurable FlowFile attribute, validates it against configured issuers, " +
         "and routes flow files based on validation results.")
-@SeeAlso()
 @ReadsAttributes({
         @ReadsAttribute(attribute = "jwt.token",
                 description = "FlowFile attribute containing the raw JWT token (configurable via Token Attribute property)")
@@ -82,7 +83,6 @@ import static de.cuioss.nifi.processors.auth.JwtProcessorConstants.Relationships
         @WritesAttribute(attribute = JwtAttributes.Error.REASON, description = "Error reason if validation failed"),
         @WritesAttribute(attribute = JwtAttributes.Error.CATEGORY, description = "Error category if validation failed")
 })
-@EqualsAndHashCode(callSuper = true)
 public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
     private static final CuiLogger LOGGER = new CuiLogger(MultiIssuerJWTTokenAuthenticator.class);
@@ -120,7 +120,6 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 .asControllerService(JwtIssuerConfigService.class);
         authorizationRequirements = AuthorizationRequirements.from(context);
         tokenAttributeName = context.getProperty(Properties.TOKEN_ATTRIBUTE).getValue();
-        LOGGER.info(AuthLogMessages.INFO.PROCESSOR_INITIALIZED);
     }
 
     @OnStopped
@@ -202,7 +201,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
     private boolean validateTokenFormat(ProcessSession session, FlowFile flowFile, String token) {
         int maxTokenSize = jwtConfigService.getAuthenticationConfig().maxTokenSize();
 
-        if (token.length() > maxTokenSize) {
+        // Enforce the limit in actual UTF-8 bytes so the check agrees with the "bytes" message
+        // and configuration semantics (String.length() would count UTF-16 code units instead).
+        int tokenByteSize = token.getBytes(StandardCharsets.UTF_8).length;
+        if (tokenByteSize > maxTokenSize) {
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED, maxTokenSize);
             handleError(session, flowFile, "AUTH-003",
                     i18nResolver.getTranslatedString(JwtTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
@@ -220,8 +222,9 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
 
         if (!requireValidToken) {
             LOGGER.info(AuthLogMessages.INFO.NO_TOKEN_NOT_REQUIRED);
+            // Route to success without an error attribute: a missing token is an accepted outcome
+            // here, not an error, so jwt.error.reason must not be set on the success FlowFile.
             Map<String, String> attributes = new HashMap<>();
-            attributes.put(JwtAttributes.Error.REASON, "No token provided");
             attributes.put(JwtAttributes.Token.PRESENT, "false");
             flowFile = session.putAllAttributes(flowFile, attributes);
             session.transfer(flowFile, Relationships.SUCCESS);
