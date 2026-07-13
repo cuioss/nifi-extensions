@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 /**
- * Utility classes for JWT validation and error handling.
+ * Public JWT issuer configuration API shared across NiFi extension modules.
+ * Contains the {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService}
+ * controller-service interface and the issuer-invariant
+ * {@link de.cuioss.nifi.jwt.config.JwtAuthenticationConfig} value object; the
+ * implementation of this package lives in the {@code nifi-cuioss-common} artifact.
  */
 @NullMarked
-package de.cuioss.nifi.jwt.util;
+package de.cuioss.nifi.jwt.config;
 
 import org.jspecify.annotations.NullMarked;

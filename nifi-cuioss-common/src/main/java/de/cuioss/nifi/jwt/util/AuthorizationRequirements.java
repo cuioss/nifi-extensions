@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.jwt.util;
 
+import de.cuioss.nifi.jwt.JwtAttributes;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.util.StandardValidators;
@@ -67,7 +68,7 @@ Set<String> requiredScopes) {
      * When false, flow files without a token are routed to SUCCESS.
      */
     public static final PropertyDescriptor REQUIRE_VALID_TOKEN = new PropertyDescriptor.Builder()
-            .name("jwt.validation.require.valid.token")
+            .name(JwtAttributes.Properties.Validation.REQUIRE_VALID_TOKEN)
             .displayName("Require Valid Token")
             .description("Whether to require a valid token for processing. "
                     + "When false, flow files without a token are routed to success.")
@@ -81,7 +82,7 @@ Set<String> requiredScopes) {
      * If empty, no role check is performed.
      */
     public static final PropertyDescriptor REQUIRED_ROLES = new PropertyDescriptor.Builder()
-            .name("jwt.authorization.required.roles")
+            .name(JwtAttributes.Properties.Authorization.REQUIRED_ROLES)
             .displayName("Required Roles")
             .description("Comma-separated list of roles the token must carry. "
                     + "If empty, no role check is performed.")
@@ -94,7 +95,7 @@ Set<String> requiredScopes) {
      * If empty, no scope check is performed.
      */
     public static final PropertyDescriptor REQUIRED_SCOPES = new PropertyDescriptor.Builder()
-            .name("jwt.authorization.required.scopes")
+            .name(JwtAttributes.Properties.Authorization.REQUIRED_SCOPES)
             .displayName("Required Scopes")
             .description("Comma-separated list of scopes the token must carry. "
                     + "If empty, no scope check is performed.")

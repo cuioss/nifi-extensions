@@ -90,12 +90,6 @@ public final class JwtLogMessages {
                 .template("Issuer %s is disabled, skipping")
                 .build();
 
-        public static final LogRecord TOKEN_VALIDATOR_INITIALIZED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(10)
-                .template("TokenValidator successfully initialized with %s issuers")
-                .build();
-
         public static final LogRecord CONTROLLER_SERVICE_ENABLED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(11)
@@ -107,28 +101,10 @@ public final class JwtLogMessages {
                 .identifier(12)
                 .template("JwtIssuerConfigService disabled, resources cleaned up")
                 .build();
-
-        public static final LogRecord METRICS_SNAPSHOT_CREATED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(14)
-                .template("Created metrics snapshot: %s total validations")
-                .build();
-
-        public static final LogRecord VALIDATION_SUCCESS = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(15)
-                .template("Token validated successfully for issuer '%s', subject '%s'")
-                .build();
     }
 
     @UtilityClass
     public static final class WARN {
-        public static final LogRecord AUTHORIZATION_BYPASS_SECURITY_WARNING = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(100)
-                .template("SECURITY WARNING: Authorization bypassed for token with subject: %s")
-                .build();
-
         public static final LogRecord INVALID_CONFIG_VALUE = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(101)
@@ -153,12 +129,6 @@ public final class JwtLogMessages {
                 .template("Issuer %s has no JWKS source configured (URL, file, or content), skipping")
                 .build();
 
-        public static final LogRecord CONFIG_FILE_NOT_FOUND = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(105)
-                .template("Configuration file not found at specified path: %s")
-                .build();
-
         public static final LogRecord UNSUPPORTED_CONFIG_FORMAT = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(106)
@@ -175,12 +145,6 @@ public final class JwtLogMessages {
                 .prefix(PREFIX)
                 .identifier(108)
                 .template("No valid issuer configurations found. Token validation will fail.")
-                .build();
-
-        public static final LogRecord TOKEN_VALIDATION_FAILED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(109)
-                .template("Token validation failed: %s")
                 .build();
 
         public static final LogRecord JWKS_HOST_NOT_RESOLVABLE = LogRecordModel.builder()
@@ -242,12 +206,6 @@ public final class JwtLogMessages {
                 .prefix(PREFIX)
                 .identifier(203)
                 .template("Error creating issuer configuration")
-                .build();
-
-        public static final LogRecord TOKEN_VALIDATION_ERROR = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(204)
-                .template("Error during token validation: %s")
                 .build();
 
         public static final LogRecord CONTROLLER_SERVICE_ENABLE_FAILED = LogRecordModel.builder()

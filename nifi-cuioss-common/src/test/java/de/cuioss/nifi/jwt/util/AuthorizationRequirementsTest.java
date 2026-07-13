@@ -16,6 +16,7 @@
  */
 package de.cuioss.nifi.jwt.util;
 
+import de.cuioss.nifi.jwt.JwtAttributes;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
@@ -54,6 +55,25 @@ class AuthorizationRequirementsTest {
         @Override
         public Set<Relationship> getRelationships() {
             return Set.of();
+        }
+    }
+
+    @Nested
+    @DisplayName("Property Descriptor Constants")
+    class PropertyDescriptorConstantsTest {
+
+        @Test
+        @DisplayName("Should wire descriptor names to the shared JwtAttributes constants")
+        void shouldWireDescriptorNamesToConstants() {
+            assertEquals(JwtAttributes.Properties.Validation.REQUIRE_VALID_TOKEN,
+                    AuthorizationRequirements.REQUIRE_VALID_TOKEN.getName(),
+                    "Require-valid-token descriptor must use the shared validation constant");
+            assertEquals(JwtAttributes.Properties.Authorization.REQUIRED_ROLES,
+                    AuthorizationRequirements.REQUIRED_ROLES.getName(),
+                    "Required-roles descriptor must use the shared authorization constant");
+            assertEquals(JwtAttributes.Properties.Authorization.REQUIRED_SCOPES,
+                    AuthorizationRequirements.REQUIRED_SCOPES.getName(),
+                    "Required-scopes descriptor must use the shared authorization constant");
         }
     }
 
