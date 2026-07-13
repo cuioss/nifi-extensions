@@ -140,9 +140,11 @@ const getCsrfToken = () => {
         const match = cookieString.split(';')
             .map(c => c.trim())
             .find(c => c.startsWith(cookieName));
-        // Slice at the name length rather than split('='): a base64 token may itself
-        // contain '=' padding, which split('=')[1] would truncate.
-        return match ? match.slice(cookieName.length) : null;
+        // Slice after the first '=' (the name/value separator) rather than split('='):
+        // a base64 token may itself contain '=' padding, which split('=')[1] would
+        // truncate. Slicing at indexOf('=') is robust regardless of whether cookieName
+        // carries its own trailing '='.
+        return match ? match.slice(match.indexOf('=') + 1) : null;
     };
     try {
         const token = extract(document.cookie);

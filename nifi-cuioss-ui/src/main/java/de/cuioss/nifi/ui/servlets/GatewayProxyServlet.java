@@ -1199,9 +1199,9 @@ public class GatewayProxyServlet extends HttpServlet {
      * transfer encoding {@code getContentLength()} is -1, which would bypass the limit.
      *
      * @return the parsed JSON object, or {@code null} when the body exceeds the cap (a 413 error
-     *         has already been written to {@code resp} in that case)
-     * @throws IOException           if reading the request stream fails
-     * @throws jakarta.json.JsonException if the body is not well-formed JSON
+     *         has already been written to {@code resp}) or is not well-formed JSON (a 400 error
+     *         has already been written); callers MUST return early on a {@code null} result
+     * @throws IOException if reading the request stream fails
      */
     private JsonObject readLimitedJsonBody(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
@@ -1213,6 +1213,12 @@ public class GatewayProxyServlet extends HttpServlet {
         }
         try (JsonReader reader = JSON_READER.createReader(new ByteArrayInputStream(body))) {
             return reader.readObject();
+        } catch (JsonException e) {
+            // A malformed body throws the unchecked JsonException; honour the JSON error
+            // contract with a clean 400 rather than letting it propagate to a container 500.
+            sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
+                    MSG_INVALID_JSON + ": " + e.getMessage());
+            return null;
         }
     }
 
