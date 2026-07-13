@@ -189,6 +189,33 @@ public final class JwtLogMessages {
                 .template("Could not resolve JWKS host '%s' for issuer %s while checking the "
                         + "private-network restriction; deferring to the JWKS loader")
                 .build();
+
+        public static final LogRecord CONFIG_FILE_PARSE_FALLBACK = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(111)
+                .template("Configuration file could not be parsed; continuing with "
+                        + "environment-variable configuration only")
+                .build();
+
+        public static final LogRecord UNKNOWN_JWKS_TYPE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(112)
+                .template("Unknown jwks-type '%s' for issuer %s; expected 'url' or 'file'. "
+                        + "Inferring the type from the configured JWKS source instead")
+                .build();
+
+        public static final LogRecord JWKS_TYPE_URL_WITH_FILE_SOURCE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(113)
+                .template("Issuer %s declares jwks-type 'url' but only a jwks-file is configured; "
+                        + "treating the source as a file path")
+                .build();
+
+        public static final LogRecord INVALID_MAX_TOKEN_SIZE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(114)
+                .template("Non-positive maximum token size '%s' for %s, falling back to default %s")
+                .build();
     }
 
     @UtilityClass

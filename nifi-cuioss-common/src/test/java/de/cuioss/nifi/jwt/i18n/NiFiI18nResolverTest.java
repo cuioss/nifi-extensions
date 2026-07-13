@@ -139,7 +139,8 @@ class NiFiI18nResolverTest {
 
             String result = resolver.getTranslatedString(nonExistentKey, arg);
 
-            // Assert — lenientFormat appends args even when key is returned as-is
+            // Assert — a missing, placeholder-free key is returned unchanged;
+            // MessageFormat leaves it verbatim rather than appending the arguments
             assertTrue(result.contains(nonExistentKey),
                     "Should contain the key when not found in bundle");
         }
@@ -203,6 +204,64 @@ class NiFiI18nResolverTest {
             String result = resolver.getTranslatedString(missingKey);
 
             assertEquals(missingKey, result, "Should return key when missing");
+        }
+    }
+
+    @Nested
+    @DisplayName("MessageFormat Placeholder Substitution")
+    class MessageFormatSubstitutionTests {
+
+        @Test
+        @DisplayName("Should substitute {0} and {1} placeholders with the supplied arguments")
+        void shouldSubstitutePlaceholders() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.dynamic.description", "jwks-url", "myIssuer");
+
+            assertEquals("Configuration property 'jwks-url' for issuer 'myIssuer'", result,
+                    "MessageFormat placeholders must be replaced with the supplied arguments");
+            assertFalse(result.contains("{0}") || result.contains("{1}"),
+                    "No raw placeholders should remain after substitution");
+        }
+
+        @Test
+        @DisplayName("Should collapse doubled single-quotes and substitute placeholders together")
+        void shouldRenderDoubledQuotesWithArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.jwks.url.description", "jwks-url", "myIssuer");
+
+            assertEquals(
+                    "Configuration property 'jwks-url' for issuer 'myIssuer' (URL to JWKS endpoint)",
+                    result,
+                    "Doubled single-quotes must collapse to one while placeholders are substituted");
+        }
+
+        @Test
+        @DisplayName("Should return the raw pattern verbatim when the arguments array is empty")
+        void shouldReturnPatternVerbatimForEmptyArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.dynamic.description", new Object[0]);
+
+            assertEquals("Configuration property ''{0}'' for issuer ''{1}''", result,
+                    "With no arguments the pattern must be returned untouched, without "
+                            + "MessageFormat quote processing");
+        }
+
+        @Test
+        @DisplayName("Should return a placeholder-free missing key unchanged when arguments are supplied")
+        void shouldReturnMissingKeyUnchangedWithArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+            String missingKey = "missing.key.without.placeholders";
+
+            String result = resolver.getTranslatedString(missingKey, "unusedArg");
+
+            assertEquals(missingKey, result,
+                    "A missing key has no placeholders, so MessageFormat returns it unchanged");
         }
     }
 }

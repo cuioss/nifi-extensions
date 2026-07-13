@@ -244,5 +244,24 @@ class StandardJwtIssuerConfigServiceTest {
                     () -> runner.enableControllerService(service));
             assertTrue(error.getMessage().contains("Failed to enable"));
         }
+
+        @Test
+        @DisplayName("Should remain safely disabled across repeated onDisabled calls")
+        void shouldRemainDisabledAcrossRepeatedDisable() {
+            // The onDisabled try/finally always clears lifecycle state, so a repeated
+            // disable is a safe no-op that keeps the service in the disabled contract.
+            StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
+
+            assertDoesNotThrow(service::onDisabled, "First disable must not throw");
+            assertDoesNotThrow(service::onDisabled, "Repeated disable must remain a safe no-op");
+
+            assertTrue(service.getSecurityEventCounter().isEmpty(),
+                    "Security counter must stay empty after repeated disable");
+            assertThrows(IllegalStateException.class, service::getAuthenticationConfig,
+                    "Auth config must remain unavailable after repeated disable");
+            assertThrows(IllegalStateException.class,
+                    () -> service.validateToken("some.token"),
+                    "Token validation must remain rejected after repeated disable");
+        }
     }
 }

@@ -27,7 +27,6 @@ import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
-import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
 import org.apache.nifi.annotation.behavior.SupportsSensitiveDynamicProperties;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -68,7 +67,6 @@ import java.util.stream.Collectors;
         "so that multiple processors can share the same JWT configuration.")
 @SupportsSensitiveDynamicProperties
 @RequiresInstanceClassLoading
-@EqualsAndHashCode(callSuper = true)
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
@@ -144,10 +142,13 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     );
 
     // --- Internal State ---
+    // Written on the @OnEnabled/@OnDisabled lifecycle thread and read by processor threads
+    // via validateToken()/getAuthenticationConfig(); declared volatile to establish a
+    // happens-before edge and safely publish the fully constructed instances.
 
-    @Nullable private TokenValidator tokenValidator;
-    @Nullable private JwtAuthenticationConfig authenticationConfig;
-    @Nullable private ConfigurationManager configurationManager;
+    @Nullable private volatile TokenValidator tokenValidator;
+    @Nullable private volatile JwtAuthenticationConfig authenticationConfig;
+    @Nullable private volatile ConfigurationManager configurationManager;
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -156,20 +157,13 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @Override
     protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(String propertyDescriptorName) {
-        if (propertyDescriptorName.startsWith(JwtConstants.ISSUER_PREFIX)) {
-            return new PropertyDescriptor.Builder()
-                    .name(propertyDescriptorName)
-                    .displayName(propertyDescriptorName)
-                    .description("Issuer configuration property")
-                    .required(false)
-                    .dynamic(true)
-                    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                    .build();
-        }
+        String description = propertyDescriptorName.startsWith(JwtConstants.ISSUER_PREFIX)
+                ? "Issuer configuration property"
+                : "Dynamic property";
         return new PropertyDescriptor.Builder()
                 .name(propertyDescriptorName)
                 .displayName(propertyDescriptorName)
-                .description("Dynamic property")
+                .description(description)
                 .required(false)
                 .dynamic(true)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -216,14 +210,20 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @OnDisabled
     public void onDisabled() {
-        if (tokenValidator != null) {
-            // Release the validator's background JWKS refresh resources
-            tokenValidator.close();
+        try {
+            TokenValidator validator = tokenValidator;
+            if (validator != null) {
+                // Release the validator's background JWKS refresh resources
+                validator.close();
+            }
+        } finally {
+            // Always null the lifecycle state and log cleanup, even if close() throws,
+            // so a failing close does not leave a stale validator reachable.
+            tokenValidator = null;
+            authenticationConfig = null;
+            configurationManager = null;
+            LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
         }
-        tokenValidator = null;
-        authenticationConfig = null;
-        configurationManager = null;
-        LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
     }
 
     @Override

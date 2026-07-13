@@ -16,6 +16,8 @@
  */
 package de.cuioss.nifi.jwt.config;
 
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -63,6 +65,29 @@ class ConfigurationManagerTest {
                     "Static properties should be empty");
             assertTrue(configManager.getIssuerProperties().isEmpty(),
                     "Issuer properties should be empty");
+        }
+    }
+
+    @Nested
+    @DisplayName("Base Path Normalization")
+    class BasePathNormalizationTests {
+
+        @Test
+        @DisplayName("Should load config when the base path has no trailing separator")
+        void shouldLoadConfigWhenBasePathHasNoTrailingSeparator(@TempDir Path tempDir) throws Exception {
+            Path confDir = createConfDir(tempDir);
+            Path configFile = confDir.resolve("cui-nifi-extensions.properties");
+            Files.writeString(configFile, "jwt.validation.max.token.size=32768\n");
+
+            // Base path deliberately WITHOUT a trailing separator; normalizeBasePath must
+            // append one so the relative conf/ path still composes correctly.
+            var configManager = new ConfigurationManager(tempDir.toString());
+
+            assertTrue(configManager.isConfigurationLoaded(),
+                    "Config must load even when the base path lacks a trailing separator");
+            assertEquals("32768",
+                    configManager.getProperty("jwt.validation.max.token.size").orElse(null),
+                    "Property must resolve through the normalized base path");
         }
     }
 
@@ -507,6 +532,21 @@ class ConfigurationManagerTest {
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "Malformed YAML should not be loaded");
+        }
+
+        @Test
+        @DisplayName("Should warn and not claim loaded when a present config file fails to parse")
+        void shouldWarnWhenConfigFileFailsToParse(@TempDir Path tempDir) throws Exception {
+            Path confDir = createConfDir(tempDir);
+            Path configFile = confDir.resolve("cui-nifi-extensions.yml");
+            // Unmatched quote makes SnakeYAML throw, so the file load reports FAILED.
+            Files.writeString(configFile, "key: 'unclosed string\nanother: line");
+
+            var configManager = new ConfigurationManager(basePath(tempDir));
+
+            assertFalse(configManager.isConfigurationLoaded(),
+                    "A file that fails to parse must not be reported as loaded");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "could not be parsed");
         }
     }
 

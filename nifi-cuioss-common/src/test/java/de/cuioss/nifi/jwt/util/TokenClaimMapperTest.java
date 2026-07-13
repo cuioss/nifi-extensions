@@ -112,6 +112,35 @@ class TokenClaimMapperTest {
                         "Scopes should not be present when no scope claim");
             }
         }
+
+        @Test
+        @DisplayName("Should preserve a non-standard 'scopes' claim under the jwt.content. prefix")
+        void shouldPreserveScopesClaimUnderContentPrefix() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            tokenHolder.withClaim("scopes", ClaimValue.forPlainString("read,write"));
+            var token = tokenHolder.asAccessTokenContent();
+
+            Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
+
+            assertEquals("read,write",
+                    attributes.get(JwtAttributes.Content.PREFIX + "scopes"),
+                    "The non-standard 'scopes' claim must be preserved under jwt.content., not dropped");
+        }
+
+        @Test
+        @DisplayName("Should still exclude the standard 'scope' claim from the jwt.content. prefix")
+        void shouldExcludeStandardScopeClaimFromContentPrefix() {
+            TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            tokenHolder.withClaim("scope", ClaimValue.forList("read write",
+                    List.of("read", "write")));
+            var token = tokenHolder.asAccessTokenContent();
+
+            Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
+
+            assertNull(attributes.get(JwtAttributes.Content.PREFIX + "scope"),
+                    "The standard 'scope' claim has a dedicated mapping and must not be duplicated "
+                            + "under jwt.content.");
+        }
     }
 
     @Nested
