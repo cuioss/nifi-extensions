@@ -779,7 +779,7 @@ public class JwksValidationServlet extends HttpServlet {
     int keyCount,
     @Nullable List<String> algorithms
     ) {
-        public static JwksValidationResult success(int keyCount, List<String> algorithms) {
+        public static JwksValidationResult success(int keyCount, @Nullable List<String> algorithms) {
             return new JwksValidationResult(true, null, keyCount, algorithms);
         }
 

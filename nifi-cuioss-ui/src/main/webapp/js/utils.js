@@ -958,7 +958,7 @@ export const formatDate = (d) => {
 // A DNS label: an alphanumeric, optional internal hyphens, up to 63 chars total.
 const HOST_LABEL = '[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
 // host (label[.label]*) + optional :port + optional path/query/fragment + end.
-const HOST_PORT_PATH = `${HOST_LABEL}(\\.${HOST_LABEL})*(:\\d+)?([/?#].*)?$`;
+const HOST_PORT_PATH = String.raw`${HOST_LABEL}(\.${HOST_LABEL})*(:\d+)?([/?#].*)?$`;
 const RE_URL = new RegExp(`^https?://${HOST_PORT_PATH}`);
 const RE_URL_HTTPS = new RegExp(`^https://${HOST_PORT_PATH}`);
 const RE_SAFE_NAME = /^[a-zA-Z0-9._-]+$/;
