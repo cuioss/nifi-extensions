@@ -952,8 +952,15 @@ export const formatDate = (d) => {
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line no-useless-escape, @stylistic/max-len
-const RE_URL = /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(:\d+)?([\/?#].*)?$/;
+// URL matcher assembled from a single reusable DNS-label sub-pattern so neither the HTTP nor the
+// HTTPS-only variant repeats the label expression (keeps each regex below the complexity budget
+// while preserving the exact original matching behaviour).
+// A DNS label: an alphanumeric, optional internal hyphens, up to 63 chars total.
+const HOST_LABEL = '[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
+// host (label[.label]*) + optional :port + optional path/query/fragment + end.
+const HOST_PORT_PATH = `${HOST_LABEL}(\\.${HOST_LABEL})*(:\\d+)?([/?#].*)?$`;
+const RE_URL = new RegExp(`^https?://${HOST_PORT_PATH}`);
+const RE_URL_HTTPS = new RegExp(`^https://${HOST_PORT_PATH}`);
 const RE_SAFE_NAME = /^[a-zA-Z0-9._-]+$/;
 const RE_PROCESSOR_ID = /\/processors\/([a-f0-9-]+)/i;
 
@@ -996,9 +1003,7 @@ export const validateUrl = (url, opts = {}) => {
     if (s.length > maxLength) {
         return { isValid: false, error: t('validation.url.too.long', maxLength), sanitizedValue: s };
     }
-    // eslint-disable-next-line no-useless-escape, @stylistic/max-len
-    const httpsPattern = /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*(:\d+)?([\/?#].*)?$/;
-    const pattern = httpsOnly ? httpsPattern : RE_URL;
+    const pattern = httpsOnly ? RE_URL_HTTPS : RE_URL;
     if (!pattern.test(s)) {
         const proto = httpsOnly ? 'HTTPS' : 'HTTP/HTTPS';
         return { isValid: false, error: t('validation.url.invalid', proto), sanitizedValue: s };
