@@ -91,6 +91,16 @@ public class NiFiI18nResolver implements I18nResolver {
         }
         // The resource bundle uses MessageFormat placeholders ({0}, {1}); format with the
         // resolver's locale so parameterized messages render substituted argument values.
-        return new MessageFormat(pattern, locale).format(args);
+        // A malformed pattern (unbalanced braces from a bad bundle entry) makes MessageFormat
+        // throw IllegalArgumentException; fall back to the raw pattern rather than propagating
+        // an unchecked exception up through the processor.
+        try {
+            return new MessageFormat(pattern, locale).format(args);
+        } catch (IllegalArgumentException e) {
+            if (logger != null) {
+                logger.warn("Failed to format translation pattern for key '" + key + "': " + e.getMessage());
+            }
+            return pattern;
+        }
     }
 }

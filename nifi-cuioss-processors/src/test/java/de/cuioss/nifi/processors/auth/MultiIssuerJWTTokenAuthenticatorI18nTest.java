@@ -98,8 +98,9 @@ class MultiIssuerJWTTokenAuthenticatorI18nTest {
             String errorCode = flowFile.getAttribute(JwtAttributes.Error.CODE);
             assertEquals("AUTH-003", errorCode, "Error code should signal oversized token");
             assertNotNull(errorReason, "Error reason should be present");
-            // Size limit may be formatted as "16384" or "16.384" depending on locale
-            assertTrue(errorReason.contains("16384") || errorReason.contains("16.384"),
+            // The byte count is inserted verbatim (as a String), so it renders as "16384"
+            // deterministically across locales — no locale-dependent number grouping.
+            assertTrue(errorReason.contains("16384"),
                     "Error message should contain the size limit");
         }
 

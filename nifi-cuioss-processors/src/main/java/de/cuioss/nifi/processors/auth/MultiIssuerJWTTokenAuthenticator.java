@@ -206,8 +206,12 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
         int tokenByteSize = token.getBytes(StandardCharsets.UTF_8).length;
         if (tokenByteSize > maxTokenSize) {
             LOGGER.warn(AuthLogMessages.WARN.TOKEN_SIZE_EXCEEDED, maxTokenSize);
+            // Pass the byte count as a String so the MessageFormat-based resolver inserts it
+            // verbatim ("16384") rather than applying locale-dependent number grouping
+            // ("16,384" / "16.384"), which would make the "{0} bytes" message locale-fragile.
             handleError(session, flowFile, "AUTH-003",
-                    i18nResolver.getTranslatedString(JwtTranslationKeys.Error.TOKEN_SIZE_LIMIT, maxTokenSize),
+                    i18nResolver.getTranslatedString(JwtTranslationKeys.Error.TOKEN_SIZE_LIMIT,
+                            String.valueOf(maxTokenSize)),
                     "TOKEN_SIZE_VIOLATION");
             return false;
         }
