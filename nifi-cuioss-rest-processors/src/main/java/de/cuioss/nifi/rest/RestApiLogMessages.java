@@ -317,6 +317,12 @@ public final class RestApiLogMessages {
                         + "'rest.gateway.proxy.context-path.trust-all' is false. Set one of these to honor "
                         + "proxy context paths.")
                 .build();
+
+        public static final LogRecord INVALID_ROUTE_SETTINGS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(123)
+                .template("Route '%s' has invalid settings, skipping: %s")
+                .build();
     }
 
     @UtilityClass

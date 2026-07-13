@@ -854,7 +854,12 @@ class GatewayRequestHandlerTest {
                     RouteConfiguration.builder().name("validated").path("/api/validated")
                             .method("POST").schemaPath(schemaFile.toString()).build(),
                     RouteConfiguration.builder().name("noschema").path("/api/noschema")
-                            .method("POST").build());
+                            .method("POST").build(),
+                    // A schema route that also allows body-less methods, to prove GET/DELETE are
+                    // not 422'd by schema validation (M1).
+                    RouteConfiguration.builder().name("validatedmulti").path("/api/validated-multi")
+                            .method("GET").method("POST").method("DELETE")
+                            .schemaPath(schemaFile.toString()).build());
 
             schemaHandler = new GatewayRequestHandler(
                     toHandlers(routes, schemaQueue, GLOBAL_MAX_REQUEST_SIZE, schemaValidator, schemaEvents),
@@ -963,6 +968,37 @@ class GatewayRequestHandlerTest {
 
             assertEquals(422, response.statusCode());
             assertEquals(1L, schemaHandler.getGatewaySecurityEvents()
+                    .getCount(EventType.SCHEMA_VALIDATION_FAILED));
+        }
+
+        @Test
+        @DisplayName("Should not 422 a body-less GET on a schema route (M1)")
+        void shouldNotValidateBodyLessGetOnSchemaRoute() throws Exception {
+            var response = sendWithRetry(
+                    HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + schemaPort + "/api/validated-multi"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            // A body-less GET carries no body to validate — it must never be 422'd.
+            assertEquals(200, response.statusCode());
+            assertEquals(0L, schemaHandler.getGatewaySecurityEvents()
+                    .getCount(EventType.SCHEMA_VALIDATION_FAILED));
+        }
+
+        @Test
+        @DisplayName("Should not 422 a body-less DELETE on a schema route (M1)")
+        void shouldNotValidateBodyLessDeleteOnSchemaRoute() throws Exception {
+            var response = sendWithRetry(
+                    HttpRequest.newBuilder(URI.create(
+                            "http://127.0.0.1:" + schemaPort + "/api/validated-multi"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .DELETE().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            assertEquals(200, response.statusCode());
+            assertEquals(0L, schemaHandler.getGatewaySecurityEvents()
                     .getCount(EventType.SCHEMA_VALIDATION_FAILED));
         }
 

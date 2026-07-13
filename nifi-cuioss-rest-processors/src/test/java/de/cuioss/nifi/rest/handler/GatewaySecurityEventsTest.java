@@ -130,9 +130,9 @@ class GatewaySecurityEventsTest {
     class EventTypeCoverage {
 
         @Test
-        @DisplayName("Should have exactly 9 event types")
+        @DisplayName("Should have exactly 10 event types")
         void shouldHaveExpectedEventTypeCount() {
-            assertEquals(9, EventType.values().length);
+            assertEquals(10, EventType.values().length);
         }
 
         @Test
@@ -141,7 +141,7 @@ class GatewaySecurityEventsTest {
             for (EventType type : EventType.values()) {
                 assertEquals(1L, events.increment(type));
             }
-            assertEquals(9L, events.getTotalCount());
+            assertEquals(10L, events.getTotalCount());
         }
     }
 

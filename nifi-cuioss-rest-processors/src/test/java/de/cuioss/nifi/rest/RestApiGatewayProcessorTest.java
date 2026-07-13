@@ -350,6 +350,32 @@ class RestApiGatewayProcessorTest {
             flowFile.assertAttributeEquals("http.query.limit", "10");
         }
 
+        @Test
+        @DisplayName("Should exclude credential-bearing headers from FlowFile attributes (N26)")
+        void shouldExcludeCredentialHeadersFromAttributes() throws Exception {
+            testRunner.run(1, false, true);
+            int port = getServerPort();
+
+            httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/health"))
+                            .header("Authorization", "Bearer " + tokenHolder.getRawToken())
+                            .header("Cookie", "session=secret")
+                            .header("X-Api-Key", "top-secret-key")
+                            .header("X-Custom-Header", "keepme")
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+
+            testRunner.run(1, false, false);
+
+            MockFlowFile flowFile = testRunner.getFlowFilesForRelationship("health").getFirst();
+            // Credential-bearing headers must never leak into http.header.* attributes / provenance.
+            flowFile.assertAttributeNotExists(RestApiAttributes.HEADER_PREFIX + "cookie");
+            flowFile.assertAttributeNotExists(RestApiAttributes.HEADER_PREFIX + "x-api-key");
+            flowFile.assertAttributeNotExists(RestApiAttributes.HEADER_PREFIX + "authorization");
+            // A non-sensitive custom header is still forwarded.
+            flowFile.assertAttributeEquals(RestApiAttributes.HEADER_PREFIX + "x-custom-header", "keepme");
+        }
+
         @ParameterizedTest
         @TypeGeneratorSource(value = UserOrderGenerator.class, count = 5)
         @DisplayName("Should set generated path parameters from a pattern-matched route")

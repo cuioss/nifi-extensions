@@ -41,6 +41,7 @@ import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.FlowFileAccessException;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
@@ -116,8 +117,13 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     final JettyServerManager serverManager = new JettyServerManager();
     /** Injectable for testing — when null, a new instance is created in onScheduled. */
     ConfigurationManager configurationManager;
-    /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
-    private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
+    /**
+     * Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads.
+     * Declared {@code volatile} so the {@code @OnScheduled} assignment safely publishes the queue
+     * reference to the concurrent onTrigger reads (the queue's own operations are already
+     * thread-safe; {@code volatile} covers publication of the reference itself).
+     */
+    private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
     /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
@@ -430,12 +436,22 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         FlowFile flowFile = null;
         try {
+            // Resolve the outcome relationship up front: a missing outcome throws a ProcessException
+            // HERE (routed to `failure` by the catch below) instead of NPE-ing later when a null
+            // outcome would be written into a FlowFile attribute — keeping the failure-relationship
+            // transfer reachable for the case it guards.
+            String outcome = routeToOutcome.get(container.routeName());
+            if (outcome == null) {
+                throw new ProcessException(
+                        "No outcome relationship resolved for route '%s' — internal state inconsistency"
+                                .formatted(container.routeName()));
+            }
+
             flowFile = session.create();
 
             // Set route attributes
             Map<String, String> attributes = new HashMap<>(Map.of(
                     RestApiAttributes.ROUTE_NAME, container.routeName(),
-                    RestApiAttributes.ROUTE_PATH, container.requestUri(),
                     RestApiAttributes.HTTP_METHOD, container.method(),
                     RestApiAttributes.HTTP_REQUEST_URI, container.requestUri(),
                     RestApiAttributes.HTTP_REMOTE_HOST, container.remoteHost()));
@@ -486,8 +502,6 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
             }
 
-            // Resolve outcome relationship name
-            String outcome = routeToOutcome.get(container.routeName());
             attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
 
             flowFile = session.putAllAttributes(flowFile, attributes);
@@ -511,7 +525,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
             LOGGER.info(RestApiLogMessages.INFO.FLOWFILE_CREATED, container.routeName(), container.body().length);
 
-        } catch (ProcessException e) {
+        } catch (ProcessException | FlowFileAccessException e) {
+            // FlowFileAccessException (thrown by session.write on an I/O failure) does NOT extend
+            // ProcessException, so it must be caught explicitly — otherwise it would escape and the
+            // FlowFile would be left neither transferred nor removed, and the failure transfer below
+            // would be unreachable.
             LOGGER.error(e, RestApiLogMessages.ERROR.FLOWFILE_CREATION_FAILED, container.routeName(), e.getMessage());
             // Remove the partially-built FlowFile: leaving it neither transferred nor removed
             // makes the session commit throw FlowFileHandlingException, which would roll back

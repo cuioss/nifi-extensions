@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -132,7 +133,10 @@ public final class ApiRouteHandler implements EndpointHandler {
         String method = request.getMethod();
         String path = sanitized.path();
 
-        if (!validateSchema(body, response, callback)) {
+        // Schema validation applies only when a body is expected (POST/PUT/PATCH) or a body
+        // is actually present. Body-less methods (GET/DELETE) with an empty body are not
+        // 422'd — an empty body is unparseable JSON and must not be treated as a violation.
+        if ((isBodyMethod(method) || body.length > 0) && !validateSchema(body, response, callback)) {
             return;
         }
 
@@ -143,7 +147,7 @@ public final class ApiRouteHandler implements EndpointHandler {
 
         if (tracked) {
             traceId = UUID.randomUUID().toString();
-            parentTraceId = sanitized.headers().get(X_PARENT_TRACE_ID);
+            parentTraceId = getHeaderIgnoreCase(sanitized.headers(), X_PARENT_TRACE_ID);
             if (!registerTracking(traceId, parentTraceId, response, callback)) {
                 return;
             }
@@ -188,6 +192,25 @@ public final class ApiRouteHandler implements EndpointHandler {
                 "Request body failed JSON Schema validation", violations)
                 .sendResponse(response, callback);
         return false;
+    }
+
+    /**
+     * Case-insensitive header lookup (RFC 9110 §5.1: field names are case-insensitive).
+     * The sanitized header map is keyed by the name exactly as the client sent it, so a
+     * client sending {@code x-parent-trace-id} must still resolve the parent linkage.
+     */
+    @Nullable
+    private static String getHeaderIgnoreCase(Map<String, String> headers, String name) {
+        String direct = headers.get(name);
+        if (direct != null) {
+            return direct;
+        }
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(name)) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     private boolean registerTracking(String traceId, @Nullable String parentTraceId,

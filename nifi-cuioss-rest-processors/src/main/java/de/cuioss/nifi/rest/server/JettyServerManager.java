@@ -37,7 +37,13 @@ public class JettyServerManager {
 
     private static final CuiLogger LOGGER = new CuiLogger(JettyServerManager.class);
 
-    private Server server;
+    /**
+     * The managed Jetty server. Declared {@code volatile} so the start/stop writes and the
+     * cross-thread reads from {@link #isRunning()} / {@link #getPort()} (NiFi calls the lifecycle
+     * and query methods from different framework threads) establish a happens-before edge rather
+     * than relying on an undocumented framework convention.
+     */
+    private volatile Server server;
 
     /**
      * Starts the Jetty server on the given port with plain HTTP, binding to all interfaces.

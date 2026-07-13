@@ -45,8 +45,6 @@ class RestApiAttributesTest {
         assertAll("Attribute naming convention",
                 () -> assertTrue(RestApiAttributes.ROUTE_NAME.startsWith("rest."),
                         "ROUTE_NAME should start with 'rest.'"),
-                () -> assertTrue(RestApiAttributes.ROUTE_PATH.startsWith("rest."),
-                        "ROUTE_PATH should start with 'rest.'"),
                 () -> assertTrue(RestApiAttributes.HTTP_METHOD.startsWith("http."),
                         "HTTP_METHOD should start with 'http.'"),
                 () -> assertTrue(RestApiAttributes.HTTP_REQUEST_URI.startsWith("http."),

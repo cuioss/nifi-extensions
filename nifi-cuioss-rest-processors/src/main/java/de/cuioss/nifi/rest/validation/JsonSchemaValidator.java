@@ -21,6 +21,7 @@ import de.cuioss.tools.logging.CuiLogger;
 import dev.harrel.jsonschema.Validator;
 import dev.harrel.jsonschema.ValidatorFactory;
 import dev.harrel.jsonschema.providers.JakartaJsonNode;
+import jakarta.json.JsonException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -114,8 +115,10 @@ public class JsonSchemaValidator {
                             error.getInstanceLocation(),
                             error.getError()))
                     .toList();
-        } catch (Exception e) {
-            // Unparseable JSON or other validation infrastructure error
+        } catch (JsonException e) {
+            // Only an unparseable/malformed JSON body is a client-facing 422 violation. Any other
+            // failure (validator infrastructure error) is NOT masked as a 422 — it propagates so it
+            // surfaces as a 500 via the dispatcher's top-level handler instead of being hidden.
             return List.of(new SchemaViolation("", "Invalid JSON: " + e.getMessage()));
         }
     }

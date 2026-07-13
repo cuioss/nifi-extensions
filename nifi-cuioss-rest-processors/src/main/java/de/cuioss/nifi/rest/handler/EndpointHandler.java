@@ -74,9 +74,12 @@ public sealed interface EndpointHandler
     /**
      * Maximum allowed request body size in bytes.
      * <ul>
-     *   <li>{@code 0} means no body expected (GET-only handlers)</li>
+     *   <li>{@code 0} means "use the gateway's global default limit" — the dispatcher maps 0 to
+     *       the global maximum and still reads (and bounds) the body</li>
      *   <li>Positive value is the per-handler body limit</li>
      * </ul>
+     * The global default is always positive, so the effective limit is never zero; body-less
+     * GET/DELETE requests simply read an empty body under the same bound.
      */
     int maxRequestSize();
 
