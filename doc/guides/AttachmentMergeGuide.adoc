@@ -20,9 +20,9 @@ These examples use the sandbox environment started via `run-and-deploy.sh`. Adju
 TOKEN=$(curl -sk -X POST \
   'https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token' \
   -d 'grant_type=password' \
-  -d 'client_id=integration-test-client' \
-  -d 'username=testuser' \
-  -d 'password=testpassword' \
+  -d 'client_id=test_client' \
+  -d 'username=testUser' \
+  -d 'password=drowssap' \
   | jq -r '.access_token')
 ----
 
@@ -145,7 +145,7 @@ The Wait processor holds the parent FlowFile until attachments arrive. The Notif
 
 | Wait
 | Expiration Duration
-| `${rest.trace.attachments.timeout:ifEmpty('30 sec')}`
+| `${rest.trace.attachments.timeout:ifEmpty('60 sec')}`
 
 | Notify
 | Signal ID
@@ -179,7 +179,7 @@ For production flows that need additional status transitions after the Wait proc
 restapi.upload.tracking-mode=attachments
 restapi.upload.attachments-min-count=1
 restapi.upload.attachments-max-count=5
-restapi.upload.attachments-timeout=30 sec
+restapi.upload.attachments-timeout=60 sec
 ----
 
 The timeout value is exposed as the `rest.trace.attachments.timeout` FlowFile attribute, which the Wait processor reads via Expression Language. The timeout field appears in the route editor UI alongside min/max attachment count fields (only visible when `tracking-mode` is set to `attachments`).

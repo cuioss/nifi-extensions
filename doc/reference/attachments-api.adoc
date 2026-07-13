@@ -26,7 +26,7 @@ C -> G : POST /api/upload
 activate G
 G -> G : Authenticate + validate
 G -> G : Generate traceId-P (UUID)
-G -> DMC : put(traceId-P, ACCEPTED,\nattachmentsMaxCount=5, routeName="upload")
+G -> DMC : put(traceId-P, COLLECTING_ATTACHMENTS,\nattachmentsMaxCount=5, routeName="upload")
 G -> Q : enqueue (route="upload")
 G -> C : 202 Accepted\n{"traceId":"P", "_links":\n  {status, attachments}}
 deactivate G
@@ -91,7 +91,7 @@ package "NiFi Canvas" {
     [attachments relationship] as AtR
 }
 
-ARH --> DMC : put(traceId, ACCEPTED,\nattachmentsMaxCount)
+ARH --> DMC : put(traceId, COLLECTING_ATTACHMENTS,\nattachmentsMaxCount)
 ARH --> Q : enqueue
 AEH --> DMC : get(parentTraceId)\nput(attachmentTraceId)
 AEH --> Q : enqueue

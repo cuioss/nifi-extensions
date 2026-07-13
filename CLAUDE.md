@@ -4,12 +4,18 @@
 
 Custom Apache NiFi processors for JWT authentication and validation with a web-based configuration UI.
 
-### Modules
-- **nifi-cuioss-processors** (JAR) — Core JWT authentication processors
+### Modules (9 reactor modules)
+- **nifi-cuioss-api** (JAR) — Service-API interfaces (`JwtIssuerConfigService`) and JWT attribute contracts
+- **nifi-cuioss-api-nar** (NAR) — Service-API NAR exposing the api interfaces to other NARs (sits over `standard-services-api-nar`)
+- **nifi-cuioss-common** (JAR) — Shared implementation: configuration manager, issuer parsing, i18n
+- **nifi-cuioss-processors** (JAR) — `MultiIssuerJWTTokenAuthenticator` (FlowFile-based JWT validation)
+- **nifi-cuioss-rest-processors** (JAR) — `RestApiGateway` processor (HTTP gateway with JWT auth, RFC 9457 error responses)
 - **nifi-cuioss-ui** (WAR) — Web UI for processor configuration (Java servlets + JavaScript)
-- **nifi-cuioss-nar** (NAR) — NiFi Archive bundle for deployment
+- **nifi-cuioss-nar** (NAR) — NiFi Archive bundling common + processors + rest-processors + the UI WAR (sits over `nifi-cuioss-api-nar`)
 - **integration-testing** (JAR) — Docker-based integration tests (NiFi + Keycloak)
 - **e-2-e-playwright** (Node.js) — Playwright E2E and WCAG accessibility tests
+
+Deployment requires **two** NARs: `nifi-cuioss-nar` and `nifi-cuioss-api-nar`.
 
 ## Build Commands
 
