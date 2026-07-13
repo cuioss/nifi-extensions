@@ -119,18 +119,18 @@ const detectIsGateway = async (componentId) => {
 /** Initialise gateway-specific tabs. */
 const initGatewayTabs = async (componentId) => {
     const endpointConfigEl = document.getElementById('endpoint-config');
-    if (endpointConfigEl) initEndpointConfig(endpointConfigEl);
+    if (endpointConfigEl) await initEndpointConfig(endpointConfigEl);
 
     const endpointTesterEl = document.getElementById('endpoint-tester');
-    if (endpointTesterEl) initEndpointTester(endpointTesterEl);
+    if (endpointTesterEl) await initEndpointTester(endpointTesterEl);
 
     await initGatewayIssuerTabs(componentId);
 };
 
 /** Initialise JWT/CS-specific tabs. */
-const initJwtTabs = () => {
+const initJwtTabs = (componentId) => {
     const issuerEl = document.getElementById('issuer-config');
-    if (issuerEl) initIssuerConfig(issuerEl);
+    if (issuerEl) initIssuerConfig(issuerEl, { targetComponentId: componentId });
 
     const tokenEl = document.getElementById('token-verification');
     if (tokenEl) initTokenVerifier(tokenEl);
@@ -145,7 +145,7 @@ const initComponents = async () => {
     if (isGateway) {
         await initGatewayTabs(componentId);
     } else {
-        initJwtTabs();
+        initJwtTabs(componentId);
     }
 
     const metricsEl = document.getElementById('metrics');

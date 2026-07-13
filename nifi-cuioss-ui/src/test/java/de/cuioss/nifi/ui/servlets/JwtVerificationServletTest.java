@@ -185,7 +185,10 @@ class JwtVerificationServletTest {
                 Arguments.of("{\"token\": \"test-token\"}", "Processor ID cannot be empty"),
                 Arguments.of("{ invalid json }", "Invalid JSON format"),
                 Arguments.of("{\"token\": \"\", \"processorId\": \"test-processor-id\"}", "Token cannot be empty"),
-                Arguments.of("{\"token\": \"test-token\", \"processorId\": \"\"}", "Processor ID cannot be empty")
+                Arguments.of("{\"token\": \"test-token\", \"processorId\": \"\"}", "Processor ID cannot be empty"),
+                // A non-string token value makes JsonObject.getString throw ClassCastException —
+                // it must map to a JSON 400 error, never a container 500 page.
+                Arguments.of("{\"token\": 123, \"processorId\": \"test-processor-id\"}", "Invalid field type")
         );
     }
 

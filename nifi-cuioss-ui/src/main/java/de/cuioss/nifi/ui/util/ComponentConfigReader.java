@@ -19,6 +19,7 @@ package de.cuioss.nifi.ui.util;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
+import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReaderFactory;
 import jakarta.servlet.http.Cookie;
@@ -294,7 +295,9 @@ public class ComponentConfigReader {
                 }
             }
             return result;
-        } catch (Exception e) {
+        } catch (JsonException | ClassCastException e) {
+            // Malformed JSON (JsonException) or an unexpected value type where an object/string
+            // was expected (ClassCastException) — the only failures parsing can produce here.
             LOGGER.warn(UILogMessages.WARN.FAILED_PARSE_REST_RESPONSE, e.getMessage());
             return Map.of();
         }
@@ -430,6 +433,20 @@ public class ComponentConfigReader {
         return new ComponentConfig(type, details.getType(), properties);
     }
 
+    /**
+     * Validates the component ID used as a NiFi lookup key. This is the <em>deeper</em>
+     * lookup-key layer complementing the shared boundary rule in
+     * {@link de.cuioss.nifi.ui.servlets.ProcessorIdHeaderValidator}: the boundary allow-list
+     * rejects illegal characters with a 400 before the value reaches a servlet, while this
+     * method additionally requires the value to be a real UUID because it is dereferenced
+     * against the NiFi component API. A non-UUID value that passes the boundary is rejected
+     * here via {@link IllegalArgumentException}, which the servlets map to their 404/400
+     * responses.
+     *
+     * @param componentId the component ID (must be a non-blank, valid UUID)
+     * @throws NullPointerException     if {@code componentId} is {@code null}
+     * @throws IllegalArgumentException if {@code componentId} is blank or not a valid UUID
+     */
     static void validateComponentId(String componentId) {
         Objects.requireNonNull(componentId, "processorId must not be null");
         if (componentId.trim().isEmpty()) {

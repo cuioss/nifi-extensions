@@ -641,7 +641,8 @@ const loadExistingConfig = async (container, routesContainer, componentId) => {
             const routes = parseRouteProperties(props);
             renderRouteSummaryTable(routesContainer, routes, componentId);
         }
-    } catch {
+    } catch (err) {
+        log.error('Failed to load existing gateway routes:', err);
         renderRouteSummaryTable(routesContainer, {}, componentId);
     }
 };
@@ -1853,7 +1854,12 @@ const applyRouteSaveToUI = (form, formData, tableRow, routesContainer,
     componentId, origin) => {
     form.dataset.originalName = formData.routeName;
     if (tableRow) {
-        if (origin) tableRow.dataset.origin = origin;
+        // Preserve external provenance — an 'external'-origin route edited and persisted
+        // still originates from the external config file, so keep its badge rather than
+        // forcing 'persisted' (which would drop the provenance until a reload).
+        if (origin && tableRow.dataset.origin !== 'external') {
+            tableRow.dataset.origin = origin;
+        }
         updateTableRow(tableRow, formData);
         tableRow.classList.remove('hidden');
     } else {
@@ -1971,19 +1977,23 @@ const clearRouteProperties = async (componentId, routeName) => {
  * @param {string} componentId  NiFi processor component ID
  */
 const removeRoute = async (row, routeName, routesContainer, componentId) => {
-    row.remove();
-
     // Also close any open editor for this route
     const openForm = routesContainer.querySelector('.route-form');
     if (openForm?.dataset.originalName === routeName) {
         openForm.remove();
     }
 
-    const globalErr = document.querySelector('.global-error-messages');
+    // Scope the banner to THIS route editor's own container instead of the first
+    // identically-classed banner in DOM order (which was luck-dependent).
+    const editor = routesContainer.closest('.route-config-editor');
+    const globalErr = editor?.querySelector('.global-error-messages.route-form-error-messages');
 
     if (routeName && componentId) {
         try {
+            // Await backend deletion BEFORE removing the row, so a failed delete does not
+            // leave the row gone while the route persists server-side.
             await clearRouteProperties(componentId, routeName);
+            row.remove();
             if (globalErr) {
                 displayUiSuccess(globalErr, t('route.remove.success', routeName));
                 globalErr.classList.remove('hidden');
@@ -1994,9 +2004,12 @@ const removeRoute = async (row, routeName, routesContainer, componentId) => {
                 globalErr.classList.remove('hidden');
             }
         }
-    } else if (routeName && globalErr) {
-        displayUiSuccess(globalErr, t('route.remove.success.standalone', routeName));
-        globalErr.classList.remove('hidden');
+    } else {
+        row.remove();
+        if (routeName && globalErr) {
+            displayUiSuccess(globalErr, t('route.remove.success.standalone', routeName));
+            globalErr.classList.remove('hidden');
+        }
     }
 
     refreshExportPanel(routesContainer);

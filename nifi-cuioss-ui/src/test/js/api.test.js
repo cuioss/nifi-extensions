@@ -87,14 +87,14 @@ describe('validateJwksUrl', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateJwksFile', () => {
-    test('sends POST with filePath', async () => {
+    test('sends POST with jwksFilePath (the canonical key the servlet requires)', async () => {
         mockJsonResponse({ valid: true });
 
         await validateJwksFile('/path/to/jwks.json');
 
         const [url, opts] = globalThis.fetch.mock.calls[0];
         expect(url).toBe('nifi-api/processors/jwt/validate-jwks-file');
-        expect(JSON.parse(opts.body)).toEqual({ filePath: '/path/to/jwks.json' });
+        expect(JSON.parse(opts.body)).toEqual({ jwksFilePath: '/path/to/jwks.json' });
     });
 });
 

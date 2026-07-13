@@ -25,6 +25,7 @@ import de.cuioss.nifi.ui.util.ComponentConfigReader.ComponentType;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.nifi.web.ClusterRequestException;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,6 +34,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.easymock.EasyMock.createNiceMock;
+import static org.easymock.EasyMock.replay;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -70,16 +73,25 @@ class ComponentInfoServletTest {
 
     @BeforeAll
     static void startServer() throws Exception {
-        handle = EmbeddedServletTestSupport.startServer(ctx ->
-                ctx.addServlet(new ServletHolder(new ComponentInfoServlet() {
-                    @Override
-                    protected ComponentConfig resolveComponentConfig(
-                            String processorId, HttpServletRequest request) {
-                        RuntimeException ex = configException.get();
-                        if (ex != null) throw ex;
-                        return componentConfig.get();
-                    }
-                }), "/component-info"));
+        // A non-null nifi-web-configuration-context attribute makes the servlet's
+        // init() populate configContext, so the null-context 503 guard stays quiet and
+        // the overridden resolveComponentConfig drives the stubbed responses. The mock
+        // itself is never dereferenced because resolveComponentConfig is overridden.
+        NiFiWebConfigurationContext dummyContext = createNiceMock(NiFiWebConfigurationContext.class);
+        replay(dummyContext);
+
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
+            ctx.setAttribute("nifi-web-configuration-context", dummyContext);
+            ctx.addServlet(new ServletHolder(new ComponentInfoServlet() {
+                @Override
+                protected ComponentConfig resolveComponentConfig(
+                        String processorId, HttpServletRequest request) {
+                    RuntimeException ex = configException.get();
+                    if (ex != null) throw ex;
+                    return componentConfig.get();
+                }
+            }), "/component-info");
+        });
     }
 
     @AfterAll
@@ -208,6 +220,25 @@ class ComponentInfoServletTest {
                     .then()
                     .statusCode(400)
                     .body("error", containsString("Missing processor ID"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 JSON when NiFi configuration context is unavailable")
+        void shouldReturn503WhenConfigContextUnavailable() throws Exception {
+            // A servlet started without the nifi-web-configuration-context attribute has a
+            // null configContext. A valid processor-ID request must yield a uniform JSON 503
+            // instead of NPEing into a container 500 page.
+            try (var noContextHandle = EmbeddedServletTestSupport.startServer(ctx ->
+                    ctx.addServlet(new ServletHolder(new ComponentInfoServlet()), "/component-info"))) {
+                noContextHandle.spec()
+                        .header("X-Processor-Id", PROCESSOR_ID)
+                        .when()
+                        .get("/component-info")
+                        .then()
+                        .statusCode(503)
+                        .contentType(containsString("application/json"))
+                        .body("error", containsString("NiFi configuration context unavailable"));
+            }
         }
     }
 

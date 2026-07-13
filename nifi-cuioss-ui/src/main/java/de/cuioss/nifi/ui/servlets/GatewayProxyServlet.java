@@ -30,8 +30,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.ClusterRequestException;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
@@ -103,6 +105,8 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String ATTACHMENTS_HARD_LIMIT_PROPERTY = "rest.gateway.management.attachments.hard-limit";
     private static final String ROUTE_PREFIX = "restapi.";
     private static final Duration HTTP_TIMEOUT = Duration.ofSeconds(10);
+    /** Maximum request body size: 1 MB — mirrors the sibling JWT servlets' cap. */
+    private static final int MAX_REQUEST_BODY_SIZE = 1024 * 1024;
     private static final String TOKEN_FETCH_PATH = "/token-fetch";
     private static final String DISCOVER_TOKEN_ENDPOINT_PATH = "/discover-token-endpoint";
     private static final String KEY_USERNAME = "username";
@@ -126,10 +130,16 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String CHARSET_UTF8 = "UTF-8";
     private static final String DEFAULT_AUTH_MODE = "local-only,bearer";
 
-    /** Cached gateway ports by processor ID. */
-    private final Map<String, Integer> portCache = new ConcurrentHashMap<>();
-    /** Cached gateway protocol (http or https) by processor ID. */
-    private final Map<String, String> protocolCache = new ConcurrentHashMap<>();
+    /**
+     * Cached gateway endpoint (port plus protocol) by processor ID. Storing both in one
+     * immutable record behind a single map entry makes the port and protocol update atomic —
+     * a concurrent reader can never observe a freshly-cached port paired with a stale protocol.
+     */
+    private final Map<String, GatewayEndpoint> endpointCache = new ConcurrentHashMap<>();
+
+    /** Immutable gateway endpoint cache value: the resolved port and its protocol. */
+    private record GatewayEndpoint(int port, String protocol) {
+    }
 
     /**
      * cui-http security validators built once with a strict configuration.
@@ -163,6 +173,9 @@ public class GatewayProxyServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
+            if (!requireConfigContext(resp)) {
+                return;
+            }
             String pathInfo = req.getPathInfo();
 
             String processorId = req.getHeader(PROCESSOR_ID_HEADER);
@@ -197,7 +210,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             int port = resolveGatewayPort(processorId, req);
-            String protocol = protocolCache.getOrDefault(processorId, "http");
+            String protocol = resolveCachedProtocol(processorId);
             String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
             GatewayGetResponse gwResp;
             try {
@@ -216,6 +229,12 @@ public class GatewayProxyServlet extends HttpServlet {
 
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+        } catch (ClusterRequestException | IllegalStateException e) {
+            // Fail-secure: a NiFi cluster-request failure (or unexpected component-state error)
+            // while resolving config must not escape as a container 500 page.
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    "Gateway configuration unavailable");
         } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
@@ -226,6 +245,9 @@ public class GatewayProxyServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         try {
+            if (!requireConfigContext(resp)) {
+                return;
+            }
             String pathInfo = req.getPathInfo();
 
             if (TOKEN_FETCH_PATH.equals(pathInfo)) {
@@ -251,6 +273,12 @@ public class GatewayProxyServlet extends HttpServlet {
                     MSG_INVALID_JSON);
         } catch (IllegalArgumentException e) {
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+        } catch (ClusterRequestException | IllegalStateException e) {
+            // Fail-secure: a NiFi cluster-request failure (or unexpected component-state error)
+            // while resolving config must not escape as a container 500 page.
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
+            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    "Gateway configuration unavailable");
         } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, "unknown");
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
@@ -269,9 +297,9 @@ public class GatewayProxyServlet extends HttpServlet {
             return;
         }
 
-        JsonObject testRequest;
-        try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
-            testRequest = reader.readObject();
+        JsonObject testRequest = readLimitedJsonBody(req, resp);
+        if (testRequest == null) {
+            return;
         }
 
         String path = testRequest.getString("path", "");
@@ -289,7 +317,7 @@ public class GatewayProxyServlet extends HttpServlet {
         }
 
         int port = resolveGatewayPort(processorId, req);
-        String protocol = protocolCache.getOrDefault(processorId, "http");
+        String protocol = resolveCachedProtocol(processorId);
         String targetUrl = protocol + "://localhost:" + port + path;
 
         // SSRF protection
@@ -313,8 +341,7 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     private void invalidateCaches(String processorId) {
-        portCache.remove(processorId);
-        protocolCache.remove(processorId);
+        endpointCache.remove(processorId);
     }
 
     private static Map<String, String> extractTestHeaders(JsonObject testRequest) {
@@ -361,7 +388,22 @@ public class GatewayProxyServlet extends HttpServlet {
      * @throws IOException if unable to fetch component config
      */
     protected int resolveGatewayPort(String processorId, HttpServletRequest request) throws IOException {
-        Integer cached = portCache.get(processorId);
+        return resolveGatewayEndpoint(processorId, request).port();
+    }
+
+    /**
+     * Resolves the gateway endpoint (port and protocol) for a processor, caching both together
+     * in one atomic map entry. The port and protocol are derived from the same component
+     * configuration read, so they are always cached and evicted as a consistent pair.
+     *
+     * @param processorId the NiFi processor UUID
+     * @param request     the current HTTP servlet request (for authentication context)
+     * @return the resolved gateway endpoint
+     * @throws IOException if unable to fetch component config
+     */
+    private GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request)
+            throws IOException {
+        GatewayEndpoint cached = endpointCache.get(processorId);
         if (cached != null) return cached;
 
         var reader = new ComponentConfigReader(configContext);
@@ -374,14 +416,27 @@ public class GatewayProxyServlet extends HttpServlet {
                     "Gateway port not configured for " + processorId);
         }
         int port = Integer.parseInt(portStr);
-        portCache.put(processorId, port);
 
-        // Cache protocol — HTTPS when SSL Context Service is configured
+        // Protocol is HTTPS when an SSL Context Service is configured.
         String sslCs = properties.get(SSL_CONTEXT_SERVICE_PROPERTY);
-        protocolCache.put(processorId,
-                (sslCs != null && !sslCs.isBlank()) ? "https" : "http");
+        String protocol = (sslCs != null && !sslCs.isBlank()) ? "https" : "http";
 
-        return port;
+        GatewayEndpoint endpoint = new GatewayEndpoint(port, protocol);
+        endpointCache.put(processorId, endpoint);
+        return endpoint;
+    }
+
+    /**
+     * Returns the cached gateway protocol for a processor, or {@code "http"} when no endpoint
+     * has been resolved yet. Reads the same atomic cache entry populated by
+     * {@link #resolveGatewayEndpoint}, so the protocol is always consistent with the cached port.
+     *
+     * @param processorId the NiFi processor UUID
+     * @return the cached protocol, or {@code "http"} by default
+     */
+    private String resolveCachedProtocol(String processorId) {
+        GatewayEndpoint cached = endpointCache.get(processorId);
+        return cached != null ? cached.protocol() : "http";
     }
 
     /**
@@ -545,9 +600,9 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            JsonObject requestBody;
-            try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
-                requestBody = reader.readObject();
+            JsonObject requestBody = readLimitedJsonBody(req, resp);
+            if (requestBody == null) {
+                return;
             }
 
             String tokenEndpointUrl = requestBody.getString("tokenEndpointUrl", "");
@@ -623,9 +678,9 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            JsonObject requestBody;
-            try (JsonReader reader = JSON_READER.createReader(req.getInputStream())) {
-                requestBody = reader.readObject();
+            JsonObject requestBody = readLimitedJsonBody(req, resp);
+            if (requestBody == null) {
+                return;
             }
 
             String issuerUrl = requestBody.getString("issuerUrl", "");
@@ -1002,6 +1057,9 @@ public class GatewayProxyServlet extends HttpServlet {
         routeObj.add("trackingMode", routeProps.getOrDefault("tracking-mode", "none"));
         addOptionalInt(routeObj, "attachmentsMinCount", routeProps.get("attachments-min-count"));
         addOptionalInt(routeObj, "attachmentsMaxCount", routeProps.get("attachments-max-count"));
+        // Emit the persisted attachments timeout so the client loads the real value instead of
+        // overwriting it with the form default (which silently dropped a non-default timeout).
+        addNonBlankString(routeObj, "attachmentsTimeout", routeProps.get("attachments-timeout"));
         return routeObj;
     }
 
@@ -1133,6 +1191,47 @@ public class GatewayProxyServlet extends HttpServlet {
                     "Invalid URL: " + e.getFailureType().getDescription());
             return false;
         }
+    }
+
+    /**
+     * Reads the JSON request body with a 1 MB size cap, mirroring the sibling JWT servlets.
+     * Reads at most {@code MAX+1} bytes instead of trusting {@code Content-Length} — with chunked
+     * transfer encoding {@code getContentLength()} is -1, which would bypass the limit.
+     *
+     * @return the parsed JSON object, or {@code null} when the body exceeds the cap (a 413 error
+     *         has already been written to {@code resp} in that case)
+     * @throws IOException           if reading the request stream fails
+     * @throws jakarta.json.JsonException if the body is not well-formed JSON
+     */
+    private JsonObject readLimitedJsonBody(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        byte[] body = req.getInputStream().readNBytes(MAX_REQUEST_BODY_SIZE + 1);
+        if (body.length > MAX_REQUEST_BODY_SIZE) {
+            sendErrorResponse(resp, HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+                    "Request body too large");
+            return null;
+        }
+        try (JsonReader reader = JSON_READER.createReader(new ByteArrayInputStream(body))) {
+            return reader.readObject();
+        }
+    }
+
+    /**
+     * Verifies the NiFi web configuration context is available. When the
+     * {@code nifi-web-configuration-context} servlet attribute is missing the context is
+     * {@code null}; every gateway operation needs it, so respond with a uniform JSON 503 instead
+     * of letting the first config lookup NPE into a container 500 page.
+     *
+     * @return {@code true} when the context is present, {@code false} (and a 503 written) otherwise
+     */
+    private boolean requireConfigContext(HttpServletResponse resp) {
+        if (configContext == null) {
+            LOGGER.debug("NiFi web configuration context is unavailable — cannot serve gateway request");
+            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    "NiFi configuration context unavailable");
+            return false;
+        }
+        return true;
     }
 
     private void sendErrorResponse(HttpServletResponse resp, int status, String message) {

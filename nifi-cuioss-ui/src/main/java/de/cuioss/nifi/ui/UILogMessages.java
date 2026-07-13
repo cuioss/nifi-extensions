@@ -39,13 +39,13 @@ public final class UILogMessages {
         public static final LogRecord FILTER_INITIALIZED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(1)
-                .template("Initialized API Authentication Filter")
+                .template("Initialized Processor ID Validation Filter")
                 .build();
 
         public static final LogRecord FILTER_DESTROYED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(2)
-                .template("Destroying API Key Authentication Filter")
+                .template("Destroying Processor ID Validation Filter")
                 .build();
     }
 
@@ -89,12 +89,6 @@ public final class UILogMessages {
                 .prefix(PREFIX)
                 .identifier(105)
                 .template("SSRF attempt blocked for JWKS URL: %s")
-                .build();
-
-        public static final LogRecord JWKS_IP_URI_CONSTRUCTION_FAILED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(106)
-                .template("Failed to construct IP-based URI for JWKS URL: %s")
                 .build();
 
         public static final LogRecord JWKS_URL_VALIDATION_FAILED = LogRecordModel.builder()
@@ -269,12 +263,6 @@ public final class UILogMessages {
             // utility class
         }
 
-        public static final LogRecord FAILED_WRITE_UNAUTHORIZED_RESPONSE = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(200)
-                .template("Failed to write unauthorized response")
-                .build();
-
         public static final LogRecord ERROR_READING_REQUEST_BODY = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(201)
@@ -285,24 +273,6 @@ public final class UILogMessages {
                 .prefix(PREFIX)
                 .identifier(202)
                 .template("Service not available for processor %s: %s")
-                .build();
-
-        public static final LogRecord COMMUNICATION_ERROR = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(203)
-                .template("Communication error for processor %s")
-                .build();
-
-        public static final LogRecord FAILED_SEND_ERROR_RESPONSE = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(204)
-                .template("Failed to send error response")
-                .build();
-
-        public static final LogRecord FAILED_SEND_VALIDATION_RESPONSE = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(205)
-                .template("Failed to send validation response")
                 .build();
 
         public static final LogRecord FAILED_WRITE_VALIDATION_RESPONSE = LogRecordModel.builder()
@@ -323,34 +293,10 @@ public final class UILogMessages {
                 .template("Failed to handle JWKS validation request for path: %s")
                 .build();
 
-        public static final LogRecord FAILED_FETCH_PROCESSOR_CONFIG = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(212)
-                .template("Failed to fetch processor configuration for %s")
-                .build();
-
-        public static final LogRecord FAILED_CREATE_TOKEN_VALIDATOR = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(213)
-                .template("Failed to create TokenValidator for processor %s")
-                .build();
-
-        public static final LogRecord UNEXPECTED_VALIDATION_ERROR = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(214)
-                .template("Unexpected error during token validation for processor %s")
-                .build();
-
         public static final LogRecord GATEWAY_PROXY_FAILED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(215)
                 .template("Gateway proxy request failed for processor %s")
-                .build();
-
-        public static final LogRecord GATEWAY_PORT_RESOLUTION_FAILED = LogRecordModel.builder()
-                .prefix(PREFIX)
-                .identifier(216)
-                .template("Failed to resolve gateway port for processor %s")
                 .build();
 
         public static final LogRecord GATEWAY_TOKEN_FETCH_FAILED = LogRecordModel.builder()

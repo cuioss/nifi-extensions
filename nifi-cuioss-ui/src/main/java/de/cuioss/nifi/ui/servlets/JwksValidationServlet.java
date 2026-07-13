@@ -33,6 +33,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.nifi.web.ClusterRequestException;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.jspecify.annotations.Nullable;
 
@@ -49,6 +50,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -119,9 +121,14 @@ public class JwksValidationServlet extends HttpServlet {
                 case "/nifi-api/processors/jwt/validate-jwks-content" -> handleJwksContentValidation(req, resp);
                 default -> sendErrorResponse(resp, 404, "Endpoint not found");
             }
+        } catch (ClassCastException e) {
+            // A JSON field carried a non-string value (e.g. {"jwksUrl": 123}); JsonObject.getString
+            // throws CCE. Honour the JSON error contract with a 400 instead of a container 500 page.
+            LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
+            sendErrorResponse(resp, 400, "Invalid field type: expected a string value");
         } catch (IOException e) {
             LOGGER.error(e, UILogMessages.ERROR.FAILED_JWKS_REQUEST, requestPath);
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            sendErrorResponse(resp, 500, "Internal error processing JWKS request");
         }
     }
 
@@ -142,7 +149,7 @@ public class JwksValidationServlet extends HttpServlet {
         }
 
         String jwksUrl = requestJson.getString("jwksUrl");
-        if (jwksUrl == null || jwksUrl.trim().isEmpty()) {
+        if (jwksUrl.trim().isEmpty()) {
             sendErrorResponse(resp, 400, "JWKS URL cannot be empty");
             return;
         }
@@ -174,7 +181,7 @@ public class JwksValidationServlet extends HttpServlet {
         }
 
         String jwksFilePath = requestJson.getString("jwksFilePath");
-        if (jwksFilePath == null || jwksFilePath.trim().isEmpty()) {
+        if (jwksFilePath.trim().isEmpty()) {
             sendErrorResponse(resp, 400, "JWKS file path cannot be empty");
             return;
         }
@@ -203,7 +210,7 @@ public class JwksValidationServlet extends HttpServlet {
         }
 
         String jwksContent = requestJson.getString("jwksContent");
-        if (jwksContent == null || jwksContent.trim().isEmpty()) {
+        if (jwksContent.trim().isEmpty()) {
             sendErrorResponse(resp, 400, "JWKS content cannot be empty");
             return;
         }
@@ -380,7 +387,9 @@ public class JwksValidationServlet extends HttpServlet {
             String value = csProperties.get(
                     JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES);
             return "true".equalsIgnoreCase(value);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | ClusterRequestException | IllegalStateException e) {
+            // Fail-secure: any failure resolving the config (bad ID, cluster-request failure,
+            // or an unexpected component-state error) defaults to blocking private addresses.
             LOGGER.debug("Could not resolve allow-private-addresses config: %s", e.getMessage());
             return false;
         }
@@ -641,8 +650,9 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("JWKS content has empty 'keys' array");
             }
 
+            List<String> algorithms = extractAlgorithms(keys);
             LOGGER.debug("JWKS content validation successful, found %d keys", keys.size());
-            return JwksValidationResult.success(keys.size(), null);
+            return JwksValidationResult.success(keys.size(), algorithms);
 
         } catch (JsonException e) {
             String error = "Invalid JWKS JSON format: " + e.getMessage();
@@ -652,10 +662,30 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
+     * Extracts the distinct {@code alg} values declared by the JWKS keys, preserving first-seen
+     * order. Keys without a string {@code alg} member are skipped, so the response's
+     * {@code algorithms} field reflects the algorithms the key set actually advertises.
+     *
+     * @param keys the {@code keys} array from a parsed JWKS document
+     * @return the distinct declared algorithms (possibly empty, never {@code null})
+     */
+    private static List<String> extractAlgorithms(JsonArray keys) {
+        List<String> algorithms = new ArrayList<>();
+        for (JsonValue keyValue : keys) {
+            if (keyValue instanceof JsonObject key
+                    && key.get("alg") instanceof JsonString alg
+                    && !algorithms.contains(alg.getString())) {
+                algorithms.add(alg.getString());
+            }
+        }
+        return algorithms;
+    }
+
+    /**
      * Parses the JSON request body.
      */
     @SuppressWarnings("java:S1168") // False positive - JsonObject is not a collection, null indicates error handled
-    private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private JsonObject parseRequest(HttpServletRequest req, HttpServletResponse resp) {
         // Read at most MAX+1 bytes instead of trusting Content-Length — with chunked
         // transfer encoding getContentLength() is -1, which would bypass the limit.
         byte[] body;
@@ -708,10 +738,12 @@ public class JwksValidationServlet extends HttpServlet {
     }
 
     /**
-     * Sends an error response.
+     * Sends an error response carrying the standard
+     * {@code {valid,accessible,error,keyCount,algorithms}} JSON shape. Any I/O failure while
+     * writing is logged and swallowed (the connection is likely already broken), so this method
+     * never throws — allowing the {@code doPost} fallback handlers to call it from a catch block.
      */
-    private void sendErrorResponse(HttpServletResponse resp, int statusCode, String errorMessage)
-            throws IOException {
+    private void sendErrorResponse(HttpServletResponse resp, int statusCode, String errorMessage) {
 
         JsonObject errorResponse = Json.createObjectBuilder()
                 .add("valid", false)

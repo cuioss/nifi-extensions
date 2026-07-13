@@ -1,0 +1,58 @@
+= nifi-cuioss-ui
+
+Web UI (WAR) for configuring the custom NiFi processors. Packaged into `nifi-cuioss-nar` and served by NiFi as the processors' custom UI. Provides the *Configuration*, *Token Verification*, *Metrics*, and *Help* tabs shown in the processor configuration dialog.
+
+== Two Build Surfaces
+
+This module has two independently tested build surfaces, both driven by the Maven build:
+
+* *Java servlets and filters* (`src/main/java`) — the server-side endpoints the browser UI calls, under `/nifi-api/processors/jwt/...`. Unit-tested with JUnit 5 (EasyMock is used, as an approved exception, only here for the NiFi web-context / servlet doubles).
+* *JavaScript* (`src/main/webapp/js`) — the browser UI (ES modules), unit-tested with Jest and linted with ESLint. The frontend build (npm) is wired into the Maven lifecycle via the frontend plugin.
+
+== Server-Side Endpoints
+
+[cols="2,3"]
+|===
+|Servlet / Filter |Responsibility
+
+|`JwtVerificationServlet`
+|Stateless token verification (shared by both processors)
+
+|`JwksValidationServlet`
+|Stateless JWKS validation (URL, file, or inline content)
+
+|`GatewayProxyServlet`
+|Proxies config / metrics / health / test / token-fetch / discovery requests to the `RestApiGateway`, with SSRF protection
+
+|`ComponentInfoServlet`
+|Returns processor component metadata
+
+|`ProxyContextPathServlet`
+|Returns the NiFi web context path so the UI can resolve API base URLs behind a reverse proxy
+
+|`ProcessorIdValidationFilter`
+|Validates the processor-id header on incoming custom-UI requests
+|===
+
+See link:../doc/architecture/gateway.adoc#custom-ui-endpoints-layer-2[Gateway Architecture -- Custom UI Endpoints] for the full endpoint authorization matrix.
+
+== Browser UI Modules
+
+Key ES modules under `src/main/webapp/js`:
+
+* `issuer-config.js` — the issuer-configuration tab (JWT processor)
+* `rest-endpoint-config.js` — the gateway route-editor tab (`RestApiGateway`)
+* `token-verifier.js` — the token-verification tab
+* `metrics.js` — the metrics tab
+* `api.js` — the shared client for the server-side endpoints above
+* `utils.js` — shared helpers, including the `log` logging utility (use it instead of `console.log`) and HTML-sanitization helpers
+
+== Build & Test
+
+Build commands are resolved through the plan-marshall executor (never hard-code `./mvnw`/`npm`); see the repository-root link:../doc/guides/BuildingGuide.adoc[Building Guide]. The JavaScript unit suite runs via the `nifi-cuioss-ui` npm module and enforces Jest coverage thresholds (80% lines, 75% branches, 78% functions).
+
+== Related Documentation
+
+* link:../doc/guides/IssuerConfigPropertiesGuide.adoc[Issuer Configuration Walkthrough]
+* link:../doc/architecture/gateway.adoc[Gateway Architecture]
+* link:../doc/reference/configuration.adoc[Configuration Reference]

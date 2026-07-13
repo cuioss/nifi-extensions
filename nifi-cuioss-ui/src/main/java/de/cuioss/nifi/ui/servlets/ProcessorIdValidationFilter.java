@@ -18,28 +18,26 @@ package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.tools.logging.CuiLogger;
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonWriterFactory;
 import jakarta.servlet.*;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Validates that requests to JWT API endpoints include a valid processor ID header.
  * <p>
  * This filter intercepts requests to {@code /nifi-api/processors/jwt/*} and validates
- * that the {@code X-Processor-Id} or {@code X-Component-Id} header contains a valid UUID.
- * This ensures requests originate from the custom UI running within an authenticated
- * NiFi session (iframe).
+ * the {@code X-Processor-Id} header through the shared {@link ProcessorIdHeaderValidator},
+ * so the filter and the component-facing servlets apply one identical processor-ID rule and
+ * one 400-JSON response contract. This ensures requests originate from the custom UI running
+ * within an authenticated NiFi session (iframe).
+ *
+ * <p>Registration is via {@code web.xml} only (mirroring {@link SecurityHeadersFilter}); the
+ * filter carries no {@code @WebFilter} annotation, so it is mapped exactly once.</p>
  *
  * <h3>Security note</h3>
- * <p>The UUID format validation serves as a first line of defense against malformed input,
+ * <p>The processor-ID validation serves as a first line of defense against malformed input,
  * but the processor ID is <em>not</em> an authentication token. The actual trust boundary
  * is NiFi's session authentication — only authenticated users can reach this filter
  * because the Custom UI is loaded inside NiFi's authenticated iframe. The processor ID
@@ -49,15 +47,14 @@ import java.util.UUID;
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/configuration.adoc">Configuration Reference</a>
  * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/architecture/gateway.adoc">Gateway Architecture</a>
  */
-@WebFilter("/nifi-api/processors/jwt/*")
 public class ProcessorIdValidationFilter implements Filter {
 
     private static final CuiLogger LOGGER = new CuiLogger(ProcessorIdValidationFilter.class);
-    private static final JsonWriterFactory JSON_WRITER = Json.createWriterFactory(Map.of());
 
-    // Headers — accept both legacy and generic component ID headers
     private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
-    private static final String COMPONENT_ID_HEADER = "X-Component-Id";
+
+    /** Shared processor-ID rule + 400 response contract, identical to the servlets. */
+    private final ProcessorIdHeaderValidator processorIdValidator = new ProcessorIdHeaderValidator();
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -76,27 +73,20 @@ public class ProcessorIdValidationFilter implements Filter {
 
         LOGGER.debug("Processing request: %s %s", method, requestPath);
 
-        // Extract component ID from headers (X-Processor-Id or X-Component-Id)
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
-        if (processorId == null || processorId.trim().isEmpty()) {
-            processorId = httpRequest.getHeader(COMPONENT_ID_HEADER);
-        }
 
-        // Validate processor ID header is present and is a valid UUID
+        // Require the header to be present, then apply the shared processor-ID rule.
+        // Both branches emit the identical 400-JSON contract the servlets use.
         if (processorId == null || processorId.trim().isEmpty()) {
             LOGGER.warn(UILogMessages.WARN.MISSING_PROCESSOR_ID, requestPath);
-            sendUnauthorizedResponse(httpResponse, "Missing or empty processor ID header");
+            ProcessorIdHeaderValidator.sendBadRequest(httpResponse, "Missing processor ID");
             return;
         }
-        try {
-            UUID.fromString(processorId);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, requestPath);
-            sendUnauthorizedResponse(httpResponse, "Invalid processor ID format");
+        if (!processorIdValidator.validate(processorId, httpResponse)) {
+            // A 400 JSON error response has already been written by the shared validator.
             return;
         }
 
-        // Check if user is authenticated (when available)
         String remoteUser = httpRequest.getRemoteUser();
         if (remoteUser != null) {
             LOGGER.debug("Request from authenticated user: %s for processor %s", remoteUser, processorId);
@@ -107,37 +97,12 @@ public class ProcessorIdValidationFilter implements Filter {
         // loaded within an authenticated NiFi session
         LOGGER.debug("Request validation successful for processor %s", processorId);
 
-        // Continue with the request
         chain.doFilter(request, response);
     }
 
     @Override
     public void destroy() {
         LOGGER.info(UILogMessages.INFO.FILTER_DESTROYED);
-    }
-
-    /**
-     * Sends an unauthorized response in JSON format to match the API response format.
-     */
-    private void sendUnauthorizedResponse(HttpServletResponse response, String message)
-            throws IOException {
-
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-
-        JsonObject errorResponse = Json.createObjectBuilder()
-                .add("error", message)
-                .add("valid", false)
-                .add("accessible", false)
-                .build();
-
-        try (var writer = JSON_WRITER.createWriter(response.getOutputStream())) {
-            writer.writeObject(errorResponse);
-        } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_WRITE_UNAUTHORIZED_RESPONSE);
-            throw e;
-        }
     }
 
 }

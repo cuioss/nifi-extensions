@@ -160,6 +160,9 @@ export const cleanup = () => {
     metricsEndpointAvailable = true;
     _isGateway = false;
     _refreshGeneration = 0;
+    // Drop the cached snapshot so Export buttons after a re-init cannot download the
+    // previous processor's stale metrics.
+    lastMetricsData = null;
 };
 
 // ---------------------------------------------------------------------------

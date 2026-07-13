@@ -42,6 +42,13 @@
             <groupId>de.cuioss</groupId>
             <artifactId>cui-http</artifactId>
         </dependency>
+        <!-- jakarta.json API (JsonObject/JsonArray/Json) used directly by the gateway
+             handlers, ProblemDetail, and JsonSchemaValidator. Declared here rather than
+             relied upon transitively so the compile classpath is explicit. -->
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.nifi</groupId>
             <artifactId>nifi-api</artifactId>
