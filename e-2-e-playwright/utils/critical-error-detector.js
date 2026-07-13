@@ -4,6 +4,8 @@
  * Includes error whitelisting for console and page error monitoring.
  */
 
+import { SERVICE_URLS } from "./constants.js";
+
 /**
  * Error messages that are expected and should not trigger critical error detection
  */
@@ -119,6 +121,13 @@ export class CriticalErrorDetector {
     constructor() {
         this.detectedErrors = [];
         this.isMonitoring = false;
+        // Tracked listener references + owning page so stopMonitoring() can
+        // detach them. On the worker-scoped shared page the fixture calls
+        // start/stop once per test; without explicit page.off() each test would
+        // leave 3 more listeners attached, duplicating error records and growing
+        // unbounded across a run (N65).
+        this._monitoredPage = null;
+        this._listeners = null;
     }
 
     /**
@@ -130,31 +139,41 @@ export class CriticalErrorDetector {
         this.isMonitoring = true;
         this.detectedErrors = [];
 
-        // Monitor console messages for critical errors
-        page.on("console", (msg) => {
-            this.checkConsoleMessage(msg, testInfo);
-        });
-
-        // Monitor page errors
-        page.on("pageerror", (error) => {
+        const consoleListener = (msg) => this.checkConsoleMessage(msg, testInfo);
+        const pageerrorListener = (error) =>
             this.checkPageError(error, testInfo);
-        });
-
-        // Monitor page crashes
-        page.on("crash", () => {
+        const crashListener = () =>
             this.addCriticalError(
                 "PAGE_CRASH",
                 "Page crashed unexpectedly",
                 testInfo,
             );
-        });
+
+        page.on("console", consoleListener);
+        page.on("pageerror", pageerrorListener);
+        page.on("crash", crashListener);
+
+        this._monitoredPage = page;
+        this._listeners = {
+            console: consoleListener,
+            pageerror: pageerrorListener,
+            crash: crashListener,
+        };
     }
 
     /**
-     * Stop monitoring
+     * Stop monitoring and detach the listeners registered in startMonitoring().
      */
     stopMonitoring() {
         this.isMonitoring = false;
+
+        if (this._monitoredPage && this._listeners) {
+            this._monitoredPage.off("console", this._listeners.console);
+            this._monitoredPage.off("pageerror", this._listeners.pageerror);
+            this._monitoredPage.off("crash", this._listeners.crash);
+        }
+        this._monitoredPage = null;
+        this._listeners = null;
     }
 
     /**
@@ -416,7 +435,7 @@ export async function checkCriticalErrors(page, testInfo) {
     // Check if NiFi is accessible before performing critical error checks
     try {
         const response = await page.request.get(
-            "https://localhost:9095/nifi/nifi-api/system-diagnostics",
+            SERVICE_URLS.NIFI_SYSTEM_DIAGNOSTICS,
             {
                 timeout: 5000,
                 failOnStatusCode: false,

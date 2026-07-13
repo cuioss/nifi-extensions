@@ -123,6 +123,10 @@ test.describe("Configuration Tab", () => {
             .first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify issuer was saved — the issuer name must appear in an input field value
         // (The UI keeps issuers in editable form, not as collapsed text)
@@ -132,6 +136,36 @@ test.describe("Configuration Tab", () => {
         await expect(issuerNameInput).toHaveValue("test-issuer", {
             timeout: 5000,
         });
+
+        // Clean up the saved "test-issuer" so the suite stays idempotent across
+        // runs — like every other test in this file, it must not leak state into
+        // the live processor (N67).
+        const allForms = customUIFrame.locator(".issuer-form");
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        const formCount = await allForms.count();
+        for (let i = formCount - 1; i >= 0; i--) {
+            const form = allForms.nth(i);
+            const nameValue = await form
+                .locator('input[placeholder="e.g., keycloak"]')
+                .first()
+                .inputValue()
+                .catch(() => "");
+            if (nameValue === "test-issuer") {
+                await form.getByRole("button", { name: "Remove" }).click();
+                if (
+                    await confirmButton
+                        .isVisible({ timeout: 2000 })
+                        .catch(() => false)
+                ) {
+                    await confirmButton.click();
+                }
+                break;
+            }
+        }
     });
 
     test("should delete an existing issuer", async ({ customUIFrame }) => {
@@ -234,6 +268,10 @@ test.describe("Configuration Tab", () => {
         const successMessage = newForm.locator(".success-message").first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Edit the issuer: change audience and JWKS URL
         await audienceInput.fill("updated-audience");
@@ -247,6 +285,10 @@ test.describe("Configuration Tab", () => {
         // Verify save success
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify updated values are preserved in the form
         await expect(audienceInput).toHaveValue("updated-audience");
@@ -420,6 +462,10 @@ test.describe("Configuration Tab", () => {
         const successMessage = newForm.locator(".success-message").first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify JWKS type still shows "Memory"
         await expect(jwksTypeSelect).toHaveValue("memory");

@@ -161,7 +161,9 @@ test.describe("ProcessorApiManager Integration Test", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should complete full processor lifecycle", async ({ page }) => {
+    test("should exercise add/start/stop/remove on an isolated throwaway processor", async ({
+        page,
+    }) => {
         const authService = new AuthService(page);
         const processorManager = new ProcessorApiManager(page);
 
@@ -189,54 +191,81 @@ test.describe("ProcessorApiManager Integration Test", () => {
             );
         }
 
-        // Remove if exists
-        await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
-
-        // Verify not on canvas
-        let result =
+        // Capture the provisioned pipeline processor so we can assert the
+        // self-test leaves it — and its configuration — untouched. This test is
+        // NON-DESTRUCTIVE: it never removes the provisioned processor or its
+        // connections; the entire lifecycle runs against an isolated throwaway
+        // instance (M21).
+        await processorManager.ensureProcessorOnCanvas();
+        const provisionedBefore =
             await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-        expect(result.exists).toBe(false);
+        expect(provisionedBefore.exists).toBe(true);
+        const provisionedId = provisionedBefore.processor.id;
+        const provisionedDetailsBefore =
+            await processorManager.getProcessorDetails(provisionedId);
+        const provisionedPropsBefore = JSON.stringify(
+            provisionedDetailsBefore?.component?.config?.properties || {},
+        );
 
-        // Add to canvas
-        const added =
-            await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas({
-                x: 600,
-                y: 400,
-            });
-        expect(added).toBe(true);
+        const throwawayName = "E2E-Throwaway-Lifecycle";
 
-        // Verify on canvas
-        result =
-            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-        expect(result.exists).toBe(true);
+        // Remove any leftover from a previously interrupted run (idempotency —
+        // a run must leave no residual throwaway state).
+        const stale = await processorManager.findProcessorByName(throwawayName);
+        if (stale) {
+            await processorManager.removeProcessorById(stale.id);
+        }
 
-        // Start processor — may return false if the processor was freshly
-        // added without issuer configuration (validation errors prevent start)
-        const started = await processorManager.startProcessor();
+        // Add the throwaway instance
+        const created = await processorManager.addThrowawayProcessor(
+            throwawayName,
+            { x: 100, y: 100 },
+        );
+        expect(created).toBeTruthy();
+        const throwawayId = created.id;
+
+        // Verify it exists
+        const throwawayDetails =
+            await processorManager.getProcessorDetails(throwawayId);
+        expect(throwawayDetails).toBeTruthy();
+        expect(throwawayDetails).toHaveProperty("id", throwawayId);
+
+        // Start — may return false if the freshly-added instance has no issuer
+        // configuration (validation errors prevent start); either way is a boolean
+        const started = await processorManager.setProcessorRunStatusById(
+            throwawayId,
+            "RUNNING",
+        );
         expect(typeof started).toBe("boolean");
 
         if (started) {
-            // Stop processor only if it was started
-            const stopped = await processorManager.stopProcessor();
+            const stopped = await processorManager.setProcessorRunStatusById(
+                throwawayId,
+                "STOPPED",
+            );
             expect(stopped).toBe(true);
         }
 
-        // Remove from canvas
+        // Remove the throwaway
         const removed =
-            await processorManager.removeMultiIssuerJWTTokenAuthenticatorFromCanvas();
+            await processorManager.removeProcessorById(throwawayId);
         expect(removed).toBe(true);
 
-        // Verify removed
-        result =
-            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
-        expect(result.exists).toBe(false);
+        // Verify the throwaway is gone
+        const gone = await processorManager.getProcessorDetails(throwawayId);
+        expect(gone).toBeNull();
 
-        // Restore processor on canvas for subsequent test suites (functional tests)
-        const restored =
-            await processorManager.addMultiIssuerJWTTokenAuthenticatorOnCanvas({
-                x: 600,
-                y: 400,
-            });
-        expect(restored).toBe(true);
+        // The provisioned pipeline processor must remain on canvas with its
+        // configuration (properties, issuer service refs) intact.
+        const provisionedAfter =
+            await processorManager.verifyMultiIssuerJWTTokenAuthenticatorIsOnCanvas();
+        expect(provisionedAfter.exists).toBe(true);
+        expect(provisionedAfter.processor.id).toBe(provisionedId);
+        const provisionedDetailsAfter =
+            await processorManager.getProcessorDetails(provisionedId);
+        const provisionedPropsAfter = JSON.stringify(
+            provisionedDetailsAfter?.component?.config?.properties || {},
+        );
+        expect(provisionedPropsAfter).toBe(provisionedPropsBefore);
     });
 });

@@ -57,17 +57,6 @@ export class AuthService {
   }
 
   /**
-   * Check Keycloak accessibility
-   */
-  async checkKeycloakAccessibility(timeout = 5000) {
-    return this.checkServiceAccessibility(
-      CONSTANTS.SERVICE_URLS.KEYCLOAK_HEALTH,
-      'Keycloak',
-      timeout
-    );
-  }
-
-  /**
    * Modern authentication check using semantic locators
    */
   async isAuthenticated() {
@@ -153,17 +142,14 @@ export class AuthService {
         throw new Error('Received empty token from authentication API');
       }
 
-      // Set the authorization header for subsequent requests
+      // Set the authorization header for subsequent requests. This persists
+      // across in-page navigations, unlike a window global — a value written
+      // via page.evaluate would be wiped by the page.goto('/nifi') below, so
+      // downstream API calls rely on the session cookie + this header, never
+      // on a window token (N69).
       await this.page.setExtraHTTPHeaders({
         'Authorization': `Bearer ${token}`
       });
-
-      // Store the authorization header in window for API manager to use
-      await this.page.evaluate((authHeader) => {
-        window.__authorizationHeader = authHeader;
-        // Also store just the token for easier access
-        window.__jwtToken = authHeader.replace('Bearer ', '');
-      }, `Bearer ${token}`);
 
       // Navigate to main canvas after successful authentication
       await this.page.goto('/nifi');
@@ -307,36 +293,6 @@ export class AuthService {
 
     testLogger.info('Auth','NiFi is ready for testing');
   }
-
-  /**
-   * Navigate to specific page with verification
-   */
-  async navigateToPage(pageType) {
-    const pageConfig = CONSTANTS.PAGE_TYPES[pageType];
-
-    if (!pageConfig) {
-      throw new Error(`Unknown page type: ${pageType}`);
-    }
-
-    testLogger.info('Auth',`Navigating to ${pageConfig.description || pageType}`);
-
-    await this.page.goto(pageConfig.path || pageConfig);
-    await this.page.waitForLoadState('networkidle');
-
-    // Verify navigation success if elements are defined
-    if (pageConfig.elements) {
-      let found = false;
-      for (const selector of pageConfig.elements) {
-        if (await this.page.locator(selector).isVisible()) {
-          found = true;
-          break;
-        }
-      }
-      expect(found, `Navigation to ${pageType} failed`).toBeTruthy();
-    }
-
-    testLogger.info('Auth',`Successfully navigated to ${pageType}`);
-  }
 }
 
 /**
@@ -345,11 +301,6 @@ export class AuthService {
 export async function checkNiFiAccessibility(page, timeout = 5000) {
   const authService = new AuthService(page);
   return authService.checkNiFiAccessibility(timeout);
-}
-
-export async function checkKeycloakAccessibility(page, timeout = 5000) {
-  const authService = new AuthService(page);
-  return authService.checkKeycloakAccessibility(timeout);
 }
 
 export async function login(page, credentials = {}) {
@@ -365,11 +316,6 @@ export async function logout(page) {
 export async function ensureNiFiReady(page) {
   const authService = new AuthService(page);
   return authService.ensureReady();
-}
-
-export async function navigateToPage(page, pageType) {
-  const authService = new AuthService(page);
-  return authService.navigateToPage(pageType);
 }
 
 // Additional convenience function for backward compatibility

@@ -15,15 +15,15 @@
     "test": "NODE_EXTRA_CA_CERTS=../integration-testing/src/main/docker/certificates/localhost.crt node utils/run-tests-with-precheck.js",
     "test:self": "playwright test tests/self-*.spec.js --reporter=list",
     "test:jwt": "node utils/run-tests-with-precheck.js tests/01-verify-configuration-tab.spec.js tests/02-verify-jwks-validation.spec.js",
-    "test:no-precheck": "playwright test --grep-invert self- --reporter=list",
+    "test:no-precheck": "NODE_EXTRA_CA_CERTS=../integration-testing/src/main/docker/certificates/localhost.crt playwright test --grep-invert self- --reporter=list",
     "test:a11y": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=list",
     "test:a11y:full": "playwright test tests/accessibility-wcag-compliance.spec.js --reporter=html",
     "test:a11y:quick": "playwright test tests/accessibility-wcag-compliance.spec.js --grep 'Full page WCAG compliance' --reporter=list",
     "lint": "eslint '{tests,utils,fixtures}/**/*.js'",
     "lint:fix": "eslint '{tests,utils,fixtures}/**/*.js' --fix",
     "lint:strict": "eslint '{tests,utils,fixtures}/**/*.js' --max-warnings 30 --report-unused-disable-directives",
-    "format": "prettier --write 'tests/**/*.js'",
-    "format:check": "prettier --check 'tests/**/*.js'"
+    "format": "prettier --write '{tests,utils,fixtures}/**/*.js'",
+    "format:check": "prettier --check '{tests,utils,fixtures}/**/*.js'"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

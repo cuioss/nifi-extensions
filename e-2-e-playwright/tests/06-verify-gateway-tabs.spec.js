@@ -14,6 +14,38 @@ import { CONSTANTS } from "../utils/constants.js";
 import { getValidAccessToken } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
+/**
+ * Remove a persisted route by name if it is present in the summary table.
+ * Keeps route-mutating tests idempotent so a re-run never hits a duplicate-name
+ * validation error and leaves no residual route state (M22).
+ * @param {import('@playwright/test').Frame} customUIFrame - the custom UI iframe
+ * @param {import('@playwright/test').Locator} summaryTable - the route summary table locator
+ * @param {string} routeName - the route name to remove
+ * @returns {Promise<void>}
+ */
+async function removeRouteIfPresent(customUIFrame, summaryTable, routeName) {
+    const row = summaryTable.locator(`tr[data-route-name="${routeName}"]`);
+    if ((await row.count()) === 0) {
+        return;
+    }
+    const removeBtn = row.locator(".remove-route-button");
+    if ((await removeBtn.count()) === 0) {
+        return; // external/read-only route — nothing to remove
+    }
+    await removeBtn.first().click();
+
+    // Confirm the deletion if a confirmation dialog appears
+    const confirmButton = customUIFrame
+        .locator(
+            '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes"), button:has-text("Delete")',
+        )
+        .first();
+    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+    }
+    await expect(row).toHaveCount(0, { timeout: 5000 });
+}
+
 test.describe("REST API Gateway Tabs", () => {
     test.describe.configure({ mode: "serial" });
 
@@ -906,6 +938,11 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
+        // Idempotency guard: a route named "e2e-origin-test" must not already
+        // exist (a prior interrupted run would otherwise trigger a duplicate-name
+        // validation error). Remove any leftover before adding (M22).
+        await removeRouteIfPresent(customUIFrame, summaryTable, "e2e-origin-test");
+
         // Click Add Route
         const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
         await addRouteBtn.click();
@@ -934,6 +971,11 @@ test.describe("REST API Gateway Tabs", () => {
         );
         await expect(newRow).toBeVisible({ timeout: 5000 });
         await expect(newRow).toHaveAttribute("data-origin", "persisted");
+
+        // Clean up: remove the route we added so a re-run leaves no residual
+        // "e2e-origin-test" state (M22).
+        await removeRouteIfPresent(customUIFrame, summaryTable, "e2e-origin-test");
+        await expect(newRow).toHaveCount(0, { timeout: 5000 });
     });
 
     test("should show modified badge after editing a persisted route", async ({
@@ -1296,7 +1338,6 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should refresh gateway metrics and update timestamp", async ({
-        page,
         customUIFrame,
         processorService,
     }) => {
@@ -1329,9 +1370,15 @@ test.describe("REST API Gateway Tabs", () => {
 
         // Verify metrics content remains visible and stable after refresh
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
-
-        // Verify last-updated element is still present (refresh didn't break the UI)
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+
+        // The named behavior — "refresh updates timestamp" — must actually be
+        // asserted: poll until the last-updated text changes from its pre-refresh
+        // value, so the test can genuinely fail if refresh does NOT update it (N60).
+        await expect
+            .poll(async () => lastUpdated.textContent(), { timeout: 10000 })
+            .not.toBe(timestampBefore);
+
         const timestampAfter = await lastUpdated.textContent();
         expect(timestampAfter).toContain("Last updated:");
     });

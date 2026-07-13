@@ -55,27 +55,13 @@ export class ProcessorApiManager {
   static _contextSeeded = false;
 
   /**
-   * Get authentication headers from the page context
-   * This is kept for backward compatibility
+   * Get base request headers. Authentication itself rides on the session cookie
+   * (sent via credentials:'include' in makeApiCall) plus the Authorization header
+   * installed by AuthService.login()/global-setup via setExtraHTTPHeaders — those
+   * survive in-page navigation, whereas a window token would be wiped by the
+   * post-login page.goto('/nifi'), so no window token is consulted here (N69).
    */
   async getAuthHeaders() {
-    // Get headers that were set with setExtraHTTPHeaders during login
-    // The AuthService sets these headers after successful authentication
-    
-    // Try to get JWT token from window object (set during login)
-    const token = await this.page.evaluate(() => window.__jwtToken).catch(() => null);
-    
-    if (token) {
-      testLogger.info('Processor','Using JWT token for authentication');
-      return {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      };
-    }
-    
-    testLogger.info('Processor','No JWT token found, relying on session cookies');
-    // Fallback to empty headers (will rely on cookies)
     return {
       'Accept': 'application/json',
       'Content-Type': 'application/json'
@@ -173,7 +159,7 @@ export class ProcessorApiManager {
       testLogger.warn('Processor','Could not get root process group ID, using "root"');
       return 'root';
     } catch (error) {
-      testLogger.error('Processor','Error getting root process group ID:', error.message);
+      testLogger.error('Processor', `Error getting root process group ID: ${error.message}`);
       return 'root';
     }
   }
@@ -198,7 +184,7 @@ export class ProcessorApiManager {
       ProcessorApiManager._cache.processGroups = groups;
       return groups;
     } catch (error) {
-      testLogger.error('Processor', 'Error getting process groups:', error.message);
+      testLogger.error('Processor', `Error getting process groups: ${error.message}`);
       return [];
     }
   }
@@ -384,7 +370,7 @@ export class ProcessorApiManager {
 
       return isDeployed;
     } catch (error) {
-      testLogger.error('Processor','Error verifying processor deployment:', error.message);
+      testLogger.error('Processor', `Error verifying processor deployment: ${error.message}`);
       return false;
     }
   }
@@ -405,7 +391,7 @@ export class ProcessorApiManager {
 
       return result.data?.processors || [];
     } catch (error) {
-      testLogger.error('Processor','Error getting processors on canvas:', error.message);
+      testLogger.error('Processor', `Error getting processors on canvas: ${error.message}`);
       return [];
     }
   }
@@ -435,15 +421,15 @@ export class ProcessorApiManager {
         return { exists: true, processor: found };
       } else {
         testLogger.warn('Processor','MultiIssuerJWTTokenAuthenticator NOT found on canvas');
-        testLogger.info('Processor','Processors on canvas:', processors.map(p => ({
+        testLogger.info('Processor', `Processors on canvas: ${JSON.stringify(processors.map(p => ({
           id: p.id,
           name: p.component?.name,
           type: p.component?.type
-        })));
+        })))}`);
         return { exists: false, processor: null };
       }
     } catch (error) {
-      testLogger.error('Processor','Error verifying processor on canvas:', error.message);
+      testLogger.error('Processor', `Error verifying processor on canvas: ${error.message}`);
       return { exists: false, processor: null };
     }
   }
@@ -467,9 +453,34 @@ export class ProcessorApiManager {
       testLogger.warn('Processor', `Could not stop all processors: ${result.status || result.error}`);
     }
 
-    // Wait for processors to fully stop (NiFi needs time to update component states)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Poll until no processor in the group reports a RUNNING run-status instead
+    // of sleeping a fixed 2s and hoping NiFi caught up (N64).
+    await this._waitForProcessorsStopped(groupId);
     return result.ok;
+  }
+
+  /**
+   * Poll the group's processors until none reports a RUNNING run-status.
+   * @param {string} groupId - process group id
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   * @returns {Promise<boolean>} true once all processors are stopped, false on timeout
+   */
+  async _waitForProcessorsStopped(groupId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const processors = await this.getProcessorsOnCanvas(groupId);
+      const anyRunning = processors.some(p => {
+        const state =
+          p.status?.aggregateSnapshot?.runStatus ||
+          p.status?.runStatus ||
+          p.component?.state;
+        return typeof state === 'string' && state.toUpperCase() === 'RUNNING';
+      });
+      if (!anyRunning) return true;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    testLogger.warn('Processor', 'Timed out waiting for processors to stop');
+    return false;
   }
 
   /**
@@ -497,39 +508,92 @@ export class ProcessorApiManager {
 
     for (const conn of related) {
       const connId = conn.id;
-      const connVersion = conn.revision?.version ?? 0;
 
-      // Drop queued FlowFiles (ignore errors)
-      await this.makeApiCall(
+      // Drop queued FlowFiles, then poll the drop-request to completion instead
+      // of a fixed 500ms sleep (N64).
+      const dropResult = await this.makeApiCall(
         `/nifi-api/flowfile-queues/${connId}/drop-requests`,
         { method: 'POST' }
       );
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const dropRequestId = dropResult.ok ? dropResult.data?.dropRequest?.id : null;
+      if (dropRequestId) {
+        await this._waitForDropRequest(connId, dropRequestId);
+      }
 
-      // Delete the connection using the version from the listing
-      const deleteResult = await this.makeApiCall(
-        `/nifi-api/connections/${connId}?version=${connVersion}&disconnectedNodeAcknowledged=false`,
+      // Delete using the current revision. A stale version yields 409; the
+      // correct recovery is to re-read the live revision, not to blindly guess
+      // version+1 (N64).
+      const deleted = await this._deleteConnectionWithFreshRevision(
+        connId,
+        conn.revision?.version ?? 0
+      );
+      if (deleted) {
+        testLogger.info('Processor', `Deleted connection ${connId}`);
+      } else {
+        testLogger.warn('Processor', `Could not delete connection ${connId}`);
+      }
+    }
+  }
+
+  /**
+   * Poll a FlowFile drop-request until it reports finished, then delete it.
+   * @param {string} connId - connection (flowfile-queue) id
+   * @param {string} dropRequestId - drop-request id returned by the POST
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   */
+  async _waitForDropRequest(connId, dropRequestId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const status = await this.makeApiCall(
+        `/nifi-api/flowfile-queues/${connId}/drop-requests/${dropRequestId}`
+      );
+      if (!status.ok || status.data?.dropRequest?.finished) break;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    // Release the drop-request resource (best effort)
+    await this.makeApiCall(
+      `/nifi-api/flowfile-queues/${connId}/drop-requests/${dropRequestId}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
+   * Fetch a connection's current revision version.
+   * @param {string} connId - connection id
+   * @returns {Promise<number|null>} the live revision version, or null if unavailable
+   */
+  async _fetchConnectionRevision(connId) {
+    const result = await this.makeApiCall(`/nifi-api/connections/${connId}`);
+    if (result.ok && result.data) {
+      return result.data.revision?.version ?? null;
+    }
+    return null;
+  }
+
+  /**
+   * Delete a connection, recovering from a version conflict by re-reading the
+   * live revision (never by guessing version+1).
+   * @param {string} connId - connection id
+   * @param {number} listedVersion - revision version from the connections listing
+   * @returns {Promise<boolean>} true when the connection is gone (deleted or 404)
+   */
+  async _deleteConnectionWithFreshRevision(connId, listedVersion) {
+    const attempt = version =>
+      this.makeApiCall(
+        `/nifi-api/connections/${connId}?version=${version}&disconnectedNodeAcknowledged=false`,
         { method: 'DELETE' }
       );
 
-      if (deleteResult.ok || deleteResult.status === 404) {
-        testLogger.info('Processor', `Deleted connection ${connId}`);
-      } else if (deleteResult.status === 409) {
-        // Version conflict — try with incremented version
-        testLogger.warn('Processor', `Version conflict on ${connId}, retrying with version ${connVersion + 1}`);
-        const retryResult = await this.makeApiCall(
-          `/nifi-api/connections/${connId}?version=${connVersion + 1}`,
-          { method: 'DELETE' }
-        );
-        if (retryResult.ok || retryResult.status === 404) {
-          testLogger.info('Processor', `Deleted connection ${connId} on retry`);
-        } else {
-          testLogger.warn('Processor', `Could not delete connection ${connId}: ${retryResult.status}`);
-        }
-      } else {
-        testLogger.warn('Processor', `Could not delete connection ${connId}: ${deleteResult.status || deleteResult.error}`);
-      }
+    let deleteResult = await attempt(listedVersion);
+    if (deleteResult.ok || deleteResult.status === 404) return true;
+
+    if (deleteResult.status === 409) {
+      const freshVersion = await this._fetchConnectionRevision(connId);
+      if (freshVersion === null) return false;
+      deleteResult = await attempt(freshVersion);
+      return deleteResult.ok || deleteResult.status === 404;
     }
+    return false;
   }
 
   /**
@@ -592,7 +656,7 @@ export class ProcessorApiManager {
       testLogger.error('Processor',`Failed to delete processor: ${deleteResult.status || deleteResult.error}`);
       return false;
     } catch (error) {
-      testLogger.error('Processor','Error removing processor from canvas:', error.message);
+      testLogger.error('Processor', `Error removing processor from canvas: ${error.message}`);
       return false;
     }
   }
@@ -669,11 +733,11 @@ export class ProcessorApiManager {
         if (createResult.status === 403) {
           testLogger.error('Processor','Permission denied - user may not have rights to add processors');
         }
-        testLogger.info('Processor','Create error response:', JSON.stringify(createResult.data, null, 2));
+        testLogger.info('Processor', `Create error response: ${JSON.stringify(createResult.data, null, 2)}`);
         return false;
       }
     } catch (error) {
-      testLogger.error('Processor','Error adding processor to canvas:', error.message);
+      testLogger.error('Processor', `Error adding processor to canvas: ${error.message}`);
       return false;
     }
   }
@@ -738,7 +802,7 @@ export class ProcessorApiManager {
       testLogger.warn('Processor', `getProcessorDetails(${processorId}): ${result.status || result.error}`);
       return null;
     } catch (error) {
-      testLogger.error('Processor','Error getting processor details:', error.message);
+      testLogger.error('Processor', `Error getting processor details: ${error.message}`);
       return null;
     }
   }
@@ -778,7 +842,7 @@ export class ProcessorApiManager {
         return false;
       }
     } catch (error) {
-      testLogger.error('Processor','Error starting processor:', error.message);
+      testLogger.error('Processor', `Error starting processor: ${error.message}`);
       return false;
     }
   }
@@ -818,9 +882,115 @@ export class ProcessorApiManager {
         return false;
       }
     } catch (error) {
-      testLogger.error('Processor','Error stopping processor:', error.message);
+      testLogger.error('Processor', `Error stopping processor: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Add an isolated throwaway MultiIssuerJWTTokenAuthenticator instance with a
+   * distinct name so lifecycle self-tests can exercise add/start/stop/remove
+   * WITHOUT touching the provisioned pipeline processor or its connections (M21).
+   * Unlike addMultiIssuerJWTTokenAuthenticatorOnCanvas, this always creates a new
+   * instance and returns its entity.
+   * @param {string} name - unique processor name for the throwaway instance
+   * @param {{x:number,y:number}} [position] - canvas position
+   * @returns {Promise<object|null>} the created processor entity, or null on failure
+   */
+  async addThrowawayProcessor(name, position = { x: 100, y: 100 }) {
+    const isDeployed = await this.verifyMultiIssuerJWTTokenAuthenticatorIsDeployed();
+    if (!isDeployed) {
+      testLogger.error('Processor', 'Cannot add throwaway — processor type not deployed');
+      return null;
+    }
+
+    const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+    const targetGroupId = jwtGroupId || await this.getRootProcessGroupId();
+
+    const typesResult = await this.makeApiCall('/nifi-api/flow/processor-types');
+    const processorTypeInfo = typesResult.ok && typesResult.data
+      ? typesResult.data.processorTypes?.find(type =>
+          type.type === this.processorType ||
+          type.type?.includes('MultiIssuerJWTTokenAuthenticator'))
+      : null;
+    if (!processorTypeInfo) {
+      testLogger.error('Processor', 'Could not find processor type info for throwaway');
+      return null;
+    }
+
+    const createResult = await this.makeApiCall(
+      `/nifi-api/process-groups/${targetGroupId}/processors`,
+      {
+        method: 'POST',
+        body: {
+          revision: { version: 0 },
+          component: {
+            type: processorTypeInfo.type,
+            bundle: processorTypeInfo.bundle,
+            name,
+            position,
+            config: { properties: {}, autoTerminatedRelationships: [] }
+          }
+        }
+      }
+    );
+    if (createResult.ok) {
+      testLogger.info('Processor', `Throwaway processor '${name}' added with ID: ${createResult.data?.id}`);
+      return createResult.data;
+    }
+    testLogger.error('Processor', `Failed to create throwaway processor: ${createResult.status || createResult.error}`);
+    return null;
+  }
+
+  /**
+   * Find a processor in the JWT pipeline group (or root) by exact name.
+   * @param {string} name - processor name to match
+   * @returns {Promise<object|null>} the processor entity, or null when not found
+   */
+  async findProcessorByName(name) {
+    const jwtGroupId = await this.getJwtPipelineProcessGroupId();
+    const processors = jwtGroupId
+      ? await this.getProcessorsOnCanvas(jwtGroupId)
+      : await this.getProcessorsOnCanvas();
+    return processors.find(p => p.component?.name === name) || null;
+  }
+
+  /**
+   * Set a specific processor's run-status by id (re-fetches its revision first).
+   * @param {string} processorId - target processor id
+   * @param {'RUNNING'|'STOPPED'} state - desired run state
+   * @returns {Promise<boolean>} true when NiFi accepted the state change
+   */
+  async setProcessorRunStatusById(processorId, state) {
+    const details = await this.getProcessorDetails(processorId);
+    if (!details) return false;
+    const result = await this.makeApiCall(
+      `/nifi-api/processors/${processorId}/run-status`,
+      {
+        method: 'PUT',
+        body: {
+          revision: { version: details.revision?.version || 0 },
+          state
+        }
+      }
+    );
+    return result.ok;
+  }
+
+  /**
+   * Remove a specific processor by id (re-fetches its revision first).
+   * @param {string} processorId - target processor id
+   * @returns {Promise<boolean>} true when the processor is gone (deleted or 404)
+   */
+  async removeProcessorById(processorId) {
+    const details = await this.getProcessorDetails(processorId);
+    if (!details) return true; // already gone
+    const version = details.revision?.version || 0;
+    const result = await this.makeApiCall(
+      `/nifi-api/processors/${processorId}?version=${version}`,
+      { method: 'DELETE' }
+    );
+    return result.ok || result.status === 404;
   }
 }
 

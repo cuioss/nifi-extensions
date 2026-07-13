@@ -79,17 +79,73 @@ const CUSTOM_CHECKS = {
 
     // Keyboard navigation
     keyboardAccessible: {
-        description: "All interactive elements must be keyboard accessible",
+        description:
+            "Interactive elements must be reachable and correctly ordered for keyboard users",
         selector:
             'button, a, input, select, textarea, [role="button"], [tabindex]',
         check: async (page, element) => {
-            const tabindex = await element.getAttribute("tabindex");
-            const role = await element.getAttribute("role");
+            const info = await element.evaluate((el) => {
+                const tabindexAttr = el.getAttribute("tabindex");
+                return {
+                    tag: el.tagName.toLowerCase(),
+                    role: el.getAttribute("role"),
+                    tabindex: tabindexAttr,
+                    tabindexNum:
+                        tabindexAttr === null ? null : Number(tabindexAttr),
+                    disabled: el.hasAttribute("disabled"),
+                    href: el.getAttribute("href"),
+                };
+            });
 
-            if (tabindex === "-1" && !role) {
+            // A positive tabindex hijacks the natural document tab order — a
+            // recognised WCAG anti-pattern.
+            if (
+                info.tabindexNum !== null &&
+                Number.isFinite(info.tabindexNum) &&
+                info.tabindexNum > 0
+            ) {
                 return {
                     passed: false,
-                    message: "Interactive element not keyboard accessible",
+                    message: `Positive tabindex (${info.tabindex}) disrupts natural tab order`,
+                };
+            }
+
+            const nativelyFocusable =
+                info.tag === "button" ||
+                info.tag === "select" ||
+                info.tag === "textarea" ||
+                info.tag === "input" ||
+                (info.tag === "a" && info.href !== null);
+
+            const hasInteractiveRole = info.role !== null;
+
+            // An element made interactive purely via an ARIA role (e.g.
+            // <div role="button">) must expose a non-negative tabindex, or
+            // keyboard users cannot reach it.
+            if (
+                !nativelyFocusable &&
+                hasInteractiveRole &&
+                (info.tabindexNum === null || info.tabindexNum < 0)
+            ) {
+                return {
+                    passed: false,
+                    message: `Element with role="${info.role}" is not keyboard focusable (missing non-negative tabindex)`,
+                };
+            }
+
+            // A natively interactive control pulled out of the tab order via
+            // tabindex="-1" (without a role that programmatically manages focus)
+            // is unreachable by keyboard.
+            if (
+                nativelyFocusable &&
+                !info.disabled &&
+                info.tabindexNum === -1 &&
+                !hasInteractiveRole
+            ) {
+                return {
+                    passed: false,
+                    message:
+                        "Natively interactive element removed from keyboard tab order (tabindex=-1)",
                 };
             }
 
@@ -129,32 +185,81 @@ const CUSTOM_CHECKS = {
         },
     },
 
-    // Color contrast for custom components
+    // Color contrast for custom components (WCAG 2.1 AA contrast ratio)
     colorContrast: {
-        description: "Text must have sufficient color contrast",
+        description: "Text must have sufficient color contrast (WCAG 2.1 AA)",
         selector: ".validation-error, .validation-success, .help-text",
         check: async (page, element) => {
-            const contrast = await element.evaluate((el) => {
-                const style = window.getComputedStyle(el);
-                const bgColor = style.backgroundColor;
-                const textColor = style.color;
-
-                // Simple contrast check (full implementation would calculate actual ratio)
-                if (
-                    bgColor === "transparent" ||
-                    bgColor === "rgba(0, 0, 0, 0)"
-                ) {
-                    return { passed: true }; // Skip transparent backgrounds
-                }
-
-                return {
-                    passed: true, // Placeholder - would calculate actual contrast ratio
-                    bgColor,
-                    textColor,
+            return element.evaluate((el) => {
+                const parseColor = (str) => {
+                    if (!str) return null;
+                    const m = str.match(/rgba?\(([^)]+)\)/);
+                    if (!m) return null;
+                    const parts = m[1]
+                        .split(",")
+                        .map((p) => parseFloat(p.trim()));
+                    const [r, g, b] = parts;
+                    const a = parts.length >= 4 ? parts[3] : 1;
+                    return { r, g, b, a };
                 };
-            });
 
-            return contrast;
+                const relativeLuminance = ({ r, g, b }) => {
+                    const srgb = [r, g, b].map((c) => {
+                        const cs = c / 255;
+                        return cs <= 0.03928
+                            ? cs / 12.92
+                            : Math.pow((cs + 0.055) / 1.055, 2.4);
+                    });
+                    return (
+                        0.2126 * srgb[0] +
+                        0.7152 * srgb[1] +
+                        0.0722 * srgb[2]
+                    );
+                };
+
+                const style = window.getComputedStyle(el);
+                const textColor = parseColor(style.color);
+                if (!textColor) return { passed: true }; // cannot determine — skip
+
+                // Resolve the effective background by walking up the ancestor
+                // chain until a non-transparent background colour is found.
+                let node = el;
+                let bg = null;
+                while (node) {
+                    const parsed = parseColor(
+                        window.getComputedStyle(node).backgroundColor,
+                    );
+                    if (parsed && parsed.a !== 0) {
+                        bg = parsed;
+                        break;
+                    }
+                    node = node.parentElement;
+                }
+                if (!bg) bg = { r: 255, g: 255, b: 255, a: 1 }; // assume white page background
+
+                const l1 = relativeLuminance(textColor);
+                const l2 = relativeLuminance(bg);
+                const ratio =
+                    (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+
+                // Large text (>= 24px, or >= 18.66px bold) needs only 3:1; all
+                // other text needs 4.5:1 (WCAG 2.1 SC 1.4.3).
+                const fontSize = parseFloat(style.fontSize) || 16;
+                const fontWeight = parseInt(style.fontWeight, 10) || 400;
+                const isLarge =
+                    fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
+                const threshold = isLarge ? 3.0 : 4.5;
+                const rounded = Number(ratio.toFixed(2));
+
+                if (ratio < threshold) {
+                    return {
+                        passed: false,
+                        message: `Insufficient contrast ratio ${rounded}:1 (needs ${threshold}:1)`,
+                        ratio: rounded,
+                    };
+                }
+                return { passed: true, ratio: rounded };
+            });
         },
     },
 
@@ -627,20 +732,6 @@ export class AccessibilityHelper {
 
         return recommendations;
     }
-}
-
-/**
- * Create accessibility test fixtures
- * @param test
- */
-export function createAccessibilityFixtures(test) {
-    return test.extend({
-        accessibilityHelper: async ({ page }, use) => {
-            const helper = new AccessibilityHelper(page);
-            await helper.initialize();
-            await use(helper);
-        },
-    });
 }
 
 /**
