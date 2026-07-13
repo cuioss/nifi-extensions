@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * this test class queries the NiFi REST API to verify that the processors actually
  * processed FlowFiles and routed them through the expected paths (success and failure).
  *
- * <p>Requires Docker containers to be running (NiFi on ports 7777 and 9095, Keycloak on 9080).
+ * <p>Requires Docker containers to be running (NiFi on ports 7777 and 9095, Keycloak on 9085).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked

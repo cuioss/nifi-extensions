@@ -48,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * attributes as JSON into the response body, enabling verification of token
  * extraction, validation, and authorization results.
  *
- * <p>Requires Docker containers to be running (NiFi on port 7777, Keycloak on port 9080).
+ * <p>Requires Docker containers to be running (NiFi on port 7777, Keycloak on port 9085).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked

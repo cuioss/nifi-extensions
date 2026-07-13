@@ -64,7 +64,7 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /health} — GET only (management, loopback or JWT auth)</li>
  * </ul>
  *
- * <p>Requires Docker containers to be running (NiFi HTTPS on port 9443, Keycloak on 9080).
+ * <p>Requires Docker containers to be running (NiFi HTTPS on port 9443, Keycloak on 9085).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
@@ -244,20 +244,35 @@ class RestApiGatewayIT {
          * cannot form a valid request is rejected at the transport level (caught here).
          */
         private void assertAttackItemIdRejected(AttackTestCase testCase) {
+            int status;
             try {
-                int status = given().spec(authSpec)
+                status = given().spec(authSpec)
                         .when()
                         .get("/api/items/{itemId}", testCase.attackString())
                         .then()
                         .extract()
                         .statusCode();
-                org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
-                        "Expected non-2xx for adversarial itemId: " + testCase.attackDescription()
-                                + " (got " + status + ")");
             } catch (RuntimeException e) {
-                // Attack string produced a request REST Assured / the client refused —
-                // rejected at the transport level, which counts as safe handling.
+                // The attack string could not form a valid HTTP request — REST Assured /
+                // the client refused it at the transport level. That is a legitimate
+                // rejection, so return without asserting a status.
+                return;
             }
+            // A 401/403 means the class-level token was itself rejected (typically expired
+            // mid-run against Keycloak's default access-token lifespan). Accepting that as
+            // "non-2xx = safe" would make every remaining attack case pass vacuously, so
+            // fail loudly instead of silently swallowing the auth failure.
+            org.junit.jupiter.api.Assertions.assertNotEquals(401, status,
+                    "Authentication failed (401) for adversarial itemId — token likely expired "
+                            + "mid-run; assertion would be vacuous: " + testCase.attackDescription());
+            org.junit.jupiter.api.Assertions.assertNotEquals(403, status,
+                    "Authorization failed (403) for adversarial itemId — unexpected for an "
+                            + "authenticated attack request: " + testCase.attackDescription());
+            // The security pipeline rejects the adversarial value (400) or the router declines
+            // to match it (404); either way the gateway must not return a 2xx success.
+            org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+                    "Expected non-2xx for adversarial itemId: " + testCase.attackDescription()
+                            + " (got " + status + ")");
         }
 
         @Test

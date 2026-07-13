@@ -13,10 +13,14 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 echo "Calling copy-deployment.sh to build and copy the NAR file..."
 "${SCRIPT_DIR}/copy-deployment.sh"
 
-# For HTTPS mode, check if certificates exist
+# For HTTPS mode, check if certificates exist.
+# All certificates (keystore/truststore + Keycloak's localhost cert/key) live
+# under docker/certificates/ — the directory docker-compose mounts into both
+# containers. Earlier revisions probed nifi/conf/ and keycloak/certificates/,
+# which are not the generation targets, so the guard never regenerated.
 if grep -q "nifi-https:" "${SCRIPT_DIR}/docker-compose.yml" && ! grep -q "# *nifi-https:" "${SCRIPT_DIR}/docker-compose.yml"; then
-  if [ ! -f "${SCRIPT_DIR}/nifi/conf/keystore.p12" ] || [ ! -f "${SCRIPT_DIR}/nifi/conf/truststore.p12" ] || \
-     [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.crt" ] || [ ! -f "${SCRIPT_DIR}/keycloak/certificates/localhost.key" ]; then
+  if [ ! -f "${SCRIPT_DIR}/certificates/keystore.p12" ] || [ ! -f "${SCRIPT_DIR}/certificates/truststore.p12" ] || \
+     [ ! -f "${SCRIPT_DIR}/certificates/localhost.crt" ] || [ ! -f "${SCRIPT_DIR}/certificates/localhost.key" ]; then
     echo "HTTPS mode detected. Generating certificates..."
     "${SCRIPT_DIR}/maintenance/generate-certificates.sh"
   fi

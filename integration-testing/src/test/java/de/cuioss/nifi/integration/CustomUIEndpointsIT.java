@@ -51,7 +51,7 @@ import static org.hamcrest.Matchers.*;
  * to avoid triggering NiFi's CSRF protection. NiFi's {@code CsrfCookieRequestMatcher}
  * only activates when the {@code __Secure-Authorization-Bearer} cookie is present.
  *
- * <p>Requires Docker containers to be running (NiFi on port 9095, Keycloak on 9080).
+ * <p>Requires Docker containers to be running (NiFi on port 9095, Keycloak on 9085).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked
@@ -299,8 +299,11 @@ class CustomUIEndpointsIT {
     class Security {
 
         @Test
-        @DisplayName("should return 401 when X-Processor-Id header is missing")
-        void missingProcessorIdReturns401() {
+        @DisplayName("should return 400 when X-Processor-Id header is missing")
+        void missingProcessorIdReturns400() {
+            // The ProcessorIdValidationFilter (not an authentication filter) rejects a
+            // missing X-Processor-Id header with the unified 400-JSON contract
+            // ({"error": ...}) shared across the filter and servlets (review finding N30).
             given().spec(sessionOnlySpec)
                     .body("""
                             {"token": "test"}
@@ -308,14 +311,18 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/verify-token")
                     .then()
-                    .statusCode(401)
+                    .statusCode(400)
                     .contentType(ContentType.JSON)
-                    .body("valid", equalTo(false));
+                    .body("error", equalTo("Missing processor ID"));
         }
 
         @Test
-        @DisplayName("should return 401 when X-Processor-Id is not a valid UUID")
-        void invalidProcessorIdReturns401() {
+        @DisplayName("should return 400 when X-Processor-Id is invalid")
+        void invalidProcessorIdReturns400() {
+            // "not-a-uuid" passes the unified identifier allow-list ([A-Za-z0-9_-]+) but
+            // resolves to no processor, so JwtVerificationServlet rejects it with 400
+            // ({"valid": false, ...}) — the unified bad-request contract (review finding N30),
+            // not the former 401 (the filter is explicitly not authentication, finding N43).
             given().spec(sessionOnlySpec)
                     .header("X-Processor-Id", "not-a-uuid")
                     .body("""
@@ -324,7 +331,7 @@ class CustomUIEndpointsIT {
                     .when()
                     .post("/nifi-api/processors/jwt/verify-token")
                     .then()
-                    .statusCode(401)
+                    .statusCode(400)
                     .contentType(ContentType.JSON)
                     .body("valid", equalTo(false));
         }
