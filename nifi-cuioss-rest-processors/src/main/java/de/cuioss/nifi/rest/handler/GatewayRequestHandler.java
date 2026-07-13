@@ -65,7 +65,6 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private static final String BEARER_INVALID_TOKEN = "Bearer error=\"invalid_token\"";
     private static final String BEARER_INSUFFICIENT_SCOPE_TEMPLATE = "Bearer error=\"insufficient_scope\", scope=\"%s\"";
 
-    private static final byte[] EMPTY_BODY = new byte[0];
     private static final int BEARER_PREFIX_LENGTH = 7;
 
     /** Path to handler lookup map. Iteration order matches registration order. */
@@ -105,6 +104,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     private static final String HEADER_PROXY_CONTEXT_PATH = "X-ProxyContextPath";
     private static final String HEADER_FORWARDED_PREFIX = "X-Forwarded-Prefix";
+
+    /**
+     * Header names whose values are credentials and must never flow into FlowFile
+     * {@code http.header.*} attributes or NiFi provenance. Compared case-insensitively.
+     */
+    private static final Set<String> SENSITIVE_HEADERS = Set.of(
+            "authorization", "cookie", "set-cookie", "proxy-authorization",
+            "x-api-key", "api-key", "x-api-token", "x-auth-token");
 
     /** Transport-level HTTP security event counters from cui-http. */
     @Getter private final SecurityEventCounter httpSecurityEvents;
@@ -219,8 +226,13 @@ public class GatewayRequestHandler extends Handler.Abstract {
     public boolean handle(Request request, Response response, Callback callback) {
         try {
             dispatch(request, response, callback);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            // Top-level safety net at the Jetty handler boundary: any IOException or runtime
+            // exception escaping dispatch() (token validation, JSON building, status store, …)
+            // is routed through the HANDLER_ERROR log record, the gateway error counter, and the
+            // RFC 9457 problem-details response — never Jetty's default HTML error page.
             LOGGER.error(e, RestApiLogMessages.ERROR.HANDLER_ERROR, e.getMessage());
+            gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.HANDLER_ERROR);
             sendProblemResponse(response, callback, ProblemDetail.internalError());
         }
         return true;
@@ -270,14 +282,11 @@ public class GatewayRequestHandler extends Handler.Abstract {
         Map<String, String> pathParameters = resolved.pathParameters();
         LOGGER.info(RestApiLogMessages.INFO.ROUTE_MATCHED, method, path, handler.name());
 
-        // 3. Method check
-        if (!handler.methods().contains(method.toUpperCase(Locale.ROOT))) {
-            rejectMethod(handler, method, path, response, callback);
-            return;
-        }
-
-        // 4. Auth-mode dispatch — authenticate BEFORE buffering the request body so
-        // unauthenticated clients cannot make the server buffer up to maxRequestSize bytes
+        // 3. Auth-mode dispatch — authenticate BEFORE resolving 405 (method-not-allowed) so an
+        // unauthenticated client cannot enumerate which methods a protected route allows, and
+        // BEFORE buffering the request body so unauthenticated clients cannot make the server
+        // buffer up to maxRequestSize bytes. (404 stays pre-auth above: an unmatched path has no
+        // handler, hence no auth-mode to gate against.)
         AuthResult authResult = resolveAuth(handler.authModes(), request, response, callback,
                 method, path, remoteHost);
         if (authResult instanceof AuthResult.ErrorSent) {
@@ -285,12 +294,22 @@ public class GatewayRequestHandler extends Handler.Abstract {
         }
         AccessTokenContent token = ((AuthResult.Success) authResult).token();
 
+        // 4. Method check (405) — resolved only after authentication (auth-first posture).
+        if (!handler.methods().contains(method.toUpperCase(Locale.ROOT))) {
+            rejectMethod(handler, method, path, response, callback);
+            return;
+        }
+
         // 5. Authorization (shared — skipped when roles+scopes are empty)
         if (token != null && hasAuthorizationRequirements(handler)
                 && !authorizeRequest(token, handler, response, callback, method, path, remoteHost)) {
             return;
         }
-        LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
+        // Skip the AUTH_SUCCESSFUL audit line for anonymous (auth-mode=none) routes — no
+        // authentication actually occurred and it is noise on the anonymous hot path.
+        if (!handler.authModes().contains(AuthMode.NONE)) {
+            LOGGER.info(RestApiLogMessages.INFO.AUTH_SUCCESSFUL, method, path, remoteHost);
+        }
 
         // 6. Body read + size check
         Optional<byte[]> bodyOpt = readAndValidateBody(request, handler, method, path, response, callback);
@@ -343,11 +362,14 @@ public class GatewayRequestHandler extends Handler.Abstract {
             Response response, Callback callback) {
         gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.METHOD_NOT_ALLOWED);
         LOGGER.warn(RestApiLogMessages.WARN.METHOD_NOT_ALLOWED, method, handler.name(), path);
-        response.getHeaders().put(HEADER_ALLOW, String.join(", ", handler.methods()));
+        // Single comma-separated format for the allowed-method list in BOTH the Allow header
+        // and the problem `detail`, so one response never carries two renderings of one list.
+        String allowed = String.join(", ", handler.methods());
+        response.getHeaders().put(HEADER_ALLOW, allowed);
         sendProblemResponse(response, callback,
                 ProblemDetail.methodNotAllowed(
                         "Method %s not allowed on %s. Allowed: %s".formatted(
-                                method, path, handler.methods())));
+                                method, path, allowed)));
     }
 
     /**
@@ -357,10 +379,11 @@ public class GatewayRequestHandler extends Handler.Abstract {
     private Optional<byte[]> readAndValidateBody(Request request, EndpointHandler handler,
             String method, String path,
             Response response, Callback callback) throws IOException {
+        // A handler's maxRequestSize() of 0 means "use the global default" (always positive), so
+        // effectiveMaxSize is always positive and the body is read+bounded for every method; there
+        // is no dead "no body expected" short-circuit. Body-less GET/DELETE requests simply read
+        // an empty body under the same bound.
         int effectiveMaxSize = handler.maxRequestSize() > 0 ? handler.maxRequestSize() : globalMaxRequestSize;
-        if (effectiveMaxSize <= 0) {
-            return Optional.of(EMPTY_BODY);
-        }
         byte[] body = readBody(request, effectiveMaxSize);
         if (body.length > effectiveMaxSize) {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.BODY_TOO_LARGE);
@@ -493,6 +516,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
             String sanitizedPath = securityPipelines.urlPathPipeline().validate(path)
                     .orElse(path);
 
+            // Single-value contract for query parameters: a repeated parameter takes its FIRST
+            // value (Jetty's Fields.getValue returns the first), and getNames() yields each name
+            // once — so a downstream FlowFile http.query.<name> attribute is deterministic.
             var queryParams = Request.extractQueryParameters(request);
             Map<String, String> sanitizedParams = new LinkedHashMap<>();
             for (String name : queryParams.getNames()) {
@@ -502,14 +528,20 @@ public class GatewayRequestHandler extends Handler.Abstract {
                 sanitizedParams.put(name, sanitizedValue);
             }
 
+            // Single-value contract for headers: credential-bearing headers are excluded outright
+            // (never leaked into http.header.* attributes / provenance), and repeated or
+            // case-variant field lines for the same header name are combined into one comma-
+            // separated value (RFC 9110 §5.2) so the downstream key-lowercasing cannot silently
+            // drop a case-variant duplicate.
             Map<String, String> sanitizedHeaders = new LinkedHashMap<>();
             for (HttpField field : request.getHeaders()) {
-                if (!HttpHeader.AUTHORIZATION.is(field.getName())) {
-                    String sanitizedValue = securityPipelines.headerValuePipeline()
-                            .validate(field.getValue())
-                            .orElse(field.getValue());
-                    sanitizedHeaders.put(field.getName(), sanitizedValue);
+                if (isSensitiveHeader(field.getName())) {
+                    continue;
                 }
+                String sanitizedValue = securityPipelines.headerValuePipeline()
+                        .validate(field.getValue())
+                        .orElse(field.getValue());
+                mergeHeaderValue(sanitizedHeaders, field.getName(), sanitizedValue);
             }
 
             // Resolve the full forwarded view ONCE here — the ForwardedRequestResolver owns
@@ -592,6 +624,25 @@ public class GatewayRequestHandler extends Handler.Abstract {
 
     private static boolean hasAuthorizationRequirements(EndpointHandler handler) {
         return !handler.requiredRoles().isEmpty() || !handler.requiredScopes().isEmpty();
+    }
+
+    private static boolean isSensitiveHeader(String name) {
+        return SENSITIVE_HEADERS.contains(name.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Applies the single-value header contract (RFC 9110 §5.2): repeated or case-variant field
+     * lines for the same header name are combined into one comma-separated value, so the
+     * downstream lowercasing of header keys cannot silently drop a case-variant duplicate.
+     */
+    private static void mergeHeaderValue(Map<String, String> headers, String name, String value) {
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(name)) {
+                entry.setValue(entry.getValue() + ", " + value);
+                return;
+            }
+        }
+        headers.put(name, value);
     }
 
     private static Optional<String> extractBearerToken(Request request) {

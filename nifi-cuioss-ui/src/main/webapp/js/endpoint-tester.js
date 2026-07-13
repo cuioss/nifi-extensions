@@ -13,7 +13,7 @@ import {
     discoverTokenEndpoint, resolveJwtConfigServiceId,
     getControllerServiceProperties, getComponentId
 } from './api.js';
-import { log, t } from './utils.js';
+import { log, t, sanitizeHtml } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -197,7 +197,7 @@ const loadRoutes = async (container) => {
         }
 
         selector.innerHTML = routes.map((r) =>
-            `<option value="${escapeAttr(r.path)}" data-methods="${escapeAttr((r.methods || []).join(','))}">${escapeHtml(r.name)} (${escapeHtml(r.path)})</option>`
+            `<option value="${sanitizeHtml(r.path)}" data-methods="${sanitizeHtml((r.methods || []).join(','))}">${sanitizeHtml(r.name)} (${sanitizeHtml(r.path)})</option>`
         ).join('');
 
         // Update method selector and body visibility for the selected route
@@ -227,7 +227,7 @@ const updateMethodsForRoute = (container) => {
     // rebuild the dropdown so no stale restriction from a previous route remains.
     const methods = allowed.length > 0 ? allowed : DEFAULT_METHODS;
     methodSelector.innerHTML = methods.map((m) =>
-        `<option value="${escapeAttr(m)}">${escapeHtml(m)}</option>`
+        `<option value="${sanitizeHtml(m)}">${sanitizeHtml(m)}</option>`
     ).join('');
 };
 
@@ -430,7 +430,7 @@ const loadIssuers = async (container) => {
         }
 
         let options = issuers.map((issuer) =>
-            `<option value="${escapeAttr(issuer)}">${escapeHtml(issuer)}</option>`
+            `<option value="${sanitizeHtml(issuer)}">${sanitizeHtml(issuer)}</option>`
         ).join('');
         options += `<option value="__custom__">${t('tester.token.fetch.issuer.custom')}</option>`;
         selector.innerHTML = options;
@@ -562,13 +562,3 @@ const handleFetchToken = async (container) => {
     }
 };
 
-const escapeHtml = (str) => {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-};
-
-const escapeAttr = (str) => {
-    return String(str).replaceAll('&', '&amp;').replaceAll('"', '&quot;')
-        .replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-};

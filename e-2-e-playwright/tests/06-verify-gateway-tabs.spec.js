@@ -14,6 +14,39 @@ import { CONSTANTS } from "../utils/constants.js";
 import { getValidAccessToken } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
 
+/**
+ * Remove a persisted route by name if it is present in the summary table.
+ * Keeps route-mutating tests idempotent so a re-run never hits a duplicate-name
+ * validation error and leaves no residual route state (M22).
+ * @param {import('@playwright/test').Frame} customUIFrame - the custom UI iframe
+ * @param {import('@playwright/test').Locator} summaryTable - the route summary table locator
+ * @param {string} routeName - the route name to remove
+ * @returns {Promise<void>}
+ */
+async function removeRouteIfPresent(customUIFrame, summaryTable, routeName) {
+    const row = summaryTable.locator(`tr[data-route-name="${routeName}"]`);
+    if ((await row.count()) === 0) {
+        return;
+    }
+    const removeBtn = row.locator(".remove-route-button");
+    if ((await removeBtn.count()) === 0) {
+        return; // external/read-only route — nothing to remove
+    }
+    await removeBtn.first().scrollIntoViewIfNeeded().catch(() => {});
+    await removeBtn.first().click();
+
+    // Confirm the deletion if a confirmation dialog appears
+    const confirmButton = customUIFrame
+        .locator(
+            '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes"), button:has-text("Delete")',
+        )
+        .first();
+    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await confirmButton.click();
+    }
+    await expect(row).toHaveCount(0, { timeout: 5000 });
+}
+
 test.describe("REST API Gateway Tabs", () => {
     test.describe.configure({ mode: "serial" });
 
@@ -852,9 +885,11 @@ test.describe("REST API Gateway Tabs", () => {
         await schemaCheckbox.uncheck();
         await expect(schemaContainer).toBeHidden();
 
-        // Close editor to restore table for subsequent tests
+        // Close editor to restore table for subsequent tests. Wait for the form to actually
+        // detach so it cannot leak into a later serial-block test's route-form assertions.
         const cancelBtn = routeForm.locator("button", { hasText: "Cancel" });
         await cancelBtn.click();
+        await expect(routeForm).toHaveCount(0, { timeout: 5000 });
     });
 
     test("should show persisted badge for loaded routes", async ({
@@ -906,6 +941,19 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
+        // Serial-block hygiene: ensure no route form was left open by a prior test, so the
+        // post-save toHaveCount(0) assertion below reflects only this test's own form.
+        const leftoverForm = endpointConfigPanel.locator(".route-form");
+        if ((await leftoverForm.count()) > 0) {
+            await leftoverForm.first().locator("button", { hasText: "Cancel" }).click().catch(() => {});
+            await expect(leftoverForm).toHaveCount(0, { timeout: 5000 }).catch(() => {});
+        }
+
+        // Idempotency guard: a route named "e2e-origin-test" must not already
+        // exist (a prior interrupted run would otherwise trigger a duplicate-name
+        // validation error). Remove any leftover before adding (M22).
+        await removeRouteIfPresent(customUIFrame, summaryTable, "e2e-origin-test");
+
         // Click Add Route
         const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
         await addRouteBtn.click();
@@ -934,6 +982,11 @@ test.describe("REST API Gateway Tabs", () => {
         );
         await expect(newRow).toBeVisible({ timeout: 5000 });
         await expect(newRow).toHaveAttribute("data-origin", "persisted");
+
+        // Clean up: remove the route we added so a re-run leaves no residual
+        // "e2e-origin-test" state (M22).
+        await removeRouteIfPresent(customUIFrame, summaryTable, "e2e-origin-test");
+        await expect(newRow).toHaveCount(0, { timeout: 5000 });
     });
 
     test("should show modified badge after editing a persisted route", async ({
@@ -953,14 +1006,29 @@ test.describe("REST API Gateway Tabs", () => {
         const summaryTable = endpointConfigPanel.locator(".route-summary-table");
         await expect(summaryTable).toBeVisible({ timeout: 15000 });
 
-        // Find a persisted route and capture its name for re-location after save
+        // Self-contained: this test edits a *persisted* route, but the deployment ships only
+        // built-in (external) routes by default. Create our own persisted route to edit rather
+        // than depending on one left behind by an earlier serial-block test.
+        const MODIFY_ROUTE = "e2e-modify-test";
+        await removeRouteIfPresent(customUIFrame, summaryTable, MODIFY_ROUTE);
+        const addRouteBtn = endpointConfigPanel.locator(".add-route-button");
+        await addRouteBtn.click();
+        const addForm = endpointConfigPanel.locator(".route-form");
+        await expect(addForm).toBeVisible({ timeout: 5000 });
+        await addForm.locator(".route-name").fill(MODIFY_ROUTE);
+        await addForm.locator(".field-path").fill("/api/e2e-modify-test");
+        const addMethod = addForm.locator(".method-chip-text-input");
+        await addMethod.fill("GET");
+        await addMethod.press("Enter");
+        await addForm.locator(".save-route-button").click();
+        await expect(addForm).toHaveCount(0, { timeout: 5000 });
+
+        // Locate the freshly-persisted route and capture its name for re-location after save.
         const firstPersistedRow = summaryTable.locator(
-            'tbody tr[data-origin="persisted"]',
-        ).first();
-        await expect(firstPersistedRow).toBeVisible({ timeout: 5000 });
-        const routeName = await firstPersistedRow.getAttribute(
-            "data-route-name",
+            `tbody tr[data-route-name="${MODIFY_ROUTE}"]`,
         );
+        await expect(firstPersistedRow).toBeVisible({ timeout: 5000 });
+        const routeName = MODIFY_ROUTE;
 
         // Click Edit
         const editBtn = firstPersistedRow.locator(".edit-route-button");
@@ -979,6 +1047,9 @@ test.describe("REST API Gateway Tabs", () => {
             `tbody tr[data-route-name="${routeName}"]`,
         );
         await expect(savedRow).toHaveAttribute("data-origin", "persisted");
+        // No end-cleanup: a just-edited ("modified") route's delete is handled differently by
+        // the UI; the idempotent removeRouteIfPresent at the top of this test removes any
+        // leftover e2e-modify-test on the next run, so residual state cannot accumulate.
     });
 
     test("should display endpoint tester with route selector and controls", async ({
@@ -1296,7 +1367,6 @@ test.describe("REST API Gateway Tabs", () => {
     });
 
     test("should refresh gateway metrics and update timestamp", async ({
-        page,
         customUIFrame,
         processorService,
     }) => {
@@ -1329,9 +1399,24 @@ test.describe("REST API Gateway Tabs", () => {
 
         // Verify metrics content remains visible and stable after refresh
         await expect(metricsContent).toBeVisible({ timeout: 5000 });
-
-        // Verify last-updated element is still present (refresh didn't break the UI)
         await expect(lastUpdated).toBeVisible({ timeout: 5000 });
+
+        // "Refresh updates the timestamp" (N60) holds only when the gateway has
+        // metric data to load. A freshly-deployed gateway that has served no
+        // requests reports no data — the metrics endpoint yields a status banner
+        // and the timestamp stays "Last updated: Never" — so no refresh can produce
+        // a real timestamp. Enforce the stronger behavior when data is present, and
+        // accept the documented no-data terminal state otherwise.
+        const noDataBanner = customUIFrame.locator(
+            "#metrics .metrics-status-banner",
+        );
+        if ((await noDataBanner.count()) === 0) {
+            // Data loaded: refresh MUST advance the timestamp past its prior value.
+            await expect
+                .poll(async () => lastUpdated.textContent(), { timeout: 10000 })
+                .not.toBe(timestampBefore);
+        }
+
         const timestampAfter = await lastUpdated.textContent();
         expect(timestampAfter).toContain("Last updated:");
     });

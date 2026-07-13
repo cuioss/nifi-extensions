@@ -61,13 +61,21 @@ export const OTHER_REALM_CONFIG = {
 /**
  * Service URLs
  */
+const NIFI_BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi';
+// NiFi's REST API is served from the host root (/nifi-api), NOT under the /nifi
+// web-context path. Deriving the origin by stripping a trailing /nifi keeps the
+// diagnostics probe pointed at the real API instead of /nifi/nifi-api (M23).
+const NIFI_ORIGIN = NIFI_BASE_URL.replace(/\/nifi\/?$/, '');
+
 export const SERVICE_URLS = {
-  NIFI_BASE: process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi',
-  NIFI_LOGIN: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/login',
-  NIFI_CANVAS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '#/canvas',
-  NIFI_SYSTEM_DIAGNOSTICS: (process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:9095/nifi') + '/nifi-api/system-diagnostics',
+  NIFI_BASE: NIFI_BASE_URL,
+  NIFI_LOGIN: NIFI_BASE_URL + '#/login',
+  NIFI_CANVAS: NIFI_BASE_URL + '#/canvas',
+  NIFI_SYSTEM_DIAGNOSTICS: NIFI_ORIGIN + '/nifi-api/system-diagnostics',
   KEYCLOAK_BASE: process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085',
-  KEYCLOAK_HEALTH: 'http://localhost:9086/health',
+  // Keycloak's readiness endpoint is HTTPS on the management port with the
+  // /health/ready path (see integration-testing start-keycloak.sh) (N63).
+  KEYCLOAK_HEALTH: 'https://localhost:9086/health/ready',
   KEYCLOAK_TOKEN: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085') + '/realms/oauth_integration_tests/protocol/openid-connect/token'
 };
 

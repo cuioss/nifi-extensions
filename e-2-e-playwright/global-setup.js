@@ -74,13 +74,10 @@ setup('authenticate and verify preconditions', async ({ page }) => {
   expect(jwtToken.length, 'JWT token must be non-empty').toBeGreaterThan(0);
   testLogger.info('Setup', 'Authentication successful');
 
-  // Set auth header for subsequent in-page requests
+  // Set auth header for subsequent in-page requests. Downstream tests rely on
+  // the session cookie (saved into storageState below) plus this header — never
+  // on a window global, which the page.goto('/nifi') navigation would wipe (N69).
   await page.setExtraHTTPHeaders({ Authorization: `Bearer ${jwtToken}` });
-
-  await page.evaluate(token => {
-    window.__jwtToken = token;
-    window.__authorizationHeader = `Bearer ${token}`;
-  }, jwtToken);
 
   // Navigate to canvas to establish the session
   await page.goto('/nifi');

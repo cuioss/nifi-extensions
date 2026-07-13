@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>The issuer contains the correct realm name</li>
  * </ul>
  *
- * <p>Requires Docker containers running (Keycloak on port 9080).
+ * <p>Requires Docker containers running (Keycloak on port 9085).
  * Activated via the {@code integration-tests} Maven profile.
  */
 @NullMarked

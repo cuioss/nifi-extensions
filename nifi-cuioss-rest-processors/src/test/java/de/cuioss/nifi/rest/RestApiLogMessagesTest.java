@@ -115,6 +115,29 @@ class RestApiLogMessagesTest {
     }
 
     @Nested
+    @DisplayName("Identifier Ranges (I9 — documented ranges kept accurate)")
+    class IdentifierRanges {
+
+        @Test
+        @DisplayName("INFO identifiers stay within the documented 1-22 range")
+        void infoIdentifiersInRange() {
+            assertIdentifiersInRange(RestApiLogMessages.INFO.class, 1, 22);
+        }
+
+        @Test
+        @DisplayName("WARN identifiers stay within the documented 100-124 range")
+        void warnIdentifiersInRange() {
+            assertIdentifiersInRange(RestApiLogMessages.WARN.class, 100, 124);
+        }
+
+        @Test
+        @DisplayName("ERROR identifiers stay within the documented 200-203 range")
+        void errorIdentifiersInRange() {
+            assertIdentifiersInRange(RestApiLogMessages.ERROR.class, 200, 203);
+        }
+    }
+
+    @Nested
     @DisplayName("All Messages")
     class AllMessages {
 
@@ -134,6 +157,15 @@ class RestApiLogMessagesTest {
                 assertTrue(allIds.add(r.resolveIdentifierString()),
                         "Duplicate identifier: " + r.resolveIdentifierString());
             }
+        }
+    }
+
+    private static void assertIdentifiersInRange(Class<?> clazz, int min, int max) {
+        for (LogRecord logRecord : getLogRecords(clazz)) {
+            String id = logRecord.resolveIdentifierString();
+            int value = Integer.parseInt(id.substring(id.indexOf('-') + 1));
+            assertTrue(value >= min && value <= max,
+                    "Identifier %s outside documented range %d-%d".formatted(id, min, max));
         }
     }
 

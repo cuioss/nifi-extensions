@@ -27,7 +27,6 @@ import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
-import lombok.EqualsAndHashCode;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
 import org.apache.nifi.annotation.behavior.SupportsSensitiveDynamicProperties;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
@@ -68,7 +67,10 @@ import java.util.stream.Collectors;
         "so that multiple processors can share the same JWT configuration.")
 @SupportsSensitiveDynamicProperties
 @RequiresInstanceClassLoading
-@EqualsAndHashCode(callSuper = true)
+// S2160: NiFi components use identity equality (component identifier) inherited from
+// AbstractControllerService; the added fields are transient runtime state, not part of identity,
+// so overriding equals/hashCode would be incorrect for the NiFi lifecycle contract.
+@SuppressWarnings("java:S2160")
 public class StandardJwtIssuerConfigService extends AbstractControllerService implements JwtIssuerConfigService {
 
     private static final CuiLogger LOGGER = new CuiLogger(StandardJwtIssuerConfigService.class);
@@ -144,10 +146,19 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     );
 
     // --- Internal State ---
+    // Written on the @OnEnabled/@OnDisabled lifecycle thread and read by processor threads
+    // via validateToken()/getAuthenticationConfig(); declared volatile to establish a
+    // happens-before edge and safely publish the fully constructed instances.
 
-    @Nullable private TokenValidator tokenValidator;
-    @Nullable private JwtAuthenticationConfig authenticationConfig;
-    @Nullable private ConfigurationManager configurationManager;
+    // S3077: volatile-on-reference is intentional — these fields only publish a fully constructed,
+    // effectively immutable instance reference (safe publication); no compound state mutation is
+    // performed through the reference, so a thread-safe container would add no guarantee.
+    @SuppressWarnings("java:S3077")
+    @Nullable private volatile TokenValidator tokenValidator;
+    @SuppressWarnings("java:S3077")
+    @Nullable private volatile JwtAuthenticationConfig authenticationConfig;
+    @SuppressWarnings("java:S3077")
+    @Nullable private volatile ConfigurationManager configurationManager;
 
     @Override
     protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
@@ -156,20 +167,13 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @Override
     protected PropertyDescriptor getSupportedDynamicPropertyDescriptor(String propertyDescriptorName) {
-        if (propertyDescriptorName.startsWith(JwtConstants.ISSUER_PREFIX)) {
-            return new PropertyDescriptor.Builder()
-                    .name(propertyDescriptorName)
-                    .displayName(propertyDescriptorName)
-                    .description("Issuer configuration property")
-                    .required(false)
-                    .dynamic(true)
-                    .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-                    .build();
-        }
+        String description = propertyDescriptorName.startsWith(JwtConstants.ISSUER_PREFIX)
+                ? "Issuer configuration property"
+                : "Dynamic property";
         return new PropertyDescriptor.Builder()
                 .name(propertyDescriptorName)
                 .displayName(propertyDescriptorName)
-                .description("Dynamic property")
+                .description(description)
                 .required(false)
                 .dynamic(true)
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
@@ -216,14 +220,20 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @OnDisabled
     public void onDisabled() {
-        if (tokenValidator != null) {
-            // Release the validator's background JWKS refresh resources
-            tokenValidator.close();
+        try {
+            TokenValidator validator = tokenValidator;
+            if (validator != null) {
+                // Release the validator's background JWKS refresh resources
+                validator.close();
+            }
+        } finally {
+            // Always null the lifecycle state and log cleanup, even if close() throws,
+            // so a failing close does not leave a stale validator reachable.
+            tokenValidator = null;
+            authenticationConfig = null;
+            configurationManager = null;
+            LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
         }
-        tokenValidator = null;
-        authenticationConfig = null;
-        configurationManager = null;
-        LOGGER.info(JwtLogMessages.INFO.CONTROLLER_SERVICE_DISABLED);
     }
 
     @Override

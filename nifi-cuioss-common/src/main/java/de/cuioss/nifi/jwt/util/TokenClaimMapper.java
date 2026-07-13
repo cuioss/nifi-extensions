@@ -36,7 +36,10 @@ import java.util.*;
  * </ul>
  * <p>
  * Claims that already have dedicated attribute mappings (sub, iss, exp, roles, groups,
- * scope, scopes) are excluded from the custom claims prefix to avoid duplication.
+ * scope) are excluded from the custom claims prefix to avoid duplication. A non-standard
+ * {@code scopes} claim has no dedicated mapping (the access token exposes scopes via the
+ * standard {@code scope} claim), so it is preserved under the {@code jwt.content.*} prefix
+ * rather than being silently dropped.
  * <p>
  * This class does <b>not</b> handle routing concerns ({@code jwt.present},
  * {@code jwt.authorized}) — those are the responsibility of the caller.
@@ -52,7 +55,7 @@ public class TokenClaimMapper {
      * from the generic {@code jwt.content.*} prefix.
      */
     private static final Set<String> DEDICATED_CLAIM_KEYS = Set.of(
-            "sub", "iss", "exp", "roles", "groups", "scope", "scopes"
+            "sub", "iss", "exp", "roles", "groups", "scope"
     );
 
     /**

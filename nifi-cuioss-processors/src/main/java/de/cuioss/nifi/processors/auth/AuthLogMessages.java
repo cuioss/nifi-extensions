@@ -1,12 +1,13 @@
 /*
- * Copyright 2023 the original author or authors.
- * <p>
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * <p>
- * https://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,8 +26,10 @@ import lombok.experimental.UtilityClass;
  * <p>
  * Shared JWT infrastructure log messages are in
  * {@code de.cuioss.nifi.jwt.JwtLogMessages} in the common module.
- *
- * @see <a href="https://github.com/cuioss/nifi-extensions/tree/main/doc/reference/error-reference.adoc">Error Reference</a>
+ * <p>
+ * The AUTH-001…AUTH-010 codes emitted here as the FlowFile {@code jwt.error.code} attribute are
+ * this authenticator's own error taxonomy; they are distinct from the gateway HTTP errors
+ * documented in {@code doc/reference/error-reference.adoc}, which does not cover these codes.
  */
 @UtilityClass
 public final class AuthLogMessages {
@@ -44,7 +47,7 @@ public final class AuthLogMessages {
         public static final LogRecord PROCESSOR_STOPPED = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(2)
-                .template("MultiIssuerJWTTokenAuthenticator stopped and resources cleaned up")
+                .template("MultiIssuerJWTTokenAuthenticator stopped; processing counter reset")
                 .build();
 
         public static final LogRecord TOKEN_VALIDATION_METRICS = LogRecordModel.builder()

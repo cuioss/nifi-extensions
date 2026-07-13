@@ -144,8 +144,9 @@ export const createChipInput = ({ container, idx, value, config }) => {
             chip.className = `${cssPrefix}-chip`;
             chip.setAttribute(`data-${cssPrefix === 'method' ? 'method' : 'mode'}`, item);
             const display = sanitizeHtml(displayLabel(item));
+            const removeLabel = sanitizeHtml(removeAriaLabel(item));
             chip.innerHTML = `${display}<button type="button" `
-                + `class="${cssPrefix}-chip-remove" aria-label="${removeAriaLabel(item)}">`
+                + `class="${cssPrefix}-chip-remove" aria-label="${removeLabel}">`
                 + '\u00d7</button>';
             chip.querySelector(`.${cssPrefix}-chip-remove`).addEventListener('click', (e) => {
                 e.stopPropagation();

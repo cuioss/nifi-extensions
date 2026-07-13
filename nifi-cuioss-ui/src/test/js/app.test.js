@@ -60,7 +60,11 @@ const FULL_DOM = `
                             <i class="fa fa-chevron-down"></i> Getting Started
                         </h3>
                         <div class="collapsible-content show">Content</div>
+                        <div class="jwt-help">JWT-specific help</div>
+                        <div class="gateway-help hidden">Gateway-specific help</div>
                     </div>
+                    <span data-i18n="app.title">Title</span>
+                    <span data-i18n="">Element with an empty i18n key</span>
                 </div>
             </div>
         </main>
@@ -260,6 +264,22 @@ describe('configureTabsForType', () => {
         expect(document.getElementById('metrics').classList.contains('hidden')).toBe(false);
         expect(document.getElementById('help').classList.contains('hidden')).toBe(false);
     });
+
+    it('should toggle jwt-help/gateway-help sections by component type', async () => {
+        const { configureTabsForType } = await import('../../main/webapp/js/app.js');
+        const jwtHelp = document.querySelector('.jwt-help');
+        const gatewayHelp = document.querySelector('.gateway-help');
+
+        // JWT view: jwt-help shown, gateway-help hidden
+        configureTabsForType(false);
+        expect(jwtHelp.style.display).toBe('');
+        expect(gatewayHelp.style.display).toBe('none');
+
+        // Gateway view: jwt-help hidden, gateway-help shown
+        configureTabsForType(true);
+        expect(jwtHelp.style.display).toBe('none');
+        expect(gatewayHelp.style.display).toBe('');
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -385,5 +405,26 @@ describe('initComponents with component type detection', () => {
 
         const tokenPane = document.getElementById('gateway-token-verification');
         expect(tokenPane.querySelector('.config-info-message')).not.toBeNull();
+    });
+
+    it('should handle CS resolution failure gracefully in gateway mode', async () => {
+        const api = await import('../../main/webapp/js/api.js');
+        api.getComponentId.mockReturnValue('gw-proc-789');
+        api.detectComponentType.mockResolvedValue({
+            type: 'PROCESSOR',
+            componentClass: 'de.cuioss.nifi.rest.RestApiGatewayProcessor'
+        });
+        // resolveJwtConfigServiceId throws — the catch keeps csId null and the info
+        // message path renders (no unhandled rejection).
+        api.resolveJwtConfigServiceId.mockRejectedValue(new Error('resolve failed'));
+
+        const issuerConfig = await import('../../main/webapp/js/issuer-config.js');
+
+        const { initComponents } = await import('../../main/webapp/js/app.js');
+        await initComponents();
+
+        expect(issuerConfig.init).not.toHaveBeenCalled();
+        const issuerPane = document.getElementById('gateway-issuer-config');
+        expect(issuerPane.querySelector('.config-info-message')).not.toBeNull();
     });
 });

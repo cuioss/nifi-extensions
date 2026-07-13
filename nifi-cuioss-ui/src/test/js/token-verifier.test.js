@@ -59,8 +59,10 @@ describe('token-verifier', () => {
 
         await new Promise((r) => setTimeout(r, 0));
 
+        // Empty token now surfaces a real Error (the "token required" message) instead of a
+        // null error that rendered "Unknown error".
         expect(utils.displayUiError).toHaveBeenCalledWith(
-            expect.any(Element), null, {}, 'processor.jwt.noTokenProvided'
+            expect.any(Element), expect.any(Error), {}
         );
     });
 

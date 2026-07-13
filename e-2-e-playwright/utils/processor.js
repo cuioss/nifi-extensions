@@ -323,35 +323,118 @@ export class ProcessorService {
 
   async openAdvancedUI(processor) {
     testLogger.info('Processor',"Opening Advanced UI via right-click menu");
-    
-    // Right-click on processor
-    await this.interact(processor, { action: "rightclick" });
-    
-    // Look for Advanced menu item
-    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
-    
-    if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
-      await advancedMenuItem.click();
-      testLogger.info('Processor',"Clicked Advanced menu item");
-      
-      // Wait for navigation to advanced page
-      try {
-        await this.page.waitForURL('**/advanced', { timeout: 10000 });
-        testLogger.info('Processor',"Successfully navigated to Advanced UI");
-        
-        // Wait for iframe to be injected into the page
-        await this.page.waitForSelector('iframe', { timeout: 5000 });
-        testLogger.info('Processor',"Advanced UI iframe detected in DOM");
 
-        return true;
-      } catch (error) {
-        testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
-        return false;
+    const advancedMenuItem = this.page.getByRole("menuitem", { name: /advanced/i });
+    const locator = processor.locator || this.page.locator(processor.element);
+    const MAX_ATTEMPTS = 3;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Make sure the matched element is attached/visible before evaluating its geometry —
+      // otherwise evaluate() can fire before the SVG node settles and fall through to the
+      // (connection-prone) fallback below.
+      await locator.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => { /* best-effort */ });
+
+      // A freshly-navigated process group renders its content top-left, where NiFi's fixed
+      // Navigation/Operation panels overlay the canvas. A coordinate right-click on a processor
+      // sitting under those panels hits the overlay (empty/wrong menu). Pan the canvas so the
+      // processor moves into the clear centre before we compute the click point.
+      await this._panProcessorClearOfOverlays(locator).catch(() => { /* best-effort */ });
+
+      // The processor may have matched its thin name/type label, whose centre can sit under an
+      // overlapping connection line — a centre right-click there hits the connection (whose
+      // menu has no "Advanced"). Right-click the enclosing processor GROUP centre instead,
+      // which is clear of connections, so NiFi shows the processor context menu.
+      const center = await locator.evaluate((el) => {
+        const group = el.closest('g.processor, g.component, [data-component-type="processor"]') || el;
+        const rect = group.getBoundingClientRect();
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+      }).catch(() => null);
+
+      if (center) {
+        await this.page.mouse.click(center.x, center.y, { button: 'right' });
+      } else {
+        // Geometry lookup failed; fall back to a direct right-click (may hit a connection).
+        try {
+          await this.interact(processor, { action: "rightclick" });
+        } catch { /* handled by the retry / final-failure path below */ }
       }
+
+      if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
+        await advancedMenuItem.click();
+        testLogger.info('Processor',"Clicked Advanced menu item");
+        try {
+          await this.page.waitForURL('**/advanced', { timeout: 10000 });
+          testLogger.info('Processor',"Successfully navigated to Advanced UI");
+          await this.page.waitForSelector('iframe', { timeout: 5000 });
+          testLogger.info('Processor',"Advanced UI iframe detected in DOM");
+          return true;
+        } catch (error) {
+          testLogger.error('Processor',`Failed to navigate to Advanced UI: ${error.message}`);
+          return false;
+        }
+      }
+
+      testLogger.warn('Processor',
+        `Advanced menu item not visible (attempt ${attempt}/${MAX_ATTEMPTS}); dismissing and retrying`);
+      await this.page.keyboard.press('Escape').catch(() => { /* no menu open */ });
+      await this.page.waitForTimeout(400);
     }
-    
-    testLogger.error('Processor',"Could not find Advanced menu item");
+
+    testLogger.error('Processor',"Could not find Advanced menu item after retries");
     return false;
+  }
+
+  /**
+   * Pans the NiFi canvas so the given processor's group centre is clear of the fixed
+   * Navigation/Operation panel overlays (which sit top-left). No-op when the centre is
+   * already on the open canvas. The matched locator re-resolves to the moved element on
+   * next use, so callers recompute geometry after this returns.
+   * @param {import('@playwright/test').Locator} locator - locator that resolves to (an element inside) the processor
+   */
+  async _panProcessorClearOfOverlays(locator) {
+    const info = await locator.evaluate((el) => {
+      const g = el.closest('g.processor, g.component, [data-component-type="processor"]') || el;
+      const r = g.getBoundingClientRect();
+      const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      const onOverlay = !!(at && at.closest('.navigation-control, .operation-control, .context-menu, header, .cdk-overlay-container'));
+      const onCanvas = !!(at && at.closest('svg') && at.closest('g.processor, g.component, g.connection, [data-component-type], text, rect, path, image'));
+      return {
+        cx: r.x + r.width / 2, cy: r.y + r.height / 2,
+        vw: window.innerWidth, vh: window.innerHeight,
+        occluded: onOverlay || !onCanvas,
+      };
+    }).catch(() => null);
+    if (!info || !info.occluded) return;
+
+    // Find an empty canvas point (on the SVG background, clear of processors/panels/menus) to
+    // start the pan drag from.
+    const start = await this.page.evaluate(() => {
+      for (let fx = 0.55; fx <= 0.85; fx += 0.1) {
+        for (let fy = 0.35; fy <= 0.8; fy += 0.1) {
+          const x = Math.round(window.innerWidth * fx);
+          const y = Math.round(window.innerHeight * fy);
+          const el = document.elementFromPoint(x, y);
+          if (el && el.closest('svg')
+              && !el.closest('g.processor, g.component, g.connection, text, rect.processor, .navigation-control, .operation-control, button, a, .cdk-overlay-container')) {
+            return { x, y };
+          }
+        }
+      }
+      return null;
+    });
+    if (!start) return;
+
+    // Drag the canvas so the processor lands in the clear centre-right of the viewport.
+    const targetX = info.vw * 0.55;
+    const targetY = info.vh * 0.5;
+    const endX = Math.max(320, Math.min(info.vw - 40, start.x + (targetX - info.cx)));
+    const endY = Math.max(140, Math.min(info.vh - 40, start.y + (targetY - info.cy)));
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move((start.x + endX) / 2, (start.y + endY) / 2, { steps: 4 });
+    await this.page.mouse.move(endX, endY, { steps: 4 });
+    await this.page.mouse.up();
+    await this.page.waitForTimeout(400);
   }
 
   async getAdvancedUIFrame() {

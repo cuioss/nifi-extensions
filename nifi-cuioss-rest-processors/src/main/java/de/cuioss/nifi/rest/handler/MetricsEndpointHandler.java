@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -114,7 +115,7 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
         sb.append("# TYPE nifi_jwt_validations_total counter\n");
         for (var entry : counts.entrySet()) {
             sb.append("nifi_jwt_validations_total{result=\"%s\"} %d\n"
-                    .formatted(entry.getKey().name().toLowerCase(), entry.getValue()));
+                    .formatted(entry.getKey().name().toLowerCase(Locale.ROOT), entry.getValue()));
         }
         sb.append('\n');
     }
@@ -129,7 +130,7 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
         } else {
             for (var entry : counts.entrySet()) {
                 sb.append("nifi_gateway_http_security_events_total{type=\"%s\"} %d\n"
-                        .formatted(entry.getKey().name().toLowerCase(), entry.getValue()));
+                        .formatted(entry.getKey().name().toLowerCase(Locale.ROOT), entry.getValue()));
             }
         }
         sb.append('\n');
@@ -144,7 +145,7 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
         } else {
             for (var entry : counts.entrySet()) {
                 sb.append("nifi_gateway_events_total{type=\"")
-                        .append(entry.getKey().name().toLowerCase())
+                        .append(entry.getKey().name().toLowerCase(Locale.ROOT))
                         .append("\"} ").append(entry.getValue()).append('\n');
             }
         }
@@ -161,20 +162,22 @@ public final class MetricsEndpointHandler extends AbstractManagementHandler {
         JsonObjectBuilder tokenMetrics = Json.createObjectBuilder();
         configService.getSecurityEventCounter().ifPresent(counter -> {
             for (var entry : counter.getCounters().entrySet()) {
-                tokenMetrics.add(entry.getKey().name().toLowerCase(), entry.getValue());
+                tokenMetrics.add(entry.getKey().name().toLowerCase(Locale.ROOT), entry.getValue());
             }
         });
         root.add("tokenValidation", tokenMetrics);
 
         JsonObjectBuilder httpMetrics = Json.createObjectBuilder();
         for (var entry : httpSecurityEvents.getAllCounts().entrySet()) {
-            httpMetrics.add(entry.getKey().name().toLowerCase(), entry.getValue());
+            httpMetrics.add(entry.getKey().name().toLowerCase(Locale.ROOT), entry.getValue());
         }
         root.add("httpSecurity", httpMetrics);
 
         JsonObjectBuilder gwMetrics = Json.createObjectBuilder();
         for (var entry : gatewaySecurityEvents.getAllCounts().entrySet()) {
-            gwMetrics.add(entry.getKey().name(), entry.getValue());
+            // Lowercase the enum name for consistency with the tokenValidation/httpSecurity keys
+            // above and with the Prometheus labels — one casing across the whole metrics response.
+            gwMetrics.add(entry.getKey().name().toLowerCase(Locale.ROOT), entry.getValue());
         }
         root.add("gatewayEvents", gwMetrics);
 

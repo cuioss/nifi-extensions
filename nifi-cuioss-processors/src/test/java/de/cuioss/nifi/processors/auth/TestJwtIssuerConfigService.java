@@ -53,6 +53,15 @@ public class TestJwtIssuerConfigService extends AbstractControllerService implem
         this.authenticationConfig = new JwtAuthenticationConfig(maxTokenSize, Set.of(), true);
     }
 
+    /**
+     * Simulates the controller service being unavailable so {@link #validateToken(String)}
+     * throws {@link IllegalStateException}, exercising the processor's yield-and-rollback branch.
+     */
+    public void configureServiceUnavailable() {
+        this.tokenToReturn = null;
+        this.exceptionToThrow = null;
+    }
+
     @Override
     public AccessTokenContent validateToken(String rawToken) throws TokenValidationException {
         if (exceptionToThrow != null) {

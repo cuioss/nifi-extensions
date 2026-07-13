@@ -49,12 +49,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class AttachmentsEndpointHandlerTest {
 
     private static final int GLOBAL_MAX_REQUEST_SIZE = 1_048_576;
+    /** Attachments hard limit wired for the docs-exact (attachments-max-count=0) C1 route. */
+    private static final int C1_HARD_LIMIT = 5;
 
     private Server server;
     private HttpClient httpClient;
     private TestJwtIssuerConfigService configService;
     private TestTokenHolder tokenHolder;
     private RequestStatusStore statusStore;
+    private RequestStatusStoreTest.InMemoryMapCacheClient cacheClient;
     private LinkedBlockingQueue<HttpRequestContainer> queue;
     private int port;
 
@@ -66,7 +69,7 @@ class AttachmentsEndpointHandlerTest {
         tokenHolder.withoutClaim("scope");
         configService.configureValidToken(tokenHolder.asAccessTokenContent());
 
-        var cacheClient = new RequestStatusStoreTest.InMemoryMapCacheClient();
+        cacheClient = new RequestStatusStoreTest.InMemoryMapCacheClient();
         statusStore = new RequestStatusStore(cacheClient);
 
         var httpSecurityEvents = new SecurityEventCounter();
@@ -95,6 +98,17 @@ class AttachmentsEndpointHandlerTest {
                 .build();
         handlers.add(new ApiRouteHandler(simpleRoute, queue, GLOBAL_MAX_REQUEST_SIZE,
                 null, gatewaySecurityEvents, statusStore));
+
+        // C1: a docs-exact ATTACHMENTS route with attachments-max-count UNSET (0) — must fall back to
+        // the global hard limit (wired here via the 7-arg constructor) and accept attachments.
+        var unsetMaxRoute = RouteConfiguration.builder()
+                .name("upload0").path("/api/upload0")
+                .method("POST")
+                .trackingMode(TrackingMode.ATTACHMENTS)
+                .authModes(Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER))
+                .build();
+        handlers.add(new ApiRouteHandler(unsetMaxRoute, queue, GLOBAL_MAX_REQUEST_SIZE,
+                null, gatewaySecurityEvents, statusStore, C1_HARD_LIMIT));
 
         // Attachments endpoint
         handlers.add(new AttachmentsEndpointHandler(AttachmentsEndpointHandler.Config.builder()
@@ -148,6 +162,55 @@ class AttachmentsEndpointHandlerTest {
             json = reader.readObject();
         }
         return json.getString("traceId");
+    }
+
+    private HttpResponse<String> postAttachment(String parentTraceId, String body) throws Exception {
+        return httpClient.send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .header("Content-Type", "application/octet-stream")
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+    }
+
+    @Test
+    @DisplayName("C1: attachments-max-count=0 route accepts attachments up to the global hard limit")
+    void shouldAcceptAttachmentsWhenMaxCountUnset() throws Exception {
+        String parentTraceId = createParentEntry("/api/upload0");
+
+        for (int i = 0; i < C1_HARD_LIMIT; i++) {
+            var response = postAttachment(parentTraceId, "attachment " + i);
+            assertEquals(202, response.statusCode(),
+                    "Attachment %d must be accepted (max-count=0 ⇒ hard limit)".formatted(i + 1));
+        }
+
+        var overLimit = postAttachment(parentTraceId, "attachment overflow");
+        assertEquals(409, overLimit.statusCode(),
+                "Attachment beyond the hard limit must be rejected");
+    }
+
+    @Test
+    @DisplayName("M5: a queue-full 503 on a tracked POST leaves no orphaned status entry")
+    void shouldNotLeakTrackingEntryOnQueueFull() throws Exception {
+        while (queue.remainingCapacity() > 0) {
+            queue.offer(new HttpRequestContainer("test", "POST", "/test",
+                    Map.of(), Map.of(), "127.0.0.1",
+                    new byte[0], null, null, null, null, Map.of()));
+        }
+        int entriesBefore = cacheClient.size();
+
+        var response = httpClient.send(
+                HttpRequest.newBuilder()
+                        .uri(URI.create("http://127.0.0.1:%d/api/upload".formatted(port)))
+                        .POST(HttpRequest.BodyPublishers.ofString("{\"test\":true}"))
+                        .header("Content-Type", "application/json")
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertEquals(503, response.statusCode());
+        assertEquals(entriesBefore, cacheClient.size(),
+                "queue-full 503 must not leave a leaked tracking entry");
     }
 
     @Test

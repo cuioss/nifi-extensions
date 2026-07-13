@@ -51,7 +51,7 @@ public class GatewaySecurityEvents {
         AUTH_FAILED,
         /** 403 — valid token but missing required roles. */
         AUTHZ_ROLE_DENIED,
-        /** 401 step-up — valid token but missing required scopes. */
+        /** 403 — valid token but missing required scopes (RFC 6750 §3.1 insufficient_scope). */
         AUTHZ_SCOPE_DENIED,
         /** 413 — request body exceeds configured maximum size. */
         BODY_TOO_LARGE,
@@ -62,7 +62,9 @@ public class GatewaySecurityEvents {
         /** 422 — request body failed JSON Schema validation. */
         SCHEMA_VALIDATION_FAILED,
         /** 503 — request queue at capacity, back-pressure applied. */
-        QUEUE_FULL
+        QUEUE_FULL,
+        /** 500 — an unexpected exception escaped request dispatch and was mapped to a problem response. */
+        HANDLER_ERROR
     }
 
     /**

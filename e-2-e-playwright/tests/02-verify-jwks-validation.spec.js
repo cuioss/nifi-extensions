@@ -36,16 +36,25 @@ test.describe("JWKS Validation", () => {
         await takeStartScreenshot(page, testInfo);
     });
 
-    test("should block private/loopback JWKS URLs via SSRF protection", async ({
+    test("should not SSRF-block loopback JWKS URL when private addresses are permitted", async ({
         customUIFrame,
     }) => {
+        // The integration controller service sets
+        // jwt.validation.jwks.allow.private.network.addresses=true (required because the
+        // real Keycloak issuer resolves to a private docker address). Per the
+        // unit-tested design contract
+        // (JwksValidationServletTest#allowsLoopbackWhenEnabled), when private addresses
+        // are permitted the SSRF guard MUST NOT reject a loopback JWKS URL — the
+        // connection is attempted instead. SSRF *blocking* (allowPrivateAddresses=false)
+        // is exhaustively covered by JwksValidationServletTest and cannot be exercised
+        // end-to-end here without breaking the private-address Keycloak issuer.
         const form = await addIssuerAndGetForm(customUIFrame);
 
         const jwksUrlInput = form.locator('input[name="jwks-url"]');
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
         await expect(jwksUrlInput).toBeEnabled({ timeout: 5000 });
 
-        // Use localhost Keycloak JWKS URL — SSRF protection should block this
+        // A loopback JWKS URL — permitted here because private addresses are allowed.
         await jwksUrlInput.fill(
             "https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/certs",
         );
@@ -56,22 +65,17 @@ test.describe("JWKS Validation", () => {
 
         const verificationResult = form.locator(".verification-result");
 
-        // Wait for SSRF error
-        await expect(verificationResult).toContainText(
-            /private|loopback|address/i,
-            { timeout: 30000 },
-        );
+        // Wait for the connection attempt to complete (a real result, not empty).
+        await expect(verificationResult).not.toBeEmpty({ timeout: 30000 });
 
         const resultText = await verificationResult.textContent();
 
         // Must not be an auth/CSRF infrastructure error
         assertNoAuthError(resultText);
 
-        // Must indicate SSRF block — not a generic error
-        expect(resultText).toMatch(/private|loopback/i);
-
-        // Must NOT show as a success
-        expect(resultText).not.toMatch(/^\s*OK\b/);
+        // The SSRF guard must NOT have rejected the loopback URL: with private
+        // addresses permitted, the request proceeds rather than being blocked.
+        expect(resultText).not.toMatch(/private|loopback/i);
     });
 
     test("should handle invalid JWKS URL", async ({ customUIFrame }) => {

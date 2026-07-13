@@ -31,11 +31,12 @@ describe('issuer-config', () => {
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());
         utils.validateIssuerConfig.mockImplementation(() => ({ isValid: true }));
-        utils.validateProcessorIdFromUrl.mockImplementation((url) => {
-            const match = url.match(/[?&]id=([^&]+)/);
-            if (match) return { isValid: true, sanitizedValue: match[1] };
-            return { isValid: false, sanitizedValue: '' };
-        });
+        // Component ID is sourced from api.getComponentId() — which reads the ?id=<uuid>
+        // query param in production (parity with rest-endpoint-config.js). Do NOT re-implement
+        // ?id= parsing here: a diverging mock previously masked the bug where app.js never
+        // passed the ID through to the JWT issuer editor. Default to standalone (empty);
+        // persistence tests set an explicit ID via api.getComponentId.mockReturnValue().
+        api.getComponentId.mockReturnValue('');
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
 
@@ -82,7 +83,7 @@ describe('issuer-config', () => {
     });
 
     it('should load existing issuers when processor ID is present', async () => {
-        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
+        api.getComponentId.mockReturnValue('test-processor-123');
         api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
@@ -100,7 +101,7 @@ describe('issuer-config', () => {
     });
 
     it('should fall back to sample issuer when API fails', async () => {
-        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
+        api.getComponentId.mockReturnValue('test-processor-123');
         api.getComponentProperties.mockRejectedValue(new Error('API error'));
 
         await init(container);
@@ -186,7 +187,7 @@ describe('issuer-config', () => {
     });
 
     it('should save issuer via API when processor ID is present', async () => {
-        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
+        api.getComponentId.mockReturnValue('test-processor-123');
         api.getComponentProperties.mockResolvedValue({ properties: {} });
         api.updateComponentProperties.mockResolvedValue({});
 
@@ -210,6 +211,70 @@ describe('issuer-config', () => {
                 'issuer.my-issuer.jwks-type': 'url',
                 'issuer.my-issuer.issuer': 'https://issuer.example.com',
                 'issuer.my-issuer.jwks-url': 'https://issuer.example.com/jwks'
+            })
+        );
+    });
+
+    it('should persist issuer using the query-param component ID', async () => {
+        // getComponentId() extracts ?id=<uuid> in production; a non-empty ID MUST reach the
+        // persistence call — this is the JWT-mode bug the fix resolves (previously the ID
+        // never propagated from app.js, so componentId was empty and saves were dropped).
+        api.getComponentId.mockReturnValue('c0ffee00-1111-2222-3333-444455556666');
+        api.getComponentProperties.mockResolvedValue({ properties: {} });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+        await new Promise((r) => setTimeout(r, 10));
+
+        container.querySelector('.add-issuer-button').click();
+        const form = container.querySelector('.issuer-form');
+        form.querySelector('.issuer-name').value = 'kc';
+        form.querySelector('.field-issuer').value = 'https://kc.example.com';
+        form.querySelector('.field-jwks-url').value = 'https://kc.example.com/jwks';
+
+        form.querySelector('.save-issuer-button').click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'c0ffee00-1111-2222-3333-444455556666',
+            expect.any(Object)
+        );
+    });
+
+    it('should write cleared/inactive properties as null so no stale issuer.* values persist', async () => {
+        // Parity with the route editor: emptied audience/client-id and non-active jwks
+        // sources must be written as null so NiFi deletes them rather than retaining a
+        // stale issuer.<name>.* value from a previous save.
+        api.getComponentId.mockReturnValue('test-processor-123');
+        api.getComponentProperties.mockResolvedValue({ properties: {} });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+        await new Promise((r) => setTimeout(r, 10));
+
+        container.querySelector('.add-issuer-button').click();
+        const form = container.querySelector('.issuer-form');
+        form.querySelector('.issuer-name').value = 'my-issuer';
+        form.querySelector('.field-issuer').value = 'https://issuer.example.com';
+        form.querySelector('.field-jwks-url').value = 'https://issuer.example.com/jwks';
+        // Clear the pre-populated audience/client-id so they must be written as null;
+        // jwks-type=url leaves the file/content sources inactive (also nulled).
+        form.querySelector('.field-audience').value = '';
+        form.querySelector('.field-client-id').value = '';
+
+        form.querySelector('.save-issuer-button').click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-123',
+            expect.objectContaining({
+                'issuer.my-issuer.jwks-type': 'url',
+                'issuer.my-issuer.issuer': 'https://issuer.example.com',
+                'issuer.my-issuer.jwks-url': 'https://issuer.example.com/jwks',
+                'issuer.my-issuer.jwks-file': null,
+                'issuer.my-issuer.jwks-content': null,
+                'issuer.my-issuer.audience': null,
+                'issuer.my-issuer.client-id': null
             })
         );
     });
@@ -290,7 +355,7 @@ describe('issuer-config', () => {
     });
 
     it('should show error when save via API fails', async () => {
-        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
+        api.getComponentId.mockReturnValue('test-processor-123');
         api.getComponentProperties.mockResolvedValue({ properties: {} });
         api.updateComponentProperties.mockRejectedValue(new Error('Save failed'));
 
@@ -325,7 +390,7 @@ describe('issuer-config', () => {
     });
 
     it('should remove issuer and clear API properties when processor ID is present', async () => {
-        history.replaceState({}, '', '/nifi-cuioss-ui/?id=test-processor-123');
+        api.getComponentId.mockReturnValue('test-processor-123');
         api.getComponentProperties.mockResolvedValue({
             properties: {
                 'issuer.keycloak.issuer': 'https://kc.example.com',
@@ -632,11 +697,12 @@ describe('issuer-config', () => {
 
             // Inline form should be removed
             expect(container.querySelector('.issuer-inline-form')).toBeNull();
-            // Row should show modified badge
+            // After a SUCCESSFUL persist the row is 'persisted' (parity with the route
+            // editor) — it must NOT flip to 'modified' ("not yet saved") once saved.
             const row = container.querySelector(
                 'tr[data-issuer-name="kc"]'
             );
-            expect(row.dataset.origin).toBe('modified');
+            expect(row.dataset.origin).toBe('persisted');
         });
 
         it('should handle API failure when removing issuer', async () => {

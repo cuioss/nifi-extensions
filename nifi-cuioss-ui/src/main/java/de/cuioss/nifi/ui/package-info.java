@@ -14,10 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
- * Utility classes for JWT validation and error handling.
+ * Root package for the NiFi Custom UI module, providing the shared {@code UILogMessages}
+ * log-record catalogue used across the servlet, service, and utility packages.
+ *
+ * <p>All types in this package are non-null by default due to {@code @NullMarked}.
+ * Use {@code @Nullable} to explicitly mark nullable types.
  */
 @NullMarked
-package de.cuioss.nifi.jwt.util;
+package de.cuioss.nifi.ui;
 
 import org.jspecify.annotations.NullMarked;

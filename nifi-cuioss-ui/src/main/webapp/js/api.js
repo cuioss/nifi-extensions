@@ -11,6 +11,9 @@ import { log } from './utils.js';
 
 const BASE_URL = 'nifi-api/processors/jwt';
 
+/** Abort an in-flight API request after this many milliseconds (see request()). */
+const REQUEST_TIMEOUT_MS = 30000;
+
 /** WAR-relative path of the proxy context-path resolver servlet. */
 const PROXY_CONTEXT_PATH_URL = 'nifi-api/context-path';
 
@@ -137,7 +140,11 @@ const getCsrfToken = () => {
         const match = cookieString.split(';')
             .map(c => c.trim())
             .find(c => c.startsWith(cookieName));
-        return match ? match.split('=')[1] : null;
+        // Slice after the first '=' (the name/value separator) rather than split('='):
+        // a base64 token may itself contain '=' padding, which split('=')[1] would
+        // truncate. Slicing at indexOf('=') is robust regardless of whether cookieName
+        // carries its own trailing '='.
+        return match ? match.slice(match.indexOf('=') + 1) : null;
     };
     try {
         const token = extract(document.cookie);
@@ -175,14 +182,31 @@ const request = async (method, url, body = null, { componentId } = {}) => {
         if (csrfToken) headers['Request-Token'] = csrfToken;
     }
 
-    const opts = { method, headers, credentials: 'same-origin' };
+    // Enforce the JSDoc-documented timeout: abort the fetch after REQUEST_TIMEOUT_MS so a
+    // hung gateway call does not leave action buttons stuck disabled ("Sending…/Testing…").
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const opts = { method, headers, credentials: 'same-origin', signal: controller.signal };
 
     if (body) {
         headers['Content-Type'] = 'application/json';
         opts.body = JSON.stringify(body);
     }
 
-    const res = await fetch(url, opts);
+    let res;
+    try {
+        res = await fetch(url, opts);
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error(
+                `Request timed out after ${REQUEST_TIMEOUT_MS} ms: ${method} ${url}`,
+                { cause: error }
+            );
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 
     if (!res.ok) {
         const text = await res.text();
@@ -241,7 +265,7 @@ export const validateJwksUrl = (jwksUrl) =>
 
 /** Validate a local JWKS file */
 export const validateJwksFile = (filePath) =>
-    request('POST', `${BASE_URL}/validate-jwks-file`, { filePath });
+    request('POST', `${BASE_URL}/validate-jwks-file`, { jwksFilePath: filePath });
 
 /** Validate raw JWKS content */
 export const validateJwksContent = (jwksContent) =>

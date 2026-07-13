@@ -13,6 +13,7 @@ import { join } from "path";
 class TestLogger {
     #logs = [];
     #testId = null;
+    #browserCapture = null;
 
     /**
      * Start capturing for a new test
@@ -67,17 +68,20 @@ class TestLogger {
     }
 
     /**
-     * Setup browser console/error/network capture on a Playwright page
+     * Setup browser console/error/network capture on a Playwright page.
+     * Idempotent: any capture registered by a previous test is detached first,
+     * so re-using a worker-scoped shared page across tests does not accumulate
+     * duplicate listeners (N65).
      * @param {import('@playwright/test').Page} page - Playwright page object
      */
     setupBrowserCapture(page) {
-        page.on("console", (msg) => {
+        this.teardownBrowserCapture();
+
+        const consoleHandler = (msg) =>
             this.log("browser", msg.type(), msg.text());
-        });
-        page.on("pageerror", (err) => {
+        const pageerrorHandler = (err) =>
             this.log("browser", "exception", err.message);
-        });
-        page.on("response", (resp) => {
+        const responseHandler = (resp) => {
             if (resp.status() >= 400) {
                 this.log(
                     "browser",
@@ -85,7 +89,31 @@ class TestLogger {
                     `HTTP ${resp.status()} - ${resp.url()}`,
                 );
             }
-        });
+        };
+
+        page.on("console", consoleHandler);
+        page.on("pageerror", pageerrorHandler);
+        page.on("response", responseHandler);
+
+        this.#browserCapture = {
+            page,
+            consoleHandler,
+            pageerrorHandler,
+            responseHandler,
+        };
+    }
+
+    /**
+     * Detach the browser capture listeners registered by setupBrowserCapture().
+     */
+    teardownBrowserCapture() {
+        if (!this.#browserCapture) return;
+        const { page, consoleHandler, pageerrorHandler, responseHandler } =
+            this.#browserCapture;
+        page.off("console", consoleHandler);
+        page.off("pageerror", pageerrorHandler);
+        page.off("response", responseHandler);
+        this.#browserCapture = null;
     }
 
     /**

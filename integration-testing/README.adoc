@@ -4,8 +4,14 @@
 :toc-title: Table of Contents
 :sectnums:
 
-Docker-based test environment for the MultiIssuerJWTTokenAuthenticator NiFi processor.
+Docker-based test environment for both custom NiFi processors: the
+`MultiIssuerJWTTokenAuthenticator` (FlowFile-based JWT validation) and the
+`RestApiGateway` (the primary flow group — an HTTP gateway with JWT auth).
 Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real JWT tokens.
+
+Exposed NiFi ports: `9095`/`9443` (NiFi HTTPS UI/API and the gateway's embedded
+HTTPS listener) and `7777` (the `HandleHttpRequest` flow pipeline). Keycloak is on
+`9085` (HTTPS) and `9086` (management/health).
 
 == Prerequisites
 
@@ -55,7 +61,7 @@ Provides containerized NiFi (HTTPS) and Keycloak instances for testing with real
 |`apache/nifi:2.10.0`
 
 |NAR mount
-|`target/nifi-deploy/` -> `/opt/nifi/nifi-current/nar_extensions`
+|repo-root `target/nifi-deploy/` -> `/opt/nifi/nifi-current/nar_extensions` (docker-compose mounts `../../../../target/nifi-deploy`, i.e. the reactor root, not a directory under `integration-testing/`)
 |===
 
 Custom configuration files are copied from `src/main/docker/nifi/conf/` into the container at build time.
@@ -153,6 +159,9 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 
 |`redeploy-nifi.sh`
 |Rebuilds NAR, copies to deploy dir, restarts NiFi container (`docker compose restart nifi`)
+
+|`wait-and-start-processors.sh`
+|Waits for NiFi to be ready, then starts all flow processors via the NiFi REST API and verifies the flow pipeline bound to port 7777. Invoked by `start-nifi.sh` and `redeploy-nifi.sh`.
 
 |`copy-deployment.sh`
 |Copies both `nifi-cuioss-api-nar` and `nifi-cuioss-nar` to `target/nifi-deploy/`. Accepts `--skip-build` to skip the Maven build when NARs were already built by the Maven reactor (used by `deploy-and-start.sh`). Without the flag, always runs `./mvnw package -DskipTests` to ensure fresh NARs.
@@ -342,8 +351,8 @@ docker compose -f integration-testing/src/main/docker/docker-compose.yml logs ke
 |===
 |Issue |Resolution
 
-|Port conflict on 9085, 9086, or 9095
-|Stop other services using those ports, or check with `lsof -i :9095`
+|Port conflict on 9085, 9086, 9095, 9443, or 7777
+|Stop other services using those ports, or check with `lsof -i :9095` (also check `:9443` for the gateway HTTPS listener and `:7777` for the flow pipeline)
 
 |NiFi fails to start
 |Check logs; ensure certificates exist in `nifi/conf/`; run `debug-containers.sh`

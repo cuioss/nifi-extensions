@@ -82,6 +82,12 @@
         "functions": 78,
         "lines": 80,
         "statements": 80
+      },
+      "src/main/webapp/js/app.js": {
+        "branches": 60,
+        "functions": 90,
+        "lines": 95,
+        "statements": 95
       }
     },
     "resetMocks": true,

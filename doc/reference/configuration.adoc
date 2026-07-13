@@ -453,7 +453,7 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |restapi.<name>.auth-mode |Authentication mode: `bearer` (default), `none`, `local-only` |none
 |restapi.<name>.max-request-size |Per-route max body size in bytes (0 = global default) |524288
 |restapi.<name>.enabled |Whether the route is active (default: true) |false
-|restapi.<name>.schema |File path to JSON Schema for request body validation |./conf/schemas/user.json
+|restapi.<name>.schema |JSON Schema for request body validation — either a file path or an inline JSON schema object (a value starting with `{` is parsed inline) |./conf/schemas/user.json
 |restapi.<name>.tracking-mode |Tracking mode: `none` (default), `simple`, `attachments` (see link:attachments-api.adoc[Attachments API]) |simple
 |restapi.<name>.attachments-min-count |Minimum number of attachments required before auto-transition to `PROCESSED` (default: 0). Only relevant when `tracking-mode=attachments`. |2
 |restapi.<name>.attachments-max-count |Maximum number of attachments allowed; 0 = use global hard limit. Only relevant when `tracking-mode=attachments`. |5
@@ -518,7 +518,9 @@ See link:../architecture/gateway.adoc#path-parameter-routes[Gateway Architecture
 
 == Static Configuration Files
 
-For container or automated deployments, the Controller Service loads configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. The properties file is checked first. NiFi UI settings take precedence over static configuration, allowing runtime overrides of file-based defaults.
+For container or automated deployments, both the Controller Service and the `RestApiGatewayProcessor` load configuration from `$NIFI_HOME/conf/cui-nifi-extensions.properties` or `$NIFI_HOME/conf/cui-nifi-extensions.yml`. The properties file is checked first. NiFi UI settings take precedence over static configuration, allowing runtime overrides of file-based defaults. The Controller Service reads issuer definitions (`jwt.validation.issuer.N.*`) from these files; the `RestApiGatewayProcessor` reads its `restapi.*` route definitions from the same files.
+
+NOTE: The path is resolved relative to the NiFi JVM's working directory, which is `$NIFI_HOME` in a standard container launch but may differ if NiFi is started from another directory. Only the issuer (`jwt.validation.issuer.N.*`) and `restapi.*` keys are consumed from static files. Non-issuer `jwt.validation.*` settings (JWKS refresh interval, connection timeout, token size, allowed algorithms, HTTPS enforcement) are **not** read from static files or environment variables — those values come exclusively from the Controller Service's NiFi property descriptors, which always carry defaults, so a static-file or environment value for them can never take effect.
 
 image::configuration-properties.png[Configuration Properties Hierarchy, align="center"]
 
@@ -566,7 +568,7 @@ Configuration files are loaded once when the Controller Service is enabled (`@On
 |===
 |Variable |Type |Description
 
-|`JWT_JWKS_REFRESH_INTERVAL` |Integer |JWKS cache refresh interval in seconds (e.g. `3600`). Stored as `jwt.validation.jwks.refresh.interval` in the Controller Service's static properties.
+|`JWT_ISSUER_{NAME}_*` |varies |Issuer definition fields (see the static-file issuer keys above). Note the JWKS-URL caveat in the following row.
 |`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer. Note: environment variable underscores are converted to dots internally (`JWKS_URL` becomes `jwks.url`), which does not match the expected property key `jwks-url`. Use static configuration files instead for issuer JWKS URLs.
 |===
 
@@ -595,10 +597,11 @@ spec:
 
 [source,properties]
 ----
-jwt.validation.jwks.refresh.interval = 3600
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service
 ----
+
+NOTE: The JWKS refresh interval is a Controller Service property (set via the NiFi UI), not a static-file key — see the caveat under <<Static Configuration Files>>. It is therefore intentionally omitted from this file example.
 
 === RestApiGateway with Multiple Routes
 

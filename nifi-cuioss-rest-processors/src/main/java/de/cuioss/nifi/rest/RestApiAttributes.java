@@ -33,13 +33,14 @@ public final class RestApiAttributes {
     /** The resolved NiFi relationship (outcome) name for the route. */
     public static final String ROUTE_OUTCOME = "rest.route.outcome";
 
-    /** The matched route path pattern. */
-    public static final String ROUTE_PATH = "rest.route.path";
-
     /** The HTTP method of the request. */
     public static final String HTTP_METHOD = "http.method";
 
-    /** The full request URI path. */
+    /**
+     * The full request URI path. The former {@code rest.route.path} attribute was removed as
+     * redundant — it held the byte-identical request URI, not a route pattern, so this single
+     * {@code http.request.uri} attribute is the canonical carrier.
+     */
     public static final String HTTP_REQUEST_URI = "http.request.uri";
 
     /** The remote host address of the client. */

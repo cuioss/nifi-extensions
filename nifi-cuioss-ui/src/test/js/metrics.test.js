@@ -302,6 +302,7 @@ describe('metrics — gateway mode', () => {
         document.createElement.mockRestore();
     });
 
+
     it('should export gateway metrics as CSV', async () => {
         globalThis.URL.createObjectURL = jest.fn(() => 'blob:mock');
         globalThis.URL.revokeObjectURL = jest.fn();

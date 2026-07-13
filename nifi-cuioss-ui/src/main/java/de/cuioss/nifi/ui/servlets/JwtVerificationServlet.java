@@ -16,10 +16,6 @@
  */
 package de.cuioss.nifi.ui.servlets;
 
-import de.cuioss.http.security.config.SecurityConfiguration;
-import de.cuioss.http.security.core.HttpSecurityValidator;
-import de.cuioss.http.security.exceptions.UrlSecurityException;
-import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
@@ -35,6 +31,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.nifi.web.NiFiWebConfigurationContext;
+import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -90,30 +87,25 @@ public class JwtVerificationServlet extends HttpServlet {
             .securityEventCounter(new SecurityEventCounter())
             .build();
 
+    @Nullable
     private transient JwtValidationService validationService;
 
     /**
-     * cui-http header-value security validator built once with a strict
-     * configuration. This servlet is a validation boundary, so it follows the
-     * {@code JwksValidationServlet} strict/throw baseline (reject-on-violation).
+     * Shared strict/throw validator for the externally-sourced {@code X-Processor-Id}
+     * value (cui-http header-value pipeline plus identifier allow-list). Using the shared
+     * {@link ProcessorIdHeaderValidator} keeps one processor-ID rule across the filter and
+     * all component-facing servlets.
      */
-    private final transient HttpSecurityValidator headerValueValidator;
+    private final transient ProcessorIdHeaderValidator processorIdValidator =
+            new ProcessorIdHeaderValidator();
 
     public JwtVerificationServlet() {
-        this.headerValueValidator = buildHeaderValueValidator();
         // validationService initialized in init() from ServletContext
     }
 
     // For testing - allows injection of validation service
     public JwtVerificationServlet(JwtValidationService validationService) {
         this.validationService = validationService;
-        this.headerValueValidator = buildHeaderValueValidator();
-    }
-
-    private static HttpSecurityValidator buildHeaderValueValidator() {
-        var counter = new de.cuioss.http.security.monitoring.SecurityEventCounter();
-        SecurityConfiguration secConfig = SecurityConfiguration.strict();
-        return PipelineFactory.createHeaderValuePipeline(secConfig, counter);
     }
 
     @Override
@@ -124,6 +116,19 @@ public class JwtVerificationServlet extends HttpServlet {
                     .getAttribute("nifi-web-configuration-context");
             validationService = new JwtValidationService(configContext);
         }
+    }
+
+    /**
+     * Returns the validation service, or throws when it has not been published yet. {@link #init()}
+     * and the injecting constructor set it before any request is served; this guard keeps the
+     * reference non-null for the {@code @NullMarked} contract without a redundant defensive branch.
+     */
+    private JwtValidationService requireService() {
+        JwtValidationService service = validationService;
+        if (service == null) {
+            throw new IllegalStateException("JWT validation service is unavailable");
+        }
+        return service;
     }
 
     @Override
@@ -139,6 +144,11 @@ public class JwtVerificationServlet extends HttpServlet {
             sendJsonResponse(resp, 200, buildValidationResponse(result));
         } catch (RequestException e) {
             sendJsonResponse(resp, e.statusCode, buildErrorResponse(e.getMessage()));
+        } catch (ClassCastException e) {
+            // A JSON field carried a non-string value (e.g. {"token": 123}); JsonObject.getString
+            // throws CCE. Honour the JSON error contract with a 400 instead of a container 500 page.
+            LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
+            sendJsonResponse(resp, 400, buildErrorResponse("Invalid field type: expected a string value"));
         }
     }
 
@@ -173,7 +183,7 @@ public class JwtVerificationServlet extends HttpServlet {
         }
 
         String token = requestJson.getString("token");
-        if (token == null || token.trim().isEmpty()) {
+        if (token.trim().isEmpty()) {
             throw new RequestException(400, "Token cannot be empty");
         }
 
@@ -205,29 +215,15 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     /**
-     * Validates an externally-sourced {@code X-Processor-Id} value through the
-     * cui-http header-value security pipeline. On violation, rejects with HTTP 400
-     * and a {@code WARN} log entry, mirroring the {@code JwksValidationServlet} baseline.
+     * Validates an externally-sourced {@code X-Processor-Id} value through the shared
+     * {@link ProcessorIdHeaderValidator} rule (cui-http header-value pipeline plus identifier
+     * allow-list). On violation, rejects with HTTP 400 and a {@code WARN} log entry.
      *
      * @param processorId the processor ID value to validate
      * @throws RequestException with status 400 when the value violates the security policy
      */
     private void validateProcessorIdSecurity(String processorId) throws RequestException {
-        try {
-            headerValueValidator.validate(processorId);
-        } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, processorId, e.getFailureType());
-            throw new RequestException(400,
-                    "Invalid processor ID: " + e.getFailureType().getDescription());
-        }
-        // A processor ID is a NiFi component identifier restricted to letters, digits,
-        // hyphens and underscores. Since cui-http 2.1.0 the header-value pipeline no
-        // longer resolves RFC 3986 dot-segments for header values (dot-segment resolution
-        // is path-only), so a traversal-style value such as "../../../etc/passwd" is a
-        // legitimate header value and passes the pipeline. Enforce the identifier
-        // allow-list here so such a value is rejected with 400 before it is used as a
-        // component lookup key.
-        if (!ProcessorIdHeaderValidator.isValidIdentifier(processorId)) {
+        if (!processorIdValidator.isSafe(processorId)) {
             LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, processorId);
             throw new RequestException(400, "Invalid processor ID: contains illegal characters");
         }
@@ -238,7 +234,7 @@ public class JwtVerificationServlet extends HttpServlet {
             HttpServletRequest req) throws RequestException {
 
         try {
-            return validationService.verifyToken(
+            return requireService().verifyToken(
                     verificationRequest.token(),
                     verificationRequest.processorId(),
                     req
@@ -290,7 +286,7 @@ public class JwtVerificationServlet extends HttpServlet {
         addCollectionField(builder, "scopes", result.getScopes());
         addCollectionField(builder, "roles", result.getRoles());
 
-        if (result.isValid() && result.getClaims() != null) {
+        if (result.isValid()) {
             builder.add(JSON_KEY_CLAIMS, mapToJsonObject(result.getClaims()));
         } else {
             builder.add(JSON_KEY_CLAIMS, Json.createObjectBuilder());
@@ -319,7 +315,9 @@ public class JwtVerificationServlet extends HttpServlet {
             LOGGER.debug("Sent response: status=%s, valid=%s", statusCode,
                     json.containsKey(JSON_KEY_VALID) ? json.getBoolean(JSON_KEY_VALID) : "n/a");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_SEND_ERROR_RESPONSE);
+            // This path covers both success (200) and error responses, so log the neutral
+            // "failed to write JSON response" record rather than an error-specific one.
+            LOGGER.warn(e, UILogMessages.WARN.FAILED_WRITE_JSON_RESPONSE, statusCode, e.getMessage());
             // If writing a success response failed, signal the error to the client
             if (statusCode == 200) {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -410,7 +408,7 @@ public class JwtVerificationServlet extends HttpServlet {
     }
 
     private static void addCollectionField(JsonObjectBuilder builder, String fieldName, List<String> values) {
-        if (values != null && !values.isEmpty()) {
+        if (!values.isEmpty()) {
             JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
             values.forEach(arrayBuilder::add);
             builder.add(fieldName, arrayBuilder);

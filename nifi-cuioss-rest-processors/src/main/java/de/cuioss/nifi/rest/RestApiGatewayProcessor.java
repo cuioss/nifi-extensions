@@ -35,19 +35,24 @@ import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.lifecycle.OnStopped;
 import org.apache.nifi.components.PropertyDescriptor;
+import org.apache.nifi.components.ValidationContext;
+import org.apache.nifi.components.ValidationResult;
 import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.FlowFileAccessException;
 import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.processor.util.StandardValidators;
 import org.apache.nifi.ssl.SSLContextProvider;
 
 import javax.net.ssl.SSLContext;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -116,8 +121,16 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     final JettyServerManager serverManager = new JettyServerManager();
     /** Injectable for testing — when null, a new instance is created in onScheduled. */
     ConfigurationManager configurationManager;
-    /** Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads. */
-    private LinkedBlockingQueue<HttpRequestContainer> requestQueue;
+    /**
+     * Thread-safe queue — shared between Jetty handler threads and NiFi trigger threads.
+     * Declared {@code volatile} so the {@code @OnScheduled} assignment safely publishes the queue
+     * reference to the concurrent onTrigger reads (the queue's own operations are already
+     * thread-safe; {@code volatile} covers publication of the reference itself).
+     */
+    // S3077: the referenced queue is already thread-safe; volatile only safely publishes the
+    // reference on @OnScheduled reassignment, which is the intended and sufficient guarantee.
+    @SuppressWarnings("java:S3077")
+    private volatile LinkedBlockingQueue<HttpRequestContainer> requestQueue;
     /** Thread-safe map — getRelationships() can be called from any NiFi framework thread. */
     private final ConcurrentHashMap<String, Relationship> dynamicRelationships = new ConcurrentHashMap<>();
     /** Maps route name → resolved outcome name (only for routes with createFlowFile=true). */
@@ -128,6 +141,17 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
     private final ConcurrentHashMap<String, Integer> routeToAttachmentsMinCount = new ConcurrentHashMap<>();
     /** Guards lazy loading of external config relationships before @OnScheduled. */
     private final AtomicBoolean externalRelationshipsLoaded = new AtomicBoolean(false);
+
+    /**
+     * Request-tracking store, resolved in {@code onScheduled} when a Distributed Map Cache Client is
+     * configured (otherwise {@code null}). Held as a field so {@code onStopped} can evict the tracking
+     * entries of queued-but-discarded containers (M5). {@code volatile} safely publishes the reference
+     * between the @OnScheduled writer thread and the @OnStopped reader thread.
+     */
+    // S3077: volatile only safely publishes the reference between the @OnScheduled writer and the
+    // @OnStopped reader; the store itself is thread-safe, so a thread-safe container adds nothing.
+    @SuppressWarnings("java:S3077")
+    private volatile RequestStatusStore trackingStore;
 
     /**
      * Gateway application-level security events; shared with the Jetty handlers, read in onTrigger.
@@ -168,10 +192,45 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
         if (!externalRelationshipsLoaded.get() && dynamicRelationships.isEmpty()) {
             loadExternalConfigRelationships();
         }
+        // I14: the ATTACHMENTS relationship is advertised only when attachment tracking is actually
+        // configured — onScheduled adds it to dynamicRelationships when a cache client is present.
+        // Advertising it unconditionally forced users of a non-tracking gateway to terminate a dead
+        // relationship. FAILURE is always present.
         Set<Relationship> relationships = new HashSet<>(dynamicRelationships.values());
         relationships.add(RestApiGatewayConstants.Relationships.FAILURE);
-        relationships.add(RestApiGatewayConstants.Relationships.ATTACHMENTS);
         return relationships;
+    }
+
+    /**
+     * M4: enforces the "Distributed Map Cache Client required when tracking ≠ none" contract. Without
+     * a cache client a route with {@code tracking-mode=simple|attachments} silently degrades (bare
+     * 202/200 without traceId/Location/_links, and the /status + /attachments endpoints are never
+     * registered). Surfacing it as an invalid-processor state prevents that silent functional
+     * downgrade.
+     */
+    @Override
+    protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
+        Map<String, String> properties = new HashMap<>();
+        validationContext.getProperties().forEach((descriptor, value) -> {
+            if (value != null) {
+                properties.put(descriptor.getName(), value);
+            }
+        });
+        boolean anyTracked = RouteConfigurationParser.parse(properties).stream()
+                .anyMatch(RouteConfiguration::isTracked);
+        boolean cacheClientSet = validationContext.getProperty(
+                RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT).isSet();
+        if (anyTracked && !cacheClientSet) {
+            return List.of(new ValidationResult.Builder()
+                    .subject(RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT.getDisplayName())
+                    .valid(false)
+                    .explanation("A Distributed Map Cache Client is required when any route has "
+                            + "tracking-mode other than 'none'. Configure the '"
+                            + RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT.getDisplayName()
+                            + "' property, or set every route to tracking-mode=none.")
+                    .build());
+        }
+        return List.of();
     }
 
     private void loadExternalConfigRelationships() {
@@ -256,6 +315,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT)
                 .asControllerService(DistributedMapCacheClient.class);
         RequestStatusStore statusStore = (cacheClient != null) ? new RequestStatusStore(cacheClient) : null;
+        this.trackingStore = statusStore;
 
         // Build endpoint handlers: built-in management first, then user routes
         List<EndpointHandler> handlers = new ArrayList<>(List.of(
@@ -277,10 +337,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             dynamicRelationships.put("attachments", RestApiGatewayConstants.Relationships.ATTACHMENTS);
         }
 
-        // User route handlers
+        // User route handlers — pass the attachments hard limit so ApiRouteHandler can resolve the
+        // C1 fallback (attachments-max-count = 0 ⇒ hard limit) at registration time.
         for (RouteConfiguration route : routes) {
             handlers.add(new ApiRouteHandler(route, requestQueue, maxRequestSize,
-                    schemaValidator, gatewaySecurityEvents, statusStore));
+                    schemaValidator, gatewaySecurityEvents, statusStore, hardLimit));
         }
 
         // Build the configured forwarded-header resolver from the full proxy config surface
@@ -430,12 +491,22 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         FlowFile flowFile = null;
         try {
+            // Resolve the outcome relationship up front: a missing outcome throws a ProcessException
+            // HERE (routed to `failure` by the catch below) instead of NPE-ing later when a null
+            // outcome would be written into a FlowFile attribute — keeping the failure-relationship
+            // transfer reachable for the case it guards.
+            String outcome = routeToOutcome.get(container.routeName());
+            if (outcome == null) {
+                throw new ProcessException(
+                        "No outcome relationship resolved for route '%s' — internal state inconsistency"
+                                .formatted(container.routeName()));
+            }
+
             flowFile = session.create();
 
             // Set route attributes
             Map<String, String> attributes = new HashMap<>(Map.of(
                     RestApiAttributes.ROUTE_NAME, container.routeName(),
-                    RestApiAttributes.ROUTE_PATH, container.requestUri(),
                     RestApiAttributes.HTTP_METHOD, container.method(),
                     RestApiAttributes.HTTP_REQUEST_URI, container.requestUri(),
                     RestApiAttributes.HTTP_REMOTE_HOST, container.remoteHost()));
@@ -482,12 +553,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             }
 
             // Map JWT claims (guard against null token for unauthenticated routes)
-            if (container.token() != null) {
-                attributes.putAll(TokenClaimMapper.mapToAttributes(container.token()));
+            var token = container.token();
+            if (token != null) {
+                attributes.putAll(TokenClaimMapper.mapToAttributes(token));
             }
 
-            // Resolve outcome relationship name
-            String outcome = routeToOutcome.get(container.routeName());
             attributes.put(RestApiAttributes.ROUTE_OUTCOME, outcome);
 
             flowFile = session.putAllAttributes(flowFile, attributes);
@@ -511,7 +581,11 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
             LOGGER.info(RestApiLogMessages.INFO.FLOWFILE_CREATED, container.routeName(), container.body().length);
 
-        } catch (ProcessException e) {
+        } catch (ProcessException | FlowFileAccessException e) {
+            // FlowFileAccessException (thrown by session.write on an I/O failure) does NOT extend
+            // ProcessException, so it must be caught explicitly — otherwise it would escape and the
+            // FlowFile would be left neither transferred nor removed, and the failure transfer below
+            // would be unreachable.
             LOGGER.error(e, RestApiLogMessages.ERROR.FLOWFILE_CREATION_FAILED, container.routeName(), e.getMessage());
             // Remove the partially-built FlowFile: leaving it neither transferred nor removed
             // makes the session commit throw FlowFileHandlingException, which would roll back
@@ -599,10 +673,34 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
 
         int drained = 0;
         if (requestQueue != null) {
-            drained = requestQueue.size();
-            requestQueue.clear();
+            List<HttpRequestContainer> pending = new ArrayList<>();
+            requestQueue.drainTo(pending);
+            drained = pending.size();
+            removeTrackedEntries(pending);
         }
         LOGGER.info(RestApiLogMessages.INFO.PROCESSOR_STOPPED, drained);
+    }
+
+    /**
+     * M5: on shutdown the queued containers are discarded without ever producing a FlowFile, yet
+     * their clients already received a 202 + traceId. Evict their non-terminal tracking entries so
+     * they do not remain ACCEPTED/COLLECTING_ATTACHMENTS in the distributed cache forever.
+     */
+    private void removeTrackedEntries(List<HttpRequestContainer> pending) {
+        RequestStatusStore store = this.trackingStore;
+        if (store == null) {
+            return;
+        }
+        for (HttpRequestContainer container : pending) {
+            String traceId = container.traceId();
+            if (traceId != null) {
+                try {
+                    store.remove(traceId);
+                } catch (IOException e) {
+                    LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+                }
+            }
+        }
     }
 
     private static Optional<JsonSchemaValidator> buildSchemaValidator(List<RouteConfiguration> routes) {

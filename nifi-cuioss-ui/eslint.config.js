@@ -53,8 +53,8 @@ export default [
             'no-debugger': 'warn',
             'no-alert': 'warn',
             'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-            'no-var': 'warn',
-            'prefer-const': 'warn',
+            'no-var': 'error',
+            'prefer-const': 'error',
             camelcase: ['error', { properties: 'never' }],
 
             // Code style (moved to @stylistic in ESLint v9+)

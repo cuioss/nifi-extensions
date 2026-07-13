@@ -21,6 +21,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -167,7 +168,7 @@ class GatewayMetricsPrometheusIT {
     }
 
     private static void sendGateway(HttpClient client, String method, String path,
-            String token, String body) throws Exception {
+            @Nullable String token, @Nullable String body) throws Exception {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(GATEWAY_BASE + path))
                 .timeout(Duration.ofSeconds(30));

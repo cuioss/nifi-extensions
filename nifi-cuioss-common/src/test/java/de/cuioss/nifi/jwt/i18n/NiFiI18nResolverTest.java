@@ -139,9 +139,44 @@ class NiFiI18nResolverTest {
 
             String result = resolver.getTranslatedString(nonExistentKey, arg);
 
-            // Assert — lenientFormat appends args even when key is returned as-is
+            // Assert — a missing, placeholder-free key is returned unchanged;
+            // MessageFormat leaves it verbatim rather than appending the arguments
             assertTrue(result.contains(nonExistentKey),
                     "Should contain the key when not found in bundle");
+        }
+
+        @Test
+        @DisplayName("Should fall back to the raw pattern when MessageFormat rejects a malformed pattern")
+        void shouldFallBackToRawPatternOnMalformedPattern() {
+            // Arrange — a key absent from the bundle is returned verbatim as the
+            // pattern; an unbalanced brace makes MessageFormat throw
+            // IllegalArgumentException when arguments are supplied.
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+            String malformed = "malformed pattern {0 with an unbalanced brace";
+
+            // Act
+            String result = resolver.getTranslatedString(malformed, "value");
+
+            // Assert — the raw pattern is returned rather than propagating the exception.
+            assertEquals(malformed, result,
+                    "Malformed pattern should be returned verbatim on formatting failure");
+        }
+
+        @Test
+        @DisplayName("Should log a warning and fall back to the raw pattern when a logger is present")
+        void shouldLogAndFallBackWhenLoggerPresent() {
+            // Arrange — createDefault supplies a (non-null) logger, exercising the
+            // warn branch of the malformed-pattern fallback.
+            var logger = new MockComponentLog("test", new Object());
+            I18nResolver resolver = NiFiI18nResolver.createDefault(logger);
+            String malformed = "another malformed {0 pattern";
+
+            // Act
+            String result = resolver.getTranslatedString(malformed, "value");
+
+            // Assert
+            assertEquals(malformed, result,
+                    "Malformed pattern should be returned verbatim even with a logger present");
         }
 
         @Test
@@ -203,6 +238,64 @@ class NiFiI18nResolverTest {
             String result = resolver.getTranslatedString(missingKey);
 
             assertEquals(missingKey, result, "Should return key when missing");
+        }
+    }
+
+    @Nested
+    @DisplayName("MessageFormat Placeholder Substitution")
+    class MessageFormatSubstitutionTests {
+
+        @Test
+        @DisplayName("Should substitute {0} and {1} placeholders with the supplied arguments")
+        void shouldSubstitutePlaceholders() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.dynamic.description", "jwks-url", "myIssuer");
+
+            assertEquals("Configuration property 'jwks-url' for issuer 'myIssuer'", result,
+                    "MessageFormat placeholders must be replaced with the supplied arguments");
+            assertFalse(result.contains("{0}") || result.contains("{1}"),
+                    "No raw placeholders should remain after substitution");
+        }
+
+        @Test
+        @DisplayName("Should collapse doubled single-quotes and substitute placeholders together")
+        void shouldRenderDoubledQuotesWithArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.jwks.url.description", "jwks-url", "myIssuer");
+
+            assertEquals(
+                    "Configuration property 'jwks-url' for issuer 'myIssuer' (URL to JWKS endpoint)",
+                    result,
+                    "Doubled single-quotes must collapse to one while placeholders are substituted");
+        }
+
+        @Test
+        @DisplayName("Should return the raw pattern verbatim when the arguments array is empty")
+        void shouldReturnPatternVerbatimForEmptyArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+
+            String result = resolver.getTranslatedString(
+                    "property.issuer.dynamic.description", new Object[0]);
+
+            assertEquals("Configuration property ''{0}'' for issuer ''{1}''", result,
+                    "With no arguments the pattern must be returned untouched, without "
+                            + "MessageFormat quote processing");
+        }
+
+        @Test
+        @DisplayName("Should return a placeholder-free missing key unchanged when arguments are supplied")
+        void shouldReturnMissingKeyUnchangedWithArguments() {
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+            String missingKey = "missing.key.without.placeholders";
+
+            String result = resolver.getTranslatedString(missingKey, "unusedArg");
+
+            assertEquals(missingKey, result,
+                    "A missing key has no placeholders, so MessageFormat returns it unchanged");
         }
     }
 }

@@ -78,6 +78,14 @@ public class ComponentInfoServlet extends HttpServlet {
         if (!processorIdValidator.validate(processorId, resp)) {
             return;
         }
+        if (configContext == null) {
+            // Missing nifi-web-configuration-context attribute → uniform JSON 503 instead of
+            // letting the ComponentConfigReader constructor NPE into a container 500 page.
+            LOGGER.debug("NiFi web configuration context is unavailable — cannot resolve component info");
+            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    "NiFi configuration context unavailable");
+            return;
+        }
 
         try {
             var config = resolveComponentConfig(processorId, req);

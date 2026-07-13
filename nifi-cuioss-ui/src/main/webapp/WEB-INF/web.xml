@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
-         version="4.0">
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
 
     <display-name>MultiIssuerJWTTokenAuthenticator UI</display-name>
 
@@ -20,25 +20,12 @@
         <extension>css</extension>
         <mime-type>text/css</mime-type>
     </mime-mapping>
-    <mime-mapping>
-        <extension>woff</extension>
-        <mime-type>font/woff</mime-type>
-    </mime-mapping>
+    <!-- Only woff2 fonts are packaged into the WAR (see pom.xml packagingIncludes); the
+         legacy woff/ttf/eot font formats and svg are not shipped, so their mime-mappings
+         were dead and have been removed. -->
     <mime-mapping>
         <extension>woff2</extension>
         <mime-type>font/woff2</mime-type>
-    </mime-mapping>
-    <mime-mapping>
-        <extension>ttf</extension>
-        <mime-type>font/ttf</mime-type>
-    </mime-mapping>
-    <mime-mapping>
-        <extension>eot</extension>
-        <mime-type>application/vnd.ms-fontobject</mime-type>
-    </mime-mapping>
-    <mime-mapping>
-        <extension>svg</extension>
-        <mime-type>image/svg+xml</mime-type>
     </mime-mapping>
 
     <!-- Security Headers Filter - adds defense-in-depth response headers -->

@@ -27,6 +27,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -280,6 +282,41 @@ class IssuerConfigurationParserTest {
 
             assertEquals(1, configs.size());
         }
+
+        @Test
+        @DisplayName("Should warn and infer the type from the source for an unknown jwks-type")
+        void shouldInferTypeForUnknownJwksType() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            properties.put("issuer.test.jwks-type", "ftp");
+            ConfigurationManager configManager = new ConfigurationManager();
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+
+            assertEquals(1, configs.size(),
+                    "An unknown jwks-type must fall back to the source-inferred type, not silently to file");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "Unknown jwks-type");
+        }
+
+        @Test
+        @DisplayName("Should treat the source as a file when jwks-type=url but only a jwks-file is present")
+        void shouldTreatUrlTypeWithFileSourceAsFile(@TempDir Path tempDir) throws Exception {
+            Path jwksFile = tempDir.resolve("test-jwks.json");
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-file", jwksFile.toString());
+            properties.put("issuer.test.jwks-type", "url");
+            ConfigurationManager configManager = new ConfigurationManager();
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+
+            assertEquals(1, configs.size(),
+                    "A file source declared as jwks-type=url must load as a file, not route through "
+                            + "the URL/HTTPS/private-address checks");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "only a jwks-file");
+        }
     }
 
     @Nested
@@ -317,6 +354,24 @@ class IssuerConfigurationParserTest {
             ParserConfig config = IssuerConfigurationParser.parseParserConfig(properties);
 
             assertEquals(16384, config.getMaxTokenSize());
+        }
+
+        @Test
+        @DisplayName("Should fall back to default for zero or negative max token size")
+        void shouldUseDefaultForNonPositiveMaxTokenSize() {
+            Map<String, String> zero = new HashMap<>();
+            zero.put("Maximum Token Size", "0");
+            Map<String, String> negative = new HashMap<>();
+            negative.put("Maximum Token Size", "-4096");
+
+            ParserConfig zeroConfig = IssuerConfigurationParser.parseParserConfig(zero);
+            ParserConfig negativeConfig = IssuerConfigurationParser.parseParserConfig(negative);
+
+            assertEquals(16384, zeroConfig.getMaxTokenSize(),
+                    "A zero max token size must fall back to the default rather than disable enforcement");
+            assertEquals(16384, negativeConfig.getMaxTokenSize(),
+                    "A negative max token size must fall back to the default");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "Non-positive");
         }
 
         @Test
@@ -488,17 +543,25 @@ class IssuerConfigurationParserTest {
     @DisplayName("Security Enforcement")
     class SecurityEnforcementTests {
 
-        @Test
-        @DisplayName("Should reject non-HTTPS JWKS URL by default")
-        void shouldRejectHttpJwksUrlByDefault() {
+        @ParameterizedTest(name = "rejects {0}")
+        @CsvSource({
+                "http://example.com/jwks, does not use HTTPS",
+                "https://localhost/jwks, private/loopback",
+                "https://100.64.0.1/jwks, private/loopback"
+        })
+        @DisplayName("Should reject a JWKS URL that violates the HTTPS or private-address policy")
+        void shouldRejectPolicyViolatingJwksUrl(String jwksUrl, String expectedLogFragment) {
+            // Covers the non-HTTPS default rejection, the loopback rejection, and the carrier-grade
+            // NAT (100.64.0.0/10, RFC 6598) rejection — the latter is not covered by
+            // InetAddress#isSiteLocalAddress() and relies on the dedicated CGNAT check.
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "http://example.com/jwks");
+            properties.put("issuer.test.jwks-url", jwksUrl);
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
-            assertTrue(configs.isEmpty(), "Non-HTTPS JWKS URL must be rejected when HTTPS is required");
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "does not use HTTPS");
+            assertTrue(configs.isEmpty(), "Policy-violating JWKS URL must be rejected: " + jwksUrl);
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, expectedLogFragment);
         }
 
         @Test
@@ -535,19 +598,6 @@ class IssuerConfigurationParserTest {
 
             assertTrue(configs.isEmpty(), "Plaintext HTTP JWKS URL must not yield an issuer configuration");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "Error creating issuer configuration");
-        }
-
-        @Test
-        @DisplayName("Should reject JWKS URL resolving to loopback address by default")
-        void shouldRejectLoopbackJwksUrlByDefault() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://localhost/jwks");
-
-            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
-
-            assertTrue(configs.isEmpty(), "Loopback JWKS URL must be rejected when private addresses are disallowed");
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "private/loopback");
         }
 
         @Test

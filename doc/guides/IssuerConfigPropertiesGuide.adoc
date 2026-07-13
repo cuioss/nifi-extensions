@@ -55,6 +55,7 @@ There are two ways to configure issuer properties:
 . The interface should display:
 * A list of existing issuer configurations (if any)
 * An "Add Issuer" button to create new configurations
+
 image::ui-configuration-tab.png[Issuer Configuration Tab]
 
 . To add a new issuer:

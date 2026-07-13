@@ -200,11 +200,13 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 (f) => f.check === "formLabels",
             );
 
-            expect(formLabelIssues).toHaveLength(0);
-
+            // Log BEFORE asserting — a failing expect throws, so any log placed
+            // after it would be unreachable (I30).
             if (formLabelIssues.length > 0) {
                 testLogger.warn("A11y", `Form label issues: ${JSON.stringify(formLabelIssues)}`);
             }
+
+            expect(formLabelIssues).toHaveLength(0);
         });
 
         await test.step("Verify required field indicators", async () => {
@@ -348,11 +350,13 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
                 (f) => f.check === "ariaAttributes",
             );
 
-            expect(ariaIssues).toHaveLength(0);
-
+            // Log BEFORE asserting — a failing expect throws, so any log placed
+            // after it would be unreachable (I30).
             if (ariaIssues.length > 0) {
                 testLogger.warn("A11y", `ARIA attribute issues: ${JSON.stringify(ariaIssues)}`);
             }
+
+            expect(ariaIssues).toHaveLength(0);
         });
 
         await test.step("Check landmark roles", async () => {

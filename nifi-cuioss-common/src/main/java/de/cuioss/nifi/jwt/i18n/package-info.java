@@ -17,4 +17,7 @@
 /**
  * Internationalization support for JWT validation components.
  */
+@NullMarked
 package de.cuioss.nifi.jwt.i18n;
+
+import org.jspecify.annotations.NullMarked;

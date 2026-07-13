@@ -25,11 +25,6 @@
     <name>nifi-cuioss-api</name>
     <packaging>jar</packaging>
 
-    <properties>
-        <!-- Interface-only module, no testable logic -->
-        <sonar.skip>true</sonar.skip>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.nifi</groupId>
@@ -40,6 +35,10 @@
             <groupId>de.cuioss.sheriff.token</groupId>
             <artifactId>token-sheriff-validation</artifactId>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
         </dependency>
     </dependencies>
 </project>

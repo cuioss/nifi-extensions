@@ -11,14 +11,14 @@ Every error response uses content type `application/problem+json`:
 [source,json]
 ----
 {
-  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc",
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc#unauthorized",
   "title": "Unauthorized",
   "status": 401,
   "detail": "Missing or malformed Authorization header"
 }
 ----
 
-The `type` field links to this documentation page. Error responses are produced by the `ProblemDetail` record.
+The `type` field links to the matching anchored section of this documentation page (e.g. `#unauthorized`). The fragments below match the anchors emitted by the `ProblemDetail` record (`ProblemDetail.TYPE_*`).
 
 == Error Types
 
@@ -27,17 +27,17 @@ The `type` field links to this documentation page. Error responses are produced 
 |Status |Title |When Returned |Example `detail` value
 
 |400
-|Bad Request
+|anchor:bad-request[]Bad Request
 |Input sanitization failed: malformed path, query parameters, or headers detected by cui-http security pipelines
 |`Request rejected: Known attack signature detected`
 
 |401
-|Unauthorized
+|anchor:unauthorized[]Unauthorized
 |Missing or invalid Bearer token. Includes `WWW-Authenticate: Bearer` header per RFC 6750.
 |`Missing or malformed Authorization header`
 
 |403
-|Forbidden
+|anchor:forbidden[]Forbidden
 |Valid token but missing required scopes (RFC 6750 Section 3.1). Includes `WWW-Authenticate: Bearer error="insufficient_scope", scope="<required>"`.
 |`Insufficient scopes: Missing scopes: [read]`
 
@@ -46,38 +46,38 @@ The `type` field links to this documentation page. Error responses are produced 
 |Valid token but missing required roles for the matched route
 |`Insufficient roles: Missing roles: [admin]`
 
-|409
-|Conflict
-|Returned by the `/attachments` endpoint when: (a) the parent route does not accept attachments (`attachmentsMaxCount` is 0), (b) the attachment window is closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or (c) the route's `attachments-max-count` is exceeded.
-|`Attachment limit reached: 5`
-
 |404
-|Not Found
+|anchor:not-found[]Not Found
 |No route configured for the requested path
 |`No route configured for path: /api/unknown`
 
 |405
-|Method Not Allowed
+|anchor:method-not-allowed[]Method Not Allowed
 |Route exists but the HTTP method is not in the allowed set. Includes `Allow` header listing permitted methods.
 |`Method POST not allowed on /health. Allowed: [GET]`
 
+|409
+|anchor:conflict[]Conflict
+|Returned by the `/attachments` endpoint when: (a) the parent route does not accept attachments (`attachmentsMaxCount` is 0), (b) the attachment window is closed (parent has transitioned past `COLLECTING_ATTACHMENTS` or `PROCESSED`), or (c) the route's `attachments-max-count` is exceeded.
+|`Attachment limit reached: 5`
+
 |413
-|Payload Too Large
+|anchor:payload-too-large[]Payload Too Large
 |Request body exceeds the configured `rest.gateway.max.request.size` limit (default 1 MB) or per-route `restapi.<name>.max-request-size`
 |`Request body size 2097152 exceeds maximum 1048576 bytes`
 
 |422
-|Unprocessable Content
+|anchor:validation-error[]Unprocessable Content
 |Request body fails JSON Schema validation (when a route specifies `schema`). Includes a `violations` array with JSON Pointer paths and messages.
 |`Request body failed JSON Schema validation`
 
 |500
-|Internal Server Error
+|anchor:internal-error[]Internal Server Error
 |Unexpected internal error during request processing. Full stack trace logged via `CuiLogger`.
 |`An unexpected error occurred`
 
 |503
-|Service Unavailable
+|anchor:service-unavailable[]Service Unavailable
 |Request queue is full (back-pressure). The NiFi flow cannot keep up with incoming requests.
 |`Server is at capacity, please retry later`
 |===

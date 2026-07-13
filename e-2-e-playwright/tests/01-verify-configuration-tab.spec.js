@@ -123,6 +123,10 @@ test.describe("Configuration Tab", () => {
             .first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify issuer was saved — the issuer name must appear in an input field value
         // (The UI keeps issuers in editable form, not as collapsed text)
@@ -132,66 +136,110 @@ test.describe("Configuration Tab", () => {
         await expect(issuerNameInput).toHaveValue("test-issuer", {
             timeout: 5000,
         });
-    });
 
-    test("should delete an existing issuer", async ({ customUIFrame }) => {
-        // First, add an issuer to delete
-        const addIssuerButton = customUIFrame.getByRole("button", {
-            name: "Add Issuer",
-        });
-        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
-        await addIssuerButton.click();
-
-        const issuerNameInput = customUIFrame
-            .locator('input[placeholder="e.g., keycloak"]')
-            .first();
-        await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
-        await issuerNameInput.fill("delete-me-issuer");
-
-        const jwksUrlInput = customUIFrame
-            .locator('input[name="jwks-url"]')
-            .first();
-        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
-        await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
-
-        const saveButton = customUIFrame
-            .getByRole("button", { name: "Save Issuer" })
-            .first();
-        await expect(saveButton).toBeVisible({ timeout: 5000 });
-        await saveButton.click();
-
-        // Verify issuer was saved (name appears in input field)
-        await expect(issuerNameInput).toHaveValue("delete-me-issuer", {
-            timeout: 5000,
-        });
-
-        // Find and click the Remove button for this issuer
-        // The Remove button is adjacent to the issuer name input in the same form section
-        const removeButton = customUIFrame
-            .getByRole("button", { name: "Remove" })
-            .first();
-        await expect(removeButton).toBeVisible({ timeout: 5000 });
-        await removeButton.click();
-
-        // Handle confirmation dialog if it appears
+        // Clean up the saved "test-issuer" so the suite stays idempotent across
+        // runs — like every other test in this file, it must not leak state into
+        // the live processor (N67).
+        const allForms = customUIFrame.locator(".issuer-form");
         const confirmButton = customUIFrame
             .locator(
                 '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
             )
             .first();
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
+        const formCount = await allForms.count();
+        for (let i = formCount - 1; i >= 0; i--) {
+            const form = allForms.nth(i);
+            const nameValue = await form
+                .locator('input[placeholder="e.g., keycloak"]')
+                .first()
+                .inputValue()
+                .catch(() => "");
+            if (nameValue === "test-issuer") {
+                await form.getByRole("button", { name: "Remove" }).click();
+                if (
+                    await confirmButton
+                        .isVisible({ timeout: 2000 })
+                        .catch(() => false)
+                ) {
+                    await confirmButton.click();
+                }
+                break;
+            }
         }
+    });
 
-        // Verify the issuer name "delete-me-issuer" is no longer in any input field
-        const remainingInputs = customUIFrame.locator(
+    test("should delete an existing issuer", async ({ customUIFrame }) => {
+        // Add an issuer to delete. Scope every interaction to the newly-added form
+        // (a prior serial-block test may have left other issuer forms present), so
+        // this test removes its OWN issuer rather than whichever form is first.
+        const addIssuerButton = customUIFrame.getByRole("button", {
+            name: "Add Issuer",
+        });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
+        await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
+        await addIssuerButton.click();
+
+        const form = issuerForms.nth(existingCount);
+        const issuerNameInput = form.locator(
             'input[placeholder="e.g., keycloak"]',
         );
-        const count = await remainingInputs.count();
-        for (let i = 0; i < count; i++) {
-            const value = await remainingInputs.nth(i).inputValue();
-            expect(value).not.toBe("delete-me-issuer");
-        }
+        await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
+        await issuerNameInput.fill("delete-me-issuer");
+
+        const jwksUrlInput = form.locator('input[name="jwks-url"]');
+        await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
+        await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
+
+        const saveButton = form.getByRole("button", { name: "Save Issuer" });
+        await expect(saveButton).toBeVisible({ timeout: 5000 });
+        await saveButton.click();
+
+        // Verify issuer was saved (name persists in its input field)
+        await expect(issuerNameInput).toHaveValue("delete-me-issuer", {
+            timeout: 5000,
+        });
+
+        // Remove this issuer via its own form's Remove button.
+        const removeButton = form.getByRole("button", { name: "Remove" });
+        await expect(removeButton).toBeVisible({ timeout: 5000 });
+        await removeButton.click();
+
+        // The remove button always opens a confirmation dialog; wait for it rather
+        // than probing with a short timeout (slower CI can take >2s to render it).
+        const confirmButton = customUIFrame
+            .locator(
+                '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
+            )
+            .first();
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
+
+        // Verify the issuer "delete-me-issuer" is removed. Removal is async
+        // (confirm dialog → API update → re-render); a one-shot read of the input
+        // values raced that re-render and saw the stale value, so poll until no
+        // input field carries the removed issuer name.
+        await expect
+            .poll(
+                async () => {
+                    const inputs = customUIFrame.locator(
+                        'input[placeholder="e.g., keycloak"]',
+                    );
+                    const n = await inputs.count();
+                    for (let i = 0; i < n; i++) {
+                        if (
+                            (await inputs.nth(i).inputValue()) ===
+                            "delete-me-issuer"
+                        ) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                { timeout: 10000 },
+            )
+            .toBe(false);
     });
 
     test("should edit an existing issuer configuration", async ({
@@ -234,6 +282,10 @@ test.describe("Configuration Tab", () => {
         const successMessage = newForm.locator(".success-message").first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Edit the issuer: change audience and JWKS URL
         await audienceInput.fill("updated-audience");
@@ -247,6 +299,10 @@ test.describe("Configuration Tab", () => {
         // Verify save success
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify updated values are preserved in the form
         await expect(audienceInput).toHaveValue("updated-audience");
@@ -333,34 +389,43 @@ test.describe("Configuration Tab", () => {
         // Remove first added issuer (issuer-one) via its own Remove button
         await firstForm.getByRole("button", { name: "Remove" }).click();
 
+        // The remove button always opens a confirmation dialog; wait for it rather
+        // than probing with a short timeout (slower CI can take >2s to render it,
+        // which previously skipped the confirm and left the issuer in place).
         const confirmButton = customUIFrame
             .locator(
                 '.confirmation-dialog .confirm-button, button:has-text("Confirm"), button:has-text("Yes")',
             )
             .first();
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-        }
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
 
-        // Verify only issuer-two remains among the added issuers
-        const remainingInputs = customUIFrame.locator(
-            'input[placeholder="e.g., keycloak"]',
-        );
-        const remainingNames = [];
-        const remainingCount = await remainingInputs.count();
-        for (let i = 0; i < remainingCount; i++) {
-            remainingNames.push(await remainingInputs.nth(i).inputValue());
-        }
-        expect(remainingNames).not.toContain("issuer-one");
-        expect(remainingNames).toContain("issuer-two");
+        // Verify only issuer-two remains among the added issuers. Removal is async
+        // (confirm → API update → re-render), so poll rather than reading input
+        // values once (which raced the re-render and still saw issuer-one).
+        const readIssuerNames = async () => {
+            const inputs = customUIFrame.locator(
+                'input[placeholder="e.g., keycloak"]',
+            );
+            const n = await inputs.count();
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                out.push(await inputs.nth(i).inputValue());
+            }
+            return out;
+        };
+        await expect
+            .poll(async () => (await readIssuerNames()).includes("issuer-one"), {
+                timeout: 15000,
+            })
+            .toBe(false);
+        expect(await readIssuerNames()).toContain("issuer-two");
 
         // Clean up: remove issuer-two — it's now the last form
         const lastForm = issuerForms.last();
         await lastForm.getByRole("button", { name: "Remove" }).click();
-
-        if (await confirmButton.isVisible({ timeout: 2000 })) {
-            await confirmButton.click();
-        }
+        await expect(confirmButton).toBeVisible({ timeout: 10000 });
+        await confirmButton.click();
     });
 
     test("should save issuer with inline JWKS content", async ({
@@ -420,6 +485,10 @@ test.describe("Configuration Tab", () => {
         const successMessage = newForm.locator(".success-message").first();
         await expect(successMessage).toBeVisible({ timeout: 10000 });
         await expect(successMessage).toContainText("saved successfully");
+        // Persistence must actually occur: the ?id=<uuid> component ID drives a real save,
+        // so the persisted message is expected — NOT the "(standalone mode)" fallback, which
+        // would mean the component ID never reached the editor and the save was dropped.
+        await expect(successMessage).not.toContainText("standalone");
 
         // Verify JWKS type still shows "Memory"
         await expect(jwksTypeSelect).toHaveValue("memory");

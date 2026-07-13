@@ -2,10 +2,10 @@
 
 import {
     sanitizeHtml, formatNumber, formatDate, t, lang, TRANSLATIONS, log,
-    validateRequired, validateUrl, validateJwtToken,
+    validateUrl,
     validateIssuerName, validateProcessorIdFromUrl,
     validateIssuerConfig,
-    displayUiError, displayUiSuccess, createXhrErrorObject,
+    displayUiError, displayUiSuccess,
     showConfirmationDialog, confirmRemoveIssuer, confirmClearForm
 } from '../../main/webapp/js/utils.js';
 
@@ -193,28 +193,6 @@ describe('log', () => {
 // Validation functions
 // ---------------------------------------------------------------------------
 
-describe('validateRequired', () => {
-    test('invalid when empty', () => {
-        expect(validateRequired('').isValid).toBe(false);
-        expect(validateRequired(null).isValid).toBe(false);
-        expect(validateRequired(undefined).isValid).toBe(false);
-    });
-
-    test('valid when non-empty', () => {
-        expect(validateRequired('hello').isValid).toBe(true);
-    });
-
-    test('trims whitespace', () => {
-        expect(validateRequired('   ').isValid).toBe(false);
-        expect(validateRequired('  x  ').isValid).toBe(true);
-    });
-
-    test('treats "null" and "undefined" strings as empty', () => {
-        expect(validateRequired('null').isValid).toBe(false);
-        expect(validateRequired('undefined').isValid).toBe(false);
-    });
-});
-
 describe('validateUrl', () => {
     test('valid HTTPS URL', () => {
         expect(validateUrl('https://example.com').isValid).toBe(true);
@@ -222,6 +200,13 @@ describe('validateUrl', () => {
 
     test('valid HTTP URL', () => {
         expect(validateUrl('http://example.com/path').isValid).toBe(true);
+    });
+
+    test('accepts a host:port URL (regex has a port group)', () => {
+        // Regression for the missing port group: host:port must validate — the UI's own
+        // placeholder is https://keycloak:8080/realms/...
+        expect(validateUrl('https://keycloak:8080/realms/master').isValid).toBe(true);
+        expect(validateUrl('http://nifi:8443/path').isValid).toBe(true);
     });
 
     test('localhost URL uses numeric IP pattern', () => {
@@ -243,34 +228,6 @@ describe('validateUrl', () => {
     test('rejects URL exceeding maxLength', () => {
         const longUrl = 'https://example.com/' + 'a'.repeat(2050);
         const result = validateUrl(longUrl);
-        expect(result.isValid).toBe(false);
-        expect(result.error).toContain('too long');
-    });
-});
-
-describe('validateJwtToken', () => {
-    // A syntactically valid JWT (3 base64url segments, >10 chars, <10000 chars)
-    const validToken = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-
-    test('valid JWT format', () => {
-        expect(validateJwtToken(validToken).isValid).toBe(true);
-    });
-
-    test('rejects empty token', () => {
-        expect(validateJwtToken('').isValid).toBe(false);
-    });
-
-    test('rejects token without dots', () => {
-        expect(validateJwtToken('onlyone').isValid).toBe(false);
-    });
-
-    test('rejects very short token', () => {
-        expect(validateJwtToken('a.b').isValid).toBe(false);
-    });
-
-    test('rejects token exceeding max length', () => {
-        const longToken = 'a'.repeat(5001) + '.' + 'b'.repeat(5001);
-        const result = validateJwtToken(longToken);
         expect(result.isValid).toBe(false);
         expect(result.error).toContain('too long');
     });
@@ -451,24 +408,6 @@ describe('displayUiSuccess', () => {
 
         expect(el.querySelector('.success-message')).toBeNull();
         jest.useRealTimers();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// createXhrErrorObject
-// ---------------------------------------------------------------------------
-
-describe('createXhrErrorObject', () => {
-    test('creates error object from XHR-like input', () => {
-        const err = createXhrErrorObject({ status: 404, statusText: 'Not Found', responseText: 'page not found' });
-        expect(err.status).toBe(404);
-        expect(err.statusText).toBe('Not Found');
-    });
-
-    test('handles null input', () => {
-        const err = createXhrErrorObject(null);
-        expect(err.status).toBe(0);
-        expect(err.statusText).toBe('Unknown error');
     });
 });
 

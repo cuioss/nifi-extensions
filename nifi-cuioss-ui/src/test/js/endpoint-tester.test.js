@@ -50,6 +50,9 @@ describe('endpoint-tester', () => {
 
     beforeEach(() => {
         utils.t.mockImplementation((key) => key);
+        // endpoint-tester now escapes via the shared utils.sanitizeHtml (replacing its former
+        // local escapeHtml/escapeAttr); stub it so option values/text render as-is.
+        utils.sanitizeHtml.mockImplementation((s) => (s == null ? '' : String(s)));
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
 

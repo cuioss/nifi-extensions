@@ -77,12 +77,12 @@ public class IssuerConfigurationParser {
     }
 
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
-            ConfigurationManager configurationManager) {
+            @Nullable ConfigurationManager configurationManager) {
         return parseIssuerConfigs(properties, configurationManager, null);
     }
 
     public static List<IssuerConfig> parseIssuerConfigs(Map<String, String> properties,
-            ConfigurationManager configurationManager,
+            @Nullable ConfigurationManager configurationManager,
             @Nullable ParserConfig parserConfig) {
         Objects.requireNonNull(properties, "properties must not be null");
         Map<String, Map<String, String>> issuerPropertiesMap = new HashMap<>();
@@ -108,6 +108,13 @@ public class IssuerConfigurationParser {
         } catch (NumberFormatException e) {
             LOGGER.warn(JwtLogMessages.WARN.INVALID_CONFIG_VALUE,
                     sanitizeLogValue(tokenSizeValue), MAXIMUM_TOKEN_SIZE_KEY, DEFAULT_MAX_TOKEN_SIZE);
+        }
+        if (maxTokenSize <= 0) {
+            // External config files bypass the NiFi POSITIVE_INTEGER_VALIDATOR; a 0/negative
+            // size would disable size enforcement entirely, so fall back to the default.
+            LOGGER.warn(JwtLogMessages.WARN.INVALID_MAX_TOKEN_SIZE,
+                    sanitizeLogValue(tokenSizeValue), MAXIMUM_TOKEN_SIZE_KEY, DEFAULT_MAX_TOKEN_SIZE);
+            maxTokenSize = DEFAULT_MAX_TOKEN_SIZE;
         }
         return ParserConfig.builder()
                 .maxTokenSize(maxTokenSize)
@@ -194,19 +201,19 @@ public class IssuerConfigurationParser {
         parseAllowedAlgorithms(globalProperties)
                 .ifPresent(algorithms -> builder.algorithmPreferences(
                         new SignatureAlgorithmPreferences(algorithms)));
-        String jwksType = resolveJwksType(issuerProps);
+        String jwksType = resolveJwksType(issuerId, issuerProps);
+        if ("url".equals(jwksType) && !hasUrlSource(issuerProps)) {
+            // jwks-type=url was declared but only a jwks-file is present; the resolved source is a
+            // file path and must NOT be routed through the URL/HTTPS/private-address checks.
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
+            jwksType = "file";
+        }
         if ("url".equals(jwksType)) {
             if (!isJwksUrlAllowed(issuerId, jwksSource.get(), globalProperties)) {
                 return Optional.empty();
             }
-            var httpConfigBuilder = HttpJwksLoaderConfig.builder()
-                    .jwksUrl(jwksSource.get())
-                    .issuerIdentifier(issuerName.get());
-            if (parserConfig != null) {
-                httpConfigBuilder.parserConfig(parserConfig);
-            }
-            applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
-            builder.httpJwksLoaderConfig(httpConfigBuilder.build());
+            builder.httpJwksLoaderConfig(buildHttpJwksLoaderConfig(
+                    jwksSource.get(), issuerName.get(), globalProperties, parserConfig));
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
@@ -221,6 +228,22 @@ public class IssuerConfigurationParser {
             builder.expectedClientId(clientId.trim());
         }
         return Optional.of(builder.build());
+    }
+
+    /**
+     * Builds the HTTP JWKS loader configuration for a URL-sourced issuer, applying the optional
+     * pre-initialized {@link ParserConfig} and the global JWKS connection settings.
+     */
+    private static HttpJwksLoaderConfig buildHttpJwksLoaderConfig(String jwksUrl, String issuerName,
+            Map<String, String> globalProperties, @Nullable ParserConfig parserConfig) {
+        var httpConfigBuilder = HttpJwksLoaderConfig.builder()
+                .jwksUrl(jwksUrl)
+                .issuerIdentifier(issuerName);
+        if (parserConfig != null) {
+            httpConfigBuilder.parserConfig(parserConfig);
+        }
+        applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
+        return httpConfigBuilder.build();
     }
 
     private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
@@ -257,20 +280,30 @@ public class IssuerConfigurationParser {
         return Optional.empty();
     }
 
-    private static String resolveJwksType(Map<String, String> issuerProps) {
+    private static String resolveJwksType(String issuerId, Map<String, String> issuerProps) {
         String explicitType = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_TYPE);
         if (explicitType != null && !explicitType.trim().isEmpty()) {
-            return explicitType.trim().toLowerCase(Locale.ROOT);
+            String normalizedType = explicitType.trim().toLowerCase(Locale.ROOT);
+            if ("url".equals(normalizedType) || "file".equals(normalizedType)) {
+                return normalizedType;
+            }
+            // Unknown jwks-type: do not silently treat it as "file"; warn and infer from the source.
+            LOGGER.warn(JwtLogMessages.WARN.UNKNOWN_JWKS_TYPE,
+                    sanitizeLogValue(explicitType), sanitizeLogValue(issuerId));
         }
-        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            return "url";
-        }
-        String jwksUri = issuerProps.get("jwksUri");
-        if (jwksUri != null && !jwksUri.trim().isEmpty()) {
+        if (hasUrlSource(issuerProps)) {
             return "url";
         }
         return "file";
+    }
+
+    private static boolean hasUrlSource(Map<String, String> issuerProps) {
+        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
+        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
+            return true;
+        }
+        String jwksUri = issuerProps.get("jwksUri");
+        return jwksUri != null && !jwksUri.trim().isEmpty();
     }
 
     /**
@@ -299,6 +332,12 @@ public class IssuerConfigurationParser {
      * The private-address check resolves the host at configuration time; if the host
      * cannot be resolved, the check is deferred to the JWKS loader rather than
      * permanently excluding the issuer (the IdP may simply not be up yet).
+     * <p>
+     * <b>Known limitation (accepted risk):</b> because resolution happens once at config
+     * time, this is a TOCTOU check that does not defend against DNS-rebinding where the
+     * host later resolves to a private address. Covered private ranges include loopback,
+     * link-local, site-local (RFC 1918), IPv6 unique-local (fc00::/7) and carrier-grade
+     * NAT (100.64.0.0/10, RFC 6598).
      *
      * @return {@code true} if the URL passes the configured restrictions
      */
@@ -336,7 +375,7 @@ public class IssuerConfigurationParser {
             for (InetAddress address : InetAddress.getAllByName(host)) {
                 if (address.isLoopbackAddress() || address.isSiteLocalAddress()
                         || address.isLinkLocalAddress() || address.isAnyLocalAddress()
-                        || isUniqueLocalIpv6(address)) {
+                        || isUniqueLocalIpv6(address) || isCarrierGradeNat(address)) {
                     return true;
                 }
             }
@@ -351,6 +390,16 @@ public class IssuerConfigurationParser {
     private static boolean isUniqueLocalIpv6(InetAddress address) {
         byte[] bytes = address.getAddress();
         return bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC;
+    }
+
+    /**
+     * IPv4 carrier-grade NAT shared address space (100.64.0.0/10, RFC 6598) is not covered by
+     * {@link InetAddress#isSiteLocalAddress()}; treat it as private for SSRF protection.
+     */
+    private static boolean isCarrierGradeNat(InetAddress address) {
+        byte[] bytes = address.getAddress();
+        // 100.64.0.0/10 => first octet 100, second octet in [64, 127].
+        return bytes.length == 4 && (bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 0x40;
     }
 
     private static void applyGlobalJwksSettings(

@@ -155,6 +155,11 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |GET
 |Proxies to gateway `/metrics`
 
+|`/nifi-api/processors/jwt/gateway/health`
+|Yes
+|GET
+|Proxies to gateway `/health`
+
 |`/nifi-api/processors/jwt/gateway/test`
 |Yes
 |POST
@@ -179,6 +184,11 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Yes (via `ProcessorIdValidationFilter`)
 |POST
 |Stateless JWKS validation (URL, file, content)
+
+|`/nifi-api/context-path`
+|No
+|GET
+|`ProxyContextPathServlet` — returns the NiFi web context path for the custom UI to resolve API base URLs
 |===
 
 === Gateway Embedded Jetty Endpoints (Layer 3)
@@ -242,6 +252,9 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 |`http.query.<name>`
 |Query parameter values (one attribute per parameter)
+
+|`http.header.<name>`
+|Request header values (one attribute per forwarded header, lower-cased name; the `Authorization` header is excluded)
 
 |`rest.api.pathparam.<name>`
 |Path parameter values extracted from a `{placeholder}` route template (one attribute per parameter; absent for exact/prefix-matched routes)

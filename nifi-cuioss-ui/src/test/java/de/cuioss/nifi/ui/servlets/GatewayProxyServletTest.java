@@ -27,6 +27,8 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.nifi.web.ClusterRequestException;
+import org.apache.nifi.web.NiFiWebConfigurationContext;
 import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,6 +43,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.easymock.EasyMock.createNiceMock;
+import static org.easymock.EasyMock.replay;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -87,6 +91,14 @@ class GatewayProxyServletTest {
      */
     private static final AtomicBoolean gatewayExecuteFailing = new AtomicBoolean(false);
 
+    /**
+     * When set, config resolution (port/property/component lookup) throws this
+     * unchecked exception — exercises the fail-secure {@code ClusterRequestException |
+     * IllegalStateException} → 503 branch. Reset before each test.
+     */
+    private static final AtomicReference<RuntimeException> configResolveException =
+            new AtomicReference<>(null);
+
     /** Configurable processor properties — reset before each test. */
     private static final AtomicReference<Map<String, String>> processorProperties =
             new AtomicReference<>(createDefaultProperties());
@@ -131,10 +143,19 @@ class GatewayProxyServletTest {
 
     @BeforeAll
     static void startServer() throws Exception {
-        handle = EmbeddedServletTestSupport.startServer(ctx ->
-                ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
+        // A non-null nifi-web-configuration-context attribute makes the servlet's init()
+        // populate configContext, so the null-context 503 guard (requireConfigContext) stays
+        // quiet and the overridden resolve* hooks drive the stubbed responses. The mock is
+        // never dereferenced because every resolve* hook is overridden.
+        NiFiWebConfigurationContext dummyContext = createNiceMock(NiFiWebConfigurationContext.class);
+        replay(dummyContext);
+
+        handle = EmbeddedServletTestSupport.startServer(ctx -> {
+            ctx.setAttribute("nifi-web-configuration-context", dummyContext);
+            ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                     @Override
                     protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
+                        throwConfiguredResolveException();
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return 9443;
                     }
@@ -142,6 +163,7 @@ class GatewayProxyServletTest {
                     @Override
                     protected Map<String, String> resolveProcessorProperties(
                             String processorId, HttpServletRequest req) throws IOException {
+                        throwConfiguredResolveException();
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return processorProperties.get();
                     }
@@ -149,6 +171,7 @@ class GatewayProxyServletTest {
                     @Override
                     protected ComponentConfigReader.ComponentConfig resolveComponentConfig(
                             String processorId, HttpServletRequest req) throws IOException {
+                        throwConfiguredResolveException();
                         if (gatewayFailing.get()) throw new IOException("Connection refused");
                         return new ComponentConfigReader.ComponentConfig(
                                 ComponentConfigReader.ComponentType.PROCESSOR,
@@ -188,7 +211,19 @@ class GatewayProxyServletTest {
                         if (gatewayFailing.get()) throw new UncheckedIOException(new IOException("Connection refused"));
                         return csProperties.get();
                     }
-                }), "/gateway/*"));
+            }), "/gateway/*");
+        });
+    }
+
+    /**
+     * Throws the configured config-resolution exception, if any, to exercise the
+     * servlet's fail-secure config-resolution error branches.
+     */
+    private static void throwConfiguredResolveException() {
+        RuntimeException ex = configResolveException.get();
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @AfterAll
@@ -202,10 +237,89 @@ class GatewayProxyServletTest {
         gatewayGetStatusCode.set(200);
         gatewayFailing.set(false);
         gatewayExecuteFailing.set(false);
+        configResolveException.set(null);
         processorProperties.set(createDefaultProperties());
         idpResponseBody.set("{\"access_token\":\"test-token\",\"expires_in\":300}");
         idpResponseStatus.set(200);
         csProperties.set(createDefaultCsProperties());
+    }
+
+    // -----------------------------------------------------------------------
+    // JSON error contract & robustness
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("JSON error contract & robustness")
+    class JsonErrorContractAndRobustness {
+
+        @Test
+        @DisplayName("Should return 503 JSON when NiFi configuration context is unavailable")
+        void shouldReturn503WhenConfigContextUnavailable() throws Exception {
+            // A servlet started without the nifi-web-configuration-context attribute has a
+            // null configContext. Every gateway request must yield a uniform JSON 503 instead
+            // of NPEing into a container 500 page on the first config lookup.
+            try (var noContextHandle = EmbeddedServletTestSupport.startServer(ctx ->
+                    ctx.addServlet(new ServletHolder(new GatewayProxyServlet()), "/gateway/*"))) {
+                noContextHandle.spec()
+                        .header("X-Processor-Id", PROCESSOR_ID)
+                        .when()
+                        .get("/gateway/config")
+                        .then()
+                        .statusCode(503)
+                        .contentType(containsString("application/json"))
+                        .body("error", containsString("NiFi configuration context unavailable"));
+            }
+        }
+
+        @Test
+        @DisplayName("Should return 503 JSON for a ClusterRequestException while resolving config")
+        void shouldReturn503ForClusterRequestException() {
+            configResolveException.set(new ClusterRequestException(
+                    new RuntimeException("Cluster node unreachable")));
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(503)
+                    .contentType(containsString("application/json"))
+                    .body("error", containsString("Gateway configuration unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 JSON for an IllegalStateException while resolving config")
+        void shouldReturn503ForIllegalStateException() {
+            configResolveException.set(new IllegalStateException("Component state inconsistent"));
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/config")
+                    .then()
+                    .statusCode(503)
+                    .contentType(containsString("application/json"))
+                    .body("error", containsString("Gateway configuration unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should reject request body larger than 1 MB with 413 JSON")
+        void oversizedBodyReturns413() {
+            // 1 MB of padding pushes the total body over MAX_REQUEST_BODY_SIZE; the cap must
+            // hold even without a trustworthy Content-Length header, and produce a JSON 413.
+            String requestJson = """
+                    {"path":"%s"}""".formatted("a".repeat(1024 * 1024));
+
+            handle.spec()
+                    .contentType("application/json")
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .body(requestJson)
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(413)
+                    .body("error", containsString("too large"));
+        }
     }
 
     // -----------------------------------------------------------------------

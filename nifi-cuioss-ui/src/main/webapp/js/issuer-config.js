@@ -9,13 +9,14 @@
 import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
-    validateIssuerConfig, validateProcessorIdFromUrl, log, t,
+    validateIssuerConfig, log, t,
     buildOriginBadge
 } from './utils.js';
 import { createContextHelp, createFormField } from './context-help.js';
 
-// Note: validateProcessorIdFromUrl is kept for backward compatibility —
-// NiFi passes the component ID via ?id= regardless of component type.
+// NiFi passes the component ID via ?id= regardless of component type; the shared
+// api.getComponentId() helper reads it (parity with rest-endpoint-config.js), so a
+// query-param component ID makes JWT-mode issuer persistence work in production.
 
 // Counter for unique form field IDs
 let formCounter = 0;
@@ -46,8 +47,7 @@ const SAMPLE = {
 export const init = async (element, options = {}) => {
     if (!element || element.querySelector('.issuer-config-editor')) return;
 
-    const componentId = options.targetComponentId
-        || getComponentIdFromUrl(globalThis.location.href);
+    const componentId = options.targetComponentId || api.getComponentId();
     const isGateway = options.isGatewayContext || false;
     const useCS = options.useControllerService || false;
 
@@ -95,21 +95,21 @@ export const cleanup = () => { /* no persistent resources */ };
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getComponentIdFromUrl = (url) => {
-    const r = validateProcessorIdFromUrl(url);
-    return r.isValid ? r.sanitizedValue : '';
-};
-
 const parseIssuerProperties = (properties) => {
     const out = {};
     for (const [key, value] of Object.entries(properties)) {
         if (!key.startsWith('issuer.')) continue;
-        const parts = key.slice(7).split('.');
-        if (parts.length === 2) {
-            const [name, prop] = parts;
-            if (!out[name]) out[name] = {};
-            out[name][prop] = value;
-        }
+        // Property keys are issuer.<name>.<prop>; the property token is the final
+        // dot-segment, so split at the LAST dot. This lets an issuer name contain dots
+        // (e.g. `my.issuer`), matching what validateIssuerName advertises — otherwise a
+        // dotted issuer saves fine then vanishes on reload.
+        const rest = key.slice(7);
+        const lastDot = rest.lastIndexOf('.');
+        if (lastDot <= 0 || lastDot === rest.length - 1) continue;
+        const name = rest.slice(0, lastDot);
+        const prop = rest.slice(lastDot + 1);
+        if (!out[name]) out[name] = {};
+        out[name][prop] = value;
     }
     return out;
 };
@@ -401,22 +401,28 @@ const validateFormData = (f) => {
     if (jt === 'url' && !f['jwks-url']) return { isValid: false, error: new Error(t('issuer.validate.jwks.url.required')) };
     if (jt === 'file' && !f['jwks-file']) return { isValid: false, error: new Error(t('issuer.validate.jwks.file.required')) };
     if (jt === 'memory' && !f['jwks-content']) return { isValid: false, error: new Error(t('issuer.validate.jwks.content.required')) };
-    // Enhanced validation (non-blocking)
+    // Enhanced validation (blocking): with the port-aware URL regexes this now
+    // correctly accepts host:port URLs, so a genuine failure blocks the save instead
+    // of being silently downgraded to a debug log (which left this path dead in effect).
     const enhanced = validateIssuerConfig(f);
-    if (!enhanced.isValid) log.debug('Enhanced validation warnings:', enhanced.error);
+    if (!enhanced.isValid) return { isValid: false, error: new Error(enhanced.error) };
     return { isValid: true };
 };
 
 const buildPropertyUpdates = (name, f) => {
     const jt = f['jwks-type'] || 'url';
-    const u = { [`issuer.${name}.jwks-type`]: jt };
-    if (f.issuer) u[`issuer.${name}.issuer`] = f.issuer;
-    if (jt === 'url' && f['jwks-url']) u[`issuer.${name}.jwks-url`] = f['jwks-url'];
-    if (jt === 'file' && f['jwks-file']) u[`issuer.${name}.jwks-file`] = f['jwks-file'];
-    if (jt === 'memory' && f['jwks-content']) u[`issuer.${name}.jwks-content`] = f['jwks-content'];
-    if (f.audience) u[`issuer.${name}.audience`] = f.audience;
-    if (f['client-id']) u[`issuer.${name}.client-id`] = f['client-id'];
-    return u;
+    const key = (prop) => `issuer.${name}.${prop}`;
+    // Cleared fields and non-active jwks sources are written as null so NiFi deletes them
+    // rather than retaining a stale issuer.<name>.* value (parity with the route editor).
+    return {
+        [key('jwks-type')]: jt,
+        [key('issuer')]: f.issuer || null,
+        [key('jwks-url')]: jt === 'url' ? (f['jwks-url'] || null) : null,
+        [key('jwks-file')]: jt === 'file' ? (f['jwks-file'] || null) : null,
+        [key('jwks-content')]: jt === 'memory' ? (f['jwks-content'] || null) : null,
+        [key('audience')]: f.audience || null,
+        [key('client-id')]: f['client-id'] || null
+    };
 };
 
 const saveIssuer = async (form, errEl, componentId) => {
@@ -449,13 +455,18 @@ const clearIssuerProperties = async (componentId, issuerName) => {
 };
 
 const removeIssuer = async (form, issuerName) => {
-    form.remove();
-    const componentId = getComponentIdFromUrl(globalThis.location.href);
-    const globalErr = document.querySelector('.global-error-messages');
+    // Scope the banner to THIS issuer editor's own container — `document.querySelector`
+    // would grab the route editor's identically-classed banner (hidden in gateway mode).
+    const editor = form.closest('.issuer-config-editor');
+    const globalErr = editor?.querySelector('.global-error-messages.issuer-form-error-messages');
+    const componentId = api.getComponentId();
 
     if (issuerName && componentId) {
         try {
+            // Await backend deletion BEFORE removing the row, so a failed delete does not
+            // leave the row gone while the config persists server-side.
             await clearIssuerProperties(componentId, issuerName);
+            form.remove();
             if (globalErr) {
                 displayUiSuccess(globalErr, t('issuer.remove.success', issuerName));
                 globalErr.classList.remove('hidden');
@@ -466,9 +477,12 @@ const removeIssuer = async (form, issuerName) => {
                 globalErr.classList.remove('hidden');
             }
         }
-    } else if (issuerName && globalErr) {
-        displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
-        globalErr.classList.remove('hidden');
+    } else {
+        form.remove();
+        if (issuerName && globalErr) {
+            displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
+            globalErr.classList.remove('hidden');
+        }
     }
 };
 
@@ -665,13 +679,18 @@ const openInlineIssuerEditor = (issuersContainer, issuerName, properties, ctx, t
 // ---------------------------------------------------------------------------
 
 /** Apply issuer save result to the UI (update or add row, close form). */
-const applyIssuerSaveToUI = (form, formData, tableRow, issuersContainer, ctx) => {
+const applyIssuerSaveToUI = (form, formData, tableRow, issuersContainer, ctx, origin) => {
     form.dataset.originalName = formData.issuerName;
     if (tableRow) {
+        // On a successful persist set origin='persisted' (parity with the route editor),
+        // but never overwrite an 'external'-origin row — it keeps its provenance badge.
+        if (origin && tableRow.dataset.origin !== 'external') {
+            tableRow.dataset.origin = origin;
+        }
         updateIssuerTableRow(tableRow, formData);
         tableRow.classList.remove('hidden');
     } else {
-        addIssuerRowToTable(issuersContainer, formData, ctx);
+        addIssuerRowToTable(issuersContainer, formData, ctx, origin);
     }
     form.remove();
 };
@@ -714,16 +733,15 @@ const saveIssuerGateway = async (form, errEl, ctx, tableRow, issuersContainer) =
 
     try {
         await updateProps(ctx, updates);
-        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx);
+        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx, 'persisted');
     } catch (error) {
         displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
     }
 };
 
 const updateIssuerTableRow = (row, formData) => {
-    if (row.dataset.origin === 'persisted') {
-        row.dataset.origin = 'modified';
-    }
+    // Origin is set by applyIssuerSaveToUI (persisted on a real save); do NOT flip
+    // persisted → modified here — that mislabels a just-saved row as "not yet saved".
     const origin = row.dataset.origin || 'persisted';
     const originBadge = buildOriginBadge(origin);
 
@@ -740,7 +758,7 @@ const updateIssuerTableRow = (row, formData) => {
     row.dataset.issuerName = formData.issuerName;
 };
 
-const addIssuerRowToTable = (issuersContainer, formData, ctx) => {
+const addIssuerRowToTable = (issuersContainer, formData, ctx, origin = 'new') => {
     const table = issuersContainer.querySelector('.issuer-summary-table');
     if (!table) return;
     const tbody = table.querySelector('tbody');
@@ -757,7 +775,8 @@ const addIssuerRowToTable = (issuersContainer, formData, ctx) => {
         audience: formData.audience,
         'client-id': formData['client-id']
     };
-    const row = createIssuerTableRow(formData.issuerName, props, ctx, issuersContainer, 'new');
+    // A row added after a successful persist is 'persisted'; a standalone add is 'new'.
+    const row = createIssuerTableRow(formData.issuerName, props, ctx, issuersContainer, origin);
     tbody.appendChild(row);
 };
 
@@ -782,25 +801,31 @@ const deleteIssuerProperties = async (ctx, issuerName) => {
 };
 
 const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
-    row.remove();
-
     const openForm = issuersContainer.querySelector('.issuer-inline-form');
     if (openForm && openForm.dataset.originalName === issuerName) {
         openForm.remove();
     }
 
-    if (!issuerName) return;
+    if (!issuerName) {
+        row.remove();
+        return;
+    }
 
-    const globalErr = document.querySelector('.global-error-messages');
+    // Scope the banner to THIS issuer editor's own container (not the route editor's).
+    const editor = issuersContainer.closest('.issuer-config-editor');
+    const globalErr = editor?.querySelector('.global-error-messages.issuer-form-error-messages');
 
     if (!ctx.componentId) {
+        row.remove();
         showGlobalBanner(globalErr, (el) =>
             displayUiSuccess(el, t('issuer.remove.success.standalone', issuerName)));
         return;
     }
 
     try {
+        // Await backend deletion BEFORE removing the row so a failed delete keeps the row.
         await deleteIssuerProperties(ctx, issuerName);
+        row.remove();
         showGlobalBanner(globalErr, (el) =>
             displayUiSuccess(el, t('issuer.remove.success', issuerName)));
     } catch (error) {

@@ -16,8 +16,14 @@
  */
 /**
  * Shared JWT authentication and validation infrastructure for NiFi extensions.
- * Contains the {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService} controller service
- * interface and supporting classes for JWT token validation, issuer configuration,
- * and authorization checking.
+ * Contains supporting classes for JWT token validation, issuer configuration
+ * parsing, and authorization checking. The
+ * {@link de.cuioss.nifi.jwt.config.JwtIssuerConfigService} controller-service
+ * interface itself lives in the {@code nifi-cuioss-api} artifact: the
+ * {@code de.cuioss.nifi.jwt.config} package is intentionally split across the api
+ * (interface) and common (implementation) modules.
  */
+@NullMarked
 package de.cuioss.nifi.jwt;
+
+import org.jspecify.annotations.NullMarked;

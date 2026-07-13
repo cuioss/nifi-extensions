@@ -46,7 +46,9 @@ export const init = (container) => {
     container.querySelector('.verify-token-button').addEventListener('click', async () => {
         const token = tokenInput.value.trim();
         if (!token) {
-            displayUiError(results, null, {}, 'processor.jwt.noTokenProvided');
+            // Pass a real Error so a meaningful "token required" message renders instead
+            // of the "Unknown error" fallback a null error produced.
+            displayUiError(results, new Error(t('validation.token.required')), {});
             return;
         }
         results.innerHTML = `<div class="verifying">${t('token.status.verifying')}</div>`;

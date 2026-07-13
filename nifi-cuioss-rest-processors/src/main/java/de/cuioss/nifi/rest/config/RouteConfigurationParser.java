@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -50,6 +51,12 @@ import static de.cuioss.nifi.jwt.util.AuthorizationRequirements.parseCommaSepara
  *   <li>{@code schema} — optional file path to a JSON Schema file for request body validation</li>
  *   <li>{@code success-outcome} — NiFi relationship name; required for routes with create-flowfile=true, auto-populated with route name when absent</li>
  *   <li>{@code create-flowfile} — whether to create a FlowFile for this route (default: true)</li>
+ *   <li>{@code auth-mode} — comma-separated authentication modes (default: bearer)</li>
+ *   <li>{@code max-request-size} — per-route request body size limit in bytes (default: global limit)</li>
+ *   <li>{@code tracking-mode} — async request tracking mode: none, simple, or attachments (default: none)</li>
+ *   <li>{@code attachments-min-count} — minimum attachments required (only with tracking-mode=attachments)</li>
+ *   <li>{@code attachments-max-count} — maximum attachments allowed, 0 = global hard limit (only with tracking-mode=attachments)</li>
+ *   <li>{@code attachments-timeout} — attachment collection timeout, NiFi duration (only with tracking-mode=attachments)</li>
  * </ul>
  */
 @UtilityClass
@@ -137,16 +144,26 @@ public class RouteConfigurationParser {
 
         warnIfNoneAuthWithRolesOrScopes(routeName, authModes, roles, scopes);
 
-        RouteConfiguration route = RouteConfiguration.builder()
-                .name(routeName).path(path).enabled(enabled)
-                .methods(methods).requiredRoles(roles).requiredScopes(scopes)
-                .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
-                .authModes(authModes).maxRequestSize(maxRequestSize)
-                .trackingMode(trackingMode)
-                .attachmentsMinCount(attachmentsMinCount)
-                .attachmentsMaxCount(attachmentsMaxCount)
-                .attachmentsTimeout(attachmentsTimeout)
-                .build();
+        RouteConfiguration route;
+        try {
+            route = RouteConfiguration.builder()
+                    .name(routeName).path(path).enabled(enabled)
+                    .methods(methods).requiredRoles(roles).requiredScopes(scopes)
+                    .schemaPath(schema).successOutcome(successOutcome).createFlowFile(createFlowFile)
+                    .authModes(authModes).maxRequestSize(maxRequestSize)
+                    .trackingMode(trackingMode)
+                    .attachmentsMinCount(attachmentsMinCount)
+                    .attachmentsMaxCount(attachmentsMaxCount)
+                    .attachmentsTimeout(attachmentsTimeout)
+                    .build();
+        } catch (IllegalArgumentException e) {
+            // Invalid attachment settings (e.g. attachments-* configured without
+            // tracking-mode=attachments) warn-and-skip this single route — matching the
+            // missing-`path` behaviour — instead of throwing out of parse() /
+            // getRelationships() on a framework/UI thread and killing ALL routes.
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_ROUTE_SETTINGS, routeName, e.getMessage());
+            return Optional.empty();
+        }
         LOGGER.debug("Parsed route '%s': path=%s, enabled=%s, methods=%s, authModes=%s",
                 routeName, path, enabled, methods, authModes);
         return Optional.of(route);
@@ -187,7 +204,7 @@ public class RouteConfigurationParser {
         }
         return Splitter.on(',').trimResults().omitEmptyStrings().splitToList(value)
                 .stream()
-                .map(String::toUpperCase)
+                .map(method -> method.toUpperCase(Locale.ROOT))
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -197,7 +214,13 @@ public class RouteConfigurationParser {
         }
         try {
             int parsed = Integer.parseInt(value.strip());
-            return parsed > 0 ? parsed : defaultValue;
+            if (parsed > 0) {
+                return parsed;
+            }
+            // A parseable but non-positive value is coerced to the default — warn as loudly as a
+            // non-numeric value does, rather than silently swallowing it.
+            LOGGER.warn(RestApiLogMessages.WARN.INVALID_INTEGER_VALUE, value, defaultValue);
+            return defaultValue;
         } catch (NumberFormatException e) {
             LOGGER.warn(RestApiLogMessages.WARN.INVALID_INTEGER_VALUE, value, defaultValue);
             return defaultValue;
@@ -229,7 +252,7 @@ public class RouteConfigurationParser {
             return TrackingMode.NONE;
         }
         try {
-            return TrackingMode.valueOf(value.strip().toUpperCase());
+            return TrackingMode.valueOf(value.strip().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             LOGGER.warn(RestApiLogMessages.WARN.INVALID_TRACKING_MODE, value);
             return TrackingMode.NONE;

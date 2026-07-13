@@ -159,7 +159,6 @@ public final class JwtAttributes {
 
         /**
          * Whether authorization was bypassed (explicitly configured).
-         * BREAKING CHANGE: Added for fail-secure authorization feature.
          */
         public static final String BYPASSED = "jwt.authorization.bypassed";
     }
@@ -214,6 +213,22 @@ public final class JwtAttributes {
              * When true, disables SSRF protection for private addresses (e.g., when IdP runs on an internal network).
              */
             public static final String JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES = "jwt.validation.jwks.allow.private.network.addresses";
+        }
+
+        /**
+         * JWT authorization properties.
+         */
+        @UtilityClass
+        public static final class Authorization {
+            /**
+             * Comma-separated list of roles the token must carry.
+             */
+            public static final String REQUIRED_ROLES = "jwt.authorization.required.roles";
+
+            /**
+             * Comma-separated list of scopes the token must carry.
+             */
+            public static final String REQUIRED_SCOPES = "jwt.authorization.required.scopes";
         }
     }
 }

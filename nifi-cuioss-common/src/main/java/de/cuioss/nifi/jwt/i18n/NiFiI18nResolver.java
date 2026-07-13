@@ -16,10 +16,10 @@
  */
 package de.cuioss.nifi.jwt.i18n;
 
-import de.cuioss.tools.string.MoreStrings;
 import org.apache.nifi.logging.ComponentLog;
 import org.jspecify.annotations.Nullable;
 
+import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.MissingResourceException;
 import java.util.Objects;
@@ -33,9 +33,11 @@ public class NiFiI18nResolver implements I18nResolver {
     private static final String BUNDLE_NAME = "i18n/nifi-cuioss-common-resources";
     @Nullable private final ResourceBundle resourceBundle;
     @Nullable private final ComponentLog logger;
+    private final Locale locale;
 
     private NiFiI18nResolver(Locale locale, @Nullable ComponentLog logger) {
         this.logger = logger;
+        this.locale = locale;
         ResourceBundle bundle = null;
         try {
             bundle = ResourceBundle.getBundle(BUNDLE_NAME, locale);
@@ -82,6 +84,23 @@ public class NiFiI18nResolver implements I18nResolver {
     public String getTranslatedString(String key, Object... args) {
         Objects.requireNonNull(key, "key must not be null");
         String pattern = getTranslatedString(key);
-        return MoreStrings.lenientFormat(pattern, args);
+        if (args.length == 0) {
+            // No arguments to substitute; return the pattern verbatim so MessageFormat
+            // quote-processing ('' -> ') is not applied to argument-less strings.
+            return pattern;
+        }
+        // The resource bundle uses MessageFormat placeholders ({0}, {1}); format with the
+        // resolver's locale so parameterized messages render substituted argument values.
+        // A malformed pattern (unbalanced braces from a bad bundle entry) makes MessageFormat
+        // throw IllegalArgumentException; fall back to the raw pattern rather than propagating
+        // an unchecked exception up through the processor.
+        try {
+            return new MessageFormat(pattern, locale).format(args);
+        } catch (IllegalArgumentException e) {
+            if (logger != null) {
+                logger.warn("Failed to format translation pattern for key '" + key + "': " + e.getMessage());
+            }
+            return pattern;
+        }
     }
 }

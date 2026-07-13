@@ -47,15 +47,11 @@
             <artifactId>token-sheriff-validation</artifactId>
             <scope>compile</scope>
         </dependency>
-        <!-- Implementation of jakarta.json-api: Used by NiFiConfigReader and UI servlets -->
+        <!-- jakarta.json implementation required by token-sheriff-validation at runtime -->
         <dependency>
             <groupId>org.eclipse.parsson</groupId>
             <artifactId>parsson</artifactId>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.json</groupId>
-            <artifactId>jakarta.json-api</artifactId>
         </dependency>
         <!-- YAML parsing support -->
         <dependency>
@@ -67,7 +63,7 @@
             <artifactId>nifi-api</artifactId>
             <scope>provided</scope>
         </dependency>
-        <!-- HTTP client for NiFi config reader -->
+        <!-- Forwarded-header resolution and HTTP security used by ForwardedRequestResolver -->
         <dependency>
             <groupId>de.cuioss</groupId>
             <artifactId>cui-http</artifactId>

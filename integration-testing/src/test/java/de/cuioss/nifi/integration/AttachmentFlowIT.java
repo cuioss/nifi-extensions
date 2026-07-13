@@ -52,7 +52,7 @@ import static org.hamcrest.Matchers.*;
  *
  * <p>Route configuration (cui-nifi-extensions.properties):
  * <ul>
- *   <li>{@code /api/upload} — POST, tracking-mode=attachments, min=1, max=5, timeout=30s</li>
+ *   <li>{@code /api/upload} — POST, tracking-mode=attachments, min=1, max=5, timeout=60s</li>
  *   <li>{@code /attachments/{parentTraceId}} — built-in attachment endpoint</li>
  *   <li>{@code /status/{traceId}} — built-in status endpoint</li>
  * </ul>
@@ -230,21 +230,36 @@ class AttachmentFlowIT {
          * {@code not-a-uuid} literal with adversarial-database coverage.
          */
         private void assertAttackParentTraceIdRejected(AttackTestCase testCase) {
+            int status;
             try {
-                int status = given().spec(authSpec)
+                status = given().spec(authSpec)
                         .body("{\"file\": \"bad-uuid\"}")
                         .when()
                         .post("/attachments/{parentTraceId}", testCase.attackString())
                         .then()
                         .extract()
                         .statusCode();
-                org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
-                        "Expected non-2xx for adversarial parentTraceId: " + testCase.attackDescription()
-                                + " (got " + status + ")");
             } catch (RuntimeException e) {
-                // Attack string produced a request REST Assured / the client refused —
-                // rejected at the transport level, which counts as safe handling.
+                // The attack string could not form a valid HTTP request — REST Assured /
+                // the client refused it at the transport level. That is a legitimate
+                // rejection, so return without asserting a status.
+                return;
             }
+            // A 401/403 means the class-level token was itself rejected (typically expired
+            // mid-run against Keycloak's default access-token lifespan). Accepting that as
+            // "non-2xx = safe" would make every remaining attack case pass vacuously, so
+            // fail loudly instead of silently swallowing the auth failure.
+            org.junit.jupiter.api.Assertions.assertNotEquals(401, status,
+                    "Authentication failed (401) for adversarial parentTraceId — token likely "
+                            + "expired mid-run; assertion would be vacuous: " + testCase.attackDescription());
+            org.junit.jupiter.api.Assertions.assertNotEquals(403, status,
+                    "Authorization failed (403) for adversarial parentTraceId — unexpected for an "
+                            + "authenticated attack request: " + testCase.attackDescription());
+            // The invalid-UUID / security validation rejects it (400) or the router declines
+            // to match it (404); either way the gateway must not return a 2xx success.
+            org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+                    "Expected non-2xx for adversarial parentTraceId: " + testCase.attackDescription()
+                            + " (got " + status + ")");
         }
 
         @Test

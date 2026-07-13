@@ -81,16 +81,23 @@ fi
 echo "Starting all flow processors via NiFi API..."
 NIFI_TOKEN=$(curl -sk -X POST https://localhost:9095/nifi-api/access/token \
     -d "username=testUser&password=drowssap" \
-    -H "Content-Type: application/x-www-form-urlencoded" 2>/dev/null)
-if [ -n "$NIFI_TOKEN" ]; then
-    curl -sk -X PUT \
+    -H "Content-Type: application/x-www-form-urlencoded" 2>/dev/null || true)
+# A valid NiFi access token is a JWT: three base64url segments separated by dots.
+# A non-empty body alone is not proof — an HTML/JSON error page is also non-empty
+# and must not be forwarded as a bearer token.
+if printf '%s' "$NIFI_TOKEN" | grep -Eq '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'; then
+    start_code=$(curl -sk -o /dev/null -w '%{http_code}' -X PUT \
         -H "Authorization: Bearer $NIFI_TOKEN" \
         -H "Content-Type: application/json" \
         -d '{"id":"root","state":"RUNNING"}' \
-        "https://localhost:9095/nifi-api/flow/process-groups/root" > /dev/null 2>&1
-    echo "Flow processors started."
+        "https://localhost:9095/nifi-api/flow/process-groups/root" 2>/dev/null || true)
+    if [ "$start_code" = "200" ]; then
+        echo "Flow processors started (HTTP $start_code)."
+    else
+        echo "WARNING: processor start request returned HTTP ${start_code:-000} — processors may not be running"
+    fi
 else
-    echo "WARNING: Could not obtain NiFi token — processors may need manual start"
+    echo "WARNING: Could not obtain a valid NiFi token — processors may need manual start"
 fi
 
 # ---------------------------------------------------------------------------

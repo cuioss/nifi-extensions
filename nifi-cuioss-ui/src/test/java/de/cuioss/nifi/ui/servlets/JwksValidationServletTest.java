@@ -104,6 +104,46 @@ class JwksValidationServletTest {
     }
 
     @Test
+    @DisplayName("Should report distinct algorithms declared by JWKS keys in first-seen order")
+    void reportsDistinctAlgorithmsFromKeys() {
+        // Two keys declare RS256, one declares ES256; the response must list each algorithm
+        // once, preserving first-seen order, instead of the previously-always-empty array.
+        String requestJson = """
+                {"jwksContent":"{\\"keys\\":[{\\"alg\\":\\"RS256\\"},{\\"alg\\":\\"ES256\\"},{\\"alg\\":\\"RS256\\"}]}","processorId":"test-processor-id"}""";
+
+        handle.spec()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("keyCount", equalTo(3))
+                .body("algorithms.size()", equalTo(2))
+                .body("algorithms[0]", equalTo("RS256"))
+                .body("algorithms[1]", equalTo("ES256"));
+    }
+
+    @Test
+    @DisplayName("Should report empty algorithms when JWKS keys declare no alg")
+    void reportsEmptyAlgorithmsWhenNoAlgDeclared() {
+        String requestJson = """
+                {"jwksContent":"{\\"keys\\":[{\\"kty\\":\\"RSA\\"}]}","processorId":"test-processor-id"}""";
+
+        handle.spec()
+                .contentType("application/json")
+                .body(requestJson)
+                .when()
+                .post(CONTENT_ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true))
+                .body("keyCount", equalTo(1))
+                .body("algorithms.size()", equalTo(0));
+    }
+
+    @Test
     @DisplayName("Should reject JWKS content missing 'keys' field")
     void invalidJwksContentMissingKeys() {
         String requestJson = """
@@ -163,6 +203,24 @@ class JwksValidationServletTest {
                 .statusCode(400)
                 .body("valid", equalTo(false))
                 .body("error", containsString("Invalid JSON format"));
+    }
+
+    @Test
+    @DisplayName("Should return 400 for non-string field value (ClassCastException)")
+    void nonStringFieldReturns400() {
+        // A JSON field carrying a number where a string is expected makes
+        // JsonObject.getString throw ClassCastException; it must map to a JSON 400
+        // error response, never a container 500 page.
+        handle.spec()
+                .contentType("application/json")
+                .body("""
+                        {"jwksUrl":123,"processorId":"test-processor-id"}""")
+                .when()
+                .post(URL_ENDPOINT)
+                .then()
+                .statusCode(400)
+                .body("valid", equalTo(false))
+                .body("error", containsString("Invalid field type"));
     }
 
     @ParameterizedTest(name = "URL validation failure: {0}")

@@ -52,7 +52,6 @@ export const TRANSLATIONS = {
         'origin.badge.new': 'New',
         'origin.badge.external': 'Config',
         'origin.badge.external.title': 'Loaded from configuration file (read-only)',
-        'route.source.external.tooltip': 'This route is defined in the external configuration file. It cannot be deleted, but can be overridden via NiFi properties.',
         'route.source.external.edit.tooltip': 'Edit to override external route via NiFi properties',
 
         // -- validation --
@@ -188,7 +187,6 @@ export const TRANSLATIONS = {
         'route.form.section.auth': 'Authentication',
         'route.form.section.tracking': 'Tracking',
         'route.form.section.advanced': 'Advanced',
-        'route.form.tracking': 'Request Tracking',
         'route.form.tracking.mode': 'Tracking Mode',
         'route.form.tracking.none': 'None',
         'route.form.tracking.simple': 'Simple (Status)',
@@ -249,7 +247,6 @@ export const TRANSLATIONS = {
         'route.authmode.bearer': 'Bearer',
         'route.authmode.none': 'None',
         'route.authmode.local-only': 'Local Only',
-        'route.form.authmode.label': 'Auth Mode',
         'route.form.max.request.size.label': 'Max Request Size',
         'route.form.max.request.size.placeholder': 'Leave empty for global default',
         'route.table.authmode': 'Auth Mode',
@@ -278,7 +275,6 @@ export const TRANSLATIONS = {
         // -- token fetch --
         'tester.token.fetch.heading': 'Fetch Token',
         'tester.token.fetch.issuer': 'Issuer',
-        'tester.token.fetch.issuer.select': 'Select issuer...',
         'tester.token.fetch.issuer.custom': 'Custom URL...',
         'tester.token.fetch.issuer.loading': 'Loading issuers...',
         'tester.token.fetch.issuer.none': 'No issuers configured',
@@ -297,7 +293,6 @@ export const TRANSLATIONS = {
         'tester.token.fetch.success': 'Token fetched successfully (expires in {0}s)',
         'tester.token.fetch.error': 'Token fetch failed: {0}',
         'tester.token.fetch.error.missing.fields': 'Please fill in all required fields',
-        'tester.token.fetch.error.missing.endpoint': 'Token endpoint URL is required',
         'tester.token.fetch.discover': 'Discover',
         'tester.token.fetch.discovering': 'Discovering...',
         'tester.token.fetch.expired': 'Token expired',
@@ -472,7 +467,6 @@ export const TRANSLATIONS = {
         'origin.badge.new': 'Neu',
         'origin.badge.external': 'Konfig',
         'origin.badge.external.title': 'Aus Konfigurationsdatei geladen (schreibgesch\u00fctzt)',
-        'route.source.external.tooltip': 'Diese Route ist in der externen Konfigurationsdatei definiert. Sie kann nicht gel\u00f6scht, aber \u00fcber NiFi-Eigenschaften \u00fcberschrieben werden.',
         'route.source.external.edit.tooltip': 'Bearbeiten, um externe Route \u00fcber NiFi-Eigenschaften zu \u00fcberschreiben',
 
         // -- validation --
@@ -608,7 +602,6 @@ export const TRANSLATIONS = {
         'route.form.section.auth': 'Authentifizierung',
         'route.form.section.tracking': 'Tracking',
         'route.form.section.advanced': 'Erweitert',
-        'route.form.tracking': 'Request Tracking',
         'route.form.tracking.mode': 'Tracking-Modus',
         'route.form.tracking.none': 'Keine',
         'route.form.tracking.simple': 'Einfach (Status)',
@@ -669,7 +662,6 @@ export const TRANSLATIONS = {
         'route.authmode.bearer': 'Bearer',
         'route.authmode.none': 'Keine',
         'route.authmode.local-only': 'Nur lokal',
-        'route.form.authmode.label': 'Auth-Modus',
         'route.form.max.request.size.label': 'Max. Anfragegr\u00f6\u00dfe',
         'route.form.max.request.size.placeholder': 'Leer f\u00fcr globalen Standard',
         'route.table.authmode': 'Auth-Modus',
@@ -698,7 +690,6 @@ export const TRANSLATIONS = {
         // -- token fetch --
         'tester.token.fetch.heading': 'Token abrufen',
         'tester.token.fetch.issuer': 'Issuer',
-        'tester.token.fetch.issuer.select': 'Issuer ausw\u00e4hlen\u2026',
         'tester.token.fetch.issuer.custom': 'Eigene URL\u2026',
         'tester.token.fetch.issuer.loading': 'Lade Issuers\u2026',
         'tester.token.fetch.issuer.none': 'Keine Issuers konfiguriert',
@@ -717,7 +708,6 @@ export const TRANSLATIONS = {
         'tester.token.fetch.success': 'Token erfolgreich abgerufen (l\u00e4uft in {0}s ab)',
         'tester.token.fetch.error': 'Token-Abruf fehlgeschlagen: {0}',
         'tester.token.fetch.error.missing.fields': 'Bitte f\u00fcllen Sie alle Pflichtfelder aus',
-        'tester.token.fetch.error.missing.endpoint': 'Token-Endpunkt-URL ist erforderlich',
         'tester.token.fetch.discover': 'Ermitteln',
         'tester.token.fetch.discovering': 'Ermittle\u2026',
         'tester.token.fetch.expired': 'Token abgelaufen',
@@ -962,8 +952,15 @@ export const formatDate = (d) => {
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line no-useless-escape, @stylistic/max-len
-const RE_URL = /^https?:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
+// URL matcher assembled from a single reusable DNS-label sub-pattern so neither the HTTP nor the
+// HTTPS-only variant repeats the label expression (keeps each regex below the complexity budget
+// while preserving the exact original matching behaviour).
+// A DNS label: an alphanumeric, optional internal hyphens, up to 63 chars total.
+const HOST_LABEL = '[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?';
+// host (label[.label]*) + optional :port + optional path/query/fragment + end.
+const HOST_PORT_PATH = String.raw`${HOST_LABEL}(\.${HOST_LABEL})*(:\d+)?([/?#].*)?$`;
+const RE_URL = new RegExp(`^https?://${HOST_PORT_PATH}`);
+const RE_URL_HTTPS = new RegExp(`^https://${HOST_PORT_PATH}`);
 const RE_SAFE_NAME = /^[a-zA-Z0-9._-]+$/;
 const RE_PROCESSOR_ID = /\/processors\/([a-f0-9-]+)/i;
 
@@ -980,7 +977,7 @@ const RE_PROCESSOR_ID = /\/processors\/([a-f0-9-]+)/i;
  * @param {boolean} [required=true]
  * @returns {ValidationResult}
  */
-export const validateRequired = (value, required = true) => {
+const validateRequired = (value, required = true) => {
     const s = value == null ? '' : String(value).trim();
     const empty = s === '' || s.toLowerCase() === 'null'
         || s.toLowerCase() === 'undefined';
@@ -1006,29 +1003,10 @@ export const validateUrl = (url, opts = {}) => {
     if (s.length > maxLength) {
         return { isValid: false, error: t('validation.url.too.long', maxLength), sanitizedValue: s };
     }
-    // eslint-disable-next-line no-useless-escape, @stylistic/max-len
-    const httpsPattern = /^https:\/\/[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*([\/?#].*)?$/;
-    const pattern = httpsOnly ? httpsPattern : RE_URL;
+    const pattern = httpsOnly ? RE_URL_HTTPS : RE_URL;
     if (!pattern.test(s)) {
         const proto = httpsOnly ? 'HTTPS' : 'HTTP/HTTPS';
         return { isValid: false, error: t('validation.url.invalid', proto), sanitizedValue: s };
-    }
-    return { isValid: true, sanitizedValue: s };
-};
-
-/**
- * Validate JWT token format.
- * @param {string} token
- * @returns {ValidationResult}
- */
-export const validateJwtToken = (token) => {
-    const req = validateRequired(token);
-    if (!req.isValid) return { isValid: false, error: t('validation.token.required'), sanitizedValue: '' };
-    const s = req.sanitizedValue;
-    if (s.length < 10) return { isValid: false, error: t('validation.token.too.short'), sanitizedValue: s };
-    if (s.length > 10000) return { isValid: false, error: t('validation.token.too.long'), sanitizedValue: s };
-    if (s.split('.').length < 2) {
-        return { isValid: false, error: t('validation.token.invalid.format'), sanitizedValue: s };
     }
     return { isValid: true, sanitizedValue: s };
 };
@@ -1144,20 +1122,6 @@ export const displayUiSuccess = (el, message) => {
         const msg = target.querySelector('.success-message');
         if (msg) msg.remove();
     }, 5000);
-};
-
-/**
- * Create an XHR-like error object for API error handling.
- * @param {Object|null} xhr
- * @returns {{status: number, statusText: string, responseText: string}}
- */
-export const createXhrErrorObject = (xhr) => {
-    if (!xhr) return { status: 0, statusText: t('common.error.unknown'), responseText: '' };
-    return {
-        status: xhr.status,
-        statusText: xhr.statusText || t('common.error.unknown'),
-        responseText: xhr.responseText || ''
-    };
 };
 
 // ---------------------------------------------------------------------------

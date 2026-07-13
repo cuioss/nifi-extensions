@@ -226,6 +226,23 @@ nifi_processor_counters{processor_name="RestApiGatewayProcessor",counter_name=".
 ----
 
 The `counter_name` values follow the stable naming convention published by the
-processor; treat those names as the contract for any external dashboard or
-alert. Because these endpoints are served by NiFi itself, they inherit NiFi's
+processor (defined in `RestApiGatewayConstants.Counters`); treat those names as
+the contract for any external dashboard or alert. Each name is one of three
+source prefixes followed by the lower-cased event identifier:
+
+[cols="2,3"]
+|===
+|`counter_name` prefix |Source and example
+
+|`gateway.events.`
+|Application-level gateway security events (`GatewaySecurityEvents.EventType`). Example: `gateway.events.missing_bearer_token`.
+
+|`gateway.token.`
+|Token-validation events (token-sheriff `SecurityEventCounter`). Example: `gateway.token.valid_tokens`.
+
+|`gateway.http.security.`
+|Transport-level HTTP security events (cui-http `SecurityEventCounter`). Example: `gateway.http.security.path_traversal`.
+|===
+
+Because these endpoints are served by NiFi itself, they inherit NiFi's
 authentication and require no gateway-specific configuration.

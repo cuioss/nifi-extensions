@@ -49,6 +49,16 @@ public class AuthorizationValidator {
     @Nullable String reason,
     Set<String> missingScopes,
     Set<String> missingRoles) {
+
+        /**
+         * Compact constructor — defensive copies and null-coalescing, mirroring
+         * {@link AuthorizationRequirements}. Guarantees the missing-scope/role sets
+         * are never null even when the builder omits them.
+         */
+        public AuthorizationResult {
+            missingScopes = missingScopes != null ? Set.copyOf(missingScopes) : Set.of();
+            missingRoles = missingRoles != null ? Set.copyOf(missingRoles) : Set.of();
+        }
     }
 
     /**

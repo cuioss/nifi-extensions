@@ -26,6 +26,7 @@ import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonWriterFactory;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -49,7 +50,7 @@ final class ProcessorIdHeaderValidator {
     /** Processor IDs are NiFi component identifiers: letters, digits, hyphens, underscores. */
     private static final Pattern PROCESSOR_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+$");
 
-    private final transient HttpSecurityValidator headerValueValidator;
+    private final HttpSecurityValidator headerValueValidator;
 
     ProcessorIdHeaderValidator() {
         headerValueValidator = PipelineFactory.createHeaderValuePipeline(
@@ -63,8 +64,27 @@ final class ProcessorIdHeaderValidator {
      * @param value the candidate processor ID
      * @return {@code true} when the value matches the identifier allow-list
      */
-    static boolean isValidIdentifier(String value) {
+    static boolean isValidIdentifier(@Nullable String value) {
         return value != null && PROCESSOR_ID_PATTERN.matcher(value).matches();
+    }
+
+    /**
+     * Whether the value passes both the cui-http header-value security pipeline and the
+     * identifier allow-list, without writing any response. Callers that shape their own
+     * error response (for example {@link JwtVerificationServlet}) use this rather than
+     * {@link #validate}, so the single validation rule stays shared while each caller keeps
+     * its own response contract.
+     *
+     * @param value the header value to check
+     * @return {@code true} when the value is safe under the shared rule
+     */
+    boolean isSafe(String value) {
+        try {
+            headerValueValidator.validate(value);
+        } catch (UrlSecurityException e) {
+            return false;
+        }
+        return isValidIdentifier(value);
     }
 
     /**
@@ -94,7 +114,15 @@ final class ProcessorIdHeaderValidator {
         return false;
     }
 
-    private static void sendBadRequest(HttpServletResponse resp, String message) {
+    /**
+     * Writes a uniform 400 JSON error response ({@code {"error": message}}). Shared with
+     * {@link ProcessorIdValidationFilter} so the filter and the servlets emit the identical
+     * invalid-processor-ID contract.
+     *
+     * @param resp    the response to write to
+     * @param message the error message
+     */
+    static void sendBadRequest(HttpServletResponse resp, String message) {
         try {
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.setContentType("application/json");

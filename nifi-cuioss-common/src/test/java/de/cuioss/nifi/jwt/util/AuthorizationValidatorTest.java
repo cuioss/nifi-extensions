@@ -25,6 +25,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -359,6 +360,39 @@ class AuthorizationValidatorTest {
 
             assertEquals(result1, result2);
             assertEquals(result1.hashCode(), result2.hashCode());
+        }
+
+        @Test
+        @DisplayName("Should null-coalesce missing scopes and roles to empty sets when omitted")
+        void shouldNullCoalesceMissingSetsWhenOmitted() {
+            AuthorizationResult result = AuthorizationResult.builder()
+                    .authorized(true)
+                    .build();
+
+            assertNotNull(result.missingScopes(), "missingScopes must never be null");
+            assertNotNull(result.missingRoles(), "missingRoles must never be null");
+            assertTrue(result.missingScopes().isEmpty(), "Omitted missingScopes must be an empty set");
+            assertTrue(result.missingRoles().isEmpty(), "Omitted missingRoles must be an empty set");
+        }
+
+        @Test
+        @DisplayName("Should hold an unmodifiable defensive copy of the missing scopes")
+        void shouldHoldDefensiveCopyOfMissingScopes() {
+            Set<String> mutableInput = new HashSet<>(Set.of("write"));
+            AuthorizationResult result = AuthorizationResult.builder()
+                    .authorized(false)
+                    .missingScopes(mutableInput)
+                    .missingRoles(Set.of())
+                    .build();
+
+            mutableInput.add("delete");
+
+            Set<String> exposedScopes = result.missingScopes();
+            assertEquals(Set.of("write"), exposedScopes,
+                    "Result must hold a defensive copy decoupled from the caller's mutable input");
+            assertThrows(UnsupportedOperationException.class,
+                    () -> exposedScopes.add("x"),
+                    "Exposed missingScopes must be unmodifiable");
         }
     }
 }

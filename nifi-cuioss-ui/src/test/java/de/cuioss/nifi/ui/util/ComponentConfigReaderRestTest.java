@@ -165,6 +165,34 @@ class ComponentConfigReaderRestTest {
         }
 
         @Test
+        @DisplayName("Should return empty map for non-string property value (ClassCastException)")
+        void shouldReturnEmptyForNonStringPropertyValue() {
+            // A property value carried as a JSON number makes JsonObject.getString throw
+            // ClassCastException. The narrowed JsonException|ClassCastException catch must
+            // swallow it and return an empty map rather than propagate a 500.
+            String processorId = UUID.randomUUID().toString();
+            server.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {
+                              "component": {
+                                "config": {
+                                  "properties": {
+                                    "rest.gateway.listening.port": 9443
+                                  }
+                                }
+                              }
+                            }""")
+                    .build());
+
+            Map<String, String> props = reader.getProcessorPropertiesViaRest(
+                    processorId, mockRequest("Bearer token", null));
+
+            assertTrue(props.isEmpty());
+        }
+
+        @Test
         @DisplayName("Should return empty map when component is missing from response")
         void shouldReturnEmptyForMissingComponent() {
             String processorId = UUID.randomUUID().toString();

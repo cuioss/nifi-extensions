@@ -26,9 +26,9 @@ import lombok.experimental.UtilityClass;
  * <p>
  * Identifier ranges:
  * <ul>
- *   <li>INFO 1-15: server lifecycle, route matching, request processing</li>
- *   <li>WARN 100-115: auth failures, validation failures, back-pressure</li>
- *   <li>ERROR 200-210: server start failure, unexpected handler errors</li>
+ *   <li>INFO 1-22: server lifecycle, route matching, request processing, proxy configuration</li>
+ *   <li>WARN 100-124: auth failures, validation failures, back-pressure, tracking-store errors</li>
+ *   <li>ERROR 200-203: server start/stop failures, handler errors, FlowFile creation failures</li>
  * </ul>
  */
 @UtilityClass
@@ -316,6 +316,18 @@ public final class RestApiLogMessages {
                         + "'rest.gateway.proxy.context-path.whitelist' is empty and "
                         + "'rest.gateway.proxy.context-path.trust-all' is false. Set one of these to honor "
                         + "proxy context paths.")
+                .build();
+
+        public static final LogRecord INVALID_ROUTE_SETTINGS = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(123)
+                .template("Route '%s' has invalid settings, skipping: %s")
+                .build();
+
+        public static final LogRecord STATUS_UPDATE_CAS_EXHAUSTED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(124)
+                .template("Status update for traceId '%s' abandoned after exhausting compare-and-swap retries")
                 .build();
     }
 

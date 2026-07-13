@@ -14,10 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
- * Utility classes for JWT validation and error handling.
+ * Service-layer types supporting the NiFi Custom UI, including JWT token validation
+ * orchestration against the processor configuration.
+ *
+ * <p>All types in this package are non-null by default due to {@code @NullMarked}.
+ * Use {@code @Nullable} to explicitly mark nullable types.
  */
 @NullMarked
-package de.cuioss.nifi.jwt.util;
+package de.cuioss.nifi.ui.service;
 
 import org.jspecify.annotations.NullMarked;

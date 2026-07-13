@@ -18,9 +18,9 @@ Requests follow this status lifecycle:
 [plantuml]
 ----
 @startuml
-[*] --> ACCEPTED : POST received
+[*] --> ACCEPTED : POST received\n(tracking-mode=simple)
+[*] --> COLLECTING_ATTACHMENTS : POST received\n(tracking-mode=attachments)
 ACCEPTED --> PROCESSING : downstream flow starts
-ACCEPTED --> COLLECTING_ATTACHMENTS : tracking-mode=attachments
 COLLECTING_ATTACHMENTS --> PROCESSED : min attachment count met\n(Java: AttachmentsEndpointHandler)
 COLLECTING_ATTACHMENTS --> PROCESSING : downstream flow (optional)
 PROCESSING --> PROCESSED : success
@@ -40,8 +40,8 @@ Valid transitions:
 * `ACCEPTED` -> `PROCESSING` -> `REJECTED`
 * `ACCEPTED` -> `PROCESSING` -> `RETRY` -> `PROCESSING` (loop)
 * `ACCEPTED` -> `PROCESSING` -> `ERROR`
-* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSED` (attachment routes, auto-transitioned when min count met)
-* `ACCEPTED` -> `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED` / `REJECTED` / `ERROR` (attachment routes with custom downstream flow)
+* `COLLECTING_ATTACHMENTS` -> `PROCESSED` (attachment routes are created directly in `COLLECTING_ATTACHMENTS`; never pass through `ACCEPTED`; auto-transitioned when min count met)
+* `COLLECTING_ATTACHMENTS` -> `PROCESSING` -> `PROCESSED` / `REJECTED` / `ERROR` (attachment routes with custom downstream flow)
 
 == Architecture
 
@@ -179,7 +179,7 @@ G -> C : 200 {traceId: "traceId-B",\nparentTraceId: "traceId-A", ...}
 * **`RequestStatusStore`**: Typed wrapper around the cache client with serializers
 * **`StatusEndpointHandler`**: Handles GET `/status/{traceId}` queries (prefix-matched)
 * **`AttachmentsEndpointHandler`**: Handles POST `/attachments/{parentTraceId}` uploads with limit enforcement (see link:attachments-api.adoc[Attachments API])
-* **`ApiRouteHandler`**: Generates traceId for tracked body methods, stores ACCEPTED status
+* **`ApiRouteHandler`**: Generates traceId for tracked body methods, storing the initial status — `ACCEPTED` for `tracking-mode=simple` and `COLLECTING_ATTACHMENTS` for `tracking-mode=attachments`
 
 == Response Formats
 

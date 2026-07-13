@@ -59,7 +59,7 @@ services:
   #     - NIFI_BOOTSTRAP_CONF=/opt/nifi/nifi-current/conf/bootstrap.conf
   #     - NIFI_CONF_DIR=/opt/nifi/nifi-current/conf
   #   volumes:
-  #     - ../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
+  #     - ../../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
   #     - ./nifi/conf:/opt/nifi/nifi-current/conf
   #     - ./certificates:/opt/nifi/nifi-current/conf/certs
   #   healthcheck:
@@ -106,7 +106,8 @@ services:
       start_period: 20s
     networks:
       - nifi-keycloak-network
-    restart: unless-stopped
+    # No restart policy: symmetric with the nifi service. An auto-restarting
+    # Keycloak can race the exec-maven-plugin teardown at the end of the IT run.
 
 networks:
   nifi-keycloak-network:

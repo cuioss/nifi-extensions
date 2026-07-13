@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -54,9 +55,12 @@ public class ConfigurationManager {
 
     @Nullable private File configFile;
     private long lastLoadedTimestamp = 0;
+    // The property maps are mutated under the instance monitor by loadConfiguration()/
+    // checkAndReloadConfiguration() and read by the synchronized getters below, establishing
+    // the happens-before edge the concurrent reload path needs.
     private final Map<String, String> staticProperties = new HashMap<>();
     private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
-    @Getter private boolean configurationLoaded = false;
+    @Getter private volatile boolean configurationLoaded = false;
     private final String basePath;
 
     private enum FileLoadResult {NO_FILE, LOADED, FAILED}
@@ -66,8 +70,20 @@ public class ConfigurationManager {
     }
 
     public ConfigurationManager(String basePath) {
-        this.basePath = basePath;
+        this.basePath = normalizeBasePath(basePath);
         loadConfiguration();
+    }
+
+    /**
+     * Ensures a non-empty base path ends with a separator so it composes correctly with the
+     * relative default config paths (e.g. {@code /etc/nifi} becomes {@code /etc/nifi/}). An
+     * empty base path is left untouched so the defaults resolve against the working directory.
+     */
+    private static String normalizeBasePath(String basePath) {
+        if (basePath.isEmpty() || basePath.endsWith("/") || basePath.endsWith(File.separator)) {
+            return basePath;
+        }
+        return basePath + File.separator;
     }
 
     /**
@@ -78,7 +94,7 @@ public class ConfigurationManager {
      * @return {@code true} if loading succeeded (or no file exists), {@code false}
      *         if a present config file failed to load and the previous configuration was kept
      */
-    public boolean loadConfiguration() {
+    public synchronized boolean loadConfiguration() {
         Map<String, String> previousStatic = new HashMap<>(staticProperties);
         Map<String, Map<String, String>> previousIssuers = copyIssuerProperties();
         boolean previouslyLoaded = configurationLoaded;
@@ -98,7 +114,12 @@ public class ConfigurationManager {
         loadFromEnvironment();
         configurationLoaded = result == FileLoadResult.LOADED
                 || !staticProperties.isEmpty() || !issuerProperties.isEmpty();
-        if (configurationLoaded) {
+        if (result == FileLoadResult.FAILED) {
+            // A present config file failed to parse and there was no previous config to keep.
+            // Environment variables may still have supplied config, but never claim a clean
+            // "loaded successfully" — surface the parse failure instead.
+            LOGGER.warn(JwtLogMessages.WARN.CONFIG_FILE_PARSE_FALLBACK);
+        } else if (configurationLoaded) {
             LOGGER.info(JwtLogMessages.INFO.CONFIG_LOADED);
         } else {
             LOGGER.info(JwtLogMessages.INFO.NO_EXTERNAL_CONFIG);
@@ -112,7 +133,7 @@ public class ConfigurationManager {
         return copy;
     }
 
-    public boolean checkAndReloadConfiguration() {
+    public synchronized boolean checkAndReloadConfiguration() {
         if (configFile != null && configFile.exists()) {
             long lastModified = configFile.lastModified();
             if (lastModified > lastLoadedTimestamp) {
@@ -308,8 +329,8 @@ public class ConfigurationManager {
         String issuerPart = key.substring(ISSUER_ENV_PREFIX.length());
         int underscoreIndex = issuerPart.indexOf('_');
         if (underscoreIndex > 0) {
-            String issuerId = issuerPart.substring(0, underscoreIndex).toLowerCase();
-            String propertyName = convertEnvToPropertyName(issuerPart.substring(underscoreIndex + 1));
+            String issuerId = issuerPart.substring(0, underscoreIndex).toLowerCase(Locale.ROOT);
+            String propertyName = convertEnvToIssuerPropertyName(issuerPart.substring(underscoreIndex + 1));
             issuerProperties.computeIfAbsent(issuerId, k -> new HashMap<>())
                     .put(propertyName, value);
         }
@@ -321,35 +342,46 @@ public class ConfigurationManager {
     }
 
     private String convertEnvToPropertyName(String envName) {
-        return envName.toLowerCase().replace('_', '.');
+        return envName.toLowerCase(Locale.ROOT).replace('_', '.');
     }
 
     /**
-     * Returns the static (non-issuer) configuration properties as an unmodifiable view.
+     * Converts an issuer environment-variable suffix (e.g. {@code JWKS_URL}) to the
+     * dash-separated key the {@link IssuerConfigurationParser} expects
+     * (e.g. {@code jwks-url}). General (non-issuer) keys keep the dotted convention.
      */
-    public Map<String, String> getStaticProperties() {
-        return Collections.unmodifiableMap(staticProperties);
+    private String convertEnvToIssuerPropertyName(String envName) {
+        return envName.toLowerCase(Locale.ROOT).replace('_', '-');
     }
 
     /**
-     * Returns all issuer configuration properties; neither the outer map nor the
-     * inner per-issuer maps are modifiable by callers.
+     * Returns an unmodifiable snapshot of the static (non-issuer) configuration properties.
+     * The snapshot decouples callers from concurrent reloads that clear and repopulate the map.
      */
-    public Map<String, Map<String, String>> getIssuerProperties() {
+    public synchronized Map<String, String> getStaticProperties() {
+        return Collections.unmodifiableMap(new HashMap<>(staticProperties));
+    }
+
+    /**
+     * Returns an unmodifiable snapshot of all issuer configuration properties; neither the
+     * outer map nor the inner per-issuer maps are modifiable by callers.
+     */
+    public synchronized Map<String, Map<String, String>> getIssuerProperties() {
         Map<String, Map<String, String>> view = new HashMap<>();
-        issuerProperties.forEach((issuerId, props) -> view.put(issuerId, Collections.unmodifiableMap(props)));
+        issuerProperties.forEach((issuerId, props) ->
+                view.put(issuerId, Collections.unmodifiableMap(new HashMap<>(props))));
         return Collections.unmodifiableMap(view);
     }
 
-    public Optional<String> getProperty(String key) {
+    public synchronized Optional<String> getProperty(String key) {
         return Optional.ofNullable(staticProperties.get(key));
     }
 
-    public String getProperty(String key, String defaultValue) {
+    public synchronized String getProperty(String key, String defaultValue) {
         return staticProperties.getOrDefault(key, defaultValue);
     }
 
-    public List<String> getIssuerIds() {
+    public synchronized List<String> getIssuerIds() {
         return new ArrayList<>(issuerProperties.keySet());
     }
 
@@ -357,7 +389,7 @@ public class ConfigurationManager {
      * Returns a defensive copy of the properties for the given issuer,
      * or an empty map if the issuer is unknown.
      */
-    public Map<String, String> getIssuerProperties(String issuerId) {
+    public synchronized Map<String, String> getIssuerProperties(String issuerId) {
         Map<String, String> props = issuerProperties.get(issuerId);
         return props != null ? new HashMap<>(props) : new HashMap<>();
     }

@@ -18,4 +18,7 @@
  * Configuration management for JWT issuer validation.
  * Contains the Controller Service implementation and configuration parsing utilities.
  */
+@NullMarked
 package de.cuioss.nifi.jwt.config;
+
+import org.jspecify.annotations.NullMarked;

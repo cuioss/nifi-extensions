@@ -3042,6 +3042,41 @@ describe('rest-endpoint-config', () => {
         expect(textarea.value).toContain('restapi.data.attachments-timeout = 5 min');
     });
 
+    it('should preserve a persisted non-default attachments-timeout on save (no silent deletion)', async () => {
+        // Finding M14: once the gateway /config JSON emits attachmentsTimeout, the edit form
+        // loads the real persisted value; saving an attachments-tracked route unchanged must
+        // write that value back rather than treating the form default ('30 sec') as
+        // authoritative and nulling a persisted non-default timeout.
+        api.getComponentProperties.mockResolvedValue({
+            properties: {
+                ...SAMPLE_PROPERTIES,
+                'restapi.data.tracking-mode': 'attachments',
+                'restapi.data.attachments-min-count': '2',
+                'restapi.data.attachments-max-count': '10',
+                'restapi.data.attachments-timeout': '5 min'
+            },
+            revision: { version: 1 }
+        });
+        api.updateComponentProperties.mockResolvedValue({});
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+
+        const form = container.querySelector('.route-form');
+        // Save the route unchanged — the loaded '5 min' timeout must round-trip.
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        expect(api.updateComponentProperties).toHaveBeenCalledWith(
+            'test-processor-id',
+            expect.objectContaining({
+                'restapi.data.attachments-timeout': '5 min'
+            })
+        );
+    });
+
     it('should not include badge text in exported path values', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: {

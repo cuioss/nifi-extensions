@@ -37,7 +37,16 @@ public class JettyServerManager {
 
     private static final CuiLogger LOGGER = new CuiLogger(JettyServerManager.class);
 
-    private Server server;
+    /**
+     * The managed Jetty server. Declared {@code volatile} so the start/stop writes and the
+     * cross-thread reads from {@link #isRunning()} / {@link #getPort()} (NiFi calls the lifecycle
+     * and query methods from different framework threads) establish a happens-before edge rather
+     * than relying on an undocumented framework convention.
+     */
+    // S3077: volatile safely publishes the server reference across the lifecycle/query threads;
+    // the reference is only assigned on start/stop, so a thread-safe container adds no guarantee.
+    @SuppressWarnings("java:S3077")
+    private volatile Server server;
 
     /**
      * Starts the Jetty server on the given port with plain HTTP, binding to all interfaces.

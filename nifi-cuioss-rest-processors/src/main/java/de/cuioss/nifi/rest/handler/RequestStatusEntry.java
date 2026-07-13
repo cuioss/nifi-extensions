@@ -68,16 +68,6 @@ int attachmentsMinCount,
     }
 
     /**
-     * Creates a new ACCEPTED entry with attachment metadata.
-     */
-    public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId,
-            @Nullable String routeName, int attachmentsMaxCount) {
-        Instant now = Instant.now();
-        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now,
-                parentTraceId, null, attachmentsMaxCount, 0, routeName);
-    }
-
-    /**
      * Creates a new COLLECTING_ATTACHMENTS entry for routes with attachment tracking.
      * The parent request enters this state immediately and waits for attachments to arrive.
      */
