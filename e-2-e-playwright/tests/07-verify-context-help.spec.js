@@ -241,6 +241,15 @@ jwtTest.describe("Context Help — Issuer Config", () => {
             const configPanel = customUIFrame.locator("#issuer-config");
             await expect(configPanel).toBeVisible({ timeout: 5000 });
 
+            // List-first UX: the issuer config starts empty (the processor's issuers
+            // live in the referenced controller service), so open a fresh issuer form
+            // via "Add Issuer" before asserting on its context-help buttons.
+            const addIssuerBtn = configPanel.getByRole("button", {
+                name: /Add Issuer/i,
+            });
+            await expect(addIssuerBtn).toBeVisible({ timeout: 5000 });
+            await addIssuerBtn.click();
+
             // Wait for issuer form to appear
             const issuerForm = configPanel.locator(".issuer-form");
             await expect(issuerForm.first()).toBeVisible({ timeout: 15000 });
@@ -266,6 +275,13 @@ jwtTest.describe("Context Help — Issuer Config", () => {
 
             const configPanel = customUIFrame.locator("#issuer-config");
             await expect(configPanel).toBeVisible({ timeout: 5000 });
+
+            // List-first UX: open a fresh issuer form via "Add Issuer" first.
+            const addIssuerBtn = configPanel.getByRole("button", {
+                name: /Add Issuer/i,
+            });
+            await expect(addIssuerBtn).toBeVisible({ timeout: 5000 });
+            await addIssuerBtn.click();
 
             const issuerForm = configPanel.locator(".issuer-form");
             await expect(issuerForm.first()).toBeVisible({ timeout: 15000 });

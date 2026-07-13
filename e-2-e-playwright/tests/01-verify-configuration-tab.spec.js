@@ -169,41 +169,40 @@ test.describe("Configuration Tab", () => {
     });
 
     test("should delete an existing issuer", async ({ customUIFrame }) => {
-        // First, add an issuer to delete
+        // Add an issuer to delete. Scope every interaction to the newly-added form
+        // (a prior serial-block test may have left other issuer forms present), so
+        // this test removes its OWN issuer rather than whichever form is first.
         const addIssuerButton = customUIFrame.getByRole("button", {
             name: "Add Issuer",
         });
+        const issuerForms = customUIFrame.locator(".issuer-form");
+        const existingCount = await issuerForms.count();
+
         await expect(addIssuerButton).toBeVisible({ timeout: 5000 });
         await addIssuerButton.click();
 
-        const issuerNameInput = customUIFrame
-            .locator('input[placeholder="e.g., keycloak"]')
-            .first();
+        const form = issuerForms.nth(existingCount);
+        const issuerNameInput = form.locator(
+            'input[placeholder="e.g., keycloak"]',
+        );
         await expect(issuerNameInput).toBeVisible({ timeout: 5000 });
         await issuerNameInput.fill("delete-me-issuer");
 
-        const jwksUrlInput = customUIFrame
-            .locator('input[name="jwks-url"]')
-            .first();
+        const jwksUrlInput = form.locator('input[name="jwks-url"]');
         await expect(jwksUrlInput).toBeVisible({ timeout: 5000 });
         await jwksUrlInput.fill("https://example.com/.well-known/jwks.json");
 
-        const saveButton = customUIFrame
-            .getByRole("button", { name: "Save Issuer" })
-            .first();
+        const saveButton = form.getByRole("button", { name: "Save Issuer" });
         await expect(saveButton).toBeVisible({ timeout: 5000 });
         await saveButton.click();
 
-        // Verify issuer was saved (name appears in input field)
+        // Verify issuer was saved (name persists in its input field)
         await expect(issuerNameInput).toHaveValue("delete-me-issuer", {
             timeout: 5000,
         });
 
-        // Find and click the Remove button for this issuer
-        // The Remove button is adjacent to the issuer name input in the same form section
-        const removeButton = customUIFrame
-            .getByRole("button", { name: "Remove" })
-            .first();
+        // Remove this issuer via its own form's Remove button.
+        const removeButton = form.getByRole("button", { name: "Remove" });
         await expect(removeButton).toBeVisible({ timeout: 5000 });
         await removeButton.click();
 
@@ -217,15 +216,30 @@ test.describe("Configuration Tab", () => {
             await confirmButton.click();
         }
 
-        // Verify the issuer name "delete-me-issuer" is no longer in any input field
-        const remainingInputs = customUIFrame.locator(
-            'input[placeholder="e.g., keycloak"]',
-        );
-        const count = await remainingInputs.count();
-        for (let i = 0; i < count; i++) {
-            const value = await remainingInputs.nth(i).inputValue();
-            expect(value).not.toBe("delete-me-issuer");
-        }
+        // Verify the issuer "delete-me-issuer" is removed. Removal is async
+        // (confirm dialog → API update → re-render); a one-shot read of the input
+        // values raced that re-render and saw the stale value, so poll until no
+        // input field carries the removed issuer name.
+        await expect
+            .poll(
+                async () => {
+                    const inputs = customUIFrame.locator(
+                        'input[placeholder="e.g., keycloak"]',
+                    );
+                    const n = await inputs.count();
+                    for (let i = 0; i < n; i++) {
+                        if (
+                            (await inputs.nth(i).inputValue()) ===
+                            "delete-me-issuer"
+                        ) {
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                { timeout: 10000 },
+            )
+            .toBe(false);
     });
 
     test("should edit an existing issuer configuration", async ({
@@ -384,17 +398,26 @@ test.describe("Configuration Tab", () => {
             await confirmButton.click();
         }
 
-        // Verify only issuer-two remains among the added issuers
-        const remainingInputs = customUIFrame.locator(
-            'input[placeholder="e.g., keycloak"]',
-        );
-        const remainingNames = [];
-        const remainingCount = await remainingInputs.count();
-        for (let i = 0; i < remainingCount; i++) {
-            remainingNames.push(await remainingInputs.nth(i).inputValue());
-        }
-        expect(remainingNames).not.toContain("issuer-one");
-        expect(remainingNames).toContain("issuer-two");
+        // Verify only issuer-two remains among the added issuers. Removal is async
+        // (confirm → API update → re-render), so poll rather than reading input
+        // values once (which raced the re-render and still saw issuer-one).
+        const readIssuerNames = async () => {
+            const inputs = customUIFrame.locator(
+                'input[placeholder="e.g., keycloak"]',
+            );
+            const n = await inputs.count();
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                out.push(await inputs.nth(i).inputValue());
+            }
+            return out;
+        };
+        await expect
+            .poll(async () => (await readIssuerNames()).includes("issuer-one"), {
+                timeout: 10000,
+            })
+            .toBe(false);
+        expect(await readIssuerNames()).toContain("issuer-two");
 
         // Clean up: remove issuer-two — it's now the last form
         const lastForm = issuerForms.last();
