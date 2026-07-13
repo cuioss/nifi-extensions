@@ -387,10 +387,11 @@ class AuthorizationValidatorTest {
 
             mutableInput.add("delete");
 
-            assertEquals(Set.of("write"), result.missingScopes(),
+            Set<String> exposedScopes = result.missingScopes();
+            assertEquals(Set.of("write"), exposedScopes,
                     "Result must hold a defensive copy decoupled from the caller's mutable input");
             assertThrows(UnsupportedOperationException.class,
-                    () -> result.missingScopes().add("x"),
+                    () -> exposedScopes.add("x"),
                     "Exposed missingScopes must be unmodifiable");
         }
     }

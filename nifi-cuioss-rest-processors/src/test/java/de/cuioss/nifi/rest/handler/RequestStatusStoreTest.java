@@ -38,6 +38,10 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("RequestStatusStore")
+// S5786: this class stays public because its nested InMemoryMapCacheClient test double is shared
+// cross-package (RestApiGatewayProcessorTest in de.cuioss.nifi.rest); a package-private outer class
+// would make the public nested double unreachable from that package.
+@SuppressWarnings("java:S5786")
 public class RequestStatusStoreTest {
 
     private InMemoryMapCacheClient cacheClient;

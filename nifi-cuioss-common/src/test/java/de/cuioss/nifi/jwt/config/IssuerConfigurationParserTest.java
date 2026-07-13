@@ -27,6 +27,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -541,17 +543,25 @@ class IssuerConfigurationParserTest {
     @DisplayName("Security Enforcement")
     class SecurityEnforcementTests {
 
-        @Test
-        @DisplayName("Should reject non-HTTPS JWKS URL by default")
-        void shouldRejectHttpJwksUrlByDefault() {
+        @ParameterizedTest(name = "rejects {0}")
+        @CsvSource({
+                "http://example.com/jwks, does not use HTTPS",
+                "https://localhost/jwks, private/loopback",
+                "https://100.64.0.1/jwks, private/loopback"
+        })
+        @DisplayName("Should reject a JWKS URL that violates the HTTPS or private-address policy")
+        void shouldRejectPolicyViolatingJwksUrl(String jwksUrl, String expectedLogFragment) {
+            // Covers the non-HTTPS default rejection, the loopback rejection, and the carrier-grade
+            // NAT (100.64.0.0/10, RFC 6598) rejection — the latter is not covered by
+            // InetAddress#isSiteLocalAddress() and relies on the dedicated CGNAT check.
             Map<String, String> properties = new HashMap<>();
             properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "http://example.com/jwks");
+            properties.put("issuer.test.jwks-url", jwksUrl);
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
-            assertTrue(configs.isEmpty(), "Non-HTTPS JWKS URL must be rejected when HTTPS is required");
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "does not use HTTPS");
+            assertTrue(configs.isEmpty(), "Policy-violating JWKS URL must be rejected: " + jwksUrl);
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, expectedLogFragment);
         }
 
         @Test
@@ -588,35 +598,6 @@ class IssuerConfigurationParserTest {
 
             assertTrue(configs.isEmpty(), "Plaintext HTTP JWKS URL must not yield an issuer configuration");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "Error creating issuer configuration");
-        }
-
-        @Test
-        @DisplayName("Should reject JWKS URL resolving to loopback address by default")
-        void shouldRejectLoopbackJwksUrlByDefault() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://localhost/jwks");
-
-            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
-
-            assertTrue(configs.isEmpty(), "Loopback JWKS URL must be rejected when private addresses are disallowed");
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "private/loopback");
-        }
-
-        @Test
-        @DisplayName("Should reject JWKS URL resolving to a carrier-grade NAT address by default")
-        void shouldRejectCarrierGradeNatJwksUrlByDefault() {
-            // 100.64.0.0/10 (RFC 6598) is not covered by InetAddress#isSiteLocalAddress(); the
-            // dedicated carrier-grade-NAT check must still treat it as private for SSRF protection.
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://100.64.0.1/jwks");
-
-            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
-
-            assertTrue(configs.isEmpty(),
-                    "Carrier-grade NAT (100.64.0.0/10) must be treated as private and rejected");
-            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.ERROR, "private/loopback");
         }
 
         @Test

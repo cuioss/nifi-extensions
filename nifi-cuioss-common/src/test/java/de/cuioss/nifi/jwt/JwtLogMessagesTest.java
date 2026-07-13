@@ -133,9 +133,9 @@ class JwtLogMessagesTest {
             }
 
             Set<String> identifiers = new HashSet<>();
-            for (LogRecord record : allRecords) {
-                assertTrue(identifiers.add(record.resolveIdentifierString()),
-                        "Duplicate LogRecord identifier: " + record.resolveIdentifierString());
+            for (LogRecord logRecord : allRecords) {
+                assertTrue(identifiers.add(logRecord.resolveIdentifierString()),
+                        "Duplicate LogRecord identifier: " + logRecord.resolveIdentifierString());
             }
             assertFalse(identifiers.isEmpty(), "At least one LogRecord should be defined");
         }
