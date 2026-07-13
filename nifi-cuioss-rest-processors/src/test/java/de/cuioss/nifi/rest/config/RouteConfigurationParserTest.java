@@ -53,6 +53,35 @@ class RouteConfigurationParserTest {
         }
 
         @Test
+        @DisplayName("Should coerce a parseable but non-positive max-request-size to the default")
+        void shouldCoerceNonPositiveMaxRequestSizeToDefault() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            // A parseable but non-positive value is coerced to the default (0) with a warning.
+            properties.put("restapi.health.max-request-size", "0");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertEquals(1, routes.size());
+            assertEquals(0, routes.getFirst().maxRequestSize());
+        }
+
+        @Test
+        @DisplayName("Should warn and skip a route whose attachment settings are invalid")
+        void shouldSkipRouteWithInvalidAttachmentSettings() {
+            Map<String, String> properties = new HashMap<>();
+            properties.put("restapi.health.path", "/api/health");
+            // attachments-* without tracking-mode=attachments makes RouteConfiguration
+            // reject the build; the single invalid route is warn-and-skipped.
+            properties.put("restapi.health.attachments-min-count", "5");
+
+            List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
+
+            assertTrue(routes.isEmpty(),
+                    "A route with invalid attachment settings should be skipped, not throw");
+        }
+
+        @Test
         @DisplayName("Should parse multiple routes")
         void shouldParseMultipleRoutes() {
             Map<String, String> properties = new HashMap<>();

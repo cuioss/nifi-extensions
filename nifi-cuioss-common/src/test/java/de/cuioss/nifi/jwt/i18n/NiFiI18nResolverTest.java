@@ -146,6 +146,40 @@ class NiFiI18nResolverTest {
         }
 
         @Test
+        @DisplayName("Should fall back to the raw pattern when MessageFormat rejects a malformed pattern")
+        void shouldFallBackToRawPatternOnMalformedPattern() {
+            // Arrange — a key absent from the bundle is returned verbatim as the
+            // pattern; an unbalanced brace makes MessageFormat throw
+            // IllegalArgumentException when arguments are supplied.
+            I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
+            String malformed = "malformed pattern {0 with an unbalanced brace";
+
+            // Act
+            String result = resolver.getTranslatedString(malformed, "value");
+
+            // Assert — the raw pattern is returned rather than propagating the exception.
+            assertEquals(malformed, result,
+                    "Malformed pattern should be returned verbatim on formatting failure");
+        }
+
+        @Test
+        @DisplayName("Should log a warning and fall back to the raw pattern when a logger is present")
+        void shouldLogAndFallBackWhenLoggerPresent() {
+            // Arrange — createDefault supplies a (non-null) logger, exercising the
+            // warn branch of the malformed-pattern fallback.
+            var logger = new MockComponentLog("test", new Object());
+            I18nResolver resolver = NiFiI18nResolver.createDefault(logger);
+            String malformed = "another malformed {0 pattern";
+
+            // Act
+            String result = resolver.getTranslatedString(malformed, "value");
+
+            // Assert
+            assertEquals(malformed, result,
+                    "Malformed pattern should be returned verbatim even with a logger present");
+        }
+
+        @Test
         @DisplayName("Should handle empty arguments array")
         void shouldHandleEmptyArguments() {
             I18nResolver resolver = NiFiI18nResolver.createResolver(Locale.ENGLISH);
