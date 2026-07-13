@@ -113,9 +113,13 @@ git diff --quiet HEAD -- README.adoc || git add README.adoc   # stage only if Ni
 git commit -m "chore(release): prepare release <version>"
 git push -u origin chore/release_<version>
 gh pr create --repo cuioss/nifi-extensions --base main \
+  --label "skip-bot-review" \
   --title "chore(release): prepare release <version>" \
   --body "Bump current-version to <version>, next-version to <next>-SNAPSHOT. Triggers the automated Release workflow on merge."
 ```
+
+The release PR is a mechanical version bump (`project.yml` + optional README badge) — no
+code review is necessary, so it carries the **`skip-bot-review`** label to skip bot review.
 
 Use the project commit convention: `Co-Authored-By: Claude <noreply@anthropic.com>` (no
 model name / no "Generated with Claude Code" footer).
