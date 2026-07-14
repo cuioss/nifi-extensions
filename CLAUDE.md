@@ -38,6 +38,8 @@ Use `/deploy` skill for full runbook. Quick reference:
 - **Stop containers:** `cd integration-testing/src/main/docker && docker compose down -v`
 - **Run E2E tests (containers running):** `cd e-2-e-playwright && npm run playwright:test`
 
+**Gotchas** (full diagnosis in `/deploy troubleshoot`): after any (re)deploy confirm NiFi actually *started* — container health plus no `Encountered duplicate UI` crash from stale-version NARs that `down -v` won't clear; and when a plan worktree is active, run the *worktree's* deploy script (not main's) or you ship stale `main` code.
+
 ### Running Maven integration tests (`-Pintegration-tests`)
 
 To run the integration-testing module's Java Failsafe ITs, use the `/deploy it` skill mode — the runbook (self-managed container lifecycle, mandatory `-pl integration-testing -am`, and the concurrency rule) lives there.
