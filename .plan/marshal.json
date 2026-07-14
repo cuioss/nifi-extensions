@@ -73,7 +73,6 @@
       "finalize_without_asking": true,
       "loop_back_without_asking": false,
       "self_review": "auto",
-      "qgate": "auto",
       "simplify": "auto",
       "checks_wait_timeout_seconds": 600,
       "drop_review_on_scope_gate": false,
@@ -83,15 +82,10 @@
         },
         "default:pre-push-quality-gate": {},
         "default:pre-submission-self-review": {
-          "self_review": "auto",
           "drop_review_on_scope_gate": false
         },
-        "default:finalize-step-simplify": {
-          "simplify": "auto"
-        },
-        "default:finalize-step-security-audit": {
-          "security_audit": "auto"
-        },
+        "default:finalize-step-simplify": {},
+        "default:finalize-step-security-audit": {},
         "default:push": {},
         "plan-marshall:automatic-review": {
           "review_bot_buffer_seconds": 180,
@@ -100,7 +94,10 @@
           "re_review_await_timeout_seconds": 600,
           "re_review_on_timeout": "ask",
           "review_rate_window_await": false,
-          "review_rate_window_timeout_seconds": 3600
+          "review_rate_window_timeout_seconds": 3600,
+          "enabled_bots": "coderabbit,sourcery,gemini",
+          "review_completion_poll_timeout_seconds": 600,
+          "lane": "ask"
         },
         "default:create-pr": {},
         "default:ci-verify": {},
@@ -108,9 +105,13 @@
         "default:sonar-roundtrip": {
           "touched_file_cleanup": "new_code_only",
           "do_transition": false,
-          "ce_wait_timeout_seconds": 600
+          "ce_wait_timeout_seconds": 600,
+          "lane": "ask"
         },
         "default:lessons-capture": {},
+        "default:adr-propose": {
+          "lane": "off"
+        },
         "default:branch-cleanup": {
           "pr_merge_strategy": "squash",
           "final_merge_without_asking": false,
@@ -270,7 +271,7 @@
       "lessons_superseded_days": 0,
       "temp_on_maintenance": true
     },
-    "provisioned_version": "0.1.1101",
-    "config_seed_fingerprint": "d30886a0"
+    "provisioned_version": "0.1.1111",
+    "config_seed_fingerprint": "37df1a33"
   }
 }
