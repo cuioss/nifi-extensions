@@ -94,6 +94,26 @@ Check for common issues in order:
 4. NiFi logs: `docker logs docker-nifi-1 --tail 50`
 5. NAR loaded: `docker logs docker-nifi-1 2>&1 | grep -i cuioss`
 
+**Always confirm NiFi actually STARTED — do not trust the deploy script's exit alone.**
+The deploy script (or a backgrounded deploy job) can report "started" / exit while NiFi
+crashed during Jetty WAR load. After any start/redeploy, verify:
+- Health: `docker inspect -f '{{.State.Health.Status}}' docker-nifi-1` must be `healthy`
+  (starts as `starting`; can take ~60-80s).
+- Success marker: `docker logs docker-nifi-1 2>&1 | grep "Started Server on"` present.
+- No crash: `docker logs docker-nifi-1 2>&1 | grep -E "Failed to start Server|Encountered duplicate UI"` empty.
+- "Keycloak is ready ✅" in the deploy output is NOT "NiFi is ready" — keep waiting for NiFi health.
+
+**`Encountered duplicate UI for <processor>` crash at startup = stale-version NARs.**
+After a project version bump (e.g. 0.5.0 → 0.6.0) old `*-<oldversion>-SNAPSHOT.nar` files
+linger in `target/nifi-deploy/` AND in the module `target/` dirs; `docker compose down -v`
+does NOT clean them (it only wipes volumes). NiFi then loads BOTH versions and dies with
+`java.lang.IllegalStateException: Encountered duplicate UI ...`. Fix:
+```bash
+find . -name "*-<oldversion>-SNAPSHOT.nar" -not -path "*/node_modules/*"   # locate stale NARs
+```
+Delete every match (in `target/nifi-deploy/` and the module `*/target/` dirs), then restart
+NiFi (`docker compose ... restart nifi` or a fresh `up`).
+
 ## NiFi Browser Login
 
 After every **start** or **redeploy**, open Chrome and log in to NiFi.
@@ -128,6 +148,8 @@ The `tabs_context_mcp` call frequently returns "Browser extension is not connect
 - After a `clean install` build (`python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`), the NAR in `target/nifi-deploy/` is stale — must run `/deploy redeploy` to update running containers
 - NiFi loads NARs only at startup — code changes require container restart, not just file copy
 - The `target/nifi-deploy/` directory is volume-mounted into the NiFi container
+- **Deploy the checkout you intend.** `run-and-deploy.sh` / `copy-deployment.sh` self-locate via their own path (`dirname $0`) and `docker-compose.yml` mounts `target/nifi-deploy` **relative to the compose file's directory**. So the checkout whose script you run is the code that deploys. When a plan-marshall worktree is active, running the **main** checkout's script deploys **main's** code (without the feature branch's changes) — run the **worktree's** copy (`.plan/local/worktrees/<plan>/integration-testing/src/main/docker/run-and-deploy.sh`) to deploy the feature-branch code you're testing. The two docker-compose projects share the container names `docker-nifi-1` / `docker-keycloak-1`, so `down` the current stack before `up`-ing the other.
+- **`down -v` resets flow state.** Removing volumes reloads the baked `flow.json.gz` fresh: no runtime-added issuers/routes and no gateway request counters. E2E tests that assume seeded issuers or existing metric data behave differently on a freshly-reset stack than on a long-running one — reset before a definitive E2E run so local state matches CI's fresh stack.
 
 ## Key Paths
 
