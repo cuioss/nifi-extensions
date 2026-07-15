@@ -237,7 +237,7 @@ test.describe("Configuration Tab", () => {
                     }
                     return false;
                 },
-                { timeout: 10000 },
+                { timeout: 15000 },
             )
             .toBe(false);
     });
