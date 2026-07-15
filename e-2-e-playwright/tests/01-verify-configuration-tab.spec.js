@@ -377,24 +377,20 @@ test.describe("Configuration Tab", () => {
         // Reads are async relative to the success message (confirm → API update →
         // re-render), so poll rather than reading input values once — a single-shot
         // read right after the success message can race the re-render and see a
-        // stale/detached input, hanging inputValue() until timeout.
-        const readIssuerNames = async () => {
-            const inputs = customUIFrame.locator(
-                'input[placeholder="e.g., keycloak"]',
-            );
-            const n = await inputs.count();
-            const out = [];
-            for (let i = 0; i < n; i++) {
-                out.push(await inputs.nth(i).inputValue());
-            }
-            return out;
-        };
+        // stale/detached input, hanging inputValue() until timeout. evaluateAll reads
+        // every input's value in one atomic browser round-trip, so a re-render mid-read
+        // can't detach an element between the count() and the per-index inputValue().
+        const readIssuerNames = () =>
+            customUIFrame
+                .locator('input[placeholder="e.g., keycloak"]')
+                .evaluateAll((inputs) => inputs.map((input) => input.value));
 
-        // Verify both issuer names are visible
+        // Verify both issuer names are visible — check both within one poll so a
+        // second issuer rendering slightly after the first can't fail an unpolled
+        // single-shot read.
         await expect
             .poll(async () => await readIssuerNames(), { timeout: 15000 })
-            .toContain("issuer-one");
-        expect(await readIssuerNames()).toContain("issuer-two");
+            .toEqual(expect.arrayContaining(["issuer-one", "issuer-two"]));
 
         // Remove first added issuer (issuer-one) via its own Remove button
         await firstForm.getByRole("button", { name: "Remove" }).click();
