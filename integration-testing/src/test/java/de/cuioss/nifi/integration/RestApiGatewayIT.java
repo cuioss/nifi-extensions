@@ -240,24 +240,22 @@ class RestApiGatewayIT {
          * Feeds an attack string into the {@code {itemId}} path-parameter segment of
          * the live gateway and asserts the gateway does not return a 2xx success — the
          * security pipeline rejects the adversarial value (400) or the router declines
-         * to match it (404). REST Assured URL-encodes the path segment; a value that
-         * cannot form a valid request is rejected at the transport level (caught here).
+         * to match it (404).
+         *
+         * <p>No transport-level exception is caught here, deliberately. REST Assured
+         * URL-encodes the path segment, so every attack string in the OWASP / Apache
+         * CVE / ModSecurity CRS databases forms a valid HTTP request and yields a real
+         * status code. Any exception that does escape this call therefore signals an
+         * unreachable or crashed gateway (for example {@link java.net.ConnectException}),
+         * which must fail the test rather than be swallowed into a vacuous pass.
          */
         private void assertAttackItemIdRejected(AttackTestCase testCase) {
-            int status;
-            try {
-                status = given().spec(authSpec)
-                        .when()
-                        .get("/api/items/{itemId}", testCase.attackString())
-                        .then()
-                        .extract()
-                        .statusCode();
-            } catch (RuntimeException e) {
-                // The attack string could not form a valid HTTP request — REST Assured /
-                // the client refused it at the transport level. That is a legitimate
-                // rejection, so return without asserting a status.
-                return;
-            }
+            int status = given().spec(authSpec)
+                    .when()
+                    .get("/api/items/{itemId}", testCase.attackString())
+                    .then()
+                    .extract()
+                    .statusCode();
             // A 401/403 means the class-level token was itself rejected (typically expired
             // mid-run against Keycloak's default access-token lifespan). Accepting that as
             // "non-2xx = safe" would make every remaining attack case pass vacuously, so
