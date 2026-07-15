@@ -31,6 +31,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
@@ -57,7 +58,12 @@ class ConfigurationManagerTest {
         @Test
         @DisplayName("Should initialize with configurationLoaded false when no config file exists")
         void shouldInitializeWithoutConfig() {
-            var configManager = new ConfigurationManager();
+            // The environment is pinned to an empty map rather than read from the ambient process
+            // environment: this test previously failed on any machine with a JWT_* variable
+            // exported, because those variables are themselves configuration. An assumeTrue guard
+            // would only have hidden the test on exactly those machines; pinning makes it
+            // deterministic everywhere.
+            var configManager = new ConfigurationManager("", Map.of());
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "Configuration should not be loaded when no config file exists");
@@ -81,7 +87,7 @@ class ConfigurationManagerTest {
 
             // Base path deliberately WITHOUT a trailing separator; normalizeBasePath must
             // append one so the relative conf/ path still composes correctly.
-            var configManager = new ConfigurationManager(tempDir.toString());
+            var configManager = new ConfigurationManager(tempDir.toString(), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded(),
                     "Config must load even when the base path lacks a trailing separator");
@@ -109,7 +115,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded(),
                     "Configuration should be loaded");
@@ -141,7 +147,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             List<String> issuerIds = configManager.getIssuerIds();
             assertEquals(3, issuerIds.size());
@@ -174,7 +180,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded());
             assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
@@ -203,7 +209,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             List<String> issuerIds = configManager.getIssuerIds();
             assertEquals(2, issuerIds.size());
@@ -231,7 +237,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             List<String> issuerIds = configManager.getIssuerIds();
             assertEquals(2, issuerIds.size());
@@ -253,7 +259,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             List<String> issuerIds = configManager.getIssuerIds();
             assertEquals(2, issuerIds.size());
@@ -276,7 +282,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             // Assert — only the map item should be parsed; string item is silently skipped
             List<String> issuerIds = configManager.getIssuerIds();
@@ -291,7 +297,7 @@ class ConfigurationManagerTest {
             Path configFile = confDir.resolve("cui-nifi-extensions.yml");
             Files.writeString(configFile, "");
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "Empty YAML file should not be considered loaded");
@@ -312,7 +318,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             boolean reloaded = configManager.checkAndReloadConfiguration();
 
@@ -329,7 +335,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             // Modify file and ensure modification time is detectably different
             String newContent = """
@@ -356,7 +362,7 @@ class ConfigurationManagerTest {
         @Test
         @DisplayName("Should return null for missing key")
         void shouldReturnNullForMissingKey() {
-            var configManager = new ConfigurationManager();
+            var configManager = new ConfigurationManager("", Map.of());
 
             var value = configManager.getProperty("non.existent.key");
 
@@ -366,7 +372,7 @@ class ConfigurationManagerTest {
         @Test
         @DisplayName("Should return default value for missing key")
         void shouldReturnDefaultForMissingKey() {
-            var configManager = new ConfigurationManager();
+            var configManager = new ConfigurationManager("", Map.of());
 
             String value = configManager.getProperty("non.existent.key", "default-value");
 
@@ -383,7 +389,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             String value = configManager.getProperty("jwt.validation.max.token.size", "default");
 
@@ -407,7 +413,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             List<String> issuerIds = configManager.getIssuerIds();
 
@@ -420,7 +426,7 @@ class ConfigurationManagerTest {
         @Test
         @DisplayName("Should return empty map for unknown issuer")
         void shouldReturnEmptyMapForUnknownIssuer() {
-            var configManager = new ConfigurationManager();
+            var configManager = new ConfigurationManager("", Map.of());
 
             Map<String, String> props = configManager.getIssuerProperties("unknown-issuer");
 
@@ -439,7 +445,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             Map<String, String> props = configManager.getIssuerProperties("issuer1");
 
@@ -469,7 +475,7 @@ class ConfigurationManagerTest {
                             size: 22222
                     """);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded());
             assertEquals("11111", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
@@ -481,19 +487,40 @@ class ConfigurationManagerTest {
     class EnvironmentVariableTests {
 
         @Test
-        @DisplayName("Should convert environment variable names to property names")
-        void shouldConvertEnvToPropertyName(@TempDir Path tempDir) throws Exception {
-            Path confDir = createConfDir(tempDir);
-            Path configFile = confDir.resolve("cui-nifi-extensions.properties");
-            String content = """
-                    jwt.validation.max.token.size=32768
-                    """;
-            Files.writeString(configFile, content);
+        @DisplayName("Should convert an issuer JWKS_URL variable to the dash-separated jwks-url key")
+        void shouldConvertIssuerEnvToDashSeparatedKey() {
+            // Arrange — a real environment variable, not a properties file. The previous version of
+            // this test wrote jwt.validation.max.token.size to a file and asserted it came back,
+            // which never touched the env-var conversion it claimed to cover.
+            var configManager = new ConfigurationManager("", Map.of(
+                    "JWT_ISSUER_KEYCLOAK_JWKS_URL", "https://example.com/jwks",
+                    "JWT_ISSUER_KEYCLOAK_ISSUER", "https://example.com/realms/test"));
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            // Assert — underscores become DASHES for issuer keys. The dot form is asserted absent
+            // because that is the exact bug this conversion fixed, and the form the docs used to
+            // claim; a test that only checked the dash form would still pass if both were written.
+            Map<String, String> keycloak = configManager.getIssuerProperties().get("keycloak");
+            assertNotNull(keycloak, "The issuer must be resolved from the environment variables");
+            assertEquals("https://example.com/jwks", keycloak.get("jwks-url"),
+                    "JWKS_URL must convert to the dash-separated jwks-url key");
+            assertNull(keycloak.get("jwks.url"),
+                    "JWKS_URL must NOT convert to the dotted jwks.url key");
+            assertEquals("https://example.com/realms/test", keycloak.get("issuer"),
+                    "The issuer property must resolve alongside it");
+        }
 
-            assertTrue(configManager.getProperty("jwt.validation.max.token.size").isPresent(),
-                    "Property should exist in lowercase dot format");
+        @Test
+        @DisplayName("Should keep the dotted convention for general (non-issuer) variables")
+        void shouldConvertGeneralEnvToDottedKey() {
+            // Arrange — the sibling contract that makes the dash rule above meaningful: only issuer
+            // keys take the dash form, general keys keep dots.
+            var configManager = new ConfigurationManager("", Map.of(
+                    "JWT_MAX_TOKEN_SIZE", "32768"));
+
+            // Assert
+            assertEquals(Optional.of("32768"),
+                    configManager.getProperty("jwt.validation.max.token.size"),
+                    "General variables convert underscores to dots under the jwt.validation. prefix");
         }
     }
 
@@ -510,7 +537,7 @@ class ConfigurationManagerTest {
             String content = "key: 'unclosed string\nanother: line";
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "Invalid YAML should not be loaded");
@@ -528,7 +555,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "Malformed YAML should not be loaded");
@@ -542,7 +569,7 @@ class ConfigurationManagerTest {
             // Unmatched quote makes SnakeYAML throw, so the file load reports FAILED.
             Files.writeString(configFile, "key: 'unclosed string\nanother: line");
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertFalse(configManager.isConfigurationLoaded(),
                     "A file that fails to parse must not be reported as loaded");
@@ -569,7 +596,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded());
             String algorithms = configManager.getProperty("jwt.validation.algorithms").orElse(null);
@@ -592,7 +619,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, content);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
 
             assertTrue(configManager.isConfigurationLoaded());
             String claims = configManager.getProperty("jwt.validation.claims").orElse(null);
@@ -619,7 +646,7 @@ class ConfigurationManagerTest {
                     """;
             Files.writeString(configFile, validContent);
 
-            var configManager = new ConfigurationManager(basePath(tempDir));
+            var configManager = new ConfigurationManager(basePath(tempDir), Map.of());
             assertTrue(configManager.isConfigurationLoaded());
             assertEquals("32768", configManager.getProperty("jwt.validation.max.token.size").orElse(null));
 
@@ -652,7 +679,7 @@ class ConfigurationManagerTest {
         @Test
         @DisplayName("Should return false when no config file exists")
         void shouldReturnFalseWhenNoConfigFile() {
-            var configManager = new ConfigurationManager();
+            var configManager = new ConfigurationManager("", Map.of());
 
             boolean reloaded = configManager.checkAndReloadConfiguration();
 
