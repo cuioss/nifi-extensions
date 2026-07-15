@@ -374,17 +374,27 @@ test.describe("Configuration Tab", () => {
         const secondSuccess = secondForm.locator(".success-message");
         await expect(secondSuccess).toBeVisible({ timeout: 10000 });
 
+        // Reads are async relative to the success message (confirm → API update →
+        // re-render), so poll rather than reading input values once — a single-shot
+        // read right after the success message can race the re-render and see a
+        // stale/detached input, hanging inputValue() until timeout.
+        const readIssuerNames = async () => {
+            const inputs = customUIFrame.locator(
+                'input[placeholder="e.g., keycloak"]',
+            );
+            const n = await inputs.count();
+            const out = [];
+            for (let i = 0; i < n; i++) {
+                out.push(await inputs.nth(i).inputValue());
+            }
+            return out;
+        };
+
         // Verify both issuer names are visible
-        const allNameInputs = customUIFrame.locator(
-            'input[placeholder="e.g., keycloak"]',
-        );
-        const names = [];
-        const nameCount = await allNameInputs.count();
-        for (let i = 0; i < nameCount; i++) {
-            names.push(await allNameInputs.nth(i).inputValue());
-        }
-        expect(names).toContain("issuer-one");
-        expect(names).toContain("issuer-two");
+        await expect
+            .poll(async () => await readIssuerNames(), { timeout: 15000 })
+            .toContain("issuer-one");
+        expect(await readIssuerNames()).toContain("issuer-two");
 
         // Remove first added issuer (issuer-one) via its own Remove button
         await firstForm.getByRole("button", { name: "Remove" }).click();
@@ -403,17 +413,6 @@ test.describe("Configuration Tab", () => {
         // Verify only issuer-two remains among the added issuers. Removal is async
         // (confirm → API update → re-render), so poll rather than reading input
         // values once (which raced the re-render and still saw issuer-one).
-        const readIssuerNames = async () => {
-            const inputs = customUIFrame.locator(
-                'input[placeholder="e.g., keycloak"]',
-            );
-            const n = await inputs.count();
-            const out = [];
-            for (let i = 0; i < n; i++) {
-                out.push(await inputs.nth(i).inputValue());
-            }
-            return out;
-        };
         await expect
             .poll(async () => (await readIssuerNames()).includes("issuer-one"), {
                 timeout: 15000,
