@@ -13,7 +13,6 @@
 **/node_modules/
 **/node/
 /integration-testing/src/main/docker/nifi/conf/archive
-/integration-testing/src/main/docker/nifi/conf/flow.xml.gz
 
 # Jest log files
 jest_stderr.log

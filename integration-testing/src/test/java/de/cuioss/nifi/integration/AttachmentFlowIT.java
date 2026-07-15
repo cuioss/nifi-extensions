@@ -44,6 +44,8 @@ import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * Integration tests for the attachment flow: upload route with
@@ -153,6 +155,90 @@ class AttachmentFlowIT {
                     .get("/api/upload")
                     .then()
                     .statusCode(405);
+        }
+    }
+
+    // ── Attachment Timeout Expiry ────────────────────────────────────────
+
+    /**
+     * Covers the attachment-collection expiry branch. The {@code /api/sandbox/expiry}
+     * route declares {@code attachments-min-count=1} with a 3 second window, so a
+     * request whose attachments never arrive is expired by the dedicated
+     * "Wait (sandbox-expiry)" processor instead of collecting forever.
+     * <p>
+     * The window has to be short enough to wait out inside a test, which is why this
+     * route exists at all — {@code /api/upload} uses a 60 second window.
+     */
+    @Nested
+    @DisplayName("Attachment Timeout Expiry")
+    class AttachmentExpiryTests {
+
+        private static final Duration EXPIRY_POLL_TIMEOUT = Duration.ofSeconds(30);
+
+        private String postExpiryRequest() {
+            return given().spec(authSpec)
+                    .body("{\"document\": \"never-gets-attachments\"}")
+                    .when()
+                    .post("/api/sandbox/expiry")
+                    .then()
+                    .statusCode(202)
+                    .body("traceId", notNullValue())
+                    .extract()
+                    .path("traceId");
+        }
+
+        private String currentStatus(String traceId) {
+            return given().spec(authSpec)
+                    .when()
+                    .get("/status/" + traceId)
+                    .then()
+                    .statusCode(200)
+                    .extract()
+                    .path("status");
+        }
+
+        @Test
+        @DisplayName("should leave COLLECTING_ATTACHMENTS once the attachment window expires")
+        void shouldExpireWhenAttachmentsNeverArrive() {
+            // Arrange: a tracked request that will never receive its required attachment.
+            String traceId = postExpiryRequest();
+            assertEquals("COLLECTING_ATTACHMENTS", currentStatus(traceId),
+                    "A fresh request must start out collecting attachments");
+
+            // Act + Assert: the 3 second Wait expiration releases the FlowFile, so the
+            // trace leaves the collecting state without any attachment ever being sent.
+            await().atMost(EXPIRY_POLL_TIMEOUT)
+                    .pollInterval(Duration.ofSeconds(1))
+                    .untilAsserted(() -> assertNotEquals("COLLECTING_ATTACHMENTS",
+                            currentStatus(traceId),
+                            "Attachment window should have expired for " + traceId));
+        }
+
+        @Test
+        @DisplayName("should not expire the long-window upload route within the same period")
+        void shouldNotExpireLongWindowRouteInSamePeriod() {
+            // Control for the test above: /api/upload uses a far longer window, so it is
+            // still collecting once the short-window route has already expired. This is
+            // what proves the expiry is driven by the route's own window rather than by
+            // some unrelated background transition.
+            String shortTraceId = postExpiryRequest();
+            String longTraceId = given().spec(authSpec)
+                    .body("{\"document\": \"long-window-control\"}")
+                    .when()
+                    .post("/api/upload")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            await().atMost(EXPIRY_POLL_TIMEOUT)
+                    .pollInterval(Duration.ofSeconds(1))
+                    .untilAsserted(() -> assertNotEquals("COLLECTING_ATTACHMENTS",
+                            currentStatus(shortTraceId),
+                            "Short-window route should have expired first"));
+
+            assertEquals("COLLECTING_ATTACHMENTS", currentStatus(longTraceId),
+                    "Long-window upload route must still be collecting attachments");
         }
     }
 

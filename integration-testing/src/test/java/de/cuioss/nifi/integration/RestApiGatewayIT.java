@@ -621,6 +621,80 @@ class RestApiGatewayIT {
         }
     }
 
+    // ── Sandbox Routes (auth-mode=none, required-scopes) ─────────────────
+
+    /**
+     * Covers the two auth-mode / scope branches documented in
+     * doc/architecture/gateway.adoc "Auth-Mode Dispatch" that no other route exercises.
+     * The routes are defined in nifi/conf/cui-nifi-extensions.properties.
+     */
+    @Nested
+    @DisplayName("Sandbox Routes")
+    class SandboxRouteTests {
+
+        @Test
+        @DisplayName("auth-mode=none route should return 200 without any token")
+        void anonymousRouteShouldAcceptRequestWithoutToken() {
+            // Arrange: noAuthSpec deliberately carries no Authorization header.
+            // Act + Assert: auth-mode=none means the request is served anonymously
+            // rather than rejected with the 401 every BEARER route returns.
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/sandbox/anonymous")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("auth-mode=none route should still return 200 when a token is supplied")
+        void anonymousRouteShouldAcceptRequestWithToken() {
+            // A token is not required, but supplying one must not break the route.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/anonymous")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 200 when the token carries the scope")
+        void scopedRouteShouldAcceptTokenWithRequiredScope() {
+            // The route requires 'profile', which Keycloak includes in the test token
+            // (scope: "openid profile email"), so authorization passes.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/scoped")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 403 insufficient_scope when the scope is absent")
+        void scopedRouteShouldRejectTokenMissingRequiredScope() {
+            // Same valid token as above — the only reason for rejection is the missing
+            // 'sandbox:write' scope, which distinguishes this from a 401 auth failure.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/scoped-denied")
+                    .then()
+                    .statusCode(403)
+                    .contentType(containsString("application/problem+json"))
+                    .body("detail", containsString("sandbox:write"));
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 401 rather than 403 without a token")
+        void scopedRouteShouldReturn401WithoutToken() {
+            // Guards the ordering: authentication is evaluated before scope
+            // authorization, so a missing token is a 401, not a scope 403.
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/sandbox/scoped")
+                    .then()
+                    .statusCode(401);
+        }
+    }
+
     // ── Schema Validation Tests ──────────────────────────────────────────
 
     @Nested
