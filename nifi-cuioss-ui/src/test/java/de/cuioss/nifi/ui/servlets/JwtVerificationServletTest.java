@@ -232,6 +232,29 @@ class JwtVerificationServletTest {
     }
 
     @Test
+    @DisplayName("F4: a missing NiFi config context yields a 503 JSON response, not a container error")
+    void missingConfigContextReturns503() throws Exception {
+        // Arrange — a servlet context WITHOUT the nifi-web-configuration-context attribute, served
+        // by the real no-arg constructor so init() runs the production path. init() must leave the
+        // validation service unpublished rather than NPE into a container error page.
+        try (var localHandle = EmbeddedServletTestSupport.startServer(ctx ->
+                ctx.addServlet(new ServletHolder(new JwtVerificationServlet()), ENDPOINT))) {
+
+            // Act + Assert — the request is answered with the sibling servlets' 503 contract
+            localHandle.spec()
+                    .contentType("application/json")
+                    .body("""
+                            {"token":"test-token","processorId":"test-processor-id"}""")
+                    .when()
+                    .post(ENDPOINT)
+                    .then()
+                    .statusCode(503)
+                    .body("valid", equalTo(false))
+                    .body("error", containsString("Service not available"));
+        }
+    }
+
+    @Test
     @DisplayName("Should return 400 for service IllegalArgumentException")
     void illegalArgumentFromService() {
         currentVerifier = (token, processorId) -> {
