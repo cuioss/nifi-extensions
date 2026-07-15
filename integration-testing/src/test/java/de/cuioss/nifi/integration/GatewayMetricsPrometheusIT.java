@@ -130,7 +130,7 @@ class GatewayMetricsPrometheusIT {
         // Authenticated requests → validate a token and enqueue FlowFiles so onTrigger fires,
         // flushing both the token-validation deltas and the pending gateway-event delta.
         String token = fetchKeycloakToken(gatewayClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
         sendGateway(gatewayClient, "GET", "/api/data", token, null);
         sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"value\"}");
     }
@@ -154,7 +154,7 @@ class GatewayMetricsPrometheusIT {
                 // embedded server or the processor schedule was not ready for the first burst.
                 sendGateway(gatewayClient, "GET", "/api/data", null, null);
                 String token = fetchKeycloakToken(gatewayClient,
-                        KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                        KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
                 sendGateway(gatewayClient, "POST", "/api/data", token, "{\"key\":\"poll\"}");
                 return false;
             });

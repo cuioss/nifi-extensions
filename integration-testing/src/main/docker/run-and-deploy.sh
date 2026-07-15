@@ -9,6 +9,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
+# Single definition site for the test credentials this script reports.
+# shellcheck source=test-credentials.env disable=SC1091
+. "${SCRIPT_DIR}/test-credentials.env"
+
 # Call the copy-deployment.sh script to build and copy the NAR file
 echo "Calling copy-deployment.sh to build and copy the NAR file..."
 "${SCRIPT_DIR}/copy-deployment.sh"
@@ -31,5 +35,5 @@ echo "Starting NiFi environment..."
 "${SCRIPT_DIR}/start-nifi.sh"
 echo ""
 echo "Keycloak realm: oauth_integration_tests"
-echo "Test user: testUser, password: drowssap"
+echo "Test user: ${TEST_USER_NAME}, password: ${TEST_USER_PASSWORD}"
 echo "Test client: test_client (public client, no secret)"

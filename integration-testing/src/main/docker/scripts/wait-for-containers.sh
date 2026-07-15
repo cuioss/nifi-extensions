@@ -3,6 +3,10 @@
 # Wait for Docker containers (Keycloak + NiFi) to become healthy.
 # Extracted from the inline CDATA health-check in integration-testing/pom.xml.
 #
+# Failure semantics: LENIENT for the processor start — a token/start failure only
+# warns, and the flow-pipeline wait in Stage 3 decides the exit code. This differs
+# deliberately from wait-and-start-processors.sh, which aborts on any failure.
+#
 # Exit codes:
 #   0 — all containers healthy, NiFi API ready, flow pipeline ready
 #   1 — timeout or readiness failure (diagnostics printed to stdout)
@@ -11,6 +15,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCKER_DIR="${SCRIPT_DIR}/.."
+
+# Shared token-fetch / processor-start helpers; also loads test-credentials.env.
+# shellcheck source=lib-start-processors.sh disable=SC1091
+. "${SCRIPT_DIR}/lib-start-processors.sh"
 
 cd "${DOCKER_DIR}"
 
@@ -52,7 +60,7 @@ while [ $api_elapsed -lt $api_timeout ]; do
     # login system are initialized. During the splash screen phase it returns
     # 000 (connection reset) or 503. We accept 200 and 401 as "API ready".
     http_code=$(curl -k --max-time 10 -o /dev/null -s -w '%{http_code}' \
-        https://localhost:9095/nifi-api/access/config 2>/dev/null || true)
+        "${NIFI_BASE_URL}/nifi-api/access/config" 2>/dev/null || true)
 
     if [ "$http_code" = "200" ] || [ "$http_code" = "401" ]; then
         echo "NiFi API is ready (HTTP $http_code after ${api_elapsed}s)."
@@ -79,22 +87,11 @@ fi
 # all processors with scheduledState=RUNNING actually start.
 # ---------------------------------------------------------------------------
 echo "Starting all flow processors via NiFi API..."
-NIFI_TOKEN=$(curl -sk -X POST https://localhost:9095/nifi-api/access/token \
-    -d "username=testUser&password=drowssap" \
-    -H "Content-Type: application/x-www-form-urlencoded" 2>/dev/null || true)
-# A valid NiFi access token is a JWT: three base64url segments separated by dots.
-# A non-empty body alone is not proof — an HTML/JSON error page is also non-empty
-# and must not be forwarded as a bearer token.
-if printf '%s' "$NIFI_TOKEN" | grep -Eq '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'; then
-    start_code=$(curl -sk -o /dev/null -w '%{http_code}' -X PUT \
-        -H "Authorization: Bearer $NIFI_TOKEN" \
-        -H "Content-Type: application/json" \
-        -d '{"id":"root","state":"RUNNING"}' \
-        "https://localhost:9095/nifi-api/flow/process-groups/root" 2>/dev/null || true)
-    if [ "$start_code" = "200" ]; then
+if NIFI_TOKEN=$(nifi_fetch_token); then
+    if start_code=$(nifi_start_all_processors "$NIFI_TOKEN"); then
         echo "Flow processors started (HTTP $start_code)."
     else
-        echo "WARNING: processor start request returned HTTP ${start_code:-000} — processors may not be running"
+        echo "WARNING: processor start request returned HTTP ${start_code} — processors may not be running"
     fi
 else
     echo "WARNING: Could not obtain a valid NiFi token — processors may need manual start"
@@ -103,20 +100,9 @@ fi
 # ---------------------------------------------------------------------------
 # Stage 3: Wait for HandleHttpRequest processor (flow pipeline on port 7777)
 # ---------------------------------------------------------------------------
-echo "Waiting for flow pipeline on port 7777..."
-flow_timeout=120
-flow_elapsed=0
-while [ $flow_elapsed -lt $flow_timeout ]; do
-    http_code=$(curl --max-time 10 -o /dev/null -s -w '%{http_code}' \
-        http://localhost:7777 2>/dev/null || true)
-    if [ "$http_code" != "000" ] && [ "$http_code" != "" ]; then
-        echo "Flow pipeline is ready on port 7777 (HTTP $http_code)!"
-        exit 0
-    fi
-    echo "Waiting for flow pipeline... ($flow_elapsed/${flow_timeout}s, HTTP $http_code)"
-    sleep 2
-    flow_elapsed=$((flow_elapsed + 2))
-done
+if nifi_wait_for_flow_pipeline 120; then
+    exit 0
+fi
 
 echo "NiFi API is up but flow pipeline on port 7777 did not respond in time"
 docker compose logs --tail=30 nifi

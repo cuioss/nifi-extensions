@@ -77,7 +77,7 @@ class NiFiFlowPipelineIT {
         void shouldReturn200ForValidJwtWithRequiredRoles() throws Exception {
             // testUser has roles: user, read — 'read' is required by the flow
             String token = fetchKeycloakToken(httpClient,
-                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
 
@@ -115,7 +115,7 @@ class NiFiFlowPipelineIT {
             // Fetch a token from other_realm — signed with a different RSA key pair
             String otherToken = fetchKeycloakToken(httpClient,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
-                    OTHER_USER, PASSWORD);
+                    OTHER_USER, OTHER_USER_PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + otherToken);
 
@@ -146,7 +146,7 @@ class NiFiFlowPipelineIT {
         void shouldReturn401ForTokenMissingRequiredRole() throws Exception {
             // limitedUser has only 'user' role — missing 'read' which is required
             String token = fetchKeycloakToken(httpClient,
-                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, LIMITED_USER, PASSWORD);
+                    KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, LIMITED_USER, LIMITED_USER_PASSWORD);
 
             HttpResponse<String> response = sendToFlow("Bearer " + token);
 

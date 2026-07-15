@@ -3,12 +3,12 @@
   "enabled": true,
   "users": [
     {
-      "username": "testUser",
+      "username": "${TEST_USER_NAME}",
       "enabled": true,
       "credentials": [
         {
           "type": "password",
-          "value": "drowssap",
+          "value": "${TEST_USER_PASSWORD}",
           "temporary": false
         }
       ],
@@ -18,12 +18,12 @@
       "realmRoles": ["user", "read"]
     },
     {
-      "username": "limitedUser",
+      "username": "${LIMITED_USER_NAME}",
       "enabled": true,
       "credentials": [
         {
           "type": "password",
-          "value": "drowssap",
+          "value": "${LIMITED_USER_PASSWORD}",
           "temporary": false
         }
       ],

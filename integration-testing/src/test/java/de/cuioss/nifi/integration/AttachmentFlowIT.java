@@ -78,7 +78,7 @@ class AttachmentFlowIT {
         waitForEndpoint(httpClient, GATEWAY_BASE + "/api/data", Duration.ofSeconds(120));
 
         String token = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
 
         var sslConfig = RestAssuredConfig.config()
                 .sslConfig(SSLConfig.sslConfig().trustStore(

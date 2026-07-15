@@ -85,7 +85,7 @@ class RestApiGatewayIT {
         waitForEndpoint(httpClient, GATEWAY_BASE + "/api/data", Duration.ofSeconds(120));
 
         String token = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
 
         var sslConfig = RestAssuredConfig.config()
                 .sslConfig(SSLConfig.sslConfig().trustStore(
@@ -576,7 +576,7 @@ class RestApiGatewayIT {
                     .build();
             String otherToken = fetchKeycloakToken(httpClient,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
-                    OTHER_USER, PASSWORD);
+                    OTHER_USER, OTHER_USER_PASSWORD);
 
             given().spec(noAuthSpec)
                     .header("Authorization", "Bearer " + otherToken)

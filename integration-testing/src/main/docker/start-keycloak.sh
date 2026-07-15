@@ -8,6 +8,10 @@ set -e
 # Define script and project directories
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Single definition site for the test credentials this script reports.
+# shellcheck source=test-credentials.env disable=SC1091
+. "${SCRIPT_DIR}/test-credentials.env"
+
 # Change to the script directory to ensure docker-compose finds the yaml file
 cd "$SCRIPT_DIR"
 
@@ -87,8 +91,8 @@ main() {
         echo ""
         echo "🎉 Keycloak is ready for use!"
         echo "  Realm: oauth_integration_tests"
-        echo "  Admin: admin/admin"
-        echo "  Test user: testUser/drowssap"
+        echo "  Admin: ${KC_BOOTSTRAP_ADMIN_USERNAME}/${KC_BOOTSTRAP_ADMIN_PASSWORD}"
+        echo "  Test user: ${TEST_USER_NAME}/${TEST_USER_PASSWORD}"
         echo "  Test client: test_client (public client, no secret)"
         return 0
     else
