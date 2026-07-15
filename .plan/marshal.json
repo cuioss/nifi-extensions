@@ -72,10 +72,7 @@
       "max_iterations": 3,
       "finalize_without_asking": true,
       "loop_back_without_asking": false,
-      "self_review": "auto",
-      "simplify": "auto",
       "checks_wait_timeout_seconds": 600,
-      "drop_review_on_scope_gate": false,
       "steps": {
         "default:finalize-step-sync-baseline": {
           "auto_rebase_threshold": "no_overlap_only",
@@ -94,7 +91,7 @@
         "default:finalize-step-security-audit": {
           "lane": "full"
         },
-        "default:push": {
+        "default:architecture-refresh": {
           "lane": "minimal"
         },
         "plan-marshall:automatic-review": {
@@ -109,13 +106,13 @@
           "review_completion_poll_timeout_seconds": 600,
           "lane": "ask"
         },
+        "default:push": {
+          "lane": "minimal"
+        },
         "default:create-pr": {
           "lane": "minimal"
         },
         "default:ci-verify": {
-          "lane": "minimal"
-        },
-        "default:architecture-refresh": {
           "lane": "minimal"
         },
         "default:sonar-roundtrip": {
@@ -137,7 +134,7 @@
           "merge_queue_wait_budget_seconds": 1800,
           "merge_hold_window": "full_window_release_at_waits",
           "merge_hold_budget_seconds": 3600,
-          "use_merge_queue": false,
+          "use_merge_queue": true,
           "admin_merge_on_stuck_state": false,
           "pre_merge_comment_barrier": "fail_into_loopback",
           "lane": "minimal"
@@ -160,7 +157,10 @@
         "default": "level-3",
         "verification-feedback": "level-3",
         "post-run-review": "level-4"
-      }
+      },
+      "self_review": "auto",
+      "simplify": "auto",
+      "drop_review_on_scope_gate": false
     },
     "finding_raw_input_max_bytes": 65536
   },
@@ -297,7 +297,7 @@
       "lessons_superseded_days": 0,
       "temp_on_maintenance": true
     },
-    "provisioned_version": "0.1.1114",
+    "provisioned_version": "0.1.1116",
     "config_seed_fingerprint": "37df1a33"
   }
 }
