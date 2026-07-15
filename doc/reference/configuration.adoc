@@ -568,8 +568,8 @@ Configuration files are loaded once when the Controller Service is enabled (`@On
 |===
 |Variable |Type |Description
 
-|`JWT_ISSUER_{NAME}_*` |varies |Issuer definition fields (see the static-file issuer keys above). Note the JWKS-URL caveat in the following row.
-|`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer. Note: environment variable underscores are converted to dots internally (`JWKS_URL` becomes `jwks.url`), which does not match the expected property key `jwks-url`. Use static configuration files instead for issuer JWKS URLs.
+|`JWT_ISSUER_{NAME}_*` |varies |Issuer definition fields (see the static-file issuer keys above). The suffix after `{NAME}` maps to an issuer key with underscores converted to dashes — for example `JWT_ISSUER_KEYCLOAK_AUDIENCE` sets the `audience` key of issuer `keycloak`.
+|`JWT_ISSUER_{NAME}_JWKS_URL` |URL |JWKS endpoint for an issuer. The `JWKS_URL` suffix maps to the `jwks-url` issuer key — for example `JWT_ISSUER_KEYCLOAK_JWKS_URL` sets `jwks-url` for issuer `keycloak`.
 |===
 
 === Kubernetes Deployment Example
