@@ -219,27 +219,19 @@ test.describe("Configuration Tab", () => {
         // Verify the issuer "delete-me-issuer" is removed. Removal is async
         // (confirm dialog → API update → re-render); a one-shot read of the input
         // values raced that re-render and saw the stale value, so poll until no
-        // input field carries the removed issuer name.
+        // input field carries the removed issuer name. evaluateAll reads every
+        // input's value in one atomic browser round-trip — a separate count() +
+        // per-index inputValue() sequence can hit a detached element mid-loop
+        // during the re-render and hang until the per-action timeout.
         await expect
             .poll(
-                async () => {
-                    const inputs = customUIFrame.locator(
-                        'input[placeholder="e.g., keycloak"]',
-                    );
-                    const n = await inputs.count();
-                    for (let i = 0; i < n; i++) {
-                        if (
-                            (await inputs.nth(i).inputValue()) ===
-                            "delete-me-issuer"
-                        ) {
-                            return true;
-                        }
-                    }
-                    return false;
-                },
+                () =>
+                    customUIFrame
+                        .locator('input[placeholder="e.g., keycloak"]')
+                        .evaluateAll((inputs) => inputs.map((input) => input.value)),
                 { timeout: 15000 },
             )
-            .toBe(false);
+            .not.toContain("delete-me-issuer");
     });
 
     test("should edit an existing issuer configuration", async ({
