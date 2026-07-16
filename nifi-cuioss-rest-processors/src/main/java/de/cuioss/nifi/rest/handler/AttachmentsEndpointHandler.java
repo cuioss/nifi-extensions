@@ -283,11 +283,28 @@ public final class AttachmentsEndpointHandler implements EndpointHandler {
             gatewaySecurityEvents.increment(GatewaySecurityEvents.EventType.QUEUE_FULL);
             LOGGER.warn(RestApiLogMessages.WARN.QUEUE_FULL, "POST", sanitized.path(),
                     remoteHost);
+            // F1: evict the child status entry BEFORE the 503 is flushed. Doing it after the response
+            // races the client — which can observe the orphaned ACCEPTED child via /status in the
+            // window between receiving the 503 and the eviction completing on the server. Mirrors the
+            // same ordering rationale in ApiRouteHandler.enqueueFlowFile.
+            removeChildStatusEntry(tracking.traceId());
             ProblemDetail.serviceUnavailable("Server is at capacity, please retry later")
                     .sendResponse(response, callback);
             return false;
         }
         return true;
+    }
+
+    /**
+     * Removes the child status entry that {@link #registerAttachment} persisted but whose enqueue
+     * then failed (queue-full 503), so the rejected attachment leaves no residual ACCEPTED entry.
+     */
+    private void removeChildStatusEntry(String traceId) {
+        try {
+            statusStore.remove(traceId);
+        } catch (IOException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_STORE_ERROR, e.getMessage());
+        }
     }
 
     /**

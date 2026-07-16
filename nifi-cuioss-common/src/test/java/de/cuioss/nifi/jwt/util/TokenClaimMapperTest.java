@@ -70,16 +70,20 @@ class TokenClaimMapperTest {
         @Test
         @DisplayName("Should map roles as comma-separated string")
         void shouldMapRoles() {
+            // Arrange — a token that definitely carries roles
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
             tokenHolder.withClaim("roles", ClaimValue.forList("admin,user",
                     List.of("admin", "user")));
             var token = tokenHolder.asAccessTokenContent();
 
+            // Act
             Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
 
-            assertTrue(token.getRoles().contains("admin") || token.getRoles().contains("user")
-                    || attributes.containsKey(JwtAttributes.Authorization.ROLES),
-                    "Roles should be mapped when present");
+            // Assert — on the mapper's output only. The previous disjunction also accepted
+            // token.getRoles() containing the values, so it passed whether or not the mapper
+            // ever wrote the attribute.
+            assertEquals("admin,user", attributes.get(JwtAttributes.Authorization.ROLES),
+                    "Roles must be mapped to a comma-separated attribute");
         }
 
         @Test
@@ -101,16 +105,26 @@ class TokenClaimMapperTest {
 
         @Test
         @DisplayName("Should not include scopes attribute when no scope claim")
+        // S125 false positive: the Arrange comment quotes a code-like fragment as prose, not dead code.
+        @SuppressWarnings("java:S125")
         void shouldNotMapScopesWhenAbsent() {
+            // Arrange — a token with the scope claim explicitly removed. The generator DOES emit a
+            // scope claim by default, so the previous version's `if (!containsKey("scope"))` guard
+            // was never entered and the test never asserted anything at all. The claim is now
+            // removed deliberately and the precondition is ASSERTED rather than used as a guard, so
+            // the arrangement can never silently stop holding.
             TestTokenHolder tokenHolder = TestTokenGenerators.accessTokens().next();
+            tokenHolder.withoutClaim("scope");
             var token = tokenHolder.asAccessTokenContent();
+            assertFalse(token.getClaims().containsKey("scope"),
+                    "Precondition: the generated token must not carry a scope claim");
 
-            // Default tokens from generator don't have scope claim
-            if (!token.getClaims().containsKey("scope")) {
-                Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
-                assertNull(attributes.get(JwtAttributes.Authorization.SCOPES),
-                        "Scopes should not be present when no scope claim");
-            }
+            // Act
+            Map<String, String> attributes = TokenClaimMapper.mapToAttributes(token);
+
+            // Assert
+            assertNull(attributes.get(JwtAttributes.Authorization.SCOPES),
+                    "Scopes must not be mapped when the token has no scope claim");
         }
 
         @Test

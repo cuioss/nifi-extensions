@@ -113,7 +113,7 @@ class CustomUIEndpointsIT {
 
         // Fetch a Keycloak token for endpoint tests that need a real JWT
         keycloakToken = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
 
         // Fetch JWKS from Keycloak for JWKS content validation tests
         HttpRequest jwksRequest = HttpRequest.newBuilder()

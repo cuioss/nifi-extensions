@@ -144,7 +144,7 @@ class NiFiProcessorMetricsIT {
 
         // Send a request with a valid token (triggers success path)
         String token = fetchKeycloakToken(plainClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
         HttpRequest validTokenRequest = HttpRequest.newBuilder()
                 .uri(URI.create(FLOW_ENDPOINT))
                 .GET()

@@ -3,12 +3,12 @@
   "enabled": true,
   "users": [
     {
-      "username": "otherUser",
+      "username": "${OTHER_USER_NAME}",
       "enabled": true,
       "credentials": [
         {
           "type": "password",
-          "value": "drowssap",
+          "value": "${OTHER_USER_PASSWORD}",
           "temporary": false
         }
       ],
@@ -23,7 +23,7 @@
       "clientId": "other_client",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "otherClientSecretValue123456789",
+      "secret": "${OTHER_CLIENT_SECRET}",
       "redirectUris": ["*"],
       "webOrigins": ["*"],
       "publicClient": false,

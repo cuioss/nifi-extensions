@@ -62,6 +62,13 @@ public class ConfigurationManager {
     private final Map<String, Map<String, String>> issuerProperties = new HashMap<>();
     @Getter private volatile boolean configurationLoaded = false;
     private final String basePath;
+    /**
+     * The environment this manager reads {@code JWT_*} configuration from. Production always
+     * supplies the real process environment; the package-private constructor below lets tests
+     * pin it to a controlled map so env-driven behaviour is deterministic regardless of what the
+     * developer happens to have exported.
+     */
+    private final Map<String, String> environment;
 
     private enum FileLoadResult {NO_FILE, LOADED, FAILED}
 
@@ -70,7 +77,20 @@ public class ConfigurationManager {
     }
 
     public ConfigurationManager(String basePath) {
+        this(basePath, System.getenv());
+    }
+
+    /**
+     * Test seam: builds a manager over an explicit environment map instead of the ambient process
+     * environment. Package-private on purpose — this is the minimum needed to make the {@code JWT_*}
+     * handling testable, not a general configuration abstraction.
+     *
+     * @param basePath    the configuration base path
+     * @param environment the environment variables to read
+     */
+    ConfigurationManager(String basePath, Map<String, String> environment) {
         this.basePath = normalizeBasePath(basePath);
+        this.environment = Map.copyOf(environment);
         loadConfiguration();
     }
 
@@ -313,8 +333,7 @@ public class ConfigurationManager {
     }
 
     private void loadFromEnvironment() {
-        Map<String, String> env = System.getenv();
-        for (Map.Entry<String, String> entry : env.entrySet()) {
+        for (Map.Entry<String, String> entry : environment.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
             if (key.startsWith(ISSUER_ENV_PREFIX)) {

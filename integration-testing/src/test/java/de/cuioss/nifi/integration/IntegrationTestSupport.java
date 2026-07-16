@@ -55,6 +55,16 @@ import static org.junit.jupiter.api.Assertions.*;
 @UtilityClass
 class IntegrationTestSupport {
 
+    /**
+     * The single definition site for the test credentials, shared with
+     * docker-compose.yml, the Keycloak realm imports and the docker shell scripts.
+     * Resolved relative to the integration-testing module directory, which is the
+     * working directory Failsafe runs the ITs from.
+     */
+    private static final Path CREDENTIALS_FILE = Path.of("src/main/docker/test-credentials.env");
+
+    private static final Map<String, String> CREDENTIALS = loadCredentials();
+
     // ── Keycloak: oauth_integration_tests realm ────────────────────────
     static final String KEYCLOAK_BASE = "https://localhost:9085";
     static final String KEYCLOAK_TOKEN_ENDPOINT = KEYCLOAK_BASE
@@ -63,16 +73,23 @@ class IntegrationTestSupport {
             + "/realms/oauth_integration_tests/protocol/openid-connect/certs";
     // test_client is a public client (no secret) using the direct-access grant
     static final String CLIENT_ID = "test_client";
-    static final String TEST_USER = "testUser";
-    static final String LIMITED_USER = "limitedUser";
-    static final String PASSWORD = "drowssap";
+
+    // testUser and limitedUser are two DISTINCT users that happen to share the same
+    // password today. They are kept as separate constants on purpose: collapsing
+    // them onto one shared PASSWORD constant would silently merge the two identities
+    // and would break the moment their passwords diverge.
+    static final String TEST_USER = credential("TEST_USER_NAME");
+    static final String TEST_USER_PASSWORD = credential("TEST_USER_PASSWORD");
+    static final String LIMITED_USER = credential("LIMITED_USER_NAME");
+    static final String LIMITED_USER_PASSWORD = credential("LIMITED_USER_PASSWORD");
 
     // ── Keycloak: other_realm (different RSA key pair for signature tests) ──
     static final String OTHER_REALM_TOKEN_ENDPOINT = KEYCLOAK_BASE
             + "/realms/other_realm/protocol/openid-connect/token";
     static final String OTHER_CLIENT_ID = "other_client";
-    static final String OTHER_CLIENT_SECRET = "otherClientSecretValue123456789";
-    static final String OTHER_USER = "otherUser";
+    static final String OTHER_CLIENT_SECRET = credential("OTHER_CLIENT_SECRET");
+    static final String OTHER_USER = credential("OTHER_USER_NAME");
+    static final String OTHER_USER_PASSWORD = credential("OTHER_USER_PASSWORD");
 
     // ── NiFi ───────────────────────────────────────────────────────────
     static final String NIFI_API_BASE = "https://localhost:9095/nifi-api";
@@ -83,8 +100,59 @@ class IntegrationTestSupport {
     // Expected issuer value (as seen by NiFi inside Docker network)
     static final String EXPECTED_ISSUER = "https://keycloak:8443/realms/oauth_integration_tests";
 
-    private static final String NIFI_USERNAME = "testUser";
-    private static final String NIFI_PASSWORD = "drowssap";
+    // NiFi's single-user login uses the same identity as the Keycloak test user.
+    // Note: nifi/conf/login-identity-providers.xml pins the NiFi password as a
+    // bcrypt hash, so changing TEST_USER_PASSWORD alone will not move NiFi's
+    // password — that hash must be regenerated to match. See test-credentials.env.
+    private static final String NIFI_USERNAME = TEST_USER;
+    private static final String NIFI_PASSWORD = TEST_USER_PASSWORD;
+
+    /**
+     * Reads the shared credential file into an immutable key/value map.
+     * The file uses the simple {@code KEY=value} env format, with {@code #} comments
+     * and blank lines ignored.
+     *
+     * @return the parsed credentials
+     * @throws IllegalStateException when the file cannot be read
+     */
+    private static Map<String, String> loadCredentials() {
+        Map<String, String> values = new LinkedHashMap<>();
+        try {
+            for (String line : Files.readAllLines(CREDENTIALS_FILE, StandardCharsets.UTF_8)) {
+                String trimmed = line.strip();
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                int separator = trimmed.indexOf('=');
+                if (separator > 0) {
+                    values.put(trimmed.substring(0, separator).strip(),
+                            trimmed.substring(separator + 1).strip());
+                }
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Unable to read the shared test credentials from %s — integration tests must run from the integration-testing module directory"
+                            .formatted(CREDENTIALS_FILE.toAbsolutePath()), e);
+        }
+        return Map.copyOf(values);
+    }
+
+    /**
+     * Looks up a single credential, failing loudly when it is absent so a missing
+     * entry surfaces as a configuration error rather than as an authentication failure.
+     *
+     * @param key the credential key
+     * @return the credential value
+     * @throws IllegalStateException when the key is missing or empty
+     */
+    private static String credential(String key) {
+        String value = CREDENTIALS.get(key);
+        if (value == null || value.isEmpty()) {
+            throw new IllegalStateException(
+                    "Credential '%s' is not defined in %s".formatted(key, CREDENTIALS_FILE));
+        }
+        return value;
+    }
 
     /**
      * Polls the given endpoint until it accepts connections or the timeout expires.

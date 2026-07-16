@@ -82,9 +82,13 @@ services:
     ports:
       - "9085:8443"  # HTTPS (primary)
       - "9086:9000"  # Management port (health checks)
+    # Single definition site for the test credentials. env_file injects these into
+    # the container's runtime environment, which is where the --import-realm
+    # placeholder substitution resolves the PLAIN ${VAR} placeholders used by the
+    # realm JSONs under ./keycloak. It also supplies KC_BOOTSTRAP_ADMIN_*.
+    env_file:
+      - ./test-credentials.env
     environment:
-      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
       - KC_METRICS_ENABLED=true
       - KC_DB=dev-mem

@@ -85,7 +85,7 @@ class RestApiGatewayIT {
         waitForEndpoint(httpClient, GATEWAY_BASE + "/api/data", Duration.ofSeconds(120));
 
         String token = fetchKeycloakToken(httpClient,
-                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, PASSWORD);
+                KEYCLOAK_TOKEN_ENDPOINT, CLIENT_ID, null, TEST_USER, TEST_USER_PASSWORD);
 
         var sslConfig = RestAssuredConfig.config()
                 .sslConfig(SSLConfig.sslConfig().trustStore(
@@ -240,24 +240,22 @@ class RestApiGatewayIT {
          * Feeds an attack string into the {@code {itemId}} path-parameter segment of
          * the live gateway and asserts the gateway does not return a 2xx success — the
          * security pipeline rejects the adversarial value (400) or the router declines
-         * to match it (404). REST Assured URL-encodes the path segment; a value that
-         * cannot form a valid request is rejected at the transport level (caught here).
+         * to match it (404).
+         *
+         * <p>No transport-level exception is caught here, deliberately. REST Assured
+         * URL-encodes the path segment, so every attack string in the OWASP / Apache
+         * CVE / ModSecurity CRS databases forms a valid HTTP request and yields a real
+         * status code. Any exception that does escape this call therefore signals an
+         * unreachable or crashed gateway (for example {@link java.net.ConnectException}),
+         * which must fail the test rather than be swallowed into a vacuous pass.
          */
         private void assertAttackItemIdRejected(AttackTestCase testCase) {
-            int status;
-            try {
-                status = given().spec(authSpec)
-                        .when()
-                        .get("/api/items/{itemId}", testCase.attackString())
-                        .then()
-                        .extract()
-                        .statusCode();
-            } catch (RuntimeException e) {
-                // The attack string could not form a valid HTTP request — REST Assured /
-                // the client refused it at the transport level. That is a legitimate
-                // rejection, so return without asserting a status.
-                return;
-            }
+            int status = given().spec(authSpec)
+                    .when()
+                    .get("/api/items/{itemId}", testCase.attackString())
+                    .then()
+                    .extract()
+                    .statusCode();
             // A 401/403 means the class-level token was itself rejected (typically expired
             // mid-run against Keycloak's default access-token lifespan). Accepting that as
             // "non-2xx = safe" would make every remaining attack case pass vacuously, so
@@ -578,7 +576,7 @@ class RestApiGatewayIT {
                     .build();
             String otherToken = fetchKeycloakToken(httpClient,
                     OTHER_REALM_TOKEN_ENDPOINT, OTHER_CLIENT_ID, OTHER_CLIENT_SECRET,
-                    OTHER_USER, PASSWORD);
+                    OTHER_USER, OTHER_USER_PASSWORD);
 
             given().spec(noAuthSpec)
                     .header("Authorization", "Bearer " + otherToken)
@@ -620,6 +618,80 @@ class RestApiGatewayIT {
                     .then()
                     .statusCode(403)
                     .contentType(containsString("application/problem+json"));
+        }
+    }
+
+    // ── Sandbox Routes (auth-mode=none, required-scopes) ─────────────────
+
+    /**
+     * Covers the two auth-mode / scope branches documented in
+     * doc/architecture/gateway.adoc "Auth-Mode Dispatch" that no other route exercises.
+     * The routes are defined in nifi/conf/cui-nifi-extensions.properties.
+     */
+    @Nested
+    @DisplayName("Sandbox Routes")
+    class SandboxRouteTests {
+
+        @Test
+        @DisplayName("auth-mode=none route should return 200 without any token")
+        void anonymousRouteShouldAcceptRequestWithoutToken() {
+            // Arrange: noAuthSpec deliberately carries no Authorization header.
+            // Act + Assert: auth-mode=none means the request is served anonymously
+            // rather than rejected with the 401 every BEARER route returns.
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/sandbox/anonymous")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("auth-mode=none route should still return 200 when a token is supplied")
+        void anonymousRouteShouldAcceptRequestWithToken() {
+            // A token is not required, but supplying one must not break the route.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/anonymous")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 200 when the token carries the scope")
+        void scopedRouteShouldAcceptTokenWithRequiredScope() {
+            // The route requires 'profile', which Keycloak includes in the test token
+            // (scope: "openid profile email"), so authorization passes.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/scoped")
+                    .then()
+                    .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 403 insufficient_scope when the scope is absent")
+        void scopedRouteShouldRejectTokenMissingRequiredScope() {
+            // Same valid token as above — the only reason for rejection is the missing
+            // 'sandbox:write' scope, which distinguishes this from a 401 auth failure.
+            given().spec(authSpec)
+                    .when()
+                    .get("/api/sandbox/scoped-denied")
+                    .then()
+                    .statusCode(403)
+                    .contentType(containsString("application/problem+json"))
+                    .body("detail", containsString("sandbox:write"));
+        }
+
+        @Test
+        @DisplayName("required-scopes route should return 401 rather than 403 without a token")
+        void scopedRouteShouldReturn401WithoutToken() {
+            // Guards the ordering: authentication is evaluated before scope
+            // authorization, so a missing token is a 401, not a scope 403.
+            given().spec(noAuthSpec)
+                    .when()
+                    .get("/api/sandbox/scoped")
+                    .then()
+                    .statusCode(401);
         }
     }
 

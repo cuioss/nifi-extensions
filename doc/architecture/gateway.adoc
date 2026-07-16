@@ -235,9 +235,6 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |`rest.route.outcome`
 |Resolved NiFi relationship (outcome) name for the route
 
-|`rest.route.path`
-|Request URI path of the matched route
-
 |`http.method`
 |HTTP method (GET, POST, etc.)
 
