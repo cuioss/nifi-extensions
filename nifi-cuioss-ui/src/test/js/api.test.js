@@ -396,6 +396,8 @@ describe('updateComponentProperties', () => {
         mockJsonResponse({ revision: { version: 3 }, component: { id: procId, state: 'STOPPED' } });
         // PUT restart run-status
         mockJsonResponse({ revision: { version: 4 } });
+        // GET poll state after restart — RUNNING
+        mockJsonResponse({ revision: { version: 4 }, component: { id: procId, state: 'RUNNING' } });
 
         await updateComponentProperties(procId, { 'key': 'value' });
 
@@ -414,6 +416,12 @@ describe('updateComponentProperties', () => {
         const restartCall = globalThis.fetch.mock.calls[8];
         expect(restartCall[0]).toBe(`/nifi-api/processors/${procId}/run-status`);
         expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
+
+        // Verify the restart transition is awaited (poll GET follows the restart PUT)
+        expect(globalThis.fetch).toHaveBeenCalledTimes(10);
+        const restartPoll = globalThis.fetch.mock.calls[9];
+        expect(restartPoll[0]).toBe(`/nifi-api/processors/${procId}`);
+        expect(restartPoll[1].method).toBe('GET');
     });
 
     test('should auto-terminate stale relationships but keep active ones during restart', async () => {
@@ -454,6 +462,8 @@ describe('updateComponentProperties', () => {
         mockJsonResponse({ revision: { version: 4 }, component: { id: procId, state: 'STOPPED' } });
         // PUT restart
         mockJsonResponse({ revision: { version: 5 } });
+        // GET poll state after restart — RUNNING
+        mockJsonResponse({ revision: { version: 5 }, component: { id: procId, state: 'RUNNING' } });
 
         await updateComponentProperties(procId, { 'key': 'value' });
 
@@ -461,6 +471,45 @@ describe('updateComponentProperties', () => {
         const autoTermCall = globalThis.fetch.mock.calls[7];
         const autoTermBody = JSON.parse(autoTermCall[1].body);
         expect(autoTermBody.component.config.autoTerminatedRelationships).toEqual(['old-rel']);
+    });
+
+    test('should await the full RUNNING transition after restart before resolving', async () => {
+        const procId = '00000000-0000-0000-0000-000000000012';
+        globalThis.jwtAuthConfig = { processorId: procId };
+        // Detection
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // GET current — RUNNING
+        mockJsonResponse({ revision: { version: 1 }, component: { id: procId, state: 'RUNNING', config: { autoTerminatedRelationships: [] } } });
+        // PUT stop
+        mockJsonResponse({ revision: { version: 2 } });
+        // GET poll — STOPPED
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        // GET fresh
+        mockJsonResponse({ revision: { version: 2 }, component: { id: procId, state: 'STOPPED', config: { autoTerminatedRelationships: [] } } });
+        // PUT property update
+        mockJsonResponse({ revision: { version: 3 } });
+        // GET for autoTerminateStaleRelationships — no validation errors
+        mockJsonResponse({ revision: { version: 3 }, component: { id: procId, state: 'STOPPED', validationErrors: [] } });
+        // GET for restart
+        mockJsonResponse({ revision: { version: 3 }, component: { id: procId, state: 'STOPPED' } });
+        // PUT restart run-status
+        mockJsonResponse({ revision: { version: 4 } });
+        // GET poll after restart — still mid-transition, not yet RUNNING
+        mockJsonResponse({ revision: { version: 4 }, component: { id: procId, state: 'STOPPED' } });
+        // GET poll after restart — RUNNING
+        mockJsonResponse({ revision: { version: 4 }, component: { id: procId, state: 'RUNNING' } });
+
+        await updateComponentProperties(procId, { 'key': 'value' });
+
+        // The restart PUT must be followed by polling until the processor actually
+        // reports RUNNING. Resolving while the restart is still in flight lets an
+        // immediately-following update read a non-RUNNING state, skip its
+        // stop-before-mutate step and get rejected by NiFi with
+        // "Cannot modify configuration while the Processor is running".
+        expect(globalThis.fetch).toHaveBeenCalledTimes(11);
+        expect(JSON.parse(globalThis.fetch.mock.calls[8][1].body).state).toBe('RUNNING');
+        expect(globalThis.fetch.mock.calls[9][1].method).toBe('GET');
+        expect(globalThis.fetch.mock.calls[10][1].method).toBe('GET');
     });
 
     test('should reject non-UUID component IDs', async () => {
