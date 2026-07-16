@@ -1078,36 +1078,89 @@ export class ProcessorApiManager {
 
   /**
    * PUT the processor config, recovering from a stale-revision 409 by
-   * re-reading the live revision once — never guessing version+1 (N64).
+   * re-reading the live revision once — never guessing version+1 (N64). On a 409
+   * the retry payload is REBUILT from the freshly-read component.config instead of
+   * replaying the pre-conflict DTO: a concurrent edit landing between the first PUT
+   * and the retry can add new restapi.{route}.* keys or grow the
+   * autoTerminatedRelationships set, and replaying the stale DTO would leave the new
+   * keys behind or clobber the newer relationship set. The rebuild re-derives the
+   * route prefix from the keys it was asked to clear (the same restapi.{routeName}.
+   * prefix removeGatewayRouteProperties computed before the first attempt), null-maps
+   * every key live under that prefix in the fresh state, and unions the fresh
+   * auto-terminated set with the requested relationships. After the rebuilt retry the
+   * live config is re-read and confirmed free of every key under the route prefix
+   * before returning true.
    * @param {string} processorId - target processor id
    * @param {number} version - revision version to attempt first
-   * @param {object} config - partial config DTO (e.g. properties mapped to null, autoTerminatedRelationships)
-   * @returns {Promise<boolean>} true when NiFi accepted the config update
+   * @param {object} config - partial config DTO (properties mapped to null, autoTerminatedRelationships)
+   * @returns {Promise<boolean>} true when NiFi accepted the config update and the route keys are gone
    */
   async _updateProcessorConfigWithFreshRevision(processorId, version, config) {
-    const attempt = rev =>
+    const attempt = (rev, body) =>
       this.makeApiCall(`/nifi-api/processors/${processorId}`, {
         method: 'PUT',
         body: {
           revision: { version: rev },
           component: {
             id: processorId,
-            config
+            config: body
           }
         }
       });
 
-    let result = await attempt(version);
+    let result = await attempt(version, config);
     if (result.ok) return true;
+    if (result.status !== 409) return false;
 
-    if (result.status === 409) {
-      const fresh = await this.getProcessorDetails(processorId);
-      const freshVersion = fresh?.revision?.version;
-      if (freshVersion === undefined || freshVersion === null) return false;
-      result = await attempt(freshVersion);
-      return result.ok;
+    // Stale-revision conflict: re-read the live revision AND the live config, then
+    // rebuild the clear payload from that fresh state so a concurrent edit cannot
+    // leave new route keys behind or clobber a newer auto-terminated set.
+    const fresh = await this.getProcessorDetails(processorId);
+    const freshVersion = fresh?.revision?.version;
+    if (freshVersion === undefined || freshVersion === null) return false;
+
+    // Re-derive the route prefix from the keys we were asked to clear — they all
+    // share the restapi.{routeName}. prefix, mirroring how removeGatewayRouteProperties
+    // computed matchedKeys before the first attempt.
+    const requestedKeys = Object.keys(config.properties || {});
+    let prefix = '';
+    if (requestedKeys.length > 0 && requestedKeys[0].startsWith('restapi.')) {
+      const rest = requestedKeys[0].slice('restapi.'.length);
+      const dot = rest.indexOf('.');
+      if (dot > 0) prefix = `restapi.${rest.slice(0, dot)}.`;
     }
-    return false;
+
+    const freshConfig = fresh.component?.config || {};
+    const freshProps = freshConfig.properties || {};
+
+    // Null-map the originally requested keys plus every key under the route prefix
+    // that is live in the FRESH state (catches keys a concurrent edit added).
+    const rebuiltProps = {};
+    for (const key of requestedKeys) rebuiltProps[key] = null;
+    if (prefix) {
+      for (const key of Object.keys(freshProps)) {
+        if (key.startsWith(prefix)) rebuiltProps[key] = null;
+      }
+    }
+
+    // Union the fresh auto-terminated set with the requested relationships so a
+    // newer set is preserved rather than clobbered.
+    const autoTerminated = new Set(freshConfig.autoTerminatedRelationships || []);
+    for (const rel of config.autoTerminatedRelationships || []) autoTerminated.add(rel);
+
+    result = await attempt(freshVersion, {
+      properties: rebuiltProps,
+      autoTerminatedRelationships: [...autoTerminated]
+    });
+    if (!result.ok) return false;
+
+    // Confirm the retry actually cleared the route before reporting success.
+    if (prefix) {
+      const after = await this.getProcessorDetails(processorId);
+      const liveProps = after?.component?.config?.properties || {};
+      if (Object.keys(liveProps).some(key => key.startsWith(prefix))) return false;
+    }
+    return true;
   }
 
   /**
@@ -1150,6 +1203,29 @@ export class ProcessorApiManager {
       testLogger.info(
         'Processor',
         `removeGatewayRouteProperties('${routeName}'): no properties matching '${prefix}' — already clean`
+      );
+      // Already clean, but the cleanup contract requires a RUNNING gateway. A clean
+      // gateway that is STOPPED (or in any non-RUNNING physical state) must be
+      // started and confirmed RUNNING before we report success — otherwise later
+      // suites inherit a stopped gateway. Reuse the same state-check / start /
+      // confirm pattern the non-empty-matchedKeys path applies at the end.
+      const cleanPhysicalState =
+        (details.physicalState || details.component?.state || '').toUpperCase();
+      if (cleanPhysicalState === 'RUNNING') {
+        return true;
+      }
+      const started = await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
+      const running = started && (await this._waitForProcessorRunning(gatewayId));
+      if (!running) {
+        testLogger.warn(
+          'Processor',
+          `removeGatewayRouteProperties('${routeName}'): already clean but gateway ${gatewayId} could not be confirmed RUNNING`
+        );
+        return false;
+      }
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): already clean; started gateway ${gatewayId} and confirmed RUNNING`
       );
       return true;
     }
