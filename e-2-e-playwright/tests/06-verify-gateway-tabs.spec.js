@@ -13,6 +13,7 @@ import {
 import { CONSTANTS } from "../utils/constants.js";
 import { getValidAccessToken } from "../utils/keycloak-token-service.js";
 import { assertNoAuthError } from "../utils/test-assertions.js";
+import { ProcessorApiManager } from "../utils/processor-api-manager.js";
 
 /**
  * Remove a persisted route by name if it is present in the summary table.
@@ -52,6 +53,18 @@ test.describe("REST API Gateway Tabs", () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
         await takeStartScreenshot(page, testInfo);
+    });
+
+    // Authoritative end-of-test cleanup for the serial block: after all tests run,
+    // remove the persisted e2e-modify-test route by clearing its
+    // restapi.e2e-modify-test.* properties on the RestApiGatewayProcessor directly
+    // via the NiFi REST API. Idempotent — tolerates the already-clean case, leaves
+    // the gateway RUNNING, and introduces no fixed sleep (N64). Reuses the block's
+    // worker-scoped shared page. The removeRouteIfPresent pre-clean calls inside the
+    // tests remain as UI-side defense-in-depth.
+    test.afterAll(async ({ _sharedPage }) => {
+        const processorManager = new ProcessorApiManager(_sharedPage);
+        await processorManager.removeGatewayRouteProperties("e2e-modify-test");
     });
 
     test("should display gateway-specific tabs in custom UI", async ({
@@ -1047,9 +1060,10 @@ test.describe("REST API Gateway Tabs", () => {
             `tbody tr[data-route-name="${routeName}"]`,
         );
         await expect(savedRow).toHaveAttribute("data-origin", "persisted");
-        // No end-cleanup: a just-edited ("modified") route's delete is handled differently by
-        // the UI; the idempotent removeRouteIfPresent at the top of this test removes any
-        // leftover e2e-modify-test on the next run, so residual state cannot accumulate.
+        // End-of-test cleanup is handled by the describe-block afterAll hook, which
+        // clears the restapi.e2e-modify-test.* properties via the NiFi REST API — the
+        // authoritative route removal. The removeRouteIfPresent pre-clean above stays
+        // as UI-side defense-in-depth.
     });
 
     test("should display endpoint tester with route selector and controls", async ({

@@ -1021,6 +1021,184 @@ export class ProcessorApiManager {
     }
     return false;
   }
+
+  /**
+   * Poll a processor until it reports a stable state: not RUNNING and no active
+   * threads. Mirrors the settle loop in removeProcessorById (no fixed sleep, N64).
+   * @param {string} processorId - target processor id
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   * @returns {Promise<object|null>} the last-fetched processor details, or null if it vanished
+   */
+  async _waitForProcessorSettled(processorId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    let details = await this.getProcessorDetails(processorId);
+    while (Date.now() < deadline) {
+      if (!details) return null;
+      const runStatus =
+        details.status?.aggregateSnapshot?.runStatus || details.component?.state || '';
+      const activeThreads = details.status?.aggregateSnapshot?.activeThreadCount ?? 0;
+      if (runStatus.toUpperCase() !== 'RUNNING' && activeThreads === 0) return details;
+      await new Promise(resolve => setTimeout(resolve, 250));
+      details = await this.getProcessorDetails(processorId);
+    }
+    testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to settle`);
+    return details;
+  }
+
+  /**
+   * Poll a processor until it reports a RUNNING run-status.
+   * @param {string} processorId - target processor id
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   * @returns {Promise<boolean>} true once the processor is RUNNING, false on timeout
+   */
+  async _waitForProcessorRunning(processorId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const details = await this.getProcessorDetails(processorId);
+      const runStatus =
+        details?.status?.aggregateSnapshot?.runStatus || details?.component?.state || '';
+      if (runStatus.toUpperCase() === 'RUNNING') return true;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to reach RUNNING`);
+    return false;
+  }
+
+  /**
+   * PUT the processor config with the given properties map, recovering from a
+   * stale-revision 409 by re-reading the live revision once — never guessing
+   * version+1 (N64).
+   * @param {string} processorId - target processor id
+   * @param {number} version - revision version to attempt first
+   * @param {Object<string, null>} properties - property keys mapped to null (clears them)
+   * @returns {Promise<boolean>} true when NiFi accepted the property update
+   */
+  async _updateProcessorPropertiesWithFreshRevision(processorId, version, properties) {
+    const attempt = rev =>
+      this.makeApiCall(`/nifi-api/processors/${processorId}`, {
+        method: 'PUT',
+        body: {
+          revision: { version: rev },
+          component: {
+            id: processorId,
+            config: { properties }
+          }
+        }
+      });
+
+    let result = await attempt(version);
+    if (result.ok) return true;
+
+    if (result.status === 409) {
+      const fresh = await this.getProcessorDetails(processorId);
+      const freshVersion = fresh?.revision?.version;
+      if (freshVersion === undefined || freshVersion === null) return false;
+      result = await attempt(freshVersion);
+      return result.ok;
+    }
+    return false;
+  }
+
+  /**
+   * Remove all restapi.{routeName}.* properties from the RestApiGatewayProcessor
+   * via the REST API. Idempotent: returns true as a no-op when the gateway
+   * processor is absent from the canvas or carries no matching properties. When
+   * properties do match, the processor is stopped (only if RUNNING), polled to a
+   * settled state, its config PUT with each matched key mapped to null, then
+   * restarted and confirmed RUNNING — all without a fixed sleep (N64). Stale
+   * revisions on the PUT are recovered by re-reading the live revision (N64).
+   * @param {string} routeName - route whose restapi.{routeName}.* properties to clear
+   * @returns {Promise<boolean>} true on success (including the idempotent no-op cases)
+   */
+  async removeGatewayRouteProperties(routeName) {
+    const gatewayId = await this.getGatewayProcessorId();
+    if (!gatewayId) {
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): gateway processor not on canvas — nothing to clean`
+      );
+      return true;
+    }
+
+    const details = await this.getProcessorDetails(gatewayId);
+    if (!details) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): could not fetch gateway processor ${gatewayId} details`
+      );
+      return false;
+    }
+
+    const prefix = `restapi.${routeName}.`;
+    const currentProps = details.component?.config?.properties || {};
+    const matchedKeys = Object.keys(currentProps).filter(key => key.startsWith(prefix));
+    if (matchedKeys.length === 0) {
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): no properties matching '${prefix}' — already clean`
+      );
+      return true;
+    }
+
+    testLogger.info(
+      'Processor',
+      `removeGatewayRouteProperties('${routeName}'): clearing ${matchedKeys.length} property(ies): ${matchedKeys.join(', ')}`
+    );
+
+    // Stop the gateway before mutating its config, but only when it is RUNNING.
+    const initialState =
+      details.status?.aggregateSnapshot?.runStatus || details.component?.state || '';
+    if (initialState.toUpperCase() === 'RUNNING') {
+      await this.setProcessorRunStatusById(gatewayId, 'STOPPED');
+    }
+
+    // Poll to a stable (non-RUNNING, no active threads) state before the PUT.
+    const settled = await this._waitForProcessorSettled(gatewayId);
+    if (!settled) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): gateway processor ${gatewayId} vanished while settling`
+      );
+      return false;
+    }
+
+    // Map each matched key to null so NiFi clears it, then PUT the fresh revision.
+    const clearMap = {};
+    for (const key of matchedKeys) clearMap[key] = null;
+
+    const version = settled.revision?.version ?? 0;
+    const updated = await this._updateProcessorPropertiesWithFreshRevision(
+      gatewayId,
+      version,
+      clearMap
+    );
+
+    // Always try to leave the provisioned gateway RUNNING again, even on failure.
+    await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
+    const running = await this._waitForProcessorRunning(gatewayId);
+
+    if (!updated) {
+      testLogger.error(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): failed to clear properties on gateway ${gatewayId}`
+      );
+      return false;
+    }
+
+    if (!running) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): cleared properties but gateway ${gatewayId} did not confirm RUNNING`
+      );
+      return false;
+    }
+
+    testLogger.info(
+      'Processor',
+      `removeGatewayRouteProperties('${routeName}'): cleared ${matchedKeys.length} property(ies); gateway ${gatewayId} restarted and RUNNING`
+    );
+    return true;
+  }
 }
 
 // Export convenience functions for backward compatibility
