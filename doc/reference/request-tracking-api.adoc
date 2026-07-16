@@ -1,6 +1,8 @@
 = Request Tracking API Guide
-:toc: auto
+:toc: left
 :toclevels: 3
+:sectnums:
+:source-highlighter: highlight.js
 
 == For API Consumers
 
@@ -286,3 +288,47 @@ A `DistributedMapCacheServer` controller service must be running in NiFi for the
 5. Configure server hostname and port
 6. Enable the service
 7. Reference it in the gateway processor's "Distributed Map Cache Client" property
+
+=== Cache Sizing and Eviction
+
+The gateway writes one cache entry per tracked request and sets no expiry on it.
+Entries are removed explicitly only when a request never reaches a terminal state (for example, a queue-full `503`, or in-flight containers discarded on processor shutdown).
+Entries for requests that complete normally — `PROCESSED`, `REJECTED`, `ERROR` — are never removed by the gateway.
+
+The entry count therefore grows with total request volume, and the only bound is the eviction policy of the `DistributedMapCacheServer`.
+Sizing it is an operational decision, not a detail that can be left at its defaults.
+
+==== Recommended Configuration
+
+Configure these properties on the `DistributedMapCacheServer` controller service:
+
+[cols="1,1,3"]
+|===
+|Property |Recommended |Rationale
+
+|Eviction Strategy
+|`Least Recently Used`
+|The default is `Least Frequently Used`, which is the wrong fit for this workload. A status entry is polled a handful of times while the request is fresh and then never again, so LFU retains long-finished entries that happened to be polled often and evicts recent entries that have only been polled once. `Least Recently Used` matches the actual access pattern: keep what is still being polled, discard what nobody has asked about.
+
+|Maximum Cache Entries
+|Peak accept rate x longest polling window, plus headroom
+|The default is `10000`. Size it to the number of requests accepted during the longest window in which a consumer may still poll for status. At a sustained 50 requests/second with consumers polling for up to 10 minutes after acceptance, 50 x 600 = 30000 entries are live — three times the default, so the default would evict entries that are still being polled.
+|===
+
+==== Consequence of Eviction
+
+Eviction is silent and irreversible. Once an entry is evicted, `GET /status/{traceId}` cannot distinguish that trace ID from one that never existed: both return the same RFC 9457 `404` Problem Detail documented under "Unknown traceId (404)" above.
+
+[source,json]
+----
+{
+  "type": "https://github.com/cuioss/nifi-extensions/blob/main/doc/reference/error-reference.adoc",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "No status found for traceId: 550e8400-e29b-41d4-a716-446655440000"
+}
+----
+
+IMPORTANT: A `404` therefore does not mean the request was never accepted — it may mean the request completed and its entry has since been evicted. Consumers must not treat `404` as proof that a submission failed. Size the cache so that eviction cannot occur inside the window in which consumers are expected to poll.
+
+NOTE: The same `404` appears after a NiFi restart when the `DistributedMapCacheServer` has no "Persistence Directory" configured, because the cache is then held in memory only and starts empty.
