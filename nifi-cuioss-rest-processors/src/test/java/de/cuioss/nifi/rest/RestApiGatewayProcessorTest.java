@@ -1365,6 +1365,8 @@ class RestApiGatewayProcessorTest {
 
         @Test
         @DisplayName("M3: should answer an escaping handler exception with an RFC 9457 problem response")
+        // S125 false positive: the Arrange comment quotes a code-like fragment as prose, not dead code.
+        @SuppressWarnings("java:S125")
         void shouldReturnRfc9457ProblemDetailOnHandlerError() throws Exception {
             // Arrange: the status store's write path fails with an unchecked exception, which the
             // tracking registration does not catch (it only handles IOException), so it escapes to the

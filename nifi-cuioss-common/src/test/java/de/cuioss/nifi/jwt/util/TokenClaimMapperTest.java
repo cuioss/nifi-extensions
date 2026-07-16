@@ -105,6 +105,8 @@ class TokenClaimMapperTest {
 
         @Test
         @DisplayName("Should not include scopes attribute when no scope claim")
+        // S125 false positive: the Arrange comment quotes a code-like fragment as prose, not dead code.
+        @SuppressWarnings("java:S125")
         void shouldNotMapScopesWhenAbsent() {
             // Arrange — a token with the scope claim explicitly removed. The generator DOES emit a
             // scope claim by default, so the previous version's `if (!containsKey("scope"))` guard
