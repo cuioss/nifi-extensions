@@ -1023,8 +1023,13 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Poll a processor until it reports a stable state: not RUNNING and no active
-   * threads. Mirrors the settle loop in removeProcessorById (no fixed sleep, N64).
+   * Poll a processor until its PHYSICAL state is STOPPED with no active threads.
+   * The physicalState field is authoritative here: a start requested while the
+   * processor is INVALID parks it in a pending-start limbo where runStatus
+   * reports 'Invalid' (not 'Running') and component.state reports STOPPED, yet
+   * NiFi still rejects config mutations with 'Cannot modify configuration while
+   * the Processor is running'. Only physicalState === 'STOPPED' guarantees the
+   * PUT is accepted (no fixed sleep, N64).
    * @param {string} processorId - target processor id
    * @param {number} [timeoutMs] - overall wait budget in milliseconds
    * @returns {Promise<object|null>} the last-fetched processor details, or null if it vanished
@@ -1034,10 +1039,9 @@ export class ProcessorApiManager {
     let details = await this.getProcessorDetails(processorId);
     while (Date.now() < deadline) {
       if (!details) return null;
-      const runStatus =
-        details.status?.aggregateSnapshot?.runStatus || details.component?.state || '';
+      const physicalState = (details.physicalState || details.component?.state || '').toUpperCase();
       const activeThreads = details.status?.aggregateSnapshot?.activeThreadCount ?? 0;
-      if (runStatus.toUpperCase() !== 'RUNNING' && activeThreads === 0) return details;
+      if (physicalState === 'STOPPED' && activeThreads === 0) return details;
       await new Promise(resolve => setTimeout(resolve, 250));
       details = await this.getProcessorDetails(processorId);
     }
@@ -1046,7 +1050,7 @@ export class ProcessorApiManager {
   }
 
   /**
-   * Poll a processor until it reports a RUNNING run-status.
+   * Poll a processor until its physical state is RUNNING.
    * @param {string} processorId - target processor id
    * @param {number} [timeoutMs] - overall wait budget in milliseconds
    * @returns {Promise<boolean>} true once the processor is RUNNING, false on timeout
@@ -1055,9 +1059,9 @@ export class ProcessorApiManager {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       const details = await this.getProcessorDetails(processorId);
-      const runStatus =
-        details?.status?.aggregateSnapshot?.runStatus || details?.component?.state || '';
-      if (runStatus.toUpperCase() === 'RUNNING') return true;
+      const physicalState =
+        (details?.physicalState || details?.component?.state || '').toUpperCase();
+      if (physicalState === 'RUNNING') return true;
       await new Promise(resolve => setTimeout(resolve, 250));
     }
     testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to reach RUNNING`);
@@ -1065,15 +1069,14 @@ export class ProcessorApiManager {
   }
 
   /**
-   * PUT the processor config with the given properties map, recovering from a
-   * stale-revision 409 by re-reading the live revision once — never guessing
-   * version+1 (N64).
+   * PUT the processor config, recovering from a stale-revision 409 by
+   * re-reading the live revision once — never guessing version+1 (N64).
    * @param {string} processorId - target processor id
    * @param {number} version - revision version to attempt first
-   * @param {Object<string, null>} properties - property keys mapped to null (clears them)
-   * @returns {Promise<boolean>} true when NiFi accepted the property update
+   * @param {object} config - partial config DTO (e.g. properties mapped to null, autoTerminatedRelationships)
+   * @returns {Promise<boolean>} true when NiFi accepted the config update
    */
-  async _updateProcessorPropertiesWithFreshRevision(processorId, version, properties) {
+  async _updateProcessorConfigWithFreshRevision(processorId, version, config) {
     const attempt = rev =>
       this.makeApiCall(`/nifi-api/processors/${processorId}`, {
         method: 'PUT',
@@ -1081,7 +1084,7 @@ export class ProcessorApiManager {
           revision: { version: rev },
           component: {
             id: processorId,
-            config: { properties }
+            config
           }
         }
       });
@@ -1103,8 +1106,11 @@ export class ProcessorApiManager {
    * Remove all restapi.{routeName}.* properties from the RestApiGatewayProcessor
    * via the REST API. Idempotent: returns true as a no-op when the gateway
    * processor is absent from the canvas or carries no matching properties. When
-   * properties do match, the processor is stopped (only if RUNNING), polled to a
-   * settled state, its config PUT with each matched key mapped to null, then
+   * properties do match, the processor is stopped (whenever physicalState is not
+   * STOPPED — this also cancels an INVALID pending-start limbo), polled to a
+   * physically STOPPED state, its config PUT with each matched key mapped to
+   * null AND the route's dynamic relationship auto-terminated (else the stale
+   * relationship keeps the processor INVALID and the restart deadlocks), then
    * restarted and confirmed RUNNING — all without a fixed sleep (N64). Stale
    * revisions on the PUT are recovered by re-reading the live revision (N64).
    * @param {string} routeName - route whose restapi.{routeName}.* properties to clear
@@ -1145,14 +1151,19 @@ export class ProcessorApiManager {
       `removeGatewayRouteProperties('${routeName}'): clearing ${matchedKeys.length} property(ies): ${matchedKeys.join(', ')}`
     );
 
-    // Stop the gateway before mutating its config, but only when it is RUNNING.
-    const initialState =
-      details.status?.aggregateSnapshot?.runStatus || details.component?.state || '';
-    if (initialState.toUpperCase() === 'RUNNING') {
+    // Stop the gateway before mutating its config. Judge by physicalState, not
+    // runStatus: a start requested while the processor is INVALID parks it in a
+    // pending-start limbo ('physicalState: STARTING', runStatus 'Invalid') that
+    // still rejects config PUTs with 'Cannot modify configuration while the
+    // Processor is running' — the exact failure that sank the PR #445 UI
+    // cleanup. An explicit STOPPED cancels the pending start.
+    const initialPhysicalState =
+      (details.physicalState || details.component?.state || '').toUpperCase();
+    if (initialPhysicalState !== 'STOPPED') {
       await this.setProcessorRunStatusById(gatewayId, 'STOPPED');
     }
 
-    // Poll to a stable (non-RUNNING, no active threads) state before the PUT.
+    // Poll to a physically STOPPED (no active threads) state before the PUT.
     const settled = await this._waitForProcessorSettled(gatewayId);
     if (!settled) {
       testLogger.warn(
@@ -1162,16 +1173,25 @@ export class ProcessorApiManager {
       return false;
     }
 
-    // Map each matched key to null so NiFi clears it, then PUT the fresh revision.
+    // Map each matched key to null so NiFi clears it. The processor recomputes
+    // its dynamic route relationships only in onScheduled, so clearing the
+    // properties alone leaves a stale '{routeName}' relationship that keeps the
+    // processor INVALID ('not connected and not auto-terminated') and deadlocks
+    // the restart. Auto-terminate that relationship in the same PUT — the same
+    // thing the route-editor UI does on route deletion; the entry becomes a
+    // harmless leftover once onScheduled drops the relationship.
     const clearMap = {};
     for (const key of matchedKeys) clearMap[key] = null;
+    const autoTerminated = new Set(
+      settled.component?.config?.autoTerminatedRelationships || []
+    );
+    autoTerminated.add(routeName);
 
     const version = settled.revision?.version ?? 0;
-    const updated = await this._updateProcessorPropertiesWithFreshRevision(
-      gatewayId,
-      version,
-      clearMap
-    );
+    const updated = await this._updateProcessorConfigWithFreshRevision(gatewayId, version, {
+      properties: clearMap,
+      autoTerminatedRelationships: [...autoTerminated]
+    });
 
     // Always try to leave the provisioned gateway RUNNING again, even on failure.
     await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
