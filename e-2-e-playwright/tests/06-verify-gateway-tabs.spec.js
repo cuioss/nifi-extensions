@@ -1047,9 +1047,15 @@ test.describe("REST API Gateway Tabs", () => {
             `tbody tr[data-route-name="${routeName}"]`,
         );
         await expect(savedRow).toHaveAttribute("data-origin", "persisted");
-        // No end-cleanup: a just-edited ("modified") route's delete is handled differently by
-        // the UI; the idempotent removeRouteIfPresent at the top of this test removes any
-        // leftover e2e-modify-test on the next run, so residual state cannot accumulate.
+
+        // Clean up the route this test created, so the gateway config does not drift from
+        // flow.json. The previous revision skipped this on the theory that "a just-edited
+        // route's delete is handled differently by the UI"; that was never verified and is not
+        // true — the delete below succeeds, and the restapi.e2e-modify-test.* properties are gone
+        // from the processor config afterwards. The pre-clean at the top of the test is a guard
+        // against an interrupted run, not a licence to leave state behind.
+        await removeRouteIfPresent(customUIFrame, summaryTable, MODIFY_ROUTE);
+        await expect(savedRow).toHaveCount(0, { timeout: 5000 });
     });
 
     test("should display endpoint tester with route selector and controls", async ({
