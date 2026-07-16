@@ -344,21 +344,9 @@ const buildComponentBody = (componentId, propsPath, properties) => {
  * If the processor is already stopped, just updates and restarts.
  */
 const updateProcessorWithStopStart = async (componentId, info, properties) => {
-    // Settle-at-entry: wait for a STABLE run state (RUNNING or STOPPED) before
-    // reading run state or mutating. A prior mutation on this same processor
-    // (e.g. add-route then edit-route then delete-route in quick succession)
-    // restarts it and returns WITHOUT awaiting the restart, so this mutation can
-    // begin while that restart is still in flight (a transitional Starting/
-    // Stopping state). Settling here — rather than awaiting the restart at the
-    // END of the previous mutation — guarantees the stop/PUT below never races
-    // an in-flight restart, without adding end-of-function latency that would
-    // block the caller's form-close (saveRoute) or the delete's own row-removal.
-    const current = await waitForStableProcessorState(componentId, info);
-    // The processor is now in a stable terminal state, so an exact-match check is
-    // sufficient — no transitional (Starting/Stopping) state can be observed here.
-    const runStatus = current.component?.status?.runStatus;
-    const state = current.component?.state;
-    const wasRunning = runStatus === 'Running' || state === 'RUNNING';
+    const current = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
+    const wasRunning = current.component?.status?.runStatus === 'Running'
+        || current.component?.state === 'RUNNING';
 
     // Stop the processor if running
     if (wasRunning) {
@@ -420,40 +408,6 @@ const waitForProcessorState = async (componentId, info, desiredState) => {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
     throw new Error(`Processor did not reach state '${desiredState}' within ${maxAttempts * delayMs / 1000} seconds.`);
-};
-
-/**
- * Poll until the processor reports a STABLE terminal run state — RUNNING or
- * STOPPED — as opposed to a transitional Starting/Stopping state, then return
- * the settled GET response (needed for its revision and run state). Uses the
- * same bounding as waitForProcessorState (20 × 500ms). A processor already in a
- * stable state returns on the first GET with no extra delay (the common case is
- * not slowed); only a processor caught mid-transition incurs polling.
- *
- * NiFi reports run state in two shapes: component.state uses UPPERCASE
- * (RUNNING/STOPPED/STARTING/STOPPING) and component.status.runStatus uses
- * TitleCase (Running/Stopped/Starting/Stopping). Either reaching a stable value
- * counts as settled.
- *
- * @param {string} componentId  NiFi processor UUID
- * @param {Object} info  component type descriptor (apiPath, propsPath)
- * @returns {Promise<Object>}  the settled GET response
- */
-const waitForStableProcessorState = async (componentId, info) => {
-    const maxAttempts = 20;
-    const delayMs = 500;
-    const isStable = (data) => {
-        const state = data.component?.state;
-        const runStatus = data.component?.status?.runStatus;
-        return state === 'RUNNING' || state === 'STOPPED' ||
-            runStatus === 'Running' || runStatus === 'Stopped';
-    };
-    for (let i = 0; i < maxAttempts; i++) {
-        const data = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
-        if (isStable(data)) return data;
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    throw new Error(`Processor did not reach a stable state (RUNNING or STOPPED) within ${maxAttempts * delayMs / 1000} seconds.`);
 };
 
 /**
