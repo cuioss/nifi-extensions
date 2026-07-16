@@ -1081,21 +1081,20 @@ export class ProcessorApiManager {
    * re-reading the live revision once — never guessing version+1 (N64). On a 409
    * the retry payload is REBUILT from the freshly-read component.config instead of
    * replaying the pre-conflict DTO: a concurrent edit landing between the first PUT
-   * and the retry can add new restapi.{route}.* keys or grow the
+   * and the retry can add new keys under routePrefix or grow the
    * autoTerminatedRelationships set, and replaying the stale DTO would leave the new
-   * keys behind or clobber the newer relationship set. The rebuild re-derives the
-   * route prefix from the keys it was asked to clear (the same restapi.{routeName}.
-   * prefix removeGatewayRouteProperties computed before the first attempt), null-maps
-   * every key live under that prefix in the fresh state, and unions the fresh
+   * keys behind or clobber the newer relationship set. The rebuild null-maps every
+   * key live under routePrefix in the fresh state, and unions the fresh
    * auto-terminated set with the requested relationships. After the rebuilt retry the
-   * live config is re-read and confirmed free of every key under the route prefix
+   * live config is re-read and confirmed free of every key under routePrefix
    * before returning true.
    * @param {string} processorId - target processor id
    * @param {number} version - revision version to attempt first
    * @param {object} config - partial config DTO (properties mapped to null, autoTerminatedRelationships)
+   * @param {string} routePrefix - the restapi.{routeName}. prefix being cleared
    * @returns {Promise<boolean>} true when NiFi accepted the config update and the route keys are gone
    */
-  async _updateProcessorConfigWithFreshRevision(processorId, version, config) {
+  async _updateProcessorConfigWithFreshRevision(processorId, version, config, routePrefix) {
     const attempt = (rev, body) =>
       this.makeApiCall(`/nifi-api/processors/${processorId}`, {
         method: 'PUT',
@@ -1119,28 +1118,15 @@ export class ProcessorApiManager {
     const freshVersion = fresh?.revision?.version;
     if (freshVersion === undefined || freshVersion === null) return false;
 
-    // Re-derive the route prefix from the keys we were asked to clear — they all
-    // share the restapi.{routeName}. prefix, mirroring how removeGatewayRouteProperties
-    // computed matchedKeys before the first attempt.
-    const requestedKeys = Object.keys(config.properties || {});
-    let prefix = '';
-    if (requestedKeys.length > 0 && requestedKeys[0].startsWith('restapi.')) {
-      const rest = requestedKeys[0].slice('restapi.'.length);
-      const dot = rest.indexOf('.');
-      if (dot > 0) prefix = `restapi.${rest.slice(0, dot)}.`;
-    }
-
     const freshConfig = fresh.component?.config || {};
     const freshProps = freshConfig.properties || {};
 
-    // Null-map the originally requested keys plus every key under the route prefix
+    // Null-map the originally requested keys plus every key under routePrefix
     // that is live in the FRESH state (catches keys a concurrent edit added).
     const rebuiltProps = {};
-    for (const key of requestedKeys) rebuiltProps[key] = null;
-    if (prefix) {
-      for (const key of Object.keys(freshProps)) {
-        if (key.startsWith(prefix)) rebuiltProps[key] = null;
-      }
+    for (const key of Object.keys(config.properties || {})) rebuiltProps[key] = null;
+    for (const key of Object.keys(freshProps)) {
+      if (key.startsWith(routePrefix)) rebuiltProps[key] = null;
     }
 
     // Union the fresh auto-terminated set with the requested relationships so a
@@ -1155,12 +1141,9 @@ export class ProcessorApiManager {
     if (!result.ok) return false;
 
     // Confirm the retry actually cleared the route before reporting success.
-    if (prefix) {
-      const after = await this.getProcessorDetails(processorId);
-      const liveProps = after?.component?.config?.properties || {};
-      if (Object.keys(liveProps).some(key => key.startsWith(prefix))) return false;
-    }
-    return true;
+    const after = await this.getProcessorDetails(processorId);
+    const liveProps = after?.component?.config?.properties || {};
+    return !Object.keys(liveProps).some(key => key.startsWith(routePrefix));
   }
 
   /**
@@ -1272,10 +1255,15 @@ export class ProcessorApiManager {
     autoTerminated.add(routeName);
 
     const version = settled.revision?.version ?? 0;
-    const updated = await this._updateProcessorConfigWithFreshRevision(gatewayId, version, {
-      properties: clearMap,
-      autoTerminatedRelationships: [...autoTerminated]
-    });
+    const updated = await this._updateProcessorConfigWithFreshRevision(
+      gatewayId,
+      version,
+      {
+        properties: clearMap,
+        autoTerminatedRelationships: [...autoTerminated]
+      },
+      prefix
+    );
 
     // Always try to leave the provisioned gateway RUNNING again, even on failure.
     await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
