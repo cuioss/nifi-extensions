@@ -3,6 +3,75 @@
  * Consolidated constants with modern locator patterns and semantic selectors
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * The single definition site for the test credentials, shared with
+ * docker-compose.yml, the Keycloak realm imports, the docker shell scripts and
+ * IntegrationTestSupport.java. Resolved relative to THIS file so the suite can be
+ * launched from any working directory.
+ */
+const CREDENTIALS_FILE = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../integration-testing/src/main/docker/test-credentials.env'
+);
+
+/**
+ * Parses the shared credential file into a key/value map. The file uses the simple
+ * `KEY=value` env format, with `#` comments and blank lines ignored — the same shape
+ * IntegrationTestSupport.java reads.
+ *
+ * @returns {Map<string, string>} the parsed credentials
+ * @throws {Error} when the file cannot be read
+ */
+const loadCredentials = () => {
+  let contents;
+  try {
+    contents = readFileSync(CREDENTIALS_FILE, 'utf8');
+  } catch (cause) {
+    throw new Error(`Unable to read the shared test credentials from ${CREDENTIALS_FILE}`, {
+      cause,
+    });
+  }
+  const values = new Map();
+  for (const line of contents.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue;
+    }
+    const separator = trimmed.indexOf('=');
+    if (separator > 0) {
+      values.set(trimmed.slice(0, separator).trim(), trimmed.slice(separator + 1).trim());
+    }
+  }
+  return values;
+};
+
+const CREDENTIALS = loadCredentials();
+
+/**
+ * Looks up a single credential, failing loudly when it is absent so a missing entry
+ * surfaces at startup as a configuration error rather than as an authentication
+ * failure against a silently-defaulted user.
+ *
+ * @param {string} key the credential key in test-credentials.env
+ * @param {string|undefined} override an environment-variable value that takes precedence
+ * @returns {string} the credential value
+ * @throws {Error} when the credential is neither overridden nor defined in the file
+ */
+const credential = (key, override) => {
+  if (override !== undefined && override !== '') {
+    return override;
+  }
+  const value = CREDENTIALS.get(key);
+  if (value === undefined || value === '') {
+    throw new Error(`Credential '${key}' is not defined in ${CREDENTIALS_FILE}`);
+  }
+  return value;
+};
+
 /**
  * Page type constants
  */
@@ -15,14 +84,15 @@ export const PAGE_TYPES = {
 /**
  * Authentication constants
  *
- * ⚠️  WARNING: DO NOT CHANGE THESE DEFAULTS WITHOUT PRIOR USER CONSULTATION
- * These credentials must match the NiFi instance configuration (throwaway
- * docker/Keycloak test realm). Overridable via environment variables,
- * mirroring how the service URLs are handled.
+ * ⚠️  WARNING: DO NOT CHANGE THESE CREDENTIALS WITHOUT PRIOR USER CONSULTATION
+ * The values come from test-credentials.env — the single definition site the
+ * throwaway docker/Keycloak test realm is imported with — so they cannot drift
+ * from the realm the suite authenticates against. Still overridable via
+ * environment variables, mirroring how the service URLs are handled.
  */
 export const AUTH = {
-  USERNAME: process.env.PLAYWRIGHT_TEST_USERNAME || 'testUser',
-  PASSWORD: process.env.PLAYWRIGHT_TEST_PASSWORD || 'drowssap'
+  USERNAME: credential('TEST_USER_NAME', process.env.PLAYWRIGHT_TEST_USERNAME),
+  PASSWORD: credential('TEST_USER_PASSWORD', process.env.PLAYWRIGHT_TEST_PASSWORD)
 };
 
 /**
@@ -40,8 +110,8 @@ export const KEYCLOAK_CONFIG = {
  * 'user' role — missing the 'read' role required by the processor.
  */
 export const LIMITED_USER_CONFIG = {
-  USERNAME: process.env.PLAYWRIGHT_LIMITED_USERNAME || 'limitedUser',
-  PASSWORD: process.env.PLAYWRIGHT_LIMITED_PASSWORD || 'drowssap',
+  USERNAME: credential('LIMITED_USER_NAME', process.env.PLAYWRIGHT_LIMITED_USERNAME),
+  PASSWORD: credential('LIMITED_USER_PASSWORD', process.env.PLAYWRIGHT_LIMITED_PASSWORD),
 };
 
 /**
@@ -52,9 +122,9 @@ export const LIMITED_USER_CONFIG = {
 export const OTHER_REALM_CONFIG = {
   REALM: 'other_realm',
   CLIENT_ID: 'other_client',
-  CLIENT_SECRET: process.env.PLAYWRIGHT_OTHER_REALM_CLIENT_SECRET || 'otherClientSecretValue123456789',
-  USERNAME: process.env.PLAYWRIGHT_OTHER_REALM_USERNAME || 'otherUser',
-  PASSWORD: process.env.PLAYWRIGHT_OTHER_REALM_PASSWORD || 'drowssap',
+  CLIENT_SECRET: credential('OTHER_CLIENT_SECRET', process.env.PLAYWRIGHT_OTHER_REALM_CLIENT_SECRET),
+  USERNAME: credential('OTHER_USER_NAME', process.env.PLAYWRIGHT_OTHER_REALM_USERNAME),
+  PASSWORD: credential('OTHER_USER_PASSWORD', process.env.PLAYWRIGHT_OTHER_REALM_PASSWORD),
   TOKEN_ENDPOINT: (process.env.PLAYWRIGHT_KEYCLOAK_URL || 'https://localhost:9085') + '/realms/other_realm/protocol/openid-connect/token'
 };
 
