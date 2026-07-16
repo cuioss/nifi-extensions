@@ -345,8 +345,15 @@ const buildComponentBody = (componentId, propsPath, properties) => {
  */
 const updateProcessorWithStopStart = async (componentId, info, properties) => {
     const current = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
-    const wasRunning = current.component?.status?.runStatus === 'Running'
-        || current.component?.state === 'RUNNING';
+    // Treat a mid-transition processor as running: an exact-match check reads a
+    // restarting processor as NOT running, so the stop-before-mutate step below is
+    // skipped and NiFi rejects the property PUT with "Cannot modify configuration
+    // while the Processor is running".
+    const runStatus = current.component?.status?.runStatus;
+    const state = current.component?.state;
+    const wasRunning =
+        runStatus === 'Running' || state === 'RUNNING' ||
+        runStatus === 'Starting' || state === 'STARTING';
 
     // Stop the processor if running
     if (wasRunning) {
@@ -379,13 +386,6 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
                 await autoTerminateStaleRelationships(componentId, info);
                 const latest = await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`));
                 await updateProcessorRunStatus(componentId, 'RUNNING', latest.revision);
-                // Await the full transition back to RUNNING (symmetric with the STOP
-                // branch above). Returning while the restart is still in-flight leaves
-                // the processor mid-transition, so an immediately-following call reads
-                // a non-RUNNING state, skips its stop-before-mutate step, and NiFi
-                // rejects the update with "Cannot modify configuration while the
-                // Processor is running".
-                await waitForProcessorState(componentId, info, 'RUNNING');
             } catch (e) { log.warn('Failed to restart processor after property update:', e); }
         }
     }
