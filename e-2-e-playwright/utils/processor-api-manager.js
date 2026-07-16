@@ -1032,7 +1032,11 @@ export class ProcessorApiManager {
    * PUT is accepted (no fixed sleep, N64).
    * @param {string} processorId - target processor id
    * @param {number} [timeoutMs] - overall wait budget in milliseconds
-   * @returns {Promise<object|null>} the last-fetched processor details, or null if it vanished
+   * @returns {Promise<object|null>} the settled processor details, or null if it
+   *   vanished OR the settle timed out. A null return is the caller's signal that
+   *   the processor is NOT safely stopped — never treat a timeout as settled, or a
+   *   subsequent config PUT can still fail with 'Cannot modify configuration while
+   *   the Processor is running' (the PR #445 failure mode).
    */
   async _waitForProcessorSettled(processorId, timeoutMs = TIMEOUTS.MEDIUM) {
     const deadline = Date.now() + timeoutMs;
@@ -1045,8 +1049,12 @@ export class ProcessorApiManager {
       await new Promise(resolve => setTimeout(resolve, 250));
       details = await this.getProcessorDetails(processorId);
     }
+    // Timed out without reaching a physically STOPPED, thread-idle state. Return
+    // null (NOT the last-fetched details) so the caller's `if (!settled)` guard
+    // treats a timeout as a failed settle rather than proceeding to mutate a
+    // still-running processor.
     testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to settle`);
-    return details;
+    return null;
   }
 
   /**
@@ -1168,7 +1176,7 @@ export class ProcessorApiManager {
     if (!settled) {
       testLogger.warn(
         'Processor',
-        `removeGatewayRouteProperties('${routeName}'): gateway processor ${gatewayId} vanished while settling`
+        `removeGatewayRouteProperties('${routeName}'): gateway processor ${gatewayId} did not settle (vanished or timed out) — not safe to mutate config`
       );
       return false;
     }

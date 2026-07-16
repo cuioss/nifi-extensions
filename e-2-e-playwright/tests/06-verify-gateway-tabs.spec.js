@@ -64,7 +64,15 @@ test.describe("REST API Gateway Tabs", () => {
     // tests remain as UI-side defense-in-depth.
     test.afterAll(async ({ _sharedPage }) => {
         const processorManager = new ProcessorApiManager(_sharedPage);
-        await processorManager.removeGatewayRouteProperties("e2e-modify-test");
+        const cleaned =
+            await processorManager.removeGatewayRouteProperties("e2e-modify-test");
+        // Fail the suite when cleanup did not succeed: a residual route or a
+        // gateway left not-RUNNING must surface as a test failure rather than be
+        // silently swallowed by discarding the boolean result.
+        expect(
+            cleaned,
+            "afterAll cleanup of the e2e-modify-test route failed — the gateway may retain residual restapi.e2e-modify-test.* properties or be left not RUNNING",
+        ).toBe(true);
     });
 
     test("should display gateway-specific tabs in custom UI", async ({
