@@ -153,9 +153,9 @@ class ManagementEndpointHandlerTest {
         void shouldEmitPopulatedTokenValidationCounters() throws Exception {
             // Populate the token-validation counter so the non-empty branch of
             // appendTokenValidationMetrics emits per-result counter lines.
-            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
+            var tokenCounter = new de.cuioss.sheriff.token.commons.events.SecurityEventCounter();
             tokenCounter.increment(
-                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
+                    de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.TOKEN_EXPIRED);
             configService.configureSecurityEventCounter(tokenCounter);
 
             var response = httpClient.send(
@@ -368,7 +368,7 @@ class ManagementEndpointHandlerTest {
             // Configure the config service to reject tokens
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Token expired"));
 
             // Even though the request comes via loopback (127.0.0.1), it should
@@ -465,7 +465,7 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401ForInvalidBearerToken() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Invalid token"));
 
             var response = httpClient.send(
@@ -519,7 +519,7 @@ class ManagementEndpointHandlerTest {
         void shouldReturn401WhenTokenValidationFails() throws Exception {
             configService.configureValidationFailure(
                     new TokenValidationException(
-                            de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED,
+                            de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.TOKEN_EXPIRED,
                             "Token expired"));
 
             var response = httpClient.send(

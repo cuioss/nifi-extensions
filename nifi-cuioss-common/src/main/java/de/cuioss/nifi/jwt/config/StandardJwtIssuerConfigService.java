@@ -20,11 +20,11 @@ import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtConstants;
 import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.sheriff.token.validation.IssuerConfig;
-import de.cuioss.sheriff.token.validation.ParserConfig;
+import de.cuioss.sheriff.token.commons.transport.ParserConfig;
 import de.cuioss.sheriff.token.validation.TokenValidator;
 import de.cuioss.sheriff.token.validation.domain.context.AccessTokenRequest;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
-import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.commons.events.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.security.SignatureAlgorithmPreferences;
 import de.cuioss.tools.logging.CuiLogger;
 import org.apache.nifi.annotation.behavior.RequiresInstanceClassLoading;
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  * the NAR classloader is temporarily set as context classloader so that
  * {@code ServiceLoader} finds dsl-json converters for {@link ParserConfig} initialization.
  * The pre-initialized {@code ParserConfig} is then passed to each
- * {@link de.cuioss.sheriff.token.validation.jwks.http.HttpJwksLoaderConfig}, avoiding
+ * {@link de.cuioss.sheriff.token.commons.transport.HttpJwksLoaderConfig}, avoiding
  * any classloader issues on async threads.
  * <p>
  * Runtime {@code validateToken()} calls do NOT use ServiceLoader.
