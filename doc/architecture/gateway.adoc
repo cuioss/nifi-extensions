@@ -229,8 +229,8 @@ The `/status/{traceId}` response always carries the fixed tracking fields
 (`traceId`, `status`, `acceptedAt`, `updatedAt`, and — when present —
 `parentTraceId` and an `error` object). In addition, an external processor may
 write extra top-level JSON fields directly into the cache entry for a trace ID;
-the gateway captures those non-reserved fields and re-emits them **unchanged**
-in the `/status` response alongside the fixed fields. This lets a downstream
+the gateway captures those non-reserved fields and re-emits them **as string
+values** in the `/status` response alongside the fixed fields. This lets a downstream
 flow annotate a tracked request (for example with a tenant, channel, or
 priority) and have those annotations surfaced through the same polling endpoint.
 

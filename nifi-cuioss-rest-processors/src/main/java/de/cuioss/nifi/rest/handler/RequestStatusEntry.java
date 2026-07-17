@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.StringReader;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,17 @@ int attachmentsMaxCount,
 int attachmentsMinCount,
 @Nullable String routeName,
 @NonNull Map<String, String> additionalFields) {
+
+    /**
+     * Compact constructor enforcing the immutability the class javadoc claims: defensively copies
+     * {@code additionalFields} into an unmodifiable, insertion-ordered map so the mutable
+     * {@link LinkedHashMap} built by {@link #captureAdditionalFields(JsonObject)} can neither be
+     * mutated by the caller after construction nor exposed as mutable via the accessor.
+     * A {@link LinkedHashMap} copy (not {@link Map#copyOf}) preserves the JSON encounter order.
+     */
+    RequestStatusEntry {
+        additionalFields = Collections.unmodifiableMap(new LinkedHashMap<>(additionalFields));
+    }
 
     private static final String KEY_TRACE_ID = "traceId";
     private static final String KEY_STATUS = "status";

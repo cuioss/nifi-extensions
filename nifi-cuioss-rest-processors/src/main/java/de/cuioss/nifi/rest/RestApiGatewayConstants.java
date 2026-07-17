@@ -239,7 +239,7 @@ public final class RestApiGatewayConstants {
                         + "is truncated.")
                 .required(false)
                 .defaultValue("20")
-                .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
+                .addValidator(StandardValidators.NON_NEGATIVE_INTEGER_VALIDATOR)
                 .build();
 
         public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_ENABLED = new PropertyDescriptor.Builder()

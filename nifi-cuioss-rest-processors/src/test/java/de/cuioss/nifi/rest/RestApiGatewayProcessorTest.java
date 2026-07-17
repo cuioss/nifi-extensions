@@ -175,7 +175,7 @@ class RestApiGatewayProcessorTest {
         }
 
         @Test
-        @DisplayName("Status max-additional-fields is supported, optional, defaults to 20, positive-integer validated")
+        @DisplayName("Status max-additional-fields is supported, optional, defaults to 20, non-negative-integer validated")
         void shouldExposeMaxAdditionalFieldsDescriptor() {
             var descriptor = RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS;
 
@@ -190,8 +190,9 @@ class RestApiGatewayProcessorTest {
             testRunner.setProperty(descriptor, "5");
             testRunner.assertValid();
 
+            // 0 fully disables the additional-fields pass-through and is a valid setting.
             testRunner.setProperty(descriptor, "0");
-            testRunner.assertNotValid();
+            testRunner.assertValid();
 
             testRunner.setProperty(descriptor, "-3");
             testRunner.assertNotValid();
