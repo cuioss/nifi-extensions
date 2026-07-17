@@ -170,6 +170,35 @@ class RestApiGatewayProcessorTest {
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES));
+            assertTrue(descriptors.contains(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS));
+        }
+
+        @Test
+        @DisplayName("Status max-additional-fields is supported, optional, defaults to 20, non-negative-integer validated")
+        void shouldExposeMaxAdditionalFieldsDescriptor() {
+            var descriptor = RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS;
+
+            assertTrue(testRunner.getProcessor().getPropertyDescriptors().contains(descriptor),
+                    "descriptor must be advertised as a supported property");
+            assertFalse(descriptor.isRequired(), "descriptor must be optional");
+            assertEquals("20", descriptor.getDefaultValue());
+
+            // The default (unset) value keeps the processor valid.
+            testRunner.assertValid();
+
+            testRunner.setProperty(descriptor, "5");
+            testRunner.assertValid();
+
+            // 0 fully disables the additional-fields pass-through and is a valid setting.
+            testRunner.setProperty(descriptor, "0");
+            testRunner.assertValid();
+
+            testRunner.setProperty(descriptor, "-3");
+            testRunner.assertNotValid();
+
+            testRunner.setProperty(descriptor, "not-a-number");
+            testRunner.assertNotValid();
         }
 
         @Test

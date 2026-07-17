@@ -223,6 +223,28 @@ Management endpoint auth-mode is configured via static NiFi properties:
 |Full cui-http security pipeline; auth mode configurable via `restapi.<name>.auth-mode`
 |===
 
+=== /status Additional-Fields Pass-Through
+
+The `/status/{traceId}` response always carries the fixed tracking fields
+(`traceId`, `status`, `acceptedAt`, `updatedAt`, and — when present —
+`parentTraceId` and an `error` object). In addition, an external processor may
+write extra top-level JSON fields directly into the cache entry for a trace ID;
+the gateway captures those non-reserved fields and re-emits them **as string
+values** in the `/status` response alongside the fixed fields. This lets a downstream
+flow annotate a tracked request (for example with a tenant, channel, or
+priority) and have those annotations surfaced through the same polling endpoint.
+
+The pass-through follows these rules:
+
+* **Scalar coercion** — string values are surfaced verbatim; numbers are stringified via their JSON literal; booleans become `"true"` / `"false"`.
+* **Non-scalar drop** — nested objects, arrays, and JSON `null` values are dropped (they are not surfaced and do not fail the parse).
+* **Reserved names take precedence** — a captured field whose key collides with a reserved response key (`traceId`, `status`, `acceptedAt`, `updatedAt`, `parentTraceId`, `error`) is discarded; the reserved, typed value always wins and is never double-emitted.
+* **Bounded count** — the number of additional fields re-emitted is bounded by `rest.gateway.management.status.max-additional-fields` (default `20`). Fields beyond the bound are truncated in JSON key encounter order.
+
+Additional fields captured on write are also preserved across internal status
+transitions, so an entry that moves (for example) from `COLLECTING_ATTACHMENTS`
+to `PROCESSED` keeps its externally-written annotations.
+
 == FlowFile Output Attributes
 
 [cols="1,2"]

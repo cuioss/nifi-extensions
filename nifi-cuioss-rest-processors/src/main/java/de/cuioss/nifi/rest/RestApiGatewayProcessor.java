@@ -107,6 +107,7 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
             RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE,
             RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES,
             RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES,
+            RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_ENABLED,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_AUTH_MODE,
             RestApiGatewayConstants.Properties.MANAGEMENT_ATTACHMENTS_REQUIRED_ROLES,
@@ -412,7 +413,8 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_ENABLED).asBoolean(),
                 AuthMode.fromValues(context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_AUTH_MODE).getValue()),
                 parseCommaSeparated(context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_ROLES).getValue()),
-                parseCommaSeparated(context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES).getValue()));
+                parseCommaSeparated(context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_REQUIRED_SCOPES).getValue()),
+                context.getProperty(RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS).asInteger());
     }
 
     private void validateAndRegisterAttachmentRoutes(List<RouteConfiguration> routes, int hardLimit) {

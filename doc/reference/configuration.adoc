@@ -234,6 +234,11 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 |Comma-separated scopes required for `/status` access (only checked when auth-mode includes `bearer`)
 |No
 
+|rest.gateway.management.status.max-additional-fields
+|20
+|Maximum number of pass-through additional fields surfaced in the `/status` response (excess truncated by JSON key encounter order)
+|No
+
 |rest.gateway.management.attachments.enabled
 |true
 |Whether the `/attachments/{parentTraceId}` endpoint is active

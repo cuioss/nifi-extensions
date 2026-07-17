@@ -19,11 +19,17 @@ package de.cuioss.nifi.rest.handler;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import lombok.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.io.StringReader;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Immutable status entry for an asynchronously tracked request.
@@ -37,6 +43,8 @@ import java.time.Instant;
  * @param attachmentsMaxCount maximum attachments allowed for this request (0 = no attachments expected)
  * @param attachmentsMinCount minimum attachments required before auto-transitioning to PROCESSED (0 = no auto-transition)
  * @param routeName           the route name that created this entry (for traceability)
+ * @param additionalFields    externally-written, non-reserved top-level scalar fields preserved across
+ *                            round-trips in encounter order (empty when none were supplied)
  */
 record RequestStatusEntry(
 @NonNull String traceId,
@@ -47,7 +55,19 @@ record RequestStatusEntry(
 @Nullable String errorDetail,
 int attachmentsMaxCount,
 int attachmentsMinCount,
-@Nullable String routeName) {
+@Nullable String routeName,
+@NonNull Map<String, String> additionalFields) {
+
+    /**
+     * Compact constructor enforcing the immutability the class javadoc claims: defensively copies
+     * {@code additionalFields} into an unmodifiable, insertion-ordered map so the mutable
+     * {@link LinkedHashMap} built by {@link #captureAdditionalFields(JsonObject)} can neither be
+     * mutated by the caller after construction nor exposed as mutable via the accessor.
+     * A {@link LinkedHashMap} copy (not {@link Map#copyOf}) preserves the JSON encounter order.
+     */
+    RequestStatusEntry {
+        additionalFields = Collections.unmodifiableMap(new LinkedHashMap<>(additionalFields));
+    }
 
     private static final String KEY_TRACE_ID = "traceId";
     private static final String KEY_STATUS = "status";
@@ -59,12 +79,17 @@ int attachmentsMinCount,
     private static final String KEY_ATTACHMENTS_MIN_COUNT = "attachmentsMinCount";
     private static final String KEY_ROUTE_NAME = "routeName";
 
+    /** Reserved top-level JSON keys owned by the typed record components. */
+    private static final Set<String> RESERVED_KEYS = Set.of(
+            KEY_TRACE_ID, KEY_STATUS, KEY_ACCEPTED_AT, KEY_UPDATED_AT, KEY_PARENT_TRACE_ID,
+            KEY_ERROR_DETAIL, KEY_ATTACHMENTS_MAX_COUNT, KEY_ATTACHMENTS_MIN_COUNT, KEY_ROUTE_NAME);
+
     /**
      * Creates a new ACCEPTED entry with the given trace ID.
      */
     public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId) {
         Instant now = Instant.now();
-        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, 0, null);
+        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, 0, null, Map.of());
     }
 
     /**
@@ -75,7 +100,7 @@ int attachmentsMinCount,
             @Nullable String routeName, int attachmentsMaxCount, int attachmentsMinCount) {
         Instant now = Instant.now();
         return new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS, now, now,
-                parentTraceId, null, attachmentsMaxCount, attachmentsMinCount, routeName);
+                parentTraceId, null, attachmentsMaxCount, attachmentsMinCount, routeName, Map.of());
     }
 
     /**
@@ -101,6 +126,12 @@ int attachmentsMinCount,
         }
         if (routeName != null) {
             builder.add(KEY_ROUTE_NAME, routeName);
+        }
+        for (Map.Entry<String, String> field : additionalFields.entrySet()) {
+            // Defensive: never let a captured field shadow a reserved, typed key.
+            if (!RESERVED_KEYS.contains(field.getKey())) {
+                builder.add(field.getKey(), field.getValue());
+            }
         }
         return builder.build().toString();
     }
@@ -129,6 +160,33 @@ int attachmentsMinCount,
                 obj.containsKey(KEY_ATTACHMENTS_MAX_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MAX_COUNT) : 0,
                 obj.containsKey(KEY_ATTACHMENTS_MIN_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MIN_COUNT) : 0,
                 obj.containsKey(KEY_ROUTE_NAME) && !obj.isNull(KEY_ROUTE_NAME)
-                        ? obj.getString(KEY_ROUTE_NAME) : null);
+                        ? obj.getString(KEY_ROUTE_NAME) : null,
+                captureAdditionalFields(obj));
+    }
+
+    /**
+     * Collects every non-reserved top-level scalar field into an insertion-ordered map, preserving
+     * the JSON encounter order. String values are taken verbatim, numbers via their JSON literal, and
+     * booleans as {@code "true"}/{@code "false"}. Nested objects, arrays and JSON null are dropped.
+     */
+    private static Map<String, String> captureAdditionalFields(JsonObject obj) {
+        Map<String, String> captured = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonValue> entry : obj.entrySet()) {
+            String key = entry.getKey();
+            if (RESERVED_KEYS.contains(key)) {
+                continue;
+            }
+            JsonValue value = entry.getValue();
+            switch (value.getValueType()) {
+                case STRING -> captured.put(key, ((JsonString) value).getString());
+                case NUMBER -> captured.put(key, value.toString());
+                case TRUE -> captured.put(key, "true");
+                case FALSE -> captured.put(key, "false");
+                default -> {
+                    // OBJECT, ARRAY and NULL are not scalar string fields — drop them.
+                }
+            }
+        }
+        return captured;
     }
 }

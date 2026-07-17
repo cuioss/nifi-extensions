@@ -30,7 +30,9 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -120,6 +122,26 @@ public class RequestStatusStoreTest {
             assertEquals("upload", result.get().routeName());
             assertEquals(5, result.get().attachmentsMaxCount());
             assertEquals(1, result.get().attachmentsMinCount());
+        }
+
+        @Test
+        @DisplayName("Should preserve additional fields across a status transition")
+        void shouldPreserveAdditionalFieldsAcrossStatusTransition() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("tenant", "acme");
+            extras.put("priority", "5");
+            var entry = new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS,
+                    Instant.now(), Instant.now(), null, null, 5, 1, "upload", extras);
+            cacheClient.put(traceId, entry,
+                    RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
+
+            store.updateStatus(traceId, RequestStatus.PROCESSING);
+            var result = store.getStatus(traceId);
+
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.PROCESSING, result.get().status());
+            assertEquals(extras, result.get().additionalFields());
         }
 
         @Test

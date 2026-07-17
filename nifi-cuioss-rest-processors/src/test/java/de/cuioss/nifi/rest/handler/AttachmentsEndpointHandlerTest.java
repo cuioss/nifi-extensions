@@ -124,7 +124,7 @@ class AttachmentsEndpointHandlerTest {
 
         // Status endpoint (for verifying parentTraceId)
         handlers.add(new StatusEndpointHandler(statusStore, true,
-                Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of()));
+                Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of(), 20));
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
                 httpSecurityEvents, gatewaySecurityEvents,
