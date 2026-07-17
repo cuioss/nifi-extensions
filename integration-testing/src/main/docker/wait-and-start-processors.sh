@@ -58,17 +58,70 @@ echo "Flow processors started (HTTP $start_code)"
 echo "Waiting for flow pipeline on port 7777..."
 flow_timeout=120
 flow_elapsed=0
+listener_bound=0
 while [ $flow_elapsed -lt $flow_timeout ]; do
     http_code=$(curl --max-time 10 -o /dev/null -s -w '%{http_code}' \
         http://localhost:7777 2>/dev/null || true)
     if [ "$http_code" != "000" ] && [ -n "$http_code" ]; then
-        echo "Flow pipeline is ready on port 7777 (HTTP $http_code)"
-        exit 0
+        echo "Flow pipeline listener is bound on port 7777 (HTTP $http_code)"
+        listener_bound=1
+        break
     fi
     echo "Waiting for flow pipeline... ($flow_elapsed/${flow_timeout}s, HTTP $http_code)"
     sleep 2
     flow_elapsed=$((flow_elapsed + 2))
 done
 
-echo "Processors started but flow pipeline on port 7777 did not respond in time"
-exit 1
+if [ $listener_bound -ne 1 ]; then
+    echo "Processors started but flow pipeline on port 7777 did not respond in time"
+    exit 1
+fi
+
+# A bound listener is still not sufficient. token-sheriff loads each issuer's JWKS
+# asynchronously in a background thread, so the gateway answers 401 to every request
+# until the issuer configuration finishes loading and becomes healthy. If integration
+# tests fire during that startup window they spuriously observe 401 instead of the
+# expected 200/202. Wait until a request bearing a VALID Keycloak token is accepted
+# (any non-401 response) on both gateway listeners before declaring readiness.
+KC_TOKEN_ENDPOINT="https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token"
+
+# Poll a gateway URL with a valid bearer token until it stops returning 401.
+# Args: <url> <label>. Returns 0 on success, 1 on timeout.
+wait_for_healthy_issuer() {
+    local url="$1" label="$2"
+    local timeout=120 elapsed=0 token auth_code
+    echo "Waiting for JWT issuer to become healthy via $label ($url)..."
+    while [ $elapsed -lt $timeout ]; do
+        token=$(curl -sk --max-time 10 -X POST "$KC_TOKEN_ENDPOINT" \
+            -d "grant_type=password" -d "client_id=test_client" \
+            -d "username=testUser" -d "password=drowssap" -d "scope=openid" 2>/dev/null \
+            | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
+        if [ -n "$token" ]; then
+            auth_code=$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' \
+                -H "Authorization: Bearer $token" "$url" 2>/dev/null || true)
+            if [ -n "$auth_code" ] && [ "$auth_code" != "401" ] && [ "$auth_code" != "000" ]; then
+                echo "  $label issuer is healthy (HTTP $auth_code for a valid token)"
+                return 0
+            fi
+        else
+            auth_code="no-token"
+        fi
+        echo "  Waiting for $label issuer health... ($elapsed/${timeout}s, HTTP ${auth_code:-000})"
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    echo "  $label issuer did not become healthy within ${timeout}s (kept returning 401)"
+    return 1
+}
+
+# The flow pipeline (HandleHttpRequest → MultiIssuerJWTTokenAuthenticator, port 7777) and
+# the RestApiGateway (port 9443) both reference the SAME shared JwtIssuerConfigService
+# controller service, so a healthy issuer observed on 7777 means the issuer JWKS is loaded
+# for every processor. Each IT still waits for its own listener to bind (waitForEndpoint);
+# the wait here only closes the asynchronous issuer-loading window.
+if ! wait_for_healthy_issuer "http://localhost:7777" "flow pipeline (7777)"; then
+    exit 1
+fi
+
+echo "Flow pipeline is ready on port 7777 and JWT issuer is healthy"
+exit 0
