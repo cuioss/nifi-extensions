@@ -48,9 +48,12 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
     @SuppressWarnings("java:S1075") // URL path, not filesystem path
     private static final String STATUS_PATH_PREFIX = STATUS_PATH + "/";
 
+    private static final String FIELD_TRACE_ID = "traceId";
+    private static final String FIELD_STATUS = "status";
+
     /** Reserved response keys emitted before the additional fields; guards against re-emission. */
     private static final Set<String> RESERVED_RESPONSE_KEYS = Set.of(
-            "traceId", "status", "acceptedAt", "updatedAt", "parentTraceId", "error");
+            FIELD_TRACE_ID, FIELD_STATUS, "acceptedAt", "updatedAt", "parentTraceId", "error");
 
     private final RequestStatusStore statusStore;
     private final int maxAdditionalFields;
@@ -66,7 +69,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
 
     @Override
     public String name() {
-        return "status";
+        return FIELD_STATUS;
     }
 
     @Override
@@ -88,7 +91,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
 
         // The path segment after the status prefix is the traceId
         Optional<String> extractedTraceId = RequestUtils.extractUuidPathParameter(
-                path, STATUS_PATH_PREFIX, "traceId", response, callback);
+                path, STATUS_PATH_PREFIX, FIELD_TRACE_ID, response, callback);
         if (extractedTraceId.isEmpty()) {
             return;
         }
@@ -117,8 +120,8 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
         LOGGER.info(RestApiLogMessages.INFO.STATUS_QUERIED, traceId, statusEntry.status());
 
         JsonObjectBuilder jsonBuilder = Json.createObjectBuilder()
-                .add("traceId", statusEntry.traceId())
-                .add("status", statusEntry.status().name())
+                .add(FIELD_TRACE_ID, statusEntry.traceId())
+                .add(FIELD_STATUS, statusEntry.status().name())
                 .add("acceptedAt", statusEntry.acceptedAt().toString())
                 .add("updatedAt", statusEntry.updatedAt().toString());
 
@@ -148,17 +151,10 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
      * response key already emitted is defensively skipped and does not count against the bound.
      */
     private void emitAdditionalFields(JsonObjectBuilder jsonBuilder, RequestStatusEntry statusEntry) {
-        int emitted = 0;
-        for (var field : statusEntry.additionalFields().entrySet()) {
-            if (emitted >= maxAdditionalFields) {
-                break;
-            }
-            if (RESERVED_RESPONSE_KEYS.contains(field.getKey())) {
-                continue;
-            }
-            jsonBuilder.add(field.getKey(), field.getValue());
-            emitted++;
-        }
+        statusEntry.additionalFields().entrySet().stream()
+                .filter(field -> !RESERVED_RESPONSE_KEYS.contains(field.getKey()))
+                .limit(maxAdditionalFields)
+                .forEach(field -> jsonBuilder.add(field.getKey(), field.getValue()));
     }
 
 }
