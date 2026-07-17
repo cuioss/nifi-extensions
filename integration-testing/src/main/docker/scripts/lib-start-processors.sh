@@ -24,6 +24,11 @@ LIB_START_PROCESSORS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NIFI_BASE_URL="${NIFI_BASE_URL:-https://localhost:9095}"
 FLOW_PIPELINE_URL="${FLOW_PIPELINE_URL:-http://localhost:7777}"
 
+# Keycloak token endpoint (realm oauth_integration_tests) and public client used by the
+# integration tests. Kept in agreement with IntegrationTestSupport.java.
+KEYCLOAK_TOKEN_URL="${KEYCLOAK_TOKEN_URL:-https://localhost:9085/realms/oauth_integration_tests/protocol/openid-connect/token}"
+KEYCLOAK_CLIENT_ID="${KEYCLOAK_CLIENT_ID:-test_client}"
+
 # Fetch a NiFi access token using the shared test credentials.
 #
 # Echoes the token on stdout when one is obtained.
@@ -83,6 +88,50 @@ nifi_wait_for_flow_pipeline() {
             return 0
         fi
         echo "Waiting for flow pipeline... ($elapsed/${timeout}s, HTTP $http_code)"
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+
+    return 1
+}
+
+# Wait for the JWT issuer configuration to become healthy.
+#
+# A bound flow-pipeline listener is necessary but not sufficient: token-sheriff (0.9.2+)
+# loads each issuer's JWKS ASYNCHRONOUSLY in a background thread, so the gateway answers
+# 401 to every request BEFORE the issuer finishes loading and becomes healthy. Integration
+# tests firing in that window spuriously observe 401 instead of the expected 200/202.
+#
+# Poll the flow pipeline with a VALID Keycloak token until it stops returning 401. The
+# flow pipeline (7777) and the RestApiGateway (9443) share ONE JwtIssuerConfigService
+# controller service, so a healthy result here means the issuer JWKS is loaded for every
+# processor.
+#
+# $1 — timeout in seconds (default 120).
+# Returns 0 once a valid token is accepted (non-401), 1 on timeout.
+nifi_wait_for_healthy_issuer() {
+    local timeout="${1:-120}"
+    local elapsed=0
+    local token auth_code
+
+    echo "Waiting for JWT issuer to become healthy via ${FLOW_PIPELINE_URL}..."
+    while [ "$elapsed" -lt "$timeout" ]; do
+        token=$(curl -sk --max-time 10 -X POST "${KEYCLOAK_TOKEN_URL}" \
+            -d "grant_type=password" -d "client_id=${KEYCLOAK_CLIENT_ID}" \
+            -d "username=${TEST_USER_NAME}" -d "password=${TEST_USER_PASSWORD}" \
+            -d "scope=openid" 2>/dev/null \
+            | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
+        if [ -n "$token" ]; then
+            auth_code=$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' \
+                -H "Authorization: Bearer ${token}" "${FLOW_PIPELINE_URL}" 2>/dev/null || true)
+            if [ -n "$auth_code" ] && [ "$auth_code" != "401" ] && [ "$auth_code" != "000" ]; then
+                echo "JWT issuer is healthy (HTTP $auth_code for a valid token)"
+                return 0
+            fi
+        else
+            auth_code="no-token"
+        fi
+        echo "Waiting for issuer health... ($elapsed/${timeout}s, HTTP ${auth_code:-000})"
         sleep 2
         elapsed=$((elapsed + 2))
     done

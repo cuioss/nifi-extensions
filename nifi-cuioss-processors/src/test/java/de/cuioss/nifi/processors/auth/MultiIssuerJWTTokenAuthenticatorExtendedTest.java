@@ -20,7 +20,7 @@ import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.token.validation.domain.claim.ClaimValue;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
-import de.cuioss.sheriff.token.validation.security.SecurityEventCounter;
+import de.cuioss.sheriff.token.commons.events.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.test.JwtTokenTamperingUtil;
 import de.cuioss.sheriff.token.validation.test.JwtTokenTamperingUtil.TamperingStrategy;
 import de.cuioss.sheriff.token.validation.test.TestTokenHolder;

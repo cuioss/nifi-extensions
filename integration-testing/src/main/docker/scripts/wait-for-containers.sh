@@ -100,10 +100,21 @@ fi
 # ---------------------------------------------------------------------------
 # Stage 3: Wait for HandleHttpRequest processor (flow pipeline on port 7777)
 # ---------------------------------------------------------------------------
-if nifi_wait_for_flow_pipeline 120; then
-    exit 0
+if ! nifi_wait_for_flow_pipeline 120; then
+    echo "NiFi API is up but flow pipeline on port 7777 did not respond in time"
+    docker compose logs --tail=30 nifi
+    exit 1
 fi
 
-echo "NiFi API is up but flow pipeline on port 7777 did not respond in time"
-docker compose logs --tail=30 nifi
-exit 1
+# ---------------------------------------------------------------------------
+# Stage 4: Wait for the JWT issuer to become healthy (async JWKS load).
+# A bound listener answers 401 until the issuer JWKS finishes loading; gating
+# only on the listener lets ITs fire during that window and spuriously see 401.
+# ---------------------------------------------------------------------------
+if ! nifi_wait_for_healthy_issuer 120; then
+    echo "Flow pipeline is up but the JWT issuer never became healthy (kept returning 401)"
+    docker compose logs --tail=30 nifi
+    exit 1
+fi
+
+exit 0

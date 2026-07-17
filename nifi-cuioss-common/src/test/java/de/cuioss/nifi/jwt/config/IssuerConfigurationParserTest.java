@@ -18,7 +18,7 @@ package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.sheriff.token.validation.IssuerConfig;
-import de.cuioss.sheriff.token.validation.ParserConfig;
+import de.cuioss.sheriff.token.commons.transport.ParserConfig;
 import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
@@ -611,6 +611,22 @@ class IssuerConfigurationParserTest {
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
             assertEquals(1, configs.size(), "Loopback JWKS URL should pass when private addresses are allowed");
+        }
+
+        @Test
+        @DisplayName("Should not apply the loader egress opt-out for a public JWKS host even when private addresses enabled")
+        void shouldNotApplyEgressOptOutForPublicHostWhenPrivateAllowed() {
+            // A public JWKS host is not blocked by the token-sheriff SSRF egress guard, so the
+            // allow-private opt-in must NOT allow-list it with the loader: applyEgressPolicy short-
+            // circuits at the !resolvesToPrivateAddress branch. The issuer is still created.
+            Map<String, String> properties = new HashMap<>();
+            properties.put("issuer.test.name", "TestIssuer");
+            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(), "Public JWKS host should yield an issuer configuration");
         }
 
         @Test

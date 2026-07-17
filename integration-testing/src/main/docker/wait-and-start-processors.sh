@@ -54,9 +54,20 @@ echo "Flow processors started (HTTP $start_code)"
 # Verify the flow pipeline actually came up on port 7777 (HandleHttpRequest).
 # Starting the processors is necessary but not sufficient; the redeploy path
 # previously returned success without ever confirming the listener bound.
-if nifi_wait_for_flow_pipeline 120; then
-    exit 0
+if ! nifi_wait_for_flow_pipeline 120; then
+    echo "Processors started but flow pipeline on port 7777 did not respond in time"
+    exit 1
 fi
 
-echo "Processors started but flow pipeline on port 7777 did not respond in time"
-exit 1
+# A bound listener is still not sufficient. token-sheriff loads each issuer's JWKS
+# asynchronously in a background thread, so the gateway answers 401 to every request
+# until the issuer configuration finishes loading and becomes healthy. Integration
+# tests firing in that window spuriously observe 401 instead of the expected 200/202.
+# See nifi_wait_for_healthy_issuer in the shared lib for details.
+if ! nifi_wait_for_healthy_issuer 120; then
+    echo "Flow pipeline is up but the JWT issuer never became healthy (kept returning 401)"
+    exit 1
+fi
+
+echo "Flow pipeline is ready on port 7777 and JWT issuer is healthy"
+exit 0

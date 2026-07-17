@@ -979,9 +979,9 @@ class RestApiGatewayProcessorTest {
         @DisplayName("Should publish an token-sheriff token-validation source delta to its NiFi counter")
         void shouldPublishTokenValidationSource() {
             // Arrange
-            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
+            var tokenCounter = new de.cuioss.sheriff.token.commons.events.SecurityEventCounter();
             tokenCounter.increment(
-                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.TOKEN_EXPIRED);
+                    de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.TOKEN_EXPIRED);
             processor.configService.set(new CounterStubConfigService(tokenCounter));
 
             // Act
@@ -1005,9 +1005,9 @@ class RestApiGatewayProcessorTest {
             httpEvents.increment(UrlSecurityFailureType.NULL_BYTE_INJECTION);
             processor.httpSecurityEvents.set(httpEvents);
 
-            var tokenCounter = new de.cuioss.sheriff.token.validation.security.SecurityEventCounter();
+            var tokenCounter = new de.cuioss.sheriff.token.commons.events.SecurityEventCounter();
             tokenCounter.increment(
-                    de.cuioss.sheriff.token.validation.security.SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED);
+                    de.cuioss.sheriff.token.commons.events.SecurityEventCounter.EventType.SIGNATURE_VALIDATION_FAILED);
             processor.configService.set(new CounterStubConfigService(tokenCounter));
 
             // Act
@@ -1185,10 +1185,10 @@ class RestApiGatewayProcessorTest {
     private static final class CounterStubConfigService extends AbstractControllerService
             implements JwtIssuerConfigService {
 
-        private final de.cuioss.sheriff.token.validation.security.SecurityEventCounter counter;
+        private final de.cuioss.sheriff.token.commons.events.SecurityEventCounter counter;
 
         private CounterStubConfigService(
-                de.cuioss.sheriff.token.validation.security.SecurityEventCounter counter) {
+                de.cuioss.sheriff.token.commons.events.SecurityEventCounter counter) {
             this.counter = counter;
         }
 
@@ -1203,7 +1203,7 @@ class RestApiGatewayProcessorTest {
         }
 
         @Override
-        public Optional<de.cuioss.sheriff.token.validation.security.SecurityEventCounter> getSecurityEventCounter() {
+        public Optional<de.cuioss.sheriff.token.commons.events.SecurityEventCounter> getSecurityEventCounter() {
             return Optional.of(counter);
         }
     }
