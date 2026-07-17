@@ -266,10 +266,9 @@ public class IssuerConfigurationParser {
         if (!allowPrivate || !resolvesToPrivateAddress(issuerName, jwksUrl)) {
             return;
         }
+        // resolvesToPrivateAddress only returns true after resolving a non-null host, so
+        // getHost() here is guaranteed non-null for the same URL.
         String host = URI.create(jwksUrl).getHost();
-        if (host == null || host.isBlank()) {
-            return;
-        }
         builder.allowLoopbackEgress(true);
         builder.allowedEgressHost(host);
     }
