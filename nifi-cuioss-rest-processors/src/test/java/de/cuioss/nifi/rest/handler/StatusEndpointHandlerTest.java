@@ -36,8 +36,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -75,7 +78,7 @@ class StatusEndpointHandlerTest {
                 new HealthEndpointHandler(true, Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER),
                         Set.of(), Set.of()),
                 new StatusEndpointHandler(statusStore, true,
-                        Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of())));
+                        Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of(), 20)));
 
         // Add a tracked user route
         var trackedRoute = RouteConfiguration.builder()
@@ -326,6 +329,139 @@ class StatusEndpointHandlerTest {
             // /status exact match hits the handler, but prefixMatch makes it work
             // However, the handler should return a meaningful error since there's no traceId
             assertNotEquals(200, response.statusCode());
+        }
+    }
+
+    @Nested
+    @DisplayName("Additional Fields")
+    class AdditionalFields {
+
+        /**
+         * Starts a dedicated single-handler server exposing {@code /status} over a store seeded with
+         * the given entry, using the supplied additional-fields bound. Returns the started server; the
+         * caller is responsible for stopping it.
+         */
+        private Server startStatusServer(RequestStatusStore store, int maxAdditionalFields) throws Exception {
+            var httpSecurityEvents = new SecurityEventCounter();
+            var gatewaySecurityEvents = new GatewaySecurityEvents();
+            List<EndpointHandler> handlers = new ArrayList<>(List.of(
+                    new StatusEndpointHandler(store, true,
+                            Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of(), maxAdditionalFields)));
+            var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
+                    httpSecurityEvents, gatewaySecurityEvents,
+                    ForwardedRequestResolver.secureDefault(), false);
+            var srv = new Server();
+            ServerConnector connector = new ServerConnector(srv);
+            connector.setPort(0);
+            srv.addConnector(connector);
+            srv.setHandler(handler);
+            srv.start();
+            return srv;
+        }
+
+        private RequestStatusStore storeWith(String traceId, Map<String, String> additionalFields) throws Exception {
+            var cache = new RequestStatusStoreTest.InMemoryMapCacheClient();
+            var entry = new RequestStatusEntry(traceId, RequestStatus.ACCEPTED,
+                    Instant.now(), Instant.now(), null, null, 0, 0, null, additionalFields);
+            cache.put(traceId, entry,
+                    RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
+            return new RequestStatusStore(cache);
+        }
+
+        private JsonObject query(Server srv, String traceId) throws Exception {
+            int localPort = ((ServerConnector) srv.getConnectors()[0]).getLocalPort();
+            var response = httpClient.send(
+                    HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + localPort + "/status/" + traceId))
+                            .GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
+            return Json.createReader(new StringReader(response.body())).readObject();
+        }
+
+        @Test
+        @DisplayName("Should surface additional fields in the response in encounter order")
+        void shouldSurfaceAdditionalFieldsInEncounterOrder() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("tenant", "acme");
+            extras.put("channel", "web");
+            extras.put("priority", "5");
+            var store = storeWith(traceId, extras);
+            Server srv = startStatusServer(store, 20);
+            try {
+                JsonObject json = query(srv, traceId);
+
+                assertEquals("acme", json.getString("tenant"));
+                assertEquals("web", json.getString("channel"));
+                assertEquals("5", json.getString("priority"));
+                List<String> additionalOrder = json.keySet().stream()
+                        .filter(extras::containsKey).toList();
+                assertEquals(List.of("tenant", "channel", "priority"), additionalOrder);
+            } finally {
+                srv.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should truncate to the first N additional fields when over the configured max")
+        void shouldTruncateToFirstN() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("a", "1");
+            extras.put("b", "2");
+            extras.put("c", "3");
+            var store = storeWith(traceId, extras);
+            Server srv = startStatusServer(store, 2);
+            try {
+                JsonObject json = query(srv, traceId);
+
+                assertEquals("1", json.getString("a"));
+                assertEquals("2", json.getString("b"));
+                assertFalse(json.containsKey("c"), "third field must be truncated when max is 2");
+            } finally {
+                srv.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should surface all fields under the default max of 20")
+        void shouldSurfaceUnderDefaultMax() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            Map<String, String> extras = new LinkedHashMap<>();
+            for (int i = 0; i < 20; i++) {
+                extras.put("f" + i, String.valueOf(i));
+            }
+            var store = storeWith(traceId, extras);
+            Server srv = startStatusServer(store, 20);
+            try {
+                JsonObject json = query(srv, traceId);
+
+                for (int i = 0; i < 20; i++) {
+                    assertEquals(String.valueOf(i), json.getString("f" + i));
+                }
+            } finally {
+                srv.stop();
+            }
+        }
+
+        @Test
+        @DisplayName("Should not double-emit a reserved response key present in additional fields")
+        void shouldNotDoubleEmitReservedKey() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("status", "SPOOFED");
+            extras.put("ok", "yes");
+            var store = storeWith(traceId, extras);
+            Server srv = startStatusServer(store, 20);
+            try {
+                JsonObject json = query(srv, traceId);
+
+                // The reserved typed status wins; the shadow additional-field value is never emitted.
+                assertEquals("ACCEPTED", json.getString("status"));
+                assertEquals("yes", json.getString("ok"));
+            } finally {
+                srv.stop();
+            }
         }
     }
 }

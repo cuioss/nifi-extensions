@@ -124,7 +124,7 @@ class AttachmentsEndpointHandlerTest {
 
         // Status endpoint (for verifying parentTraceId)
         handlers.add(new StatusEndpointHandler(statusStore, true,
-                Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of()));
+                Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of(), 20));
 
         var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
                 httpSecurityEvents, gatewaySecurityEvents,
@@ -367,26 +367,46 @@ class AttachmentsEndpointHandlerTest {
     }
 
     @Test
-    @DisplayName("Should return 503 when queue is full")
+    @DisplayName("F1: a queue-full 503 on an attachment leaves no residual child status entry")
     void shouldReturn503WhenQueueFull() throws Exception {
+        // Arrange — a parent with an open attachment window, then a saturated queue
         String parentTraceId = createParentEntry("/api/upload");
-
-        // Fill the queue
         while (queue.remainingCapacity() > 0) {
             queue.offer(new HttpRequestContainer("test", "POST", "/test",
                     Map.of(), Map.of(), "127.0.0.1",
                     new byte[0], null, null, null, null, Map.of()));
         }
+        int entriesBefore = cacheClient.size();
 
-        var response = httpClient.send(
-                HttpRequest.newBuilder()
-                        .uri(URI.create("http://127.0.0.1:%d/attachments/%s".formatted(port, parentTraceId)))
-                        .POST(HttpRequest.BodyPublishers.ofString("data"))
-                        .header("Content-Type", "application/octet-stream")
-                        .build(),
-                HttpResponse.BodyHandlers.ofString());
+        // Act
+        var response = postAttachment(parentTraceId, "data");
 
+        // Assert — the client is told to retry AND the rejected attachment left nothing behind
         assertEquals(503, response.statusCode());
+        assertEquals(entriesBefore, cacheClient.size(),
+                "queue-full 503 must not leave a residual child status entry");
+    }
+
+    @Test
+    @DisplayName("F1: an attachment rejected by a full queue is not counted against the parent's max")
+    void shouldNotConsumeAttachmentSlotOnQueueFull() throws Exception {
+        // Arrange — saturate the queue so the next attachment is rejected with 503
+        String parentTraceId = createParentEntry("/api/upload");
+        queue.poll(); // drain the parent's own container to keep a slot for the accepted attachment below
+        while (queue.remainingCapacity() > 0) {
+            queue.offer(new HttpRequestContainer("test", "POST", "/test",
+                    Map.of(), Map.of(), "127.0.0.1",
+                    new byte[0], null, null, null, null, Map.of()));
+        }
+        assertEquals(503, postAttachment(parentTraceId, "rejected").statusCode());
+
+        // Act — free a slot and retry; the rolled-back attempt must not have consumed a slot
+        queue.poll();
+        var retry = postAttachment(parentTraceId, "retried");
+
+        // Assert
+        assertEquals(202, retry.statusCode(),
+                "a queue-full rejection must roll back its attachment slot so a retry succeeds");
     }
 
     @Test

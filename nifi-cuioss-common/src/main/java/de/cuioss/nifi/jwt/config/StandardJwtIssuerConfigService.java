@@ -240,11 +240,12 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
     public AccessTokenContent validateToken(String rawToken) {
         Objects.requireNonNull(rawToken, "rawToken must not be null");
 
-        if (tokenValidator == null) {
+        TokenValidator validator = tokenValidator;
+        if (validator == null) {
             throw new IllegalStateException("JwtIssuerConfigService is not enabled or has no configuration");
         }
 
-        return tokenValidator.createAccessToken(AccessTokenRequest.of(rawToken));
+        return validator.createAccessToken(AccessTokenRequest.of(rawToken));
     }
 
     @Override
@@ -258,8 +259,9 @@ public class StandardJwtIssuerConfigService extends AbstractControllerService im
 
     @Override
     public Optional<SecurityEventCounter> getSecurityEventCounter() {
-        return tokenValidator != null
-                ? Optional.of(tokenValidator.getSecurityEventCounter())
+        TokenValidator validator = tokenValidator;
+        return validator != null
+                ? Optional.of(validator.getSecurityEventCounter())
                 : Optional.empty();
     }
 

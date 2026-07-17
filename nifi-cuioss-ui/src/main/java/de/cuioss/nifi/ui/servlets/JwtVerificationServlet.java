@@ -114,14 +114,24 @@ public class JwtVerificationServlet extends HttpServlet {
         if (validationService == null) {
             NiFiWebConfigurationContext configContext = (NiFiWebConfigurationContext) getServletContext()
                     .getAttribute("nifi-web-configuration-context");
-            validationService = new JwtValidationService(configContext);
+            // F4: the attribute is absent when NiFi has not published the context. Constructing
+            // JwtValidationService with null trips its Objects.requireNonNull, failing servlet init
+            // with a container error page. Leave the service unpublished instead — requireService()
+            // then turns a request into the 503 the sibling servlets emit for this same condition.
+            if (configContext == null) {
+                LOGGER.debug("NiFi web configuration context is unavailable — "
+                        + "JWT validation service not published; requests will be answered with 503");
+            } else {
+                validationService = new JwtValidationService(configContext);
+            }
         }
     }
 
     /**
-     * Returns the validation service, or throws when it has not been published yet. {@link #init()}
-     * and the injecting constructor set it before any request is served; this guard keeps the
-     * reference non-null for the {@code @NullMarked} contract without a redundant defensive branch.
+     * Returns the validation service, or throws when it has not been published. {@link #init()}
+     * leaves it unpublished when the NiFi web configuration context is unavailable, so this is the
+     * request-time guard for that condition: the {@link IllegalStateException} is mapped to the
+     * sibling servlets' 503 contract by {@link #performTokenVerification}.
      */
     private JwtValidationService requireService() {
         JwtValidationService service = validationService;

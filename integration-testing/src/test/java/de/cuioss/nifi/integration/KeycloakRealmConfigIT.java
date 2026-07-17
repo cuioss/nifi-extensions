@@ -111,7 +111,7 @@ class KeycloakRealmConfigIT {
         @Test
         @DisplayName("testUser token should contain 'roles' claim with 'user' and 'read'")
         void userShouldHaveUserAndReadRoles() {
-            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
+            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER, TEST_USER_PASSWORD));
 
             // The realm-roles-mapper maps realm roles into a top-level 'roles' claim
             assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
@@ -123,7 +123,7 @@ class KeycloakRealmConfigIT {
         @Test
         @DisplayName("limitedUser token should contain 'user' role but NOT 'read'")
         void limitedUserShouldHaveUserRoleOnly() {
-            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, LIMITED_USER));
+            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, LIMITED_USER, LIMITED_USER_PASSWORD));
 
             assertTrue(payload.containsKey("roles"), "token should contain 'roles' claim");
             var roles = payload.getJsonArray("roles");
@@ -141,7 +141,7 @@ class KeycloakRealmConfigIT {
         @Test
         @DisplayName("oauth_integration_tests token issuer should contain correct realm name")
         void primaryRealmIssuerShouldContainRealmName() {
-            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
+            JsonObject payload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER, TEST_USER_PASSWORD));
 
             String issuer = payload.getString("iss");
             assertTrue(issuer.contains("/realms/oauth_integration_tests"),
@@ -151,8 +151,8 @@ class KeycloakRealmConfigIT {
         @Test
         @DisplayName("other_realm issuer should differ from primary realm")
         void otherRealmIssuerShouldDiffer() {
-            JsonObject primaryPayload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER));
-            JsonObject otherPayload = decodeJwtPayload(fetchToken(otherRealmTokenSpec, OTHER_USER));
+            JsonObject primaryPayload = decodeJwtPayload(fetchToken(tokenSpec, TEST_USER, TEST_USER_PASSWORD));
+            JsonObject otherPayload = decodeJwtPayload(fetchToken(otherRealmTokenSpec, OTHER_USER, OTHER_USER_PASSWORD));
 
             String primaryIssuer = primaryPayload.getString("iss");
             String otherIssuer = otherPayload.getString("iss");
@@ -174,8 +174,8 @@ class KeycloakRealmConfigIT {
         @Test
         @DisplayName("tokens from different realms should have different signing key IDs")
         void realmsShouldUseDifferentSigningKeys() {
-            String primaryToken = fetchToken(tokenSpec, TEST_USER);
-            String otherToken = fetchToken(otherRealmTokenSpec, OTHER_USER);
+            String primaryToken = fetchToken(tokenSpec, TEST_USER, TEST_USER_PASSWORD);
+            String otherToken = fetchToken(otherRealmTokenSpec, OTHER_USER, OTHER_USER_PASSWORD);
 
             // JWT header contains 'kid' (Key ID) — must differ between realms
             JsonObject primaryHeader = decodeJwtHeader(primaryToken);
@@ -199,7 +199,7 @@ class KeycloakRealmConfigIT {
         void clientShouldSupportPasswordGrant() {
             given().spec(tokenSpec)
                     .formParam("username", TEST_USER)
-                    .formParam("password", PASSWORD)
+                    .formParam("password", TEST_USER_PASSWORD)
                     .when()
                     .post()
                     .then()
@@ -242,12 +242,14 @@ class KeycloakRealmConfigIT {
     // ── Helper methods ─────────────────────────────────────────────────
 
     /**
-     * Fetches an access token via REST Assured using the given spec and username.
+     * Fetches an access token via REST Assured using the given spec and credentials.
+     * The password is an explicit parameter because the users this helper is called
+     * with are distinct identities across two realms; they must not share one constant.
      */
-    private static String fetchToken(RequestSpecification spec, String username) {
+    private static String fetchToken(RequestSpecification spec, String username, String password) {
         return given().spec(spec)
                 .formParam("username", username)
-                .formParam("password", PASSWORD)
+                .formParam("password", password)
                 .when()
                 .post()
                 .then()

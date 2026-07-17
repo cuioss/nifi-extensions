@@ -9,6 +9,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
+# Single definition site for the test credentials this script reports.
+# shellcheck source=test-credentials.env disable=SC1091
+. "${SCRIPT_DIR}/test-credentials.env"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -293,8 +297,8 @@ check_status() {
         echo "  Keycloak: ${KEYCLOAK_URL}/"
         echo ""
         log_info "Default test credentials:"
-        echo "  NiFi:     testUser / drowssap"
-        echo "  Keycloak: testUser / drowssap"
+        echo "  NiFi:     ${TEST_USER_NAME} / ${TEST_USER_PASSWORD}"
+        echo "  Keycloak: ${TEST_USER_NAME} / ${TEST_USER_PASSWORD}"
     fi
 
     return 0

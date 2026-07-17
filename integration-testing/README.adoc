@@ -220,7 +220,7 @@ src/main/docker/
 │   ├── login-identity-providers.xml  # SingleUser: testUser/drowssap
 │   ├── authorizers.xml           #   SingleUser authorizer
 │   ├── keystore.p12 / truststore.p12 # TLS keystores
-│   ├── flow.json / flow.json.gz / flow.xml.gz  #   Pre-configured flow (JSON source + gzipped)
+│   ├── flow.json / flow.json.gz  #   Pre-configured flow (JSON source + gzipped; the .gz is what NiFi loads)
 │   ├── cui-nifi-extensions.properties  #   CUI extension static configuration
 │   ├── test-jwks.json             #   JWKS test data for validation tests
 │   └── bootstrap.conf / logback.xml / state-management.xml

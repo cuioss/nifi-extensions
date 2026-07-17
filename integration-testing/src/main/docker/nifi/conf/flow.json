@@ -1031,7 +1031,10 @@
             "runDurationMillis": 0,
             "concurrentlySchedulableTaskCount": 1,
             "autoTerminatedRelationships": [
-              "disabled-test"
+              "disabled-test",
+              "sandbox-anonymous",
+              "sandbox-scoped",
+              "sandbox-scoped-denied"
             ],
             "componentType": "PROCESSOR",
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
@@ -1625,6 +1628,68 @@
             "retriedRelationships": [],
             "retryCount": 0,
             "scheduledState": "ENABLED"
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-wait00000002",
+            "name": "Wait (sandbox-expiry)",
+            "type": "org.apache.nifi.processors.standard.Wait",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Release Signal Identifier": "merge-signal-${rest.trace.id}",
+              "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
+              "Expiration Duration": "3 sec",
+              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
+            },
+            "propertyDescriptors": {
+              "Release Signal Identifier": {
+                "name": "Release Signal Identifier",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Target Signal Count": {
+                "name": "Target Signal Count",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Expiration Duration": {
+                "name": "Expiration Duration",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Distributed Cache Service": {
+                "name": "Distributed Cache Service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "style": {},
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "executionNode": "ALL",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 1000.0,
+              "y": 700.0
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
           }
         ],
         "inputPorts": [],
@@ -2084,6 +2149,134 @@
             },
             "selectedRelationships": [
               "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000020",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000020",
+            "name": "RestApiGateway \u2192 Wait (sandbox-expiry)",
+            "source": {
+              "id": "07d5daeb-d26a-5784-ad28-bd8f7676646a",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "sandbox-expiry"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000021",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000021",
+            "name": "Wait (sandbox-expiry) \u2192 Wait (sandbox-expiry)",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "wait"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000022",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000022",
+            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000023",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000023",
+            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "expired"
             ],
             "backPressureObjectThreshold": 10000,
             "backPressureDataSizeThreshold": "1 GB",

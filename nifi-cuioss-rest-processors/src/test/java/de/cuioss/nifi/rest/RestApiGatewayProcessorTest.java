@@ -27,6 +27,7 @@ import de.cuioss.nifi.jwt.config.JwtAuthenticationConfig;
 import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
+import de.cuioss.nifi.rest.handler.HttpRequestContainer;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
@@ -39,6 +40,8 @@ import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import org.apache.nifi.controller.AbstractControllerService;
+import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
+import org.apache.nifi.distributed.cache.client.Serializer;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.util.*;
 import org.junit.jupiter.api.*;
@@ -60,6 +63,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -166,6 +170,35 @@ class RestApiGatewayProcessorTest {
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_AUTH_MODE));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_ROLES));
             assertTrue(descriptors.contains(RestApiGatewayConstants.Properties.MANAGEMENT_METRICS_REQUIRED_SCOPES));
+            assertTrue(descriptors.contains(
+                    RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS));
+        }
+
+        @Test
+        @DisplayName("Status max-additional-fields is supported, optional, defaults to 20, non-negative-integer validated")
+        void shouldExposeMaxAdditionalFieldsDescriptor() {
+            var descriptor = RestApiGatewayConstants.Properties.MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS;
+
+            assertTrue(testRunner.getProcessor().getPropertyDescriptors().contains(descriptor),
+                    "descriptor must be advertised as a supported property");
+            assertFalse(descriptor.isRequired(), "descriptor must be optional");
+            assertEquals("20", descriptor.getDefaultValue());
+
+            // The default (unset) value keeps the processor valid.
+            testRunner.assertValid();
+
+            testRunner.setProperty(descriptor, "5");
+            testRunner.assertValid();
+
+            // 0 fully disables the additional-fields pass-through and is a valid setting.
+            testRunner.setProperty(descriptor, "0");
+            testRunner.assertValid();
+
+            testRunner.setProperty(descriptor, "-3");
+            testRunner.assertNotValid();
+
+            testRunner.setProperty(descriptor, "not-a-number");
+            testRunner.assertNotValid();
         }
 
         @Test
@@ -1178,5 +1211,211 @@ class RestApiGatewayProcessorTest {
     private int getServerPort() {
         var processor = (RestApiGatewayProcessor) testRunner.getProcessor();
         return processor.serverManager.getPort();
+    }
+
+    // ── N28 residual: coverage for four previously-unverified fixes ──────
+
+    /**
+     * In-memory cache client exposing its entry count to this package, so the tracking-eviction
+     * contract can be asserted from outside {@code de.cuioss.nifi.rest.handler}. The inherited
+     * {@code store} is protected, which a subclass may read even across packages.
+     */
+    private static class CountingMapCacheClient
+            extends de.cuioss.nifi.rest.handler.RequestStatusStoreTest.InMemoryMapCacheClient {
+
+        int entryCount() {
+            return store.size();
+        }
+    }
+
+    /** Cache client whose write path fails with an unchecked exception (M3). */
+    private static final class ThrowingMapCacheClient extends CountingMapCacheClient {
+
+        @Override
+        public <K, V> void put(K key, V value, Serializer<K> keySerializer,
+                Serializer<V> valueSerializer) {
+            throw new IllegalStateException("cache backend unavailable");
+        }
+    }
+
+    private void configureTrackedRoute(DistributedMapCacheClient cache) throws Exception {
+        testRunner.addControllerService("cache", cache);
+        testRunner.enableControllerService(cache);
+        testRunner.setProperty(RestApiGatewayConstants.Properties.DISTRIBUTED_MAP_CACHE_CLIENT, "cache");
+        testRunner.setProperty("restapi.tracked.path", "/api/tracked");
+        testRunner.setProperty("restapi.tracked.methods", "POST");
+        testRunner.setProperty("restapi.tracked.tracking-mode", "simple");
+    }
+
+    private HttpResponse<String> postTracked(int port, String... headers) throws Exception {
+        var builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/tracked"))
+                .header("Authorization", "Bearer " + tokenHolder.getRawToken());
+        for (int i = 0; i < headers.length; i += 2) {
+            builder.header(headers[i], headers[i + 1]);
+        }
+        return httpClient.send(
+                builder.POST(HttpRequest.BodyPublishers.ofString("{}")).build(),
+                HttpResponse.BodyHandlers.ofString());
+    }
+
+    private static HttpRequestContainer queuedContainer(String routeName) {
+        return new HttpRequestContainer(routeName, "GET", "/api/ghost", Map.of(), Map.of(),
+                "127.0.0.1", new byte[0], null, null, null, null, Map.of());
+    }
+
+    /**
+     * Injects a container directly into the processor's request queue.
+     * <p>
+     * The failure-relationship guards below are reachable only from an internal-state
+     * inconsistency that no valid configuration can produce — {@code updateDynamicRelationships}
+     * always registers a route's outcome and its relationship together, and a route with
+     * {@code create-flowfile=false} never enqueues at all. Injecting the state directly is
+     * therefore the only way to exercise the guards; the alternative is leaving the N17 fix
+     * permanently unverified. Reflection is confined to these two helpers.
+     */
+    @SuppressWarnings("unchecked")
+    private void enqueueDirectly(HttpRequestContainer container) throws Exception {
+        var field = RestApiGatewayProcessor.class.getDeclaredField("requestQueue");
+        field.setAccessible(true);
+        ((BlockingQueue<HttpRequestContainer>) field.get(testRunner.getProcessor())).add(container);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> routeToOutcome() throws Exception {
+        var field = RestApiGatewayProcessor.class.getDeclaredField("routeToOutcome");
+        field.setAccessible(true);
+        return (Map<String, String>) field.get(testRunner.getProcessor());
+    }
+
+    @Nested
+    @DisplayName("onTrigger Failure Relationship (N17)")
+    class FailureRelationshipTests {
+
+        @Test
+        @DisplayName("N17: should route to failure when the queued route resolves no outcome")
+        void shouldRouteToFailureWhenOutcomeIsMissing() throws Exception {
+            // Arrange: a queued container whose route has no outcome mapping at all.
+            testRunner.run(1, false, true);
+            enqueueDirectly(queuedContainer("ghost-route"));
+
+            // Act
+            testRunner.run(1, false, false);
+
+            // Assert: the null-outcome guard throws before any FlowFile is created, and the error
+            // FlowFile reaches the failure relationship instead of the outcome NPE-ing downstream.
+            var failures = testRunner.getFlowFilesForRelationship(
+                    RestApiGatewayConstants.Relationships.FAILURE);
+            assertEquals(1, failures.size(),
+                    "A queued route with no resolved outcome must produce exactly one failure FlowFile");
+            assertTrue(failures.getFirst().getAttribute("error.message").contains("ghost-route"),
+                    "The failure FlowFile must name the offending route");
+        }
+
+        @Test
+        @DisplayName("N17: should remove the partial FlowFile when the outcome has no relationship")
+        void shouldRemovePartialFlowFileWhenRelationshipIsMissing() throws Exception {
+            // Arrange: the outcome resolves, but no relationship is registered for it. The FlowFile is
+            // therefore created and fully populated before the transfer lookup fails, which is the
+            // case that exercises the partial-FlowFile removal.
+            testRunner.run(1, false, true);
+            routeToOutcome().put("ghost-route", "ghost-outcome");
+            enqueueDirectly(queuedContainer("ghost-route"));
+
+            // Act
+            testRunner.run(1, false, false);
+
+            // Assert: reaching this point at all is the assertion for the removal — without the
+            // session.remove of the partial FlowFile the session commit throws
+            // FlowFileHandlingException, which rolls the error FlowFile back with it.
+            var failures = testRunner.getFlowFilesForRelationship(
+                    RestApiGatewayConstants.Relationships.FAILURE);
+            assertEquals(1, failures.size(),
+                    "Only the error FlowFile may survive a failed outcome transfer");
+            assertTrue(failures.getFirst().getAttribute("error.message").contains("ghost-outcome"),
+                    "The failure FlowFile must name the unresolvable outcome");
+        }
+    }
+
+    @Nested
+    @DisplayName("onStopped Drain and Tracking Eviction (M5b)")
+    class OnStoppedDrainTests {
+
+        @Test
+        @DisplayName("M5b: should evict tracking entries of queued-but-discarded requests on stop")
+        void shouldEvictTrackingEntriesOfDrainedRequests() throws Exception {
+            // Arrange: an accepted, tracked request that is still sitting in the queue.
+            var cache = new CountingMapCacheClient();
+            configureTrackedRoute(cache);
+            testRunner.run(1, false, true);
+
+            assertEquals(202, postTracked(getServerPort()).statusCode());
+            assertEquals(1, cache.entryCount(),
+                    "The accepted request must be tracked before the processor stops");
+
+            // Act: stop WITHOUT running onTrigger — the container never becomes a FlowFile, but the
+            // client already holds a 202 + traceId for it.
+            testRunner.stop();
+
+            // Assert: the drained container's non-terminal entry must not be left behind in the cache.
+            assertEquals(0, cache.entryCount(),
+                    "onStopped must drain the queue and evict the discarded requests' tracking entries");
+        }
+    }
+
+    @Nested
+    @DisplayName("Parent Trace Header Lookup (M2)")
+    class ParentTraceHeaderTests {
+
+        @Test
+        @DisplayName("M2: should match x-parent-trace-id regardless of header case")
+        void shouldMatchParentTraceHeaderIgnoringCase() throws Exception {
+            // Arrange: the header is declared as "X-Parent-Trace-Id" but sent all lower case, so a
+            // case-sensitive map lookup would miss it.
+            var cache = new CountingMapCacheClient();
+            configureTrackedRoute(cache);
+            testRunner.run(1, false, true);
+
+            // Act
+            assertEquals(202, postTracked(getServerPort(),
+                    "x-parent-trace-id", "parent-trace-42").statusCode());
+            testRunner.run(1, false, false);
+
+            // Assert
+            var tracked = testRunner.getFlowFilesForRelationship("tracked");
+            assertEquals(1, tracked.size(), "The tracked request must produce one FlowFile");
+            tracked.getFirst().assertAttributeEquals(
+                    RestApiAttributes.PARENT_TRACE_ID, "parent-trace-42");
+        }
+    }
+
+    @Nested
+    @DisplayName("Handler Error Response (M3)")
+    class HandlerErrorResponseTests {
+
+        @Test
+        @DisplayName("M3: should answer an escaping handler exception with an RFC 9457 problem response")
+        // S125 false positive: the Arrange comment quotes a code-like fragment as prose, not dead code.
+        @SuppressWarnings("java:S125")
+        void shouldReturnRfc9457ProblemDetailOnHandlerError() throws Exception {
+            // Arrange: the status store's write path fails with an unchecked exception, which the
+            // tracking registration does not catch (it only handles IOException), so it escapes to the
+            // dispatcher's top-level safety net.
+            configureTrackedRoute(new ThrowingMapCacheClient());
+            testRunner.run(1, false, true);
+
+            // Act
+            var response = postTracked(getServerPort());
+
+            // Assert: an RFC 9457 problem document, never Jetty's default HTML error page.
+            assertEquals(500, response.statusCode());
+            assertTrue(response.headers().firstValue("Content-Type").orElse("")
+                            .contains("application/problem+json"),
+                    "Error responses must use the RFC 9457 problem media type, was: "
+                            + response.headers().firstValue("Content-Type").orElse("<none>"));
+            assertTrue(response.body().contains("\"status\":500"),
+                    "Problem document must carry the status member, was: " + response.body());
+            assertTrue(response.body().contains("\"title\""),
+                    "Problem document must carry the title member, was: " + response.body());
+        }
     }
 }

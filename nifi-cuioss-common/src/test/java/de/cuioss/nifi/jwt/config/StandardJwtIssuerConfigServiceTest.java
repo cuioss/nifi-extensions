@@ -17,6 +17,7 @@
 package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtConstants;
+import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
@@ -208,6 +209,57 @@ class StandardJwtIssuerConfigServiceTest {
         }
     }
 
+    /**
+     * Enables the service with a single valid issuer.
+     * <p>
+     * onEnabled sets the context classloader to its own before initializing dsl-json, so the
+     * ServiceLoader lookup resolves under the unit-test classloader just as it does inside a NAR.
+     * The enabled lifecycle therefore does not need an integration test to be covered.
+     */
+    private static StandardJwtIssuerConfigService enabledService(TestRunner runner) throws Exception {
+        StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
+        runner.addControllerService(CS_ID, service);
+        runner.setProperty(service, "issuer.test.issuer", "https://example.com/realms/test");
+        runner.setProperty(service, "issuer.test.jwks-url", "https://example.com/jwks");
+        runner.enableControllerService(service);
+        return service;
+    }
+
+    @Nested
+    @DisplayName("Enabled Lifecycle")
+    class EnabledLifecycleTests {
+
+        @Test
+        @DisplayName("Should publish configuration and counter once enabled with a valid issuer")
+        void shouldPublishConfigurationWhenEnabled() throws Exception {
+            // Arrange + Act
+            TestRunner runner = TestRunners.newTestRunner(StubProcessor.class);
+            StandardJwtIssuerConfigService service = enabledService(runner);
+
+            // Assert — the disabled-state guards must all have flipped, which is only true when
+            // onEnabled ran to completion (issuer parsing, dsl-json init and validator build).
+            assertNotNull(service.getAuthenticationConfig(),
+                    "An enabled service must publish its authentication config");
+            assertTrue(service.getSecurityEventCounter().isPresent(),
+                    "An enabled service must publish its security event counter");
+        }
+
+        @Test
+        @DisplayName("Should reject a malformed token with a validation error rather than a disabled-state error")
+        void shouldValidateTokenWhenEnabled() throws Exception {
+            // Arrange
+            TestRunner runner = TestRunners.newTestRunner(StubProcessor.class);
+            StandardJwtIssuerConfigService service = enabledService(runner);
+
+            // Act + Assert — the token is rejected by the real TokenValidator, not by the
+            // "not enabled" guard. Asserting the exception TYPE is what distinguishes the two:
+            // a disabled service answers the same call with IllegalStateException.
+            assertThrows(TokenValidationException.class,
+                    () -> service.validateToken("not-a-valid-token"),
+                    "An enabled service must delegate to the validator and surface a validation failure");
+        }
+    }
+
     @Nested
     @DisplayName("Lifecycle")
     class LifecycleTests {
@@ -215,8 +267,7 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should clear state on disable")
         void shouldClearStateOnDisable() {
-            // Arrange — directly call onDisabled without enabling
-            // (onEnabled requires dsl-json ServiceLoader not available in test)
+            // Arrange — directly call onDisabled without ever enabling
             StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
 
             service.onDisabled();
@@ -231,9 +282,13 @@ class StandardJwtIssuerConfigServiceTest {
         @Test
         @DisplayName("Should wrap exception when onEnabled fails")
         void shouldWrapExceptionOnEnableFailure() throws Exception {
-            // Arrange — enableControllerService triggers onEnabled which fails
-            // because dsl-json ServiceLoader isn't available in unit test classloader.
-            // This exercises the catch block in onEnabled (lines 192-197).
+            // Arrange — enableControllerService triggers onEnabled, which fails because NO issuer is
+            // configured: the validator build rejects an empty issuer list. That is the whole reason,
+            // and it is why EnabledLifecycleTests above can enable the very same service simply by
+            // supplying one issuer. (An earlier comment here blamed the dsl-json ServiceLoader being
+            // unavailable to the unit-test classloader and deferred the enabled-state coverage to the
+            // ITs on that basis; that was never true — onEnabled sets its own classloader before
+            // initializing dsl-json.) This exercises the catch block in onEnabled.
             TestRunner runner = TestRunners.newTestRunner(StubProcessor.class);
             StandardJwtIssuerConfigService service = new StandardJwtIssuerConfigService();
             runner.addControllerService(CS_ID, service);

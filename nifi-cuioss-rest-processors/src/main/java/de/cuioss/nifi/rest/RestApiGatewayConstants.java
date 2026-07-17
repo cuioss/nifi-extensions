@@ -230,6 +230,18 @@ public final class RestApiGatewayConstants {
                 .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
                 .build();
 
+        public static final PropertyDescriptor MANAGEMENT_STATUS_MAX_ADDITIONAL_FIELDS = new PropertyDescriptor.Builder()
+                .name("rest.gateway.management.status.max-additional-fields")
+                .displayName("Status Endpoint Max Additional Fields")
+                .description("Maximum number of non-reserved additional fields re-emitted in the "
+                        + "/status/{traceId} response body. Additional fields captured from externally-written "
+                        + "status entries are echoed back in encounter order up to this bound; the remainder "
+                        + "is truncated.")
+                .required(false)
+                .defaultValue("20")
+                .addValidator(StandardValidators.NON_NEGATIVE_INTEGER_VALIDATOR)
+                .build();
+
         public static final PropertyDescriptor MANAGEMENT_ATTACHMENTS_ENABLED = new PropertyDescriptor.Builder()
                 .name("rest.gateway.management.attachments.enabled")
                 .displayName("Attachments Endpoint Enabled")

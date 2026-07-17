@@ -1021,6 +1021,276 @@ export class ProcessorApiManager {
     }
     return false;
   }
+
+  /**
+   * Poll a processor until its PHYSICAL state is STOPPED with no active threads.
+   * The physicalState field is authoritative here: a start requested while the
+   * processor is INVALID parks it in a pending-start limbo where runStatus
+   * reports 'Invalid' (not 'Running') and component.state reports STOPPED, yet
+   * NiFi still rejects config mutations with 'Cannot modify configuration while
+   * the Processor is running'. Only physicalState === 'STOPPED' guarantees the
+   * PUT is accepted (no fixed sleep, N64).
+   * @param {string} processorId - target processor id
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   * @returns {Promise<object|null>} the settled processor details, or null if it
+   *   vanished OR the settle timed out. A null return is the caller's signal that
+   *   the processor is NOT safely stopped — never treat a timeout as settled, or a
+   *   subsequent config PUT can still fail with 'Cannot modify configuration while
+   *   the Processor is running' (the PR #445 failure mode).
+   */
+  async _waitForProcessorSettled(processorId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    let details = await this.getProcessorDetails(processorId);
+    while (Date.now() < deadline) {
+      if (!details) return null;
+      const physicalState = (details.physicalState || details.component?.state || '').toUpperCase();
+      const activeThreads = details.status?.aggregateSnapshot?.activeThreadCount ?? 0;
+      if (physicalState === 'STOPPED' && activeThreads === 0) return details;
+      await new Promise(resolve => setTimeout(resolve, 250));
+      details = await this.getProcessorDetails(processorId);
+    }
+    // Timed out without reaching a physically STOPPED, thread-idle state. Return
+    // null (NOT the last-fetched details) so the caller's `if (!settled)` guard
+    // treats a timeout as a failed settle rather than proceeding to mutate a
+    // still-running processor.
+    testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to settle`);
+    return null;
+  }
+
+  /**
+   * Poll a processor until its physical state is RUNNING.
+   * @param {string} processorId - target processor id
+   * @param {number} [timeoutMs] - overall wait budget in milliseconds
+   * @returns {Promise<boolean>} true once the processor is RUNNING, false on timeout
+   */
+  async _waitForProcessorRunning(processorId, timeoutMs = TIMEOUTS.MEDIUM) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const details = await this.getProcessorDetails(processorId);
+      const physicalState =
+        (details?.physicalState || details?.component?.state || '').toUpperCase();
+      if (physicalState === 'RUNNING') return true;
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to reach RUNNING`);
+    return false;
+  }
+
+  /**
+   * PUT the processor config, recovering from a stale-revision 409 by
+   * re-reading the live revision once — never guessing version+1 (N64). On a 409
+   * the retry payload is REBUILT from the freshly-read component.config instead of
+   * replaying the pre-conflict DTO: a concurrent edit landing between the first PUT
+   * and the retry can add new keys under routePrefix or grow the
+   * autoTerminatedRelationships set, and replaying the stale DTO would leave the new
+   * keys behind or clobber the newer relationship set. The rebuild null-maps every
+   * key live under routePrefix in the fresh state, and unions the fresh
+   * auto-terminated set with the requested relationships. After the rebuilt retry the
+   * live config is re-read and confirmed free of every key under routePrefix
+   * before returning true.
+   * @param {string} processorId - target processor id
+   * @param {number} version - revision version to attempt first
+   * @param {object} config - partial config DTO (properties mapped to null, autoTerminatedRelationships)
+   * @param {string} routePrefix - the restapi.{routeName}. prefix being cleared
+   * @returns {Promise<boolean>} true when NiFi accepted the config update and the route keys are gone
+   */
+  async _updateProcessorConfigWithFreshRevision(processorId, version, config, routePrefix) {
+    const attempt = (rev, body) =>
+      this.makeApiCall(`/nifi-api/processors/${processorId}`, {
+        method: 'PUT',
+        body: {
+          revision: { version: rev },
+          component: {
+            id: processorId,
+            config: body
+          }
+        }
+      });
+
+    let result = await attempt(version, config);
+    if (result.ok) return true;
+    if (result.status !== 409) return false;
+
+    // Stale-revision conflict: re-read the live revision AND the live config, then
+    // rebuild the clear payload from that fresh state so a concurrent edit cannot
+    // leave new route keys behind or clobber a newer auto-terminated set.
+    const fresh = await this.getProcessorDetails(processorId);
+    const freshVersion = fresh?.revision?.version;
+    if (freshVersion === undefined || freshVersion === null) return false;
+
+    const freshConfig = fresh.component?.config || {};
+    const freshProps = freshConfig.properties || {};
+
+    // Null-map the originally requested keys plus every key under routePrefix
+    // that is live in the FRESH state (catches keys a concurrent edit added).
+    const rebuiltProps = {};
+    for (const key of Object.keys(config.properties || {})) rebuiltProps[key] = null;
+    for (const key of Object.keys(freshProps)) {
+      if (key.startsWith(routePrefix)) rebuiltProps[key] = null;
+    }
+
+    // Union the fresh auto-terminated set with the requested relationships so a
+    // newer set is preserved rather than clobbered.
+    const autoTerminated = new Set(freshConfig.autoTerminatedRelationships || []);
+    for (const rel of config.autoTerminatedRelationships || []) autoTerminated.add(rel);
+
+    result = await attempt(freshVersion, {
+      properties: rebuiltProps,
+      autoTerminatedRelationships: [...autoTerminated]
+    });
+    if (!result.ok) return false;
+
+    // Confirm the retry actually cleared the route before reporting success.
+    const after = await this.getProcessorDetails(processorId);
+    const liveProps = after?.component?.config?.properties || {};
+    return !Object.keys(liveProps).some(key => key.startsWith(routePrefix));
+  }
+
+  /**
+   * Remove all restapi.{routeName}.* properties from the RestApiGatewayProcessor
+   * via the REST API. Idempotent: returns true as a no-op when the gateway
+   * processor is absent from the canvas or carries no matching properties. When
+   * properties do match, the processor is stopped (whenever physicalState is not
+   * STOPPED — this also cancels an INVALID pending-start limbo), polled to a
+   * physically STOPPED state, its config PUT with each matched key mapped to
+   * null AND the route's dynamic relationship auto-terminated (else the stale
+   * relationship keeps the processor INVALID and the restart deadlocks), then
+   * restarted and confirmed RUNNING — all without a fixed sleep (N64). Stale
+   * revisions on the PUT are recovered by re-reading the live revision (N64).
+   * @param {string} routeName - route whose restapi.{routeName}.* properties to clear
+   * @returns {Promise<boolean>} true on success (including the idempotent no-op cases)
+   */
+  async removeGatewayRouteProperties(routeName) {
+    const gatewayId = await this.getGatewayProcessorId();
+    if (!gatewayId) {
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): gateway processor not on canvas — nothing to clean`
+      );
+      return true;
+    }
+
+    const details = await this.getProcessorDetails(gatewayId);
+    if (!details) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): could not fetch gateway processor ${gatewayId} details`
+      );
+      return false;
+    }
+
+    const prefix = `restapi.${routeName}.`;
+    const currentProps = details.component?.config?.properties || {};
+    const matchedKeys = Object.keys(currentProps).filter(key => key.startsWith(prefix));
+    if (matchedKeys.length === 0) {
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): no properties matching '${prefix}' — already clean`
+      );
+      // Already clean, but the cleanup contract requires a RUNNING gateway. A clean
+      // gateway that is STOPPED (or in any non-RUNNING physical state) must be
+      // started and confirmed RUNNING before we report success — otherwise later
+      // suites inherit a stopped gateway. Reuse the same state-check / start /
+      // confirm pattern the non-empty-matchedKeys path applies at the end.
+      const cleanPhysicalState =
+        (details.physicalState || details.component?.state || '').toUpperCase();
+      if (cleanPhysicalState === 'RUNNING') {
+        return true;
+      }
+      const started = await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
+      const running = started && (await this._waitForProcessorRunning(gatewayId));
+      if (!running) {
+        testLogger.warn(
+          'Processor',
+          `removeGatewayRouteProperties('${routeName}'): already clean but gateway ${gatewayId} could not be confirmed RUNNING`
+        );
+        return false;
+      }
+      testLogger.info(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): already clean; started gateway ${gatewayId} and confirmed RUNNING`
+      );
+      return true;
+    }
+
+    testLogger.info(
+      'Processor',
+      `removeGatewayRouteProperties('${routeName}'): clearing ${matchedKeys.length} property(ies): ${matchedKeys.join(', ')}`
+    );
+
+    // Stop the gateway before mutating its config. Judge by physicalState, not
+    // runStatus: a start requested while the processor is INVALID parks it in a
+    // pending-start limbo ('physicalState: STARTING', runStatus 'Invalid') that
+    // still rejects config PUTs with 'Cannot modify configuration while the
+    // Processor is running' — the exact failure that sank the PR #445 UI
+    // cleanup. An explicit STOPPED cancels the pending start.
+    const initialPhysicalState =
+      (details.physicalState || details.component?.state || '').toUpperCase();
+    if (initialPhysicalState !== 'STOPPED') {
+      await this.setProcessorRunStatusById(gatewayId, 'STOPPED');
+    }
+
+    // Poll to a physically STOPPED (no active threads) state before the PUT.
+    const settled = await this._waitForProcessorSettled(gatewayId);
+    if (!settled) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): gateway processor ${gatewayId} did not settle (vanished or timed out) — not safe to mutate config`
+      );
+      return false;
+    }
+
+    // Map each matched key to null so NiFi clears it. The processor recomputes
+    // its dynamic route relationships only in onScheduled, so clearing the
+    // properties alone leaves a stale '{routeName}' relationship that keeps the
+    // processor INVALID ('not connected and not auto-terminated') and deadlocks
+    // the restart. Auto-terminate that relationship in the same PUT — the same
+    // thing the route-editor UI does on route deletion; the entry becomes a
+    // harmless leftover once onScheduled drops the relationship.
+    const clearMap = {};
+    for (const key of matchedKeys) clearMap[key] = null;
+    const autoTerminated = new Set(
+      settled.component?.config?.autoTerminatedRelationships || []
+    );
+    autoTerminated.add(routeName);
+
+    const version = settled.revision?.version ?? 0;
+    const updated = await this._updateProcessorConfigWithFreshRevision(
+      gatewayId,
+      version,
+      {
+        properties: clearMap,
+        autoTerminatedRelationships: [...autoTerminated]
+      },
+      prefix
+    );
+
+    // Always try to leave the provisioned gateway RUNNING again, even on failure.
+    await this.setProcessorRunStatusById(gatewayId, 'RUNNING');
+    const running = await this._waitForProcessorRunning(gatewayId);
+
+    if (!updated) {
+      testLogger.error(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): failed to clear properties on gateway ${gatewayId}`
+      );
+      return false;
+    }
+
+    if (!running) {
+      testLogger.warn(
+        'Processor',
+        `removeGatewayRouteProperties('${routeName}'): cleared properties but gateway ${gatewayId} did not confirm RUNNING`
+      );
+      return false;
+    }
+
+    testLogger.info(
+      'Processor',
+      `removeGatewayRouteProperties('${routeName}'): cleared ${matchedKeys.length} property(ies); gateway ${gatewayId} restarted and RUNNING`
+    );
+    return true;
+  }
 }
 
 // Export convenience functions for backward compatibility
