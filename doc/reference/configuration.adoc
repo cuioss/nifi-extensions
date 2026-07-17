@@ -46,7 +46,7 @@ The `JwtIssuerConfigService` manages issuer configuration and token validation s
 
 |jwt.validation.jwks.allow.private.network.addresses
 |false
-|Whether to allow JWKS URLs pointing to private network addresses. Enable only for development.
+|Whether to allow JWKS URLs whose host resolves to a private/loopback network address. When enabled, the address is also allow-listed with the underlying JWKS loader's SSRF egress guard so the key set can actually be fetched. Enable only for development.
 |Yes
 |===
 

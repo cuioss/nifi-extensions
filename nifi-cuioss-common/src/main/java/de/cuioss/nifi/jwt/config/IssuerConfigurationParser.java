@@ -243,7 +243,35 @@ public class IssuerConfigurationParser {
             httpConfigBuilder.parserConfig(parserConfig);
         }
         applyGlobalJwksSettings(httpConfigBuilder, globalProperties);
+        applyEgressPolicy(httpConfigBuilder, jwksUrl, issuerName, globalProperties);
         return httpConfigBuilder.build();
+    }
+
+    /**
+     * Mirrors the operator's {@code Allow Private Network Addresses for JWKS} decision to the
+     * token-sheriff JWKS loader.
+     * <p>
+     * Since token-sheriff 0.9.2 the loader enforces its OWN SSRF egress guard that blocks any JWKS
+     * host resolving to a loopback or private address ("SSRF egress blocked: URL ... resolves to
+     * disallowed address ..."). {@link #isJwksUrlAllowed} has already rejected private-addressed
+     * issuers unless the operator explicitly opted in, so when we reach this point with a
+     * private-resolving host that opt-in is in effect and must be forwarded to the loader — otherwise
+     * the guard silently blocks the fetch and the issuer never becomes healthy. Loopback has a
+     * dedicated toggle; other private ranges are allowlisted per-host. Public hosts need no opt-out.
+     */
+    private static void applyEgressPolicy(HttpJwksLoaderConfig.HttpJwksLoaderConfigBuilder builder,
+            String jwksUrl, String issuerName, Map<String, String> globalProperties) {
+        boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
+                .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
+        if (!allowPrivate || !resolvesToPrivateAddress(issuerName, jwksUrl)) {
+            return;
+        }
+        String host = URI.create(jwksUrl).getHost();
+        if (host == null || host.isBlank()) {
+            return;
+        }
+        builder.allowLoopbackEgress(true);
+        builder.allowedEgressHost(host);
     }
 
     private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
