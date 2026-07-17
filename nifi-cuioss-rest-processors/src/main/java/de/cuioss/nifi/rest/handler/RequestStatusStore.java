@@ -150,7 +150,8 @@ public class RequestStatusStore {
         return new RequestStatusEntry(
                 existing.traceId(), newStatus, existing.acceptedAt(), Instant.now(),
                 existing.parentTraceId(), existing.errorDetail(),
-                existing.attachmentsMaxCount(), existing.attachmentsMinCount(), existing.routeName());
+                existing.attachmentsMaxCount(), existing.attachmentsMinCount(), existing.routeName(),
+                existing.additionalFields());
     }
 
     /**

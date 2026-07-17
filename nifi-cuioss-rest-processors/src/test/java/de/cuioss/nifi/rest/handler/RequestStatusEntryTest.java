@@ -23,6 +23,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -110,7 +113,7 @@ class RequestStatusEntryTest {
             Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
                     traceId, RequestStatus.REJECTED, now, now,
-                    parentTraceId, "Validation failed", 0, 0, null);
+                    parentTraceId, "Validation failed", 0, 0, null, Map.of());
 
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
@@ -127,7 +130,7 @@ class RequestStatusEntryTest {
         void shouldSerializeAllStatusValues(RequestStatus status) {
             Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
-                    UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null);
+                    UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null, Map.of());
 
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
@@ -175,6 +178,110 @@ class RequestStatusEntryTest {
             assertTrue(json.contains("\"status\":\"ACCEPTED\""));
             assertTrue(json.contains("\"acceptedAt\""));
             assertTrue(json.contains("\"updatedAt\""));
+        }
+    }
+
+    @Nested
+    @DisplayName("Additional Fields")
+    class AdditionalFields {
+
+        /** Minimal valid reserved-field JSON prefix; extra keys are appended per test. */
+        private String baseJson(String extraKeysWithLeadingComma) {
+            return "{\"traceId\":\"abc\",\"status\":\"ACCEPTED\","
+                    + "\"acceptedAt\":\"2024-01-01T00:00:00Z\",\"updatedAt\":\"2024-01-01T00:00:00Z\""
+                    + extraKeysWithLeadingComma + "}";
+        }
+
+        @Test
+        @DisplayName("Should capture extra top-level string keys in encounter order")
+        void shouldCaptureExtraTopLevelKeys() {
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"tenant\":\"acme\",\"channel\":\"web\""));
+
+            assertEquals(Map.of("tenant", "acme", "channel", "web"), deserialized.additionalFields());
+            assertEquals(List.of("tenant", "channel"),
+                    List.copyOf(deserialized.additionalFields().keySet()));
+        }
+
+        @Test
+        @DisplayName("Should coerce number and boolean scalars to their string form")
+        void shouldCoerceScalarValues() {
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"count\":7,\"enabled\":true,\"archived\":false"));
+
+            assertEquals("7", deserialized.additionalFields().get("count"));
+            assertEquals("true", deserialized.additionalFields().get("enabled"));
+            assertEquals("false", deserialized.additionalFields().get("archived"));
+        }
+
+        @Test
+        @DisplayName("Should drop object, array and null values without failing the parse")
+        void shouldDropNonScalarValues() {
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"meta\":{\"k\":\"v\"},\"tags\":[1,2],\"missing\":null,\"kept\":\"yes\""));
+
+            assertEquals(Map.of("kept", "yes"), deserialized.additionalFields());
+        }
+
+        @Test
+        @DisplayName("Should keep the reserved typed value and never capture a reserved key")
+        void shouldKeepReservedKeyValueOnCollision() {
+            // routeName is a reserved, typed key — even though it appears at the top level it must
+            // populate the typed component and never leak into additionalFields.
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"routeName\":\"upload\",\"extra\":\"kept\""));
+
+            assertEquals("upload", deserialized.routeName());
+            assertFalse(deserialized.additionalFields().containsKey("routeName"));
+            assertEquals(Map.of("extra", "kept"), deserialized.additionalFields());
+        }
+
+        @Test
+        @DisplayName("Should yield an empty map when no additional fields are present")
+        void shouldYieldEmptyMapWhenAbsent() {
+            var deserialized = RequestStatusEntry.fromJson(baseJson(""));
+
+            assertTrue(deserialized.additionalFields().isEmpty());
+        }
+
+        @Test
+        @DisplayName("Factory-created entries carry an empty additional-fields map")
+        void factoryEntriesHaveEmptyAdditionalFields() {
+            var entry = RequestStatusEntry.accepted(UUID.randomUUID().toString(), null);
+
+            assertTrue(entry.additionalFields().isEmpty());
+        }
+
+        @Test
+        @DisplayName("Should preserve additional fields across a toJson/fromJson round-trip")
+        void shouldRoundTripAdditionalFields() {
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("tenant", "acme");
+            extras.put("priority", "5");
+            var entry = new RequestStatusEntry(
+                    UUID.randomUUID().toString(), RequestStatus.ACCEPTED, FIXED_INSTANT, FIXED_INSTANT,
+                    null, null, 0, 0, null, extras);
+
+            var deserialized = RequestStatusEntry.fromJson(entry.toJson());
+
+            assertEquals(extras, deserialized.additionalFields());
+        }
+
+        @Test
+        @DisplayName("Should defensively skip a reserved key present in additionalFields when serializing")
+        void shouldSkipReservedKeyOnSerialize() {
+            Map<String, String> extras = new LinkedHashMap<>();
+            extras.put("routeName", "shadow");
+            extras.put("extra", "kept");
+            var entry = new RequestStatusEntry(
+                    "abc", RequestStatus.ACCEPTED, FIXED_INSTANT, FIXED_INSTANT,
+                    null, null, 0, 0, "real", extras);
+
+            var deserialized = RequestStatusEntry.fromJson(entry.toJson());
+
+            // The typed routeName wins; the shadow additional-field entry is not re-emitted.
+            assertEquals("real", deserialized.routeName());
+            assertEquals(Map.of("extra", "kept"), deserialized.additionalFields());
         }
     }
 }
