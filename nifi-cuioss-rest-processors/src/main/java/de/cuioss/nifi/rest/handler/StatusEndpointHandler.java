@@ -48,13 +48,20 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
     @SuppressWarnings("java:S1075") // URL path, not filesystem path
     private static final String STATUS_PATH_PREFIX = STATUS_PATH + "/";
 
+    /** Reserved response keys emitted before the additional fields; guards against re-emission. */
+    private static final Set<String> RESERVED_RESPONSE_KEYS = Set.of(
+            "traceId", "status", "acceptedAt", "updatedAt", "parentTraceId", "error");
+
     private final RequestStatusStore statusStore;
+    private final int maxAdditionalFields;
 
     public StatusEndpointHandler(RequestStatusStore statusStore,
             boolean enabled, Set<AuthMode> authModes,
-            Set<String> requiredRoles, Set<String> requiredScopes) {
+            Set<String> requiredRoles, Set<String> requiredScopes,
+            int maxAdditionalFields) {
         super(enabled, authModes, requiredRoles, requiredScopes);
         this.statusStore = statusStore;
+        this.maxAdditionalFields = maxAdditionalFields;
     }
 
     @Override
@@ -126,11 +133,32 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
                     .add("detail", statusEntry.errorDetail()));
         }
 
+        emitAdditionalFields(jsonBuilder, statusEntry);
+
         byte[] responseBody = jsonBuilder.build().toString().getBytes(StandardCharsets.UTF_8);
         response.setStatus(200);
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, JSON_CONTENT_TYPE);
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
         response.write(true, ByteBuffer.wrap(responseBody), callback);
+    }
+
+    /**
+     * Re-emits the entry's captured additional fields (in encounter order) into the response body,
+     * bounded to at most {@code maxAdditionalFields} entries. Any key that collides with a reserved
+     * response key already emitted is defensively skipped and does not count against the bound.
+     */
+    private void emitAdditionalFields(JsonObjectBuilder jsonBuilder, RequestStatusEntry statusEntry) {
+        int emitted = 0;
+        for (var field : statusEntry.additionalFields().entrySet()) {
+            if (emitted >= maxAdditionalFields) {
+                break;
+            }
+            if (RESERVED_RESPONSE_KEYS.contains(field.getKey())) {
+                continue;
+            }
+            jsonBuilder.add(field.getKey(), field.getValue());
+            emitted++;
+        }
     }
 
 }
