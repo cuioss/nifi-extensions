@@ -4,12 +4,11 @@
 :toc-title: Table of Contents
 :sectnums:
 :source-highlighter: highlight.js
-:imagesdir: ../resources/diagrams
 
 The `MultiIssuerJWTTokenAuthenticator` is a NiFi processor for FlowFile-based JWT validation.
 It reads a JWT from a FlowFile attribute, validates it against one or more identity providers via the shared `JwtIssuerConfigService` Controller Service, and writes token claims back as FlowFile attributes.
 
-image::jwt-token-flow.svg[JWT Token Processing Flow]
+image::../resources/diagrams/jwt-token-flow.svg[JWT Token Processing Flow]
 
 == Use Case
 

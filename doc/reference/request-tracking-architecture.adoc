@@ -16,7 +16,7 @@ header pointing to a status endpoint.
 
 Requests follow this status lifecycle:
 
-image::request-tracking-overview.svg[Request tracking status lifecycle — simple and attachments requests move through PROCESSING to PROCESSED, REJECTED, RETRY, or ERROR, align=center]
+image::request-tracking-overview.svg["Request tracking status lifecycle — simple and attachments requests move through PROCESSING to PROCESSED, REJECTED, RETRY, or ERROR", align=center]
 
 Valid transitions:
 
@@ -31,17 +31,17 @@ Valid transitions:
 
 === Async POST Request Flow
 
-image::request-tracking-sequence.svg[Asynchronous POST request flow — the Jetty thread returns 202 immediately while processing continues on NiFi threads, align=center]
+image::request-tracking-sequence.svg["Asynchronous POST request flow — the Jetty thread returns 202 immediately while processing continues on NiFi threads", align=center]
 
 === Status Query Flow
 
-image::request-tracking-status-query.svg[Status query flow — a found entry returns 200 OK with the current status, otherwise 404 as an RFC 9457 problem detail, align=center]
+image::request-tracking-status-query.svg["Status query flow — a found entry returns 200 OK with the current status, otherwise 404 as an RFC 9457 problem detail", align=center]
 
 === Chained Requests
 
 Requests can reference a parent traceId for correlation:
 
-image::request-tracking-correlation.svg[Chained request correlation — a second request carries X-Parent-Trace-Id so its status response references the parent traceId, align=center]
+image::request-tracking-correlation.svg["Chained request correlation — a second request carries X-Parent-Trace-Id so its status response references the parent traceId", align=center]
 
 == Data Model
 

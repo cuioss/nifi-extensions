@@ -11,15 +11,15 @@ via `POST /attachments/{parentTraceId}`. Each attachment is independently tracke
 
 == End-to-End Flow
 
-image::attachments-api-request-flow.svg[Attachments API end-to-end request flow — the client posts a parent upload and attachments, and the gateway tracks each with its own traceId, align=center]
+image::attachments-api-request-flow.svg["Attachments API end-to-end request flow — the client posts a parent upload and attachments, and the gateway tracks each with its own traceId", align=center]
 
 == Component Architecture
 
-image::attachments-api-component-architecture.svg[Attachments API component architecture — the route, attachments, and status handlers collaborate through the distributed map cache and request queue, align=center]
+image::attachments-api-component-architecture.svg["Attachments API component architecture — the route, attachments, and status handlers collaborate through the distributed map cache and request queue", align=center]
 
 == HATEOAS Links by Tracking Mode
 
-image::attachments-api-hateoas-links.svg[HATEOAS links by tracking mode — the response's _links block depends on the route's tracking mode, align=center]
+image::attachments-api-hateoas-links.svg["HATEOAS links by tracking mode — the response's _links block depends on the route's tracking mode", align=center]
 
 === Attachments Mode Response (202)
 
@@ -92,7 +92,7 @@ All error responses use RFC 9457 Problem Detail format.
 
 == Attachment Counting
 
-image::attachments-api-error-handling.svg[Attachment counting and error handling — UUID validation, parent lookup, and the atomic counter limit produce 400, 404, 409, or 202 responses, align=center]
+image::attachments-api-error-handling.svg["Attachment counting and error handling — UUID validation, parent lookup, and the atomic counter limit produce 400, 404, 409, or 202 responses", align=center]
 
 Counters are held in a `ConcurrentHashMap<String, AtomicInteger>` inside `AttachmentsEndpointHandler`.
 They reset on processor restart, this is a documented limitation (worst case: allows slightly more attachments than configured after restart).
