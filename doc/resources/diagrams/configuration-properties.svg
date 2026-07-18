@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 660"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">JWT configuration properties reference</title>
+  <desc id="desc">The JwtIssuerConfigService controller service exposes core properties (JWKS refresh interval, connection timeout, maximum token size, allowed algorithms, HTTPS requirement) and one dynamic property set per issuer (JWKS URL, enabled flag, issuer URI, audience, client id). The MultiIssuerJWTTokenAuthenticator and RestApiGatewayProcessor each expose their own property sets and reference the controller service through a cs.reference property.</desc>
+
+  <defs>
+    <style>
+      .grp-hdr   { font-size: 14px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .class-hdr { font-size: 12.5px; font-weight: 700; fill: #6e7681; text-anchor: start; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .prop      { font-size: 12px; fill: #6e7681; text-anchor: start; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .stroke    { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .sep       { stroke: #6e7681; stroke-width: 0.6; stroke-dasharray: 3 3; fill: none; }
+      .caption   { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Group labels -->
+  <text x="260" y="58" class="grp-hdr">Controller Service · JwtIssuerConfigService</text>
+  <text x="770" y="58" class="grp-hdr">Processor Properties</text>
+
+  <!-- CS Properties -->
+  <rect class="stroke" x="40" y="78" width="440" height="150" rx="6" ry="6"/>
+  <text x="60" y="100" class="class-hdr">CS Properties</text>
+  <line class="sep" x1="60" y1="110" x2="460" y2="110"/>
+  <text x="60" y="132" class="prop">jwks.refresh.interval: 3600</text>
+  <text x="60" y="156" class="prop">jwks.connection.timeout: 10</text>
+  <text x="60" y="180" class="prop">maximum.token.size: 16384</text>
+  <text x="60" y="204" class="prop">allowed.algorithms: RS256, ES256, …</text>
+  <text x="60" y="222" class="prop">require.https.for.jwks: true | false</text>
+
+  <!-- Issuer 1 -->
+  <rect class="stroke" x="40" y="250" width="440" height="156" rx="6" ry="6"/>
+  <text x="60" y="272" class="class-hdr">Issuer 1 (dynamic property set)</text>
+  <line class="sep" x1="60" y1="282" x2="460" y2="282"/>
+  <text x="60" y="304" class="prop">&lt;issuer&gt;.jwks-url: URL</text>
+  <text x="60" y="328" class="prop">&lt;issuer&gt;.enabled: true | false</text>
+  <text x="60" y="352" class="prop">&lt;issuer&gt;.issuer: URI (matches iss)</text>
+  <text x="60" y="376" class="prop">&lt;issuer&gt;.audience: api://my-service</text>
+  <text x="60" y="400" class="prop">&lt;issuer&gt;.client-id: my-client-app</text>
+
+  <!-- Issuer 2 -->
+  <rect class="stroke" x="40" y="428" width="440" height="156" rx="6" ry="6"/>
+  <text x="60" y="450" class="class-hdr">Issuer 2 (dynamic property set)</text>
+  <line class="sep" x1="60" y1="460" x2="460" y2="460"/>
+  <text x="60" y="482" class="prop">&lt;issuer&gt;.jwks-url: URL</text>
+  <text x="60" y="506" class="prop">&lt;issuer&gt;.enabled: true | false</text>
+  <text x="60" y="530" class="prop">&lt;issuer&gt;.issuer: URI (matches iss)</text>
+  <text x="60" y="554" class="prop">&lt;issuer&gt;.audience: api://other-service</text>
+  <text x="60" y="578" class="prop">&lt;issuer&gt;.client-id: other-client</text>
+
+  <!-- MultiIssuerJWTTokenAuthenticator -->
+  <rect class="stroke" x="540" y="78" width="460" height="168" rx="6" ry="6"/>
+  <text x="560" y="100" class="class-hdr">MultiIssuerJWTTokenAuthenticator</text>
+  <line class="sep" x1="560" y1="110" x2="980" y2="110"/>
+  <text x="560" y="132" class="prop">token.attribute: jwt.token</text>
+  <text x="560" y="158" class="prop">require.valid.token: true | false</text>
+  <text x="560" y="184" class="prop">required.roles: admin, user</text>
+  <text x="560" y="210" class="prop">required.scopes: read, write</text>
+  <text x="560" y="236" class="prop">cs.reference: JwtIssuerConfigService</text>
+
+  <!-- RestApiGatewayProcessor -->
+  <rect class="stroke" x="540" y="290" width="460" height="196" rx="6" ry="6"/>
+  <text x="560" y="312" class="class-hdr">RestApiGatewayProcessor</text>
+  <line class="sep" x1="560" y1="322" x2="980" y2="322"/>
+  <text x="560" y="344" class="prop">listening.port: 9443</text>
+  <text x="560" y="370" class="prop">listening.host: 0.0.0.0</text>
+  <text x="560" y="396" class="prop">ssl.context.service: SSLContextProvider</text>
+  <text x="560" y="422" class="prop">max.request.size: 1048576</text>
+  <text x="560" y="448" class="prop">request.queue.size: 50</text>
+  <text x="560" y="474" class="prop">cs.reference: JwtIssuerConfigService</text>
+
+  <!-- Footer -->
+  <text x="520" y="628" class="caption">Multiple issuers are configured as independent dynamic property sets, each with its own authentication rules.</text>
+</svg>

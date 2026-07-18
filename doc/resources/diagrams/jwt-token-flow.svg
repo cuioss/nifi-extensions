@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1160"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">JWT token processing flow through the MultiIssuerJWTTokenAuthenticator</title>
+  <desc id="desc">A FlowFile carrying a JWT token is processed in four stages. Token extraction reads the token from a configurable attribute; if no token is present, a request that does not require a valid token routes to success while one that does routes to failure. A size check rejects oversized tokens. Token validation through Token-Sheriff sets identity and claim attributes on success or routes to failure on an invalid token. An authorization check evaluates roles, groups, and scopes; meeting the requirements routes to success, otherwise to failure.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .box-lbl { font-size: 12.5px; fill: #6e7681; text-anchor: middle; }
+      .box-sub { font-size: 10.5px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .dtext   { font-size: 12px; fill: #6e7681; text-anchor: middle; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .term-lbl{ font-size: 11px; fill: #6e7681; text-anchor: middle; }
+      .part    { font-size: 11px; fill: #6e7681; text-anchor: start; font-weight: 600; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .term    { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .dot     { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Partition labels (left gutter) -->
+  <text x="30" y="150" class="part">Token Extraction</text>
+  <text x="30" y="392" class="part">Size Check</text>
+  <text x="30" y="560" class="part">Token Validation (Token-Sheriff)</text>
+  <text x="30" y="808" class="part">Authorization Check</text>
+
+  <!-- start -->
+  <circle class="dot" cx="290" cy="44" r="7"/>
+  <line class="arrow" x1="290" y1="51" x2="290" y2="64" marker-end="url(#arrow)"/>
+
+  <!-- B1 FlowFile arrives -->
+  <rect class="stroke" x="180" y="66" width="220" height="44" rx="6" ry="6"/>
+  <text x="290" y="93" class="box-lbl">FlowFile arrives with JWT token</text>
+  <line class="arrow" x1="290" y1="110" x2="290" y2="144" marker-end="url(#arrow)"/>
+
+  <!-- B2 Extract token -->
+  <rect class="stroke" x="180" y="146" width="220" height="52" rx="6" ry="6"/>
+  <text x="290" y="170" class="box-lbl">Extract token from attribute</text>
+  <text x="290" y="188" class="box-sub">default: jwt.token</text>
+  <line class="arrow" x1="290" y1="198" x2="290" y2="224" marker-end="url(#arrow)"/>
+
+  <!-- D1 Token present? -->
+  <polygon class="stroke" points="210,264 290,226 370,264 290,302"/>
+  <text x="290" y="268" class="dtext">Token present?</text>
+
+  <!-- D1 no -> D1b -->
+  <line class="arrow" x1="370" y1="264" x2="538" y2="264" marker-end="url(#arrow)"/>
+  <text x="452" y="256" class="lbl">no</text>
+
+  <!-- D1b Require valid token? -->
+  <polygon class="stroke" points="540,264 620,226 700,264 620,302"/>
+  <text x="620" y="268" class="dtext">Require valid token?</text>
+
+  <!-- D1b yes -> failure -->
+  <line class="arrow" x1="700" y1="264" x2="760" y2="264" marker-end="url(#arrow)"/>
+  <text x="730" y="256" class="lbl">yes</text>
+  <circle class="term" cx="792" cy="264" r="10"/>
+  <circle class="dot" cx="792" cy="264" r="4.5"/>
+  <text x="792" y="292" class="term-lbl">route to failure</text>
+
+  <!-- D1b no -> set reason -> success -->
+  <line class="arrow" x1="620" y1="302" x2="620" y2="336" marker-end="url(#arrow)"/>
+  <text x="646" y="322" class="lbl">no</text>
+  <rect class="stroke" x="510" y="336" width="220" height="44" rx="6" ry="6"/>
+  <text x="620" y="363" class="box-lbl">Set jwt.error.reason</text>
+  <line class="arrow" x1="620" y1="380" x2="620" y2="410" marker-end="url(#arrow)"/>
+  <circle class="term" cx="620" cy="424" r="10"/>
+  <circle class="dot" cx="620" cy="424" r="4.5"/>
+  <text x="620" y="452" class="term-lbl">route to success</text>
+
+  <!-- D1 yes down -->
+  <line class="arrow" x1="290" y1="302" x2="290" y2="364" marker-end="url(#arrow)"/>
+  <text x="316" y="336" class="lbl">yes · jwt.present = true</text>
+
+  <!-- D2 Token size <= maximum? -->
+  <polygon class="stroke" points="200,402 290,362 380,402 290,442"/>
+  <text x="290" y="406" class="dtext">Token size ≤ maximum?</text>
+
+  <!-- D2 no -> failure (routed to the right-hand failure column, clear of the token-absent success terminal) -->
+  <line class="arrow" x1="380" y1="402" x2="788" y2="402" marker-end="url(#arrow)"/>
+  <text x="560" y="394" class="lbl">no · set error attributes</text>
+  <circle class="term" cx="820" cy="402" r="10"/>
+  <circle class="dot" cx="820" cy="402" r="4.5"/>
+  <text x="820" y="430" class="term-lbl">route to failure</text>
+
+  <!-- D2 yes down -->
+  <line class="arrow" x1="290" y1="442" x2="290" y2="484" marker-end="url(#arrow)"/>
+  <text x="308" y="468" class="lbl">yes</text>
+
+  <!-- B3 Send token to validator -->
+  <rect class="stroke" x="180" y="486" width="220" height="44" rx="6" ry="6"/>
+  <text x="290" y="513" class="box-lbl">Send token to TokenValidator</text>
+  <line class="arrow" x1="290" y1="530" x2="290" y2="572" marker-end="url(#arrow)"/>
+
+  <!-- D3 Token valid? -->
+  <polygon class="stroke" points="210,612 290,572 370,612 290,652"/>
+  <text x="290" y="616" class="dtext">Token valid?</text>
+
+  <!-- D3 no -> failure -->
+  <line class="arrow" x1="370" y1="612" x2="560" y2="612" marker-end="url(#arrow)"/>
+  <text x="466" y="604" class="lbl">no · jwt.error.code / reason / category</text>
+  <circle class="term" cx="592" cy="612" r="10"/>
+  <circle class="dot" cx="592" cy="612" r="4.5"/>
+  <text x="592" y="640" class="term-lbl">route to failure</text>
+
+  <!-- D3 yes down -->
+  <line class="arrow" x1="290" y1="652" x2="290" y2="698" marker-end="url(#arrow)"/>
+  <text x="308" y="682" class="lbl">yes</text>
+
+  <!-- B4 Set identity + claim attributes -->
+  <rect class="stroke" x="150" y="700" width="280" height="62" rx="6" ry="6"/>
+  <text x="290" y="726" class="box-lbl">Set identity + claim attributes</text>
+  <text x="290" y="746" class="box-sub">jwt.subject · jwt.issuer · jwt.expiration · jwt.content.*</text>
+  <line class="arrow" x1="290" y1="762" x2="290" y2="802" marker-end="url(#arrow)"/>
+
+  <!-- B5 Evaluate roles/groups/scopes -->
+  <rect class="stroke" x="160" y="804" width="260" height="62" rx="6" ry="6"/>
+  <text x="290" y="830" class="box-lbl">Evaluate roles / groups / scopes</text>
+  <text x="290" y="850" class="box-sub">jwt.roles · jwt.groups · jwt.scopes</text>
+  <line class="arrow" x1="290" y1="866" x2="290" y2="902" marker-end="url(#arrow)"/>
+
+  <!-- D4 Meets requirements? -->
+  <polygon class="stroke" points="200,942 290,902 380,942 290,982"/>
+  <text x="290" y="946" class="dtext">Meets requirements?</text>
+
+  <!-- D4 no -> failure -->
+  <line class="arrow" x1="380" y1="942" x2="560" y2="942" marker-end="url(#arrow)"/>
+  <text x="470" y="934" class="lbl">no · jwt.authorized = false</text>
+  <circle class="term" cx="592" cy="942" r="10"/>
+  <circle class="dot" cx="592" cy="942" r="4.5"/>
+  <text x="592" y="970" class="term-lbl">route to failure</text>
+
+  <!-- D4 yes down -->
+  <line class="arrow" x1="290" y1="982" x2="290" y2="1024" marker-end="url(#arrow)"/>
+  <text x="316" y="1008" class="lbl">yes · jwt.authorized = true</text>
+
+  <!-- B6 Route to success -->
+  <rect class="stroke" x="190" y="1026" width="200" height="44" rx="6" ry="6"/>
+  <text x="290" y="1053" class="box-lbl">Route to success</text>
+  <line class="arrow" x1="290" y1="1070" x2="290" y2="1096" marker-end="url(#arrow)"/>
+
+  <!-- final stop -->
+  <circle class="term" cx="290" cy="1110" r="11"/>
+  <circle class="dot" cx="290" cy="1110" r="5"/>
+
+  <!-- Footer -->
+  <text x="450" y="1148" class="caption">Any failed check routes the FlowFile to the failure relationship with structured jwt.* error attributes.</text>
+</svg>

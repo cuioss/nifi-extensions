@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 910"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Request tracking modes — simple and attachments</title>
+  <desc id="desc">Two time-ordered exchanges between an API client and the RestApiGateway. In simple tracking mode the client POSTs data, receives a 202 with a traceId and a status link, then polls the status endpoint until the request reaches PROCESSED. In attachments mode the client POSTs an upload, receives a 202 with status and attachments links (status COLLECTING_ATTACHMENTS), then POSTs attachments; when the minimum count is reached the status becomes PROCESSED, and a later attachment posted after the window closes receives a 409.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .col-header  { font-size: 15px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .stroke      { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .sep         { stroke: #6e7681; stroke-width: 0.6; stroke-dasharray: 3 3; fill: none; }
+      .arrow       { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-return{ stroke: #6e7681; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+      .arrow-fill  { fill: #6e7681; }
+      .arrow-lbl   { font-size: 11px; fill: #6e7681; text-anchor: middle; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .divider-lbl { font-size: 12.5px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .note        { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .caption     { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Actors + lifelines -->
+  <text x="180" y="30" class="col-header">API Client</text>
+  <rect class="stroke" x="120" y="42" width="120" height="36" rx="6" ry="6"/>
+  <line class="sep" x1="180" y1="80" x2="180" y2="848"/>
+
+  <text x="620" y="30" class="col-header">RestApiGateway</text>
+  <rect class="stroke" x="560" y="42" width="120" height="36" rx="6" ry="6"/>
+  <line class="sep" x1="620" y1="80" x2="620" y2="848"/>
+
+  <!-- ============ Simple divider ============ -->
+  <line class="sep" x1="60" y1="106" x2="300" y2="106"/>
+  <text x="400" y="110" class="divider-lbl">Simple (tracking-mode=simple)</text>
+  <line class="sep" x1="500" y1="106" x2="760" y2="106"/>
+
+  <!-- msg1 -->
+  <line class="arrow" x1="180" y1="142" x2="618" y2="142" marker-end="url(#arrow)"/>
+  <text x="400" y="134" class="arrow-lbl">POST /api/data</text>
+  <!-- msg2 -->
+  <line class="arrow-return" x1="620" y1="178" x2="182" y2="178" marker-end="url(#arrow)"/>
+  <text x="400" y="170" class="arrow-lbl">202 {traceId, _links: {status}}</text>
+  <!-- msg3 -->
+  <line class="arrow" x1="180" y1="214" x2="618" y2="214" marker-end="url(#arrow)"/>
+  <text x="400" y="206" class="arrow-lbl">GET /status/{traceId}</text>
+  <!-- msg4 -->
+  <line class="arrow-return" x1="620" y1="250" x2="182" y2="250" marker-end="url(#arrow)"/>
+  <text x="400" y="242" class="arrow-lbl">{status: "ACCEPTED"}</text>
+
+  <!-- note over gateway -->
+  <rect class="sep" x="512" y="272" width="216" height="26" rx="4" ry="4"/>
+  <text x="620" y="289" class="note">downstream processing</text>
+
+  <!-- msg5 -->
+  <line class="arrow" x1="180" y1="330" x2="618" y2="330" marker-end="url(#arrow)"/>
+  <text x="400" y="322" class="arrow-lbl">GET /status/{traceId}</text>
+  <!-- msg6 -->
+  <line class="arrow-return" x1="620" y1="366" x2="182" y2="366" marker-end="url(#arrow)"/>
+  <text x="400" y="358" class="arrow-lbl">{status: "PROCESSED"}</text>
+
+  <!-- ============ Attachments divider ============ -->
+  <line class="sep" x1="40" y1="404" x2="270" y2="404"/>
+  <text x="400" y="408" class="divider-lbl">Attachments (tracking-mode=attachments)</text>
+  <line class="sep" x1="530" y1="404" x2="780" y2="404"/>
+
+  <!-- msg7 -->
+  <line class="arrow" x1="180" y1="440" x2="618" y2="440" marker-end="url(#arrow)"/>
+  <text x="400" y="432" class="arrow-lbl">POST /api/upload</text>
+  <!-- msg8 -->
+  <line class="arrow-return" x1="620" y1="476" x2="182" y2="476" marker-end="url(#arrow)"/>
+  <text x="400" y="468" class="arrow-lbl">202 {traceId, _links: {status, attachments}}</text>
+
+  <!-- note -->
+  <rect class="sep" x="486" y="498" width="268" height="26" rx="4" ry="4"/>
+  <text x="620" y="515" class="note">status = COLLECTING_ATTACHMENTS</text>
+
+  <!-- msg9 -->
+  <line class="arrow" x1="180" y1="556" x2="618" y2="556" marker-end="url(#arrow)"/>
+  <text x="400" y="548" class="arrow-lbl">POST /attachments/{traceId}</text>
+  <!-- msg10 -->
+  <line class="arrow-return" x1="620" y1="592" x2="182" y2="592" marker-end="url(#arrow)"/>
+  <text x="400" y="584" class="arrow-lbl">202 (attachment accepted)</text>
+
+  <!-- note -->
+  <rect class="sep" x="524" y="614" width="192" height="26" rx="4" ry="4"/>
+  <text x="620" y="631" class="note">Notify signals Wait</text>
+
+  <!-- msg11 -->
+  <line class="arrow" x1="180" y1="672" x2="618" y2="672" marker-end="url(#arrow)"/>
+  <text x="400" y="664" class="arrow-lbl">POST /attachments/{traceId}</text>
+  <!-- msg12 -->
+  <line class="arrow-return" x1="620" y1="708" x2="182" y2="708" marker-end="url(#arrow)"/>
+  <text x="400" y="700" class="arrow-lbl">202 (attachment accepted)</text>
+
+  <!-- note -->
+  <rect class="sep" x="494" y="730" width="252" height="26" rx="4" ry="4"/>
+  <text x="620" y="747" class="note">min count reached · status = PROCESSED</text>
+
+  <!-- msg13 -->
+  <line class="arrow" x1="180" y1="788" x2="618" y2="788" marker-end="url(#arrow)"/>
+  <text x="400" y="780" class="arrow-lbl">POST /attachments/{traceId}</text>
+  <!-- msg14 -->
+  <line class="arrow-return" x1="620" y1="824" x2="182" y2="824" marker-end="url(#arrow)"/>
+  <text x="400" y="816" class="arrow-lbl">409 (window closed)</text>
+
+  <!-- Footer -->
+  <text x="410" y="890" class="caption">Time flows downward; solid arrows are requests, dashed arrows are responses.</text>
+</svg>

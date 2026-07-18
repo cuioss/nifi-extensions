@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Attachment merge flow through Wait and Notify processors</title>
+  <desc id="desc">The RestApiGateway routes an upload to a Wait processor (wait-for-attachments) and attachment notifications to a Notify processor (notify-attachment-received). The Wait processor holds the FlowFile in a self-loop until it either succeeds or expires, then routes to a LogAttribute processor (gateway-merged). The Notify processor routes successful attachment signals to a LogAttribute processor (gateway-attachment-done). The AttachmentsEndpointHandler updates status from COLLECTING_ATTACHMENTS to PROCESSED when the minimum attachment count is met.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .box-lbl { font-size: 13px; fill: #6e7681; text-anchor: middle; }
+      .box-sub { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .note    { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .sep     { stroke: #6e7681; stroke-width: 0.6; stroke-dasharray: 3 3; fill: none; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- RestApiGateway -->
+  <rect class="stroke" x="260" y="50" width="200" height="52" rx="6" ry="6"/>
+  <text x="360" y="81" class="box-lbl">RestApiGateway</text>
+
+  <!-- Status-update note attached to the gateway -->
+  <rect class="sep" x="520" y="44" width="340" height="66" rx="6" ry="6"/>
+  <text x="690" y="68" class="note">Status update — AttachmentsEndpointHandler</text>
+  <text x="690" y="88" class="note">COLLECTING_ATTACHMENTS → PROCESSED</text>
+  <text x="690" y="104" class="note">when minimum attachment count is met</text>
+  <line class="sep" x1="460" y1="76" x2="520" y2="76"/>
+
+  <!-- Wait -->
+  <rect class="stroke" x="80" y="210" width="220" height="60" rx="6" ry="6"/>
+  <text x="190" y="236" class="box-lbl">Wait</text>
+  <text x="190" y="254" class="box-sub">wait-for-attachments</text>
+
+  <!-- Notify -->
+  <rect class="stroke" x="440" y="210" width="240" height="60" rx="6" ry="6"/>
+  <text x="560" y="236" class="box-lbl">Notify</text>
+  <text x="560" y="254" class="box-sub">notify-attachment-received</text>
+
+  <!-- LogAttribute (gateway-merged) -->
+  <rect class="stroke" x="80" y="380" width="220" height="56" rx="6" ry="6"/>
+  <text x="190" y="406" class="box-lbl">LogAttribute</text>
+  <text x="190" y="424" class="box-sub">gateway-merged</text>
+
+  <!-- LogAttribute (gateway-attachment-done) -->
+  <rect class="stroke" x="440" y="380" width="240" height="56" rx="6" ry="6"/>
+  <text x="560" y="406" class="box-lbl">LogAttribute</text>
+  <text x="560" y="424" class="box-sub">gateway-attachment-done</text>
+
+  <!-- ===== Arrows ===== -->
+  <!-- gw -> Wait (upload) -->
+  <line class="arrow" x1="320" y1="102" x2="205" y2="208" marker-end="url(#arrow)"/>
+  <text x="228" y="156" class="lbl">upload</text>
+
+  <!-- gw -> Notify (attachments) -->
+  <line class="arrow" x1="400" y1="102" x2="545" y2="208" marker-end="url(#arrow)"/>
+  <text x="500" y="156" class="lbl">attachments</text>
+
+  <!-- Wait self-loop (wait) -->
+  <path class="arrow" d="M 80 228 Q 38 228 38 244 Q 38 260 80 252" marker-end="url(#arrow)"/>
+  <text x="44" y="284" class="lbl">wait</text>
+
+  <!-- Wait -> merged (success / expired) -->
+  <line class="arrow" x1="190" y1="270" x2="190" y2="378" marker-end="url(#arrow)"/>
+  <text x="252" y="328" class="lbl">success / expired</text>
+
+  <!-- Notify -> attachment-done (success) -->
+  <line class="arrow" x1="560" y1="270" x2="560" y2="378" marker-end="url(#arrow)"/>
+  <text x="600" y="328" class="lbl">success</text>
+
+  <!-- ===== Footer ===== -->
+  <text x="450" y="474" class="caption">The Wait processor blocks the merged FlowFile until the attachment window succeeds or expires.</text>
+</svg>
