@@ -19,7 +19,7 @@ image::attachments-api-component-architecture.svg[Attachments API component arch
 
 == HATEOAS Links by Tracking Mode
 
-image::attachments-api-status-lifecycle.svg[HATEOAS links by tracking mode — the response's _links block depends on the route's tracking mode, align=center]
+image::attachments-api-hateoas-links.svg[HATEOAS links by tracking mode — the response's _links block depends on the route's tracking mode, align=center]
 
 === Attachments Mode Response (202)
 

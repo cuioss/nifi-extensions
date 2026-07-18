@@ -35,7 +35,7 @@ image::request-tracking-sequence.svg[Asynchronous POST request flow — the Jett
 
 === Status Query Flow
 
-image::request-tracking-modes.svg[Status query flow — a found entry returns 200 OK with the current status, otherwise 404 as an RFC 9457 problem detail, align=center]
+image::request-tracking-status-query.svg[Status query flow — a found entry returns 200 OK with the current status, otherwise 404 as an RFC 9457 problem detail, align=center]
 
 === Chained Requests
 
