@@ -31,7 +31,7 @@ Adding JWT authentication on top means even more processors, relationships, and 
 
 The `RestApiGatewayProcessor` is a single processor that embeds an HTTP server, authenticates and authorizes requests per-route, and converts them into FlowFiles.
 
-image::doc/plantuml/api-gateway-pattern.png[RestApiGateway Pattern]
+image::doc/resources/diagrams/api-gateway-pattern.svg[RestApiGateway Pattern]
 
 Key capabilities:
 
@@ -45,7 +45,7 @@ Key capabilities:
 Routes can enable async request tracking for `POST`/`PUT`/`PATCH` requests.
 Both modes require a `DistributedMapCacheClient` Controller Service.
 
-image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
+image::doc/resources/diagrams/tracking-modes.svg[Request Tracking Modes]
 
 * **Simple** (`tracking-mode=simple`): `202` with `traceId` and `/status` polling link
 * **Attachments** (`tracking-mode=attachments`): adds an `/attachments/{traceId}` upload endpoint; the parent request waits for attachments (or timeout), then the window closes (`409`). See link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide].

@@ -1,10 +1,10 @@
 = Gateway Architecture
 :sectnums:
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 The `RestApiGatewayProcessor` embeds a Jetty 12 HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses.
 
-image::api-gateway-pattern.png[RestApiGateway Pattern]
+image::api-gateway-pattern.svg[RestApiGateway Pattern]
 
 == Request Pipeline
 

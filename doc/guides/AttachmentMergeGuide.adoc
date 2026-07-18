@@ -1,7 +1,7 @@
 = Attachment Merge Integration Guide
 :toc:
 :toc-placement: preamble
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 Practical guide for integrating the attachment merge pattern into NiFi flows using the REST API Gateway processor.
 
@@ -101,7 +101,7 @@ NOTE: If the parent status has transitioned to `PROCESSING`, `REJECTED`, or `ERR
 
 == Status Lifecycle
 
-image::attachment-status-lifecycle.png[Attachment Status Lifecycle]
+image::attachment-status-lifecycle.svg[Attachment Status Lifecycle]
 
 |===
 | Status | Meaning | Attachment Window
@@ -186,7 +186,7 @@ The timeout value is exposed as the `rest.trace.attachments.timeout` FlowFile at
 
 == Flow Architecture Diagram
 
-image::attachment-flow.png[Attachment Flow Architecture]
+image::attachment-flow.svg[Attachment Flow Architecture]
 
 == Sandbox Reference
 

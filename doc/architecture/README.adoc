@@ -1,10 +1,10 @@
 = Architecture Overview
 :sectnums:
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 == System Architecture
 
-image::architecture.png[NiFi Extensions Architecture]
+image::architecture.svg[NiFi Extensions Architecture]
 
 == Module Overview
 

@@ -3,11 +3,11 @@
 :toclevels: 3
 :sectnums:
 :source-highlighter: highlight.js
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 All configuration options for both processors and the shared Controller Service.
 
-image::configuration-overview.png[Configuration Overview Diagram, align="center"]
+image::configuration-overview.svg[Configuration Overview Diagram, align="center"]
 
 == Controller Service
 
@@ -527,7 +527,7 @@ For container or automated deployments, both the Controller Service and the `Res
 
 NOTE: The path is resolved relative to the NiFi JVM's working directory, which is `$NIFI_HOME` in a standard container launch but may differ if NiFi is started from another directory. Only the issuer (`jwt.validation.issuer.N.*`) and `restapi.*` keys are consumed from static files. Non-issuer `jwt.validation.*` settings (JWKS refresh interval, connection timeout, token size, allowed algorithms, HTTPS enforcement) are **not** read from static files or environment variables — those values come exclusively from the Controller Service's NiFi property descriptors, which always carry defaults, so a static-file or environment value for them can never take effect.
 
-image::configuration-properties.png[Configuration Properties Hierarchy, align="center"]
+image::configuration-properties.svg[Configuration Properties Hierarchy, align="center"]
 
 === Properties Format
 
