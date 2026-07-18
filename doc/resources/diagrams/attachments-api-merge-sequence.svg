@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<!-- source: doc/reference/attachments-api.adoc § Component Architecture -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 620"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Attachments API component architecture</title>
+  <desc id="desc">The gateway components that collaborate to accept and merge attachments. The ApiRouteHandler stores the parent status and enqueues the request; the AttachmentsEndpointHandler reads the parent, stores each attachment, and enqueues it; the StatusEndpointHandler reads status. All three use the DistributedMapCache and the Request Queue. The NiFi processor's onTrigger polls the queue and routes to the upload relationship or the attachments relationship on the NiFi canvas.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .pkg-hdr { font-size: 13px; font-weight: 700; fill: #6e7681; text-anchor: middle; }
+      .box-lbl { font-size: 12.5px; fill: #6e7681; text-anchor: middle; }
+      .box-sub { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .pkg     { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Gateway (Jetty) package -->
+  <rect class="pkg" x="40" y="100" width="260" height="288" rx="6" ry="6"/>
+  <text x="170" y="124" class="pkg-hdr">Gateway (Jetty)</text>
+  <rect class="stroke" x="58" y="142" width="224" height="52" rx="6" ry="6"/>
+  <text x="170" y="173" class="box-lbl">ApiRouteHandler</text>
+  <rect class="stroke" x="58" y="214" width="224" height="52" rx="6" ry="6"/>
+  <text x="170" y="245" class="box-lbl">AttachmentsEndpointHandler</text>
+  <rect class="stroke" x="58" y="286" width="224" height="52" rx="6" ry="6"/>
+  <text x="170" y="317" class="box-lbl">StatusEndpointHandler</text>
+
+  <!-- DistributedMapCache -->
+  <rect class="stroke" x="470" y="150" width="200" height="60" rx="6" ry="6"/>
+  <text x="570" y="176" class="box-lbl">DistributedMapCache</text>
+  <text x="570" y="194" class="box-sub">cache</text>
+
+  <!-- Request Queue -->
+  <rect class="stroke" x="470" y="300" width="200" height="60" rx="6" ry="6"/>
+  <text x="570" y="326" class="box-lbl">Request Queue</text>
+  <text x="570" y="344" class="box-sub">queue</text>
+
+  <!-- NiFi Processor package -->
+  <rect class="pkg" x="820" y="140" width="240" height="88" rx="6" ry="6"/>
+  <text x="940" y="164" class="pkg-hdr">NiFi Processor</text>
+  <rect class="stroke" x="848" y="178" width="184" height="42" rx="6" ry="6"/>
+  <text x="940" y="204" class="box-lbl">onTrigger()</text>
+
+  <!-- NiFi Canvas package -->
+  <rect class="pkg" x="770" y="300" width="330" height="112" rx="6" ry="6"/>
+  <text x="935" y="324" class="pkg-hdr">NiFi Canvas</text>
+  <rect class="stroke" x="786" y="338" width="148" height="56" rx="6" ry="6"/>
+  <text x="860" y="362" class="box-lbl">upload</text>
+  <text x="860" y="380" class="box-lbl">relationship</text>
+  <rect class="stroke" x="946" y="338" width="148" height="56" rx="6" ry="6"/>
+  <text x="1020" y="362" class="box-lbl">attachments</text>
+  <text x="1020" y="380" class="box-lbl">relationship</text>
+
+  <!-- ===== Arrows ===== -->
+  <!-- ARH -> DMC -->
+  <line class="arrow" x1="282" y1="164" x2="468" y2="172" marker-end="url(#arrow)"/>
+  <text x="378" y="150" class="lbl">put(status, maxCount)</text>
+  <!-- ARH -> Q -->
+  <line class="arrow" x1="282" y1="182" x2="468" y2="312" marker-end="url(#arrow)"/>
+  <text x="336" y="210" class="lbl">enqueue</text>
+  <!-- AEH -> DMC -->
+  <line class="arrow" x1="282" y1="234" x2="468" y2="196" marker-end="url(#arrow)"/>
+  <text x="404" y="206" class="lbl">get / put</text>
+  <!-- AEH -> Q -->
+  <line class="arrow" x1="282" y1="252" x2="468" y2="326" marker-end="url(#arrow)"/>
+  <text x="356" y="302" class="lbl">enqueue</text>
+  <!-- SEH -> DMC -->
+  <line class="arrow" x1="282" y1="310" x2="468" y2="206" marker-end="url(#arrow)"/>
+  <text x="410" y="248" class="lbl">get(traceId)</text>
+
+  <!-- OT -> Q (poll) -->
+  <line class="arrow" x1="846" y1="204" x2="672" y2="322" marker-end="url(#arrow)"/>
+  <text x="752" y="248" class="lbl">poll</text>
+  <!-- OT -> upload relationship -->
+  <line class="arrow" x1="905" y1="220" x2="862" y2="336" marker-end="url(#arrow)"/>
+  <text x="828" y="284" class="lbl">route=upload</text>
+  <!-- OT -> attachments relationship -->
+  <line class="arrow" x1="975" y1="220" x2="1018" y2="336" marker-end="url(#arrow)"/>
+  <text x="1040" y="284" class="lbl">route=_attachments</text>
+
+  <!-- Footer -->
+  <text x="560" y="452" class="caption">AttachmentsEndpointHandler holds per-parent attachment counters in a ConcurrentHashMap&lt;String, AtomicInteger&gt;.</text>
+</svg>

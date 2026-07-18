@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<!-- source: doc/reference/attachments-api.adoc § Attachment Counting -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 910"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Attachment counting and error handling</title>
+  <desc id="desc">The decision flow for a POST to the attachments endpoint. The gateway validates the parentTraceId UUID (returning 400 on failure), looks up the parent in the cache (404 if absent), and rejects the request with 409 when the parent does not accept attachments. It then increments an atomic counter; if the count exceeds the maximum it decrements and returns 409. Otherwise it generates a traceId, stores the attachment as ACCEPTED, enqueues it, and returns 202 Accepted.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .box-lbl { font-size: 12.5px; fill: #6e7681; text-anchor: middle; }
+      .dtext   { font-size: 12px; fill: #6e7681; text-anchor: middle; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .term-lbl{ font-size: 11px; fill: #6e7681; text-anchor: middle; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .term    { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .dot     { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- start -->
+  <circle class="dot" cx="280" cy="38" r="7"/>
+  <line class="arrow" x1="280" y1="45" x2="280" y2="58" marker-end="url(#arrow)"/>
+
+  <!-- POST -->
+  <rect class="stroke" x="150" y="60" width="260" height="44" rx="6" ry="6"/>
+  <text x="280" y="87" class="box-lbl">POST /attachments/{parentTraceId}</text>
+  <line class="arrow" x1="280" y1="104" x2="280" y2="130" marker-end="url(#arrow)"/>
+
+  <!-- Validate UUID -->
+  <rect class="stroke" x="170" y="132" width="220" height="42" rx="6" ry="6"/>
+  <text x="280" y="158" class="box-lbl">Validate UUID format</text>
+  <line class="arrow" x1="280" y1="174" x2="280" y2="204" marker-end="url(#arrow)"/>
+
+  <!-- D1 valid UUID? -->
+  <polygon class="stroke" points="200,240 280,206 360,240 280,274"/>
+  <text x="280" y="244" class="dtext">valid UUID?</text>
+  <line class="arrow" x1="360" y1="240" x2="560" y2="240" marker-end="url(#arrow)"/>
+  <text x="452" y="232" class="lbl">no</text>
+  <circle class="term" cx="592" cy="240" r="10"/>
+  <circle class="dot" cx="592" cy="240" r="4.5"/>
+  <text x="592" y="268" class="term-lbl">400 Bad Request</text>
+  <line class="arrow" x1="280" y1="274" x2="280" y2="310" marker-end="url(#arrow)"/>
+  <text x="300" y="296" class="lbl">yes</text>
+
+  <!-- Lookup parent -->
+  <rect class="stroke" x="170" y="312" width="220" height="42" rx="6" ry="6"/>
+  <text x="280" y="338" class="box-lbl">Lookup parent in cache</text>
+  <line class="arrow" x1="280" y1="354" x2="280" y2="384" marker-end="url(#arrow)"/>
+
+  <!-- D2 parent exists? -->
+  <polygon class="stroke" points="200,420 280,386 360,420 280,454"/>
+  <text x="280" y="424" class="dtext">parent exists?</text>
+  <line class="arrow" x1="360" y1="420" x2="560" y2="420" marker-end="url(#arrow)"/>
+  <text x="452" y="412" class="lbl">no</text>
+  <circle class="term" cx="592" cy="420" r="10"/>
+  <circle class="dot" cx="592" cy="420" r="4.5"/>
+  <text x="592" y="448" class="term-lbl">404 Not Found</text>
+  <line class="arrow" x1="280" y1="454" x2="280" y2="494" marker-end="url(#arrow)"/>
+  <text x="300" y="478" class="lbl">yes</text>
+
+  <!-- D3 maxCount == 0? -->
+  <polygon class="stroke" points="195,528 280,494 365,528 280,562"/>
+  <text x="280" y="532" class="dtext">maxCount == 0?</text>
+  <line class="arrow" x1="365" y1="528" x2="560" y2="528" marker-end="url(#arrow)"/>
+  <text x="460" y="520" class="lbl">yes</text>
+  <circle class="term" cx="592" cy="528" r="10"/>
+  <circle class="dot" cx="592" cy="528" r="4.5"/>
+  <text x="592" y="556" class="term-lbl">409 does not accept</text>
+  <line class="arrow" x1="280" y1="562" x2="280" y2="598" marker-end="url(#arrow)"/>
+  <text x="300" y="584" class="lbl">no</text>
+
+  <!-- increment -->
+  <rect class="stroke" x="150" y="600" width="260" height="44" rx="6" ry="6"/>
+  <text x="280" y="627" class="box-lbl">atomicCounter.incrementAndGet()</text>
+  <line class="arrow" x1="280" y1="644" x2="280" y2="680" marker-end="url(#arrow)"/>
+
+  <!-- D4 count > maxCount? -->
+  <polygon class="stroke" points="195,716 280,682 365,716 280,750"/>
+  <text x="280" y="720" class="dtext">count &gt; maxCount?</text>
+  <line class="arrow" x1="365" y1="716" x2="560" y2="716" marker-end="url(#arrow)"/>
+  <text x="460" y="708" class="lbl">yes · decrementAndGet()</text>
+  <circle class="term" cx="592" cy="716" r="10"/>
+  <circle class="dot" cx="592" cy="716" r="4.5"/>
+  <text x="592" y="744" class="term-lbl">409 limit reached</text>
+  <line class="arrow" x1="280" y1="750" x2="280" y2="788" marker-end="url(#arrow)"/>
+  <text x="300" y="772" class="lbl">no</text>
+
+  <!-- success -->
+  <rect class="stroke" x="140" y="790" width="280" height="48" rx="6" ry="6"/>
+  <text x="280" y="810" class="box-lbl">Generate traceId · Store ACCEPTED</text>
+  <text x="280" y="828" class="box-lbl">Enqueue to request queue</text>
+  <line class="arrow" x1="280" y1="838" x2="280" y2="866" marker-end="url(#arrow)"/>
+  <text x="352" y="858" class="lbl">202 Accepted</text>
+
+  <!-- stop -->
+  <circle class="term" cx="280" cy="880" r="11"/>
+  <circle class="dot" cx="280" cy="880" r="5"/>
+
+  <!-- Footer -->
+  <text x="500" y="900" class="caption">Counters live in a ConcurrentHashMap and reset on processor restart (a documented limitation).</text>
+</svg>

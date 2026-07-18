@@ -1,6 +1,7 @@
 = Attachments API
 :toc: auto
 :toclevels: 3
+:imagesdir: ../resources/diagrams
 
 == Overview
 
@@ -10,125 +11,15 @@ via `POST /attachments/{parentTraceId}`. Each attachment is independently tracke
 
 == End-to-End Flow
 
-[plantuml]
-----
-@startuml
-skinparam sequenceMessageAlign center
-
-participant "Client" as C
-participant "Gateway" as G
-participant "DistributedMapCache" as DMC
-participant "Request Queue" as Q
-participant "NiFi Flow" as NF
-
-== 1. Parent Request ==
-C -> G : POST /api/upload
-activate G
-G -> G : Authenticate + validate
-G -> G : Generate traceId-P (UUID)
-G -> DMC : put(traceId-P, COLLECTING_ATTACHMENTS,\nattachmentsMaxCount=5, routeName="upload")
-G -> Q : enqueue (route="upload")
-G -> C : 202 Accepted\n{"traceId":"P", "_links":\n  {status, attachments}}
-deactivate G
-
-== 2. Attachment Uploads ==
-C -> G : POST /attachments/traceId-P\n+ document-1.pdf
-activate G
-G -> DMC : get(traceId-P)
-G -> G : Verify attachmentsMaxCount > 0
-G -> G : Generate traceId-A1\nincrement counter (1/5)
-G -> DMC : put(traceId-A1, ACCEPTED,\nparentTraceId=traceId-P)
-G -> Q : enqueue (route="_attachments")
-G -> C : 202 Accepted\n{"traceId":"A1", "_links": {status}}
-deactivate G
-
-C -> G : POST /attachments/traceId-P\n+ document-2.pdf
-activate G
-G -> G : increment counter (2/5)
-G -> C : 202 Accepted {"traceId":"A2"}
-deactivate G
-
-...
-
-== 3. Limit Enforcement ==
-C -> G : POST /attachments/traceId-P\n+ document-6.pdf
-activate G
-G -> G : counter 6 > max 5
-G -> C : 409 Conflict\n"Attachment limit reached: 5"
-deactivate G
-
-== 4. Status Queries ==
-C -> G : GET /status/traceId-P
-G -> C : 200 {status:"PROCESSING"}
-
-C -> G : GET /status/traceId-A1
-G -> C : 200 {status:"ACCEPTED",\nparentTraceId:"traceId-P"}
-@enduml
-----
+image::attachments-api-request-flow.svg[Attachments API end-to-end request flow — the client posts a parent upload and attachments, and the gateway tracks each with its own traceId, align=center]
 
 == Component Architecture
 
-[plantuml]
-----
-@startuml
-skinparam componentStyle rectangle
-
-package "Gateway (Jetty)" {
-    [ApiRouteHandler] as ARH
-    [AttachmentsEndpointHandler] as AEH
-    [StatusEndpointHandler] as SEH
-}
-
-database "DistributedMapCache" as DMC
-queue "Request Queue" as Q
-
-package "NiFi Processor" {
-    [onTrigger()] as OT
-}
-
-package "NiFi Canvas" {
-    [upload relationship] as UR
-    [attachments relationship] as AtR
-}
-
-ARH --> DMC : put(traceId, COLLECTING_ATTACHMENTS,\nattachmentsMaxCount)
-ARH --> Q : enqueue
-AEH --> DMC : get(parentTraceId)\nput(attachmentTraceId)
-AEH --> Q : enqueue
-AEH ..> AEH : ConcurrentHashMap\n(attachment counters)
-SEH --> DMC : get(traceId)
-
-OT --> Q : poll
-OT --> UR : route="upload"
-OT --> AtR : route="_attachments"
-@enduml
-----
+image::attachments-api-merge-sequence.svg[Attachments API component architecture — the route, attachments, and status handlers collaborate through the distributed map cache and request queue, align=center]
 
 == HATEOAS Links by Tracking Mode
 
-[plantuml]
-----
-@startuml
-skinparam activityShape octagon
-
-start
-
-:Client POSTs to tracked route;
-
-if (tracking-mode?) then (simple)
-    :202 Accepted;
-    :_links: {status};
-elseif (attachments) then
-    :202 Accepted;
-    :_links: {status, attachments};
-else (none)
-    :200 OK or 202 Accepted;
-    :No _links;
-endif
-
-stop
-@enduml
-----
+image::attachments-api-status-lifecycle.svg[HATEOAS links by tracking mode — the response's _links block depends on the route's tracking mode, align=center]
 
 === Attachments Mode Response (202)
 
@@ -201,45 +92,7 @@ All error responses use RFC 9457 Problem Detail format.
 
 == Attachment Counting
 
-[plantuml]
-----
-@startuml
-start
-
-:POST /attachments/{parentTraceId};
-
-:Validate UUID format;
-if (valid UUID?) then (no)
-    :400 Bad Request;
-    stop
-endif
-
-:Lookup parent in cache;
-if (parent exists?) then (no)
-    :404 Not Found;
-    stop
-endif
-
-if (parent.attachmentsMaxCount == 0?) then (yes)
-    :409 Conflict\n"Parent does not accept attachments";
-    stop
-endif
-
-:atomicCounter.incrementAndGet();
-if (count > maxCount?) then (yes)
-    :counter.decrementAndGet();
-    :409 Conflict\n"Attachment limit reached";
-    stop
-endif
-
-:Generate traceId;
-:Store ACCEPTED in cache;
-:Enqueue to request queue;
-:202 Accepted;
-
-stop
-@enduml
-----
+image::attachments-api-error-handling.svg[Attachment counting and error handling — UUID validation, parent lookup, and the atomic counter limit produce 400, 404, 409, or 202 responses, align=center]
 
 Counters are held in a `ConcurrentHashMap<String, AtomicInteger>` inside `AttachmentsEndpointHandler`.
 They reset on processor restart, this is a documented limitation (worst case: allows slightly more attachments than configured after restart).

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<!-- source: doc/reference/request-tracking-architecture.adoc § Async POST Request Flow -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Asynchronous POST request flow</title>
+  <desc id="desc">A time-ordered exchange for an asynchronous tracked POST. On the Jetty thread the gateway authenticates, validates, generates a traceId, stores ACCEPTED in the distributed map cache, enqueues the request container, and returns 202 with a Location status link. On a NiFi thread onTrigger polls the queue, creates a FlowFile carrying the traceId, records provenance, and transfers it downstream. The downstream NiFi flow writes PROCESSING and then a terminal status back to the cache.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .col-header  { font-size: 12.5px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .col-sub     { font-size: 10px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke      { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .sep         { stroke: #6e7681; stroke-width: 0.6; stroke-dasharray: 3 3; fill: none; }
+      .arrow       { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-return{ stroke: #6e7681; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+      .arrow-fill  { fill: #6e7681; }
+      .arrow-lbl   { font-size: 10.5px; fill: #6e7681; text-anchor: middle; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .note        { font-size: 10.5px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .caption     { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Actors + lifelines -->
+  <text x="90" y="30" class="col-header">Client</text>
+  <rect class="stroke" x="35" y="42" width="110" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="90" y1="92" x2="90" y2="500"/>
+
+  <text x="270" y="30" class="col-header">Gateway</text>
+  <text x="270" y="88" class="col-sub">Jetty thread</text>
+  <rect class="stroke" x="210" y="42" width="120" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="270" y1="92" x2="270" y2="500"/>
+
+  <text x="470" y="30" class="col-header">DistributedMapCache</text>
+  <rect class="stroke" x="385" y="42" width="170" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="470" y1="92" x2="470" y2="500"/>
+
+  <text x="660" y="30" class="col-header">Request Queue</text>
+  <rect class="stroke" x="595" y="42" width="130" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="660" y1="92" x2="660" y2="500"/>
+
+  <text x="840" y="30" class="col-header">onTrigger()</text>
+  <text x="840" y="88" class="col-sub">NiFi thread</text>
+  <rect class="stroke" x="775" y="42" width="130" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="840" y1="92" x2="840" y2="500"/>
+
+  <text x="1010" y="30" class="col-header">Downstream Flow</text>
+  <rect class="stroke" x="935" y="42" width="150" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="1010" y1="92" x2="1010" y2="500"/>
+
+  <!-- messages -->
+  <line class="arrow" x1="90" y1="122" x2="268" y2="122" marker-end="url(#arrow)"/>
+  <text x="179" y="114" class="arrow-lbl">POST /api/orders</text>
+
+  <rect class="sep" x="156" y="138" width="228" height="26" rx="4" ry="4"/>
+  <text x="270" y="155" class="note">authenticate · validate · generate traceId</text>
+
+  <line class="arrow" x1="270" y1="192" x2="468" y2="192" marker-end="url(#arrow)"/>
+  <text x="369" y="184" class="arrow-lbl">put(traceId, ACCEPTED)</text>
+
+  <line class="arrow" x1="270" y1="224" x2="658" y2="224" marker-end="url(#arrow)"/>
+  <text x="464" y="216" class="arrow-lbl">enqueue HttpRequestContainer</text>
+
+  <line class="arrow-return" x1="270" y1="256" x2="92" y2="256" marker-end="url(#arrow)"/>
+  <text x="181" y="248" class="arrow-lbl">202 · Location: /status/{traceId}</text>
+
+  <line class="arrow" x1="840" y1="298" x2="662" y2="298" marker-end="url(#arrow)"/>
+  <text x="751" y="290" class="arrow-lbl">poll()</text>
+
+  <rect class="sep" x="712" y="314" width="256" height="26" rx="4" ry="4"/>
+  <text x="840" y="331" class="note">create FlowFile (rest.trace.id) · provenance</text>
+
+  <line class="arrow" x1="840" y1="368" x2="1008" y2="368" marker-end="url(#arrow)"/>
+  <text x="924" y="360" class="arrow-lbl">transfer(flowFile)</text>
+
+  <line class="arrow" x1="1010" y1="400" x2="472" y2="400" marker-end="url(#arrow)"/>
+  <text x="741" y="392" class="arrow-lbl">PutDistributedMapCache(PROCESSING)</text>
+
+  <rect class="sep" x="922" y="416" width="176" height="26" rx="4" ry="4"/>
+  <text x="1010" y="433" class="note">process request</text>
+
+  <line class="arrow" x1="1010" y1="470" x2="472" y2="470" marker-end="url(#arrow)"/>
+  <text x="741" y="462" class="arrow-lbl">Put(PROCESSED / REJECTED / ERROR)</text>
+
+  <!-- Footer -->
+  <text x="550" y="556" class="caption">The Jetty thread returns 202 immediately; processing continues asynchronously on NiFi threads.</text>
+</svg>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<!-- source: doc/reference/attachments-api.adoc § HATEOAS Links by Tracking Mode -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">HATEOAS links by tracking mode</title>
+  <desc id="desc">When a client posts to a tracked route the gateway branches on the route's tracking mode. In simple mode it returns 202 Accepted with a status link. In attachments mode it returns 202 Accepted with status and attachments links. When tracking is disabled it returns 200 OK or 202 Accepted with no links.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .box-lbl { font-size: 12.5px; fill: #6e7681; text-anchor: middle; }
+      .dtext   { font-size: 12.5px; fill: #6e7681; text-anchor: middle; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .code    { font-size: 12px; fill: #6e7681; text-anchor: middle; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .dot     { fill: #6e7681; }
+      .term    { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- start -->
+  <circle class="dot" cx="450" cy="40" r="7"/>
+  <line class="arrow" x1="450" y1="47" x2="450" y2="62" marker-end="url(#arrow)"/>
+
+  <!-- Client POSTs -->
+  <rect class="stroke" x="350" y="64" width="200" height="44" rx="6" ry="6"/>
+  <text x="450" y="91" class="box-lbl">Client POSTs to tracked route</text>
+  <line class="arrow" x1="450" y1="108" x2="450" y2="130" marker-end="url(#arrow)"/>
+
+  <!-- decision -->
+  <polygon class="stroke" points="360,168 450,130 540,168 450,206"/>
+  <text x="450" y="172" class="dtext">tracking-mode?</text>
+
+  <!-- branches -->
+  <line class="arrow" x1="360" y1="168" x2="172" y2="234" marker-end="url(#arrow)"/>
+  <text x="248" y="192" class="lbl">simple</text>
+  <line class="arrow" x1="450" y1="206" x2="450" y2="234" marker-end="url(#arrow)"/>
+  <text x="480" y="224" class="lbl">attachments</text>
+  <line class="arrow" x1="540" y1="168" x2="728" y2="234" marker-end="url(#arrow)"/>
+  <text x="652" y="192" class="lbl">none</text>
+
+  <!-- simple branch -->
+  <rect class="stroke" x="90" y="236" width="160" height="40" rx="6" ry="6"/>
+  <text x="170" y="261" class="box-lbl">202 Accepted</text>
+  <line class="arrow" x1="170" y1="276" x2="170" y2="298" marker-end="url(#arrow)"/>
+  <rect class="stroke" x="86" y="300" width="168" height="40" rx="6" ry="6"/>
+  <text x="170" y="325" class="code">_links: {status}</text>
+
+  <!-- attachments branch -->
+  <rect class="stroke" x="370" y="236" width="160" height="40" rx="6" ry="6"/>
+  <text x="450" y="261" class="box-lbl">202 Accepted</text>
+  <line class="arrow" x1="450" y1="276" x2="450" y2="298" marker-end="url(#arrow)"/>
+  <rect class="stroke" x="340" y="300" width="220" height="40" rx="6" ry="6"/>
+  <text x="450" y="325" class="code">_links: {status, attachments}</text>
+
+  <!-- none branch -->
+  <rect class="stroke" x="632" y="236" width="216" height="40" rx="6" ry="6"/>
+  <text x="740" y="261" class="box-lbl">200 OK / 202 Accepted</text>
+  <line class="arrow" x1="740" y1="276" x2="740" y2="298" marker-end="url(#arrow)"/>
+  <rect class="stroke" x="660" y="300" width="160" height="40" rx="6" ry="6"/>
+  <text x="740" y="325" class="box-lbl">No _links</text>
+
+  <!-- converge to stop -->
+  <line class="arrow" x1="170" y1="340" x2="432" y2="408" marker-end="url(#arrow)"/>
+  <line class="arrow" x1="450" y1="340" x2="450" y2="408" marker-end="url(#arrow)"/>
+  <line class="arrow" x1="740" y1="340" x2="468" y2="408" marker-end="url(#arrow)"/>
+
+  <!-- stop -->
+  <circle class="term" cx="450" cy="420" r="11"/>
+  <circle class="dot" cx="450" cy="420" r="5"/>
+
+  <!-- Footer -->
+  <text x="450" y="464" class="caption">The response's _links block advertises the endpoints available for the chosen tracking mode.</text>
+</svg>
