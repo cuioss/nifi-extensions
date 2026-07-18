@@ -184,10 +184,6 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 * link:doc/reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement
 * link:doc/reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
 
-=== Migration
-
-* link:doc/migration/token-sheriff-0.9.0.adoc[OAuth-Sheriff → Token-Sheriff (0.9.0)]: library rename, config-key and Java API migration notes
-
 === Testing
 
 * link:integration-testing/README.adoc[Integration Testing Environment]: Docker setup with NiFi and Keycloak
