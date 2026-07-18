@@ -15,7 +15,7 @@ image::attachments-api-request-flow.svg[Attachments API end-to-end request flow 
 
 == Component Architecture
 
-image::attachments-api-merge-sequence.svg[Attachments API component architecture — the route, attachments, and status handlers collaborate through the distributed map cache and request queue, align=center]
+image::attachments-api-component-architecture.svg[Attachments API component architecture — the route, attachments, and status handlers collaborate through the distributed map cache and request queue, align=center]
 
 == HATEOAS Links by Tracking Mode
 
