@@ -27,13 +27,7 @@ Property tables, configuration formats, error types, request tracking, and attac
 * link:reference/README.adoc[Reference Overview]: index of all reference documents
 * link:reference/configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:reference/error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
+* link:reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
 * link:reference/request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
 * link:reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
 * link:reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement
-* link:reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
-
-== Migration
-
-Upgrade notes for dependency and configuration changes.
-
-* link:migration/token-sheriff-0.9.0.adoc[OAuth-Sheriff → Token-Sheriff (0.9.0)]: library rename, `sheriff.oauth.*` → `sheriff.token.*` config keys, Java API package move

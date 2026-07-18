@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 640"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">NiFi Extensions configuration overview</title>
+  <desc id="desc">Configuration sources (UI configuration, static config files, environment variables) provide settings to the JwtIssuerConfigService controller service, which holds issuer configuration, JWKS settings, and token-validation settings. Both the MultiIssuerJWTTokenAuthenticator processor and the RestApiGatewayProcessor declare their own properties and reference the controller service through a CS reference property.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .pkg-hdr { font-size: 13px; font-weight: 700; fill: #6e7681; text-anchor: middle; }
+      .pkg-sub { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .row     { font-size: 12px; fill: #6e7681; text-anchor: start; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Configuration Sources -->
+  <rect class="stroke" x="40" y="110" width="250" height="150" rx="6" ry="6"/>
+  <text x="165" y="134" class="pkg-hdr">Configuration Sources</text>
+  <text x="60" y="164" class="row">UI configuration</text>
+  <text x="60" y="192" class="row">Static config files</text>
+  <text x="60" y="220" class="row">Environment variables</text>
+
+  <!-- Controller Service -->
+  <rect class="stroke" x="390" y="90" width="300" height="190" rx="6" ry="6"/>
+  <text x="540" y="114" class="pkg-hdr">Controller Service</text>
+  <text x="540" y="132" class="pkg-sub">JwtIssuerConfigService</text>
+  <text x="410" y="166" class="row">Issuer configuration (dynamic)</text>
+  <text x="410" y="200" class="row">JWKS settings — refresh, timeout, HTTPS</text>
+  <text x="410" y="234" class="row">Token validation — size, algorithms</text>
+
+  <!-- MultiIssuerJWTTokenAuthenticator -->
+  <rect class="stroke" x="760" y="70" width="240" height="150" rx="6" ry="6"/>
+  <text x="880" y="90" class="pkg-hdr">MultiIssuerJWTToken</text>
+  <text x="880" y="106" class="pkg-hdr">Authenticator</text>
+  <text x="778" y="136" class="row">Token attribute name</text>
+  <text x="778" y="160" class="row">Require valid token</text>
+  <text x="778" y="184" class="row">Required roles / scopes</text>
+  <text x="778" y="208" class="row">CS reference</text>
+
+  <!-- RestApiGatewayProcessor -->
+  <rect class="stroke" x="730" y="300" width="280" height="252" rx="6" ry="6"/>
+  <text x="870" y="324" class="pkg-hdr">RestApiGatewayProcessor</text>
+  <text x="748" y="352" class="row">Listening port / host</text>
+  <text x="748" y="378" class="row">SSL context service</text>
+  <text x="748" y="404" class="row">Max request size / queue</text>
+  <text x="748" y="430" class="row">Distributed map cache client</text>
+  <text x="748" y="456" class="row">Management endpoints</text>
+  <text x="748" y="482" class="row">CS reference</text>
+  <text x="748" y="508" class="row">Route configuration (dynamic)</text>
+
+  <!-- ===== Arrows ===== -->
+  <!-- sources -> CS (provides) -->
+  <line class="arrow" x1="290" y1="185" x2="388" y2="185" marker-end="url(#arrow)"/>
+  <text x="339" y="177" class="lbl">provides</text>
+
+  <!-- MultiIssuer CS reference -> CS (references) -->
+  <line class="arrow" x1="758" y1="204" x2="692" y2="188" marker-end="url(#arrow)"/>
+  <text x="724" y="184" class="lbl">references</text>
+
+  <!-- RestApiGateway CS reference -> CS (references; arrow only, semantics shared with the MultiIssuer reference above) -->
+  <line class="arrow" x1="728" y1="478" x2="678" y2="264" marker-end="url(#arrow)"/>
+
+  <!-- ===== Footer ===== -->
+  <text x="470" y="596" class="caption">Precedence: static config files, then environment variables, then NiFi UI overrides at runtime.</text>
+  <text x="470" y="616" class="caption">Routes use the restapi.&lt;name&gt;.path / methods / required-roles / required-scopes / tracking-mode DSL.</text>
+</svg>

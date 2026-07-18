@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<!-- source: doc/reference/attachments-api.adoc § End-to-End Flow -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 940"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">Attachments API end-to-end request flow</title>
+  <desc id="desc">A time-ordered exchange for the attachments API. The client posts a parent upload; the gateway authenticates, generates a parent traceId, stores COLLECTING_ATTACHMENTS in the distributed map cache, enqueues the request, and returns 202 with status and attachments links. The client then posts attachments, each stored as ACCEPTED with a parent reference and enqueued; the gateway returns 202 per attachment. When the attachment count exceeds the maximum the gateway returns 409. Status queries return the current status of the parent and each attachment.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .col-header  { font-size: 13px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .stroke      { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .sep         { stroke: #6e7681; stroke-width: 0.6; stroke-dasharray: 3 3; fill: none; }
+      .arrow       { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-return{ stroke: #6e7681; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+      .arrow-fill  { fill: #6e7681; }
+      .arrow-lbl   { font-size: 10.5px; fill: #6e7681; text-anchor: middle; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .divider-lbl { font-size: 12px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .note        { font-size: 10.5px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .caption     { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Actors + lifelines -->
+  <text x="90" y="30" class="col-header">Client</text>
+  <rect class="stroke" x="35" y="42" width="110" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="90" y1="78" x2="90" y2="858"/>
+
+  <text x="300" y="30" class="col-header">Gateway</text>
+  <rect class="stroke" x="245" y="42" width="110" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="300" y1="78" x2="300" y2="858"/>
+
+  <text x="560" y="30" class="col-header">DistributedMapCache</text>
+  <rect class="stroke" x="475" y="42" width="170" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="560" y1="78" x2="560" y2="858"/>
+
+  <text x="770" y="30" class="col-header">Request Queue</text>
+  <rect class="stroke" x="700" y="42" width="140" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="770" y1="78" x2="770" y2="858"/>
+
+  <text x="950" y="30" class="col-header">NiFi Flow</text>
+  <rect class="stroke" x="895" y="42" width="110" height="34" rx="6" ry="6"/>
+  <line class="sep" x1="950" y1="78" x2="950" y2="858"/>
+
+  <!-- ===== 1. Parent Request ===== -->
+  <line class="sep" x1="40" y1="104" x2="330" y2="104"/>
+  <text x="450" y="108" class="divider-lbl">1. Parent Request</text>
+  <line class="sep" x1="570" y1="104" x2="1000" y2="104"/>
+
+  <line class="arrow" x1="90" y1="136" x2="298" y2="136" marker-end="url(#arrow)"/>
+  <text x="194" y="128" class="arrow-lbl">POST /api/upload</text>
+
+  <rect class="sep" x="196" y="152" width="208" height="26" rx="4" ry="4"/>
+  <text x="300" y="169" class="note">authenticate · generate traceId-P</text>
+
+  <line class="arrow" x1="300" y1="204" x2="558" y2="204" marker-end="url(#arrow)"/>
+  <text x="430" y="196" class="arrow-lbl">put(P, COLLECTING_ATTACHMENTS, max=5)</text>
+
+  <line class="arrow" x1="300" y1="236" x2="768" y2="236" marker-end="url(#arrow)"/>
+  <text x="534" y="228" class="arrow-lbl">enqueue(route=upload)</text>
+
+  <line class="arrow-return" x1="300" y1="268" x2="92" y2="268" marker-end="url(#arrow)"/>
+  <text x="196" y="260" class="arrow-lbl">202 {traceId:P, _links:{status, attachments}}</text>
+
+  <!-- ===== 2. Attachment Uploads ===== -->
+  <line class="sep" x1="40" y1="298" x2="320" y2="298"/>
+  <text x="450" y="302" class="divider-lbl">2. Attachment Uploads</text>
+  <line class="sep" x1="580" y1="298" x2="1000" y2="298"/>
+
+  <line class="arrow" x1="90" y1="330" x2="298" y2="330" marker-end="url(#arrow)"/>
+  <text x="194" y="322" class="arrow-lbl">POST /attachments/P + document-1.pdf</text>
+
+  <line class="arrow" x1="300" y1="362" x2="558" y2="362" marker-end="url(#arrow)"/>
+  <text x="430" y="354" class="arrow-lbl">get(P)</text>
+
+  <rect class="sep" x="188" y="378" width="224" height="26" rx="4" ry="4"/>
+  <text x="300" y="395" class="note">verify max&gt;0 · traceId-A1 · counter 1/5</text>
+
+  <line class="arrow" x1="300" y1="430" x2="558" y2="430" marker-end="url(#arrow)"/>
+  <text x="430" y="422" class="arrow-lbl">put(A1, ACCEPTED, parent=P)</text>
+
+  <line class="arrow" x1="300" y1="462" x2="768" y2="462" marker-end="url(#arrow)"/>
+  <text x="534" y="454" class="arrow-lbl">enqueue(route=_attachments)</text>
+
+  <line class="arrow-return" x1="300" y1="494" x2="92" y2="494" marker-end="url(#arrow)"/>
+  <text x="196" y="486" class="arrow-lbl">202 {traceId:A1, _links:{status}}</text>
+
+  <line class="arrow" x1="90" y1="526" x2="298" y2="526" marker-end="url(#arrow)"/>
+  <text x="194" y="518" class="arrow-lbl">POST /attachments/P + document-2.pdf</text>
+
+  <line class="arrow-return" x1="300" y1="558" x2="92" y2="558" marker-end="url(#arrow)"/>
+  <text x="196" y="550" class="arrow-lbl">202 {traceId:A2} · counter 2/5</text>
+
+  <!-- ===== 3. Limit Enforcement ===== -->
+  <line class="sep" x1="40" y1="588" x2="320" y2="588"/>
+  <text x="450" y="592" class="divider-lbl">3. Limit Enforcement</text>
+  <line class="sep" x1="580" y1="588" x2="1000" y2="588"/>
+
+  <line class="arrow" x1="90" y1="620" x2="298" y2="620" marker-end="url(#arrow)"/>
+  <text x="194" y="612" class="arrow-lbl">POST /attachments/P + document-6.pdf</text>
+
+  <rect class="sep" x="214" y="636" width="172" height="26" rx="4" ry="4"/>
+  <text x="300" y="653" class="note">counter 6 &gt; max 5</text>
+
+  <line class="arrow-return" x1="300" y1="688" x2="92" y2="688" marker-end="url(#arrow)"/>
+  <text x="196" y="680" class="arrow-lbl">409 "Attachment limit reached: 5"</text>
+
+  <!-- ===== 4. Status Queries ===== -->
+  <line class="sep" x1="40" y1="718" x2="330" y2="718"/>
+  <text x="450" y="722" class="divider-lbl">4. Status Queries</text>
+  <line class="sep" x1="570" y1="718" x2="1000" y2="718"/>
+
+  <line class="arrow" x1="90" y1="750" x2="298" y2="750" marker-end="url(#arrow)"/>
+  <text x="194" y="742" class="arrow-lbl">GET /status/P</text>
+
+  <line class="arrow-return" x1="300" y1="782" x2="92" y2="782" marker-end="url(#arrow)"/>
+  <text x="196" y="774" class="arrow-lbl">200 {status: PROCESSING}</text>
+
+  <line class="arrow" x1="90" y1="814" x2="298" y2="814" marker-end="url(#arrow)"/>
+  <text x="194" y="806" class="arrow-lbl">GET /status/A1</text>
+
+  <line class="arrow-return" x1="300" y1="846" x2="92" y2="846" marker-end="url(#arrow)"/>
+  <text x="196" y="838" class="arrow-lbl">200 {status: ACCEPTED, parentTraceId: P}</text>
+
+  <!-- Footer -->
+  <text x="520" y="912" class="caption">Each attachment is tracked with its own traceId, linked to the parent request through parentTraceId.</text>
+</svg>

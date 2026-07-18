@@ -1,12 +1,12 @@
 = JWT Processor Architecture
 :sectnums:
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 The `MultiIssuerJWTTokenAuthenticator` validates JWT tokens from FlowFile attributes against one or more identity providers and routes FlowFiles based on validation results.
 
 == Token Processing Flow
 
-image::jwt-token-flow.png[JWT Token Processing Flow]
+image::jwt-token-flow.svg[JWT Token Processing Flow]
 
 1. Read raw JWT from a configurable FlowFile attribute (default: `jwt.token`)
 2. Validate token format and size (rejects tokens exceeding `maxTokenSize`)

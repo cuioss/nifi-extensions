@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 760"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">NiFi Extensions module and component architecture</title>
+  <desc id="desc">The NiFi Extensions modules layered by dependency. The NiFi framework defines the processor and controller-service APIs. The nifi-cuioss-api module declares the JwtIssuerConfigService interface, which nifi-cuioss-common implements while creating a Token-Sheriff TokenValidator. The nifi-cuioss-processors and nifi-cuioss-rest-processors modules extend the processor API and reference the controller service; the rest-processors module runs an embedded Jetty server and its handlers use common utilities. The nifi-cuioss-ui module configures both processors. Token-Sheriff retrieves JWKS from external identity providers.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .pkg-hdr { font-size: 13px; font-weight: 700; fill: #6e7681; text-anchor: middle; }
+      .comp    { font-size: 11.5px; fill: #6e7681; text-anchor: middle; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- ===== MID column spine (centre x=530) ===== -->
+  <!-- NiFi Framework -->
+  <rect class="stroke" x="380" y="40" width="300" height="100" rx="6" ry="6"/>
+  <text x="530" y="60" class="pkg-hdr">NiFi Framework</text>
+  <text x="530" y="84" class="comp">NiFi Core</text>
+  <text x="530" y="106" class="comp">Processor API</text>
+  <text x="530" y="128" class="comp">Controller Service API</text>
+
+  <!-- nifi-cuioss-api -->
+  <rect class="stroke" x="380" y="172" width="300" height="76" rx="6" ry="6"/>
+  <text x="530" y="192" class="pkg-hdr">nifi-cuioss-api</text>
+  <text x="530" y="214" class="comp">JwtIssuerConfigService (CS interface)</text>
+  <text x="530" y="236" class="comp">JwtAuthenticationConfig</text>
+
+  <!-- nifi-cuioss-common -->
+  <rect class="stroke" x="380" y="286" width="300" height="156" rx="6" ry="6"/>
+  <text x="530" y="306" class="pkg-hdr">nifi-cuioss-common</text>
+  <text x="530" y="328" class="comp">StandardJwtIssuerConfigService</text>
+  <text x="530" y="350" class="comp">AuthorizationValidator</text>
+  <text x="530" y="372" class="comp">TokenClaimMapper</text>
+  <text x="530" y="394" class="comp">ErrorContext</text>
+  <text x="530" y="416" class="comp">ForwardedRequestResolver</text>
+
+  <!-- nifi-cuioss-rest-processors -->
+  <rect class="stroke" x="380" y="486" width="300" height="212" rx="6" ry="6"/>
+  <text x="530" y="506" class="pkg-hdr">nifi-cuioss-rest-processors</text>
+  <text x="530" y="528" class="comp">RestApiGateway</text>
+  <text x="530" y="550" class="comp">GatewayRequestHandler</text>
+  <text x="530" y="572" class="comp">ApiRouteHandler</text>
+  <text x="530" y="594" class="comp">Health · Metrics · Status endpoints</text>
+  <text x="530" y="616" class="comp">AttachmentsEndpointHandler</text>
+  <text x="530" y="638" class="comp">JettyServerManager</text>
+
+  <!-- ===== LEFT column (centre x=185) ===== -->
+  <!-- nifi-cuioss-processors -->
+  <rect class="stroke" x="40" y="300" width="290" height="72" rx="6" ry="6"/>
+  <text x="185" y="322" class="pkg-hdr">nifi-cuioss-processors</text>
+  <text x="185" y="350" class="comp">MultiIssuerJWTTokenAuthenticator</text>
+
+  <!-- nifi-cuioss-ui -->
+  <rect class="stroke" x="40" y="486" width="290" height="72" rx="6" ry="6"/>
+  <text x="185" y="508" class="pkg-hdr">nifi-cuioss-ui</text>
+  <text x="185" y="536" class="comp">Unified Custom UI</text>
+
+  <!-- ===== RIGHT column (centre x=875) ===== -->
+  <!-- Token-Sheriff -->
+  <rect class="stroke" x="730" y="172" width="290" height="76" rx="6" ry="6"/>
+  <text x="875" y="192" class="pkg-hdr">Token-Sheriff (library)</text>
+  <text x="875" y="214" class="comp">TokenValidator</text>
+  <text x="875" y="236" class="comp">AccessTokenContent</text>
+
+  <!-- External Services -->
+  <rect class="stroke" x="730" y="300" width="290" height="80" rx="6" ry="6"/>
+  <text x="875" y="322" class="pkg-hdr">External Services</text>
+  <text x="875" y="346" class="comp">Identity Provider 1</text>
+  <text x="875" y="368" class="comp">Identity Provider 2</text>
+
+  <!-- Embedded Jetty -->
+  <rect class="stroke" x="730" y="430" width="290" height="58" rx="6" ry="6"/>
+  <text x="875" y="452" class="pkg-hdr">Embedded Jetty 12</text>
+  <text x="875" y="475" class="comp">Jetty Server</text>
+
+  <!-- ===== Dependency arrows ===== -->
+  <!-- Framework -> api (defines) -->
+  <line class="arrow" x1="530" y1="140" x2="530" y2="170" marker-end="url(#arrow)"/>
+  <text x="600" y="159" class="lbl">defines CS API</text>
+
+  <!-- api -> common (implements) -->
+  <line class="arrow" x1="530" y1="248" x2="530" y2="284" marker-end="url(#arrow)"/>
+  <text x="592" y="270" class="lbl">implements</text>
+
+  <!-- common -> rest-processors (uses) -->
+  <line class="arrow" x1="530" y1="442" x2="530" y2="484" marker-end="url(#arrow)"/>
+  <text x="568" y="467" class="lbl">uses</text>
+
+  <!-- processors -> api (references CS) -->
+  <line class="arrow" x1="245" y1="300" x2="378" y2="232" marker-end="url(#arrow)"/>
+  <text x="300" y="252" class="lbl">references CS</text>
+
+  <!-- rest-processors -> api (references CS, routed in left gutter) -->
+  <polyline class="arrow" points="380,540 358,540 358,214 378,214" marker-end="url(#arrow)"/>
+
+  <!-- Framework -> processors (extends) -->
+  <line class="arrow" x1="378" y1="118" x2="292" y2="298" marker-end="url(#arrow)"/>
+  <text x="300" y="196" class="lbl">extends</text>
+
+  <!-- common -> Token-Sheriff (creates) -->
+  <line class="arrow" x1="682" y1="330" x2="730" y2="240" marker-end="url(#arrow)"/>
+  <text x="722" y="300" class="lbl">creates</text>
+
+  <!-- Token-Sheriff -> External Services (JWKS) -->
+  <line class="arrow" x1="875" y1="248" x2="875" y2="298" marker-end="url(#arrow)"/>
+  <text x="948" y="277" class="lbl">JWKS retrieval</text>
+
+  <!-- rest-processors -> Embedded Jetty (manages) -->
+  <line class="arrow" x1="682" y1="540" x2="730" y2="466" marker-end="url(#arrow)"/>
+  <text x="726" y="520" class="lbl">manages</text>
+
+  <!-- ui -> processors (configures) -->
+  <line class="arrow" x1="185" y1="486" x2="185" y2="374" marker-end="url(#arrow)"/>
+  <text x="248" y="432" class="lbl">configures</text>
+
+  <!-- ui -> rest-processors (configures) -->
+  <line class="arrow" x1="330" y1="522" x2="378" y2="540" marker-end="url(#arrow)"/>
+
+  <!-- ===== Footer ===== -->
+  <text x="530" y="732" class="caption">Both processor modules extend the NiFi Processor API and reference the JwtIssuerConfigService controller service.</text>
+</svg>

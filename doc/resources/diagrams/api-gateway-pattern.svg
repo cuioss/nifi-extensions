@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- theme-handling: A (theme-neutral) -->
+<!-- see pm-documents:ref-svg-diagrams/standards/theme-handling.md -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 680"
+     role="img" aria-labelledby="title desc"
+     font-family="ui-sans-serif, -apple-system, system-ui, 'Segoe UI', sans-serif">
+  <title id="title">RestApiGateway processor request flow</title>
+  <desc id="desc">An HTTPS request from an API client enters the RestApiGateway processor through an embedded Jetty server on port 9443, passes to the GatewayRequestHandler, and runs through a seven-stage request pipeline (input sanitization, route matching, method check, body validation, auth-mode dispatch, role and scope authorization, delegation) before producing a NiFi FlowFile per route. The handler also serves built-in management endpoints, and the auth-mode stage validates tokens through the JwtIssuerConfigService controller service, which retrieves JWKS from an identity provider.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" class="arrow-fill"/>
+    </marker>
+    <style>
+      .box-hdr { font-size: 14px; font-weight: 600; fill: #6e7681; text-anchor: middle; }
+      .box-lbl { font-size: 13px; fill: #6e7681; text-anchor: middle; }
+      .box-sub { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .step    { font-size: 12px; fill: #6e7681; text-anchor: start; }
+      .lbl     { font-size: 11px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+      .stroke  { stroke: #6e7681; stroke-width: 1.2; fill: none; }
+      .arrow   { stroke: #6e7681; stroke-width: 1.5; fill: none; }
+      .arrow-fill { fill: #6e7681; }
+      .caption { font-size: 12px; fill: #6e7681; text-anchor: middle; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- ===== Main vertical flow (centre x=250) ===== -->
+  <!-- API Client -->
+  <rect class="stroke" x="170" y="44" width="160" height="44" rx="6" ry="6"/>
+  <text x="250" y="71" class="box-lbl">API Client</text>
+
+  <line class="arrow" x1="250" y1="88" x2="250" y2="118" marker-end="url(#arrow)"/>
+  <text x="330" y="107" class="lbl">HTTPS request</text>
+
+  <!-- Embedded Jetty -->
+  <rect class="stroke" x="150" y="118" width="200" height="50" rx="6" ry="6"/>
+  <text x="250" y="140" class="box-lbl">Embedded Jetty</text>
+  <text x="250" y="157" class="box-sub">port 9443</text>
+
+  <line class="arrow" x1="250" y1="168" x2="250" y2="198" marker-end="url(#arrow)"/>
+
+  <!-- GatewayRequestHandler -->
+  <rect class="stroke" x="150" y="198" width="200" height="44" rx="6" ry="6"/>
+  <text x="250" y="225" class="box-lbl">GatewayRequestHandler</text>
+
+  <line class="arrow" x1="250" y1="242" x2="250" y2="272" marker-end="url(#arrow)"/>
+
+  <!-- Request Pipeline container -->
+  <rect class="stroke" x="110" y="272" width="280" height="290" rx="6" ry="6"/>
+  <text x="250" y="296" class="box-hdr">Request Pipeline</text>
+  <text x="126" y="328" class="step">1. Input sanitization (cui-http)</text>
+  <text x="126" y="362" class="step">2. Route matching</text>
+  <text x="126" y="396" class="step">3. Method check</text>
+  <text x="126" y="430" class="step">4. Body validation (size limit)</text>
+  <text x="126" y="464" class="step">5. Auth-mode dispatch</text>
+  <text x="146" y="481" class="box-sub" style="text-anchor: start;">BEARER / NONE / LOCAL_ONLY</text>
+  <text x="126" y="515" class="step">6. Role / scope authorization</text>
+  <text x="126" y="549" class="step">7. Delegate to handler</text>
+
+  <line class="arrow" x1="250" y1="562" x2="250" y2="594" marker-end="url(#arrow)"/>
+  <text x="330" y="582" class="lbl">FlowFile per route</text>
+
+  <!-- NiFi FlowFile Routing -->
+  <rect class="stroke" x="150" y="594" width="200" height="50" rx="6" ry="6"/>
+  <text x="250" y="616" class="box-lbl">NiFi FlowFile</text>
+  <text x="250" y="633" class="box-lbl">Routing</text>
+
+  <!-- ===== Right column ===== -->
+  <!-- Management Handlers -->
+  <rect class="stroke" x="560" y="186" width="260" height="68" rx="6" ry="6"/>
+  <text x="690" y="210" class="box-lbl">Management Handlers</text>
+  <text x="690" y="234" class="box-sub">/health · /metrics · /status · /attachments</text>
+
+  <line class="arrow" x1="350" y1="220" x2="558" y2="220" marker-end="url(#arrow)"/>
+  <text x="454" y="212" class="lbl">built-in endpoints</text>
+
+  <!-- JwtIssuerConfigService -->
+  <rect class="stroke" x="560" y="380" width="260" height="56" rx="6" ry="6"/>
+  <text x="690" y="404" class="box-lbl">JwtIssuerConfigService</text>
+  <text x="690" y="422" class="box-sub">Controller Service</text>
+
+  <line class="arrow" x1="390" y1="460" x2="558" y2="416" marker-end="url(#arrow)"/>
+  <text x="486" y="428" class="lbl">validateToken()</text>
+
+  <!-- Identity Provider -->
+  <rect class="stroke" x="600" y="486" width="180" height="48" rx="6" ry="6"/>
+  <text x="690" y="515" class="box-lbl">Identity Provider</text>
+
+  <line class="arrow" x1="690" y1="436" x2="690" y2="484" marker-end="url(#arrow)"/>
+  <text x="690" y="466" class="lbl">JWKS retrieval</text>
+
+  <!-- ===== Footer ===== -->
+  <text x="460" y="672" class="caption">Error responses follow RFC 9457 (application/problem+json), status codes 400–503.</text>
+</svg>

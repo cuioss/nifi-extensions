@@ -1,10 +1,10 @@
 = Gateway Architecture
 :sectnums:
-:imagesdir: ../plantuml
+:imagesdir: ../resources/diagrams
 
 The `RestApiGatewayProcessor` embeds a Jetty 12 HTTP server with route-based dispatching, per-route JWT authorization, and RFC 9457 error responses.
 
-image::api-gateway-pattern.png[RestApiGateway Pattern]
+image::api-gateway-pattern.svg[RestApiGateway Pattern]
 
 == Request Pipeline
 
@@ -134,6 +134,7 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 == Endpoint Authorization Matrix
 
+[#custom-ui-endpoints-layer-2]
 === Custom UI Endpoints (Layer 2)
 
 [cols="3,1,1,2"]

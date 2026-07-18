@@ -31,7 +31,7 @@ Adding JWT authentication on top means even more processors, relationships, and 
 
 The `RestApiGatewayProcessor` is a single processor that embeds an HTTP server, authenticates and authorizes requests per-route, and converts them into FlowFiles.
 
-image::doc/plantuml/api-gateway-pattern.png[RestApiGateway Pattern]
+image::doc/resources/diagrams/api-gateway-pattern.svg[RestApiGateway Pattern]
 
 Key capabilities:
 
@@ -45,7 +45,7 @@ Key capabilities:
 Routes can enable async request tracking for `POST`/`PUT`/`PATCH` requests.
 Both modes require a `DistributedMapCacheClient` Controller Service.
 
-image::doc/plantuml/tracking-modes.png[Request Tracking Modes]
+image::doc/resources/diagrams/tracking-modes.svg[Request Tracking Modes]
 
 * **Simple** (`tracking-mode=simple`): `202` with `traceId` and `/status` polling link
 * **Attachments** (`tracking-mode=attachments`): adds an `/attachments/{traceId}` upload endpoint; the parent request waits for attachments (or timeout), then the window closes (`409`). See link:doc/guides/AttachmentMergeGuide.adoc[Attachment Merge Guide].
@@ -179,14 +179,10 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 
 * link:doc/reference/configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:doc/reference/error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
+* link:doc/reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
 * link:doc/reference/request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
 * link:doc/reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
 * link:doc/reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement
-* link:doc/reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
-
-=== Migration
-
-* link:doc/migration/token-sheriff-0.9.0.adoc[OAuth-Sheriff → Token-Sheriff (0.9.0)]: library rename, config-key and Java API migration notes
 
 === Testing
 
