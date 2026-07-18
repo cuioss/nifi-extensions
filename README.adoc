@@ -179,10 +179,10 @@ The flow also contains a `MultiIssuerJWTTokenAuthenticator`-based endpoint on po
 
 * link:doc/reference/configuration.adoc[Configuration Reference]: all property tables, static config, environment variables
 * link:doc/reference/error-reference.adoc[Error Reference (RFC 9457)]: consolidated error types returned by the gateway
+* link:doc/reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
 * link:doc/reference/request-tracking-api.adoc[Request Tracking API]: async request tracking with traceId and status polling
 * link:doc/reference/request-tracking-architecture.adoc[Request Tracking Architecture]: status lifecycle, data model, sequence diagrams
 * link:doc/reference/attachments-api.adoc[Attachments API]: chained attachment uploads with limit enforcement
-* link:doc/reference/metrics-api.adoc[Metrics API]: gateway `/metrics` endpoint and NiFi-native counter exposition
 
 === Testing
 
