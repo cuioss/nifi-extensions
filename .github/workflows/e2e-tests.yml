@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   e2e-tests:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@dd1b90a37f4c92f785eb935e57af9d3eba5da85c # v0.10.2
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@d130b317a9122014f76d760452aba05c4ea567e3 # v0.11.0
     with:
       report-name: e-2-e-playwright
       maven-args-input: verify -Pintegration-tests -pl e-2-e-playwright -am
