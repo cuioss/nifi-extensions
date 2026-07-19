@@ -146,8 +146,22 @@ If using a scheduled/loop wait, poll roughly every few minutes up to ~15 min.
 Once checks are green and comments resolved:
 
 ```bash
-gh pr merge <pr#> --repo cuioss/nifi-extensions --squash --delete-branch
+gh pr merge <pr#> --repo cuioss/nifi-extensions --squash
 ```
+
+> **Note — `main` is behind the org-managed merge queue (`main-merge-queue`).** The command
+> above **enqueues** the PR; it is not merged immediately. `--delete-branch` is rejected by
+> the queue (it auto-deletes the head branch itself), so it is omitted. After
+> `gh pr merge ... --squash`, poll until the PR reports `MERGED` before expecting the Release
+> workflow to fire:
+>
+> ```bash
+> gh pr view <pr#> --repo cuioss/nifi-extensions --json state --jq .state
+> ```
+>
+> The Release workflow itself is unaffected: `cuioss-release-bot` is a bypass actor on
+> `main-merge-queue`, so its direct push of the release commit + tag succeeds.
+
 Merging this PR (it touches `.github/project.yml`) fires `release.yml` automatically — do
 **not** dispatch the release manually unless the auto-trigger demonstrably did not fire.
 
