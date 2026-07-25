@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   integration-tests:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@6278bbd7280a6e94b4914aa9e8c61cf23ea1abbe # v0.13.0
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-integration-tests.yml@830c2dd2ffe4850be37c5faa0a0d112713dfd7e3 # v0.14.0
     with:
       report-name: integration-testing
       maven-args-input: verify -Pintegration-tests -pl integration-testing -am
