@@ -30,7 +30,7 @@ The review checked for **correctness, consistency, completeness, lack of ambigui
 
 |xref:code-review-ui.adoc[UI Module Code Review]
 |`nifi-cuioss-ui` — Java servlets and JavaScript frontend (main sources)
-|2 |7 |5
+|1 |8 |5
 
 |xref:test-quality-java.adoc[Java Test Quality]
 |All Java test code across the five Java modules
@@ -45,12 +45,12 @@ The review checked for **correctness, consistency, completeness, lack of ambigui
 |4 |12 |7
 |===
 
-Total: **119 findings** (18 major, 59 minor, 42 info). No CRITICAL findings — no remote authentication bypass or token-forgery path was found in any module.
+Total: **119 findings** (17 major, 60 minor, 42 info, after the adversarial pass downgraded UI-01 from MAJOR to MINOR). No CRITICAL findings — no remote authentication bypass or token-forgery path was found in any module.
 
 == Methodology
 
 . Six independent, parallel deep reviews, each scoped to one aspect (three code reviews, two test-quality reviews, one documentation review). Every reported finding cites concrete file/line evidence; assumptions about third-party library behavior (token-sheriff/cui-jwt-validation, Jetty 12, cui-http) are explicitly marked as such.
-. An **adversarial verification pass** using clean (fresh-context) sub-agents that re-verified the findings end-to-end against the actual code, with instructions to refute rather than confirm. Each finding carries a `Verification:` verdict; findings that did not survive verification were corrected or removed. See the verification note in each report.
+. An **adversarial verification pass** using clean (fresh-context) sub-agents that re-verified the findings end-to-end against the actual code, with instructions to refute rather than confirm. The pass sampled all MAJOR findings plus a broad selection of the more consequential MINOR findings (43 of the 119 in total). Every sampled finding was CONFIRMED against the source except UI-01, whose injection mechanism was confirmed but whose severity was judged overstated and downgraded from MAJOR to MINOR (the CSP `script-src 'self'` header contains it). No finding was refuted. The per-report *Adversarial verification* section at the end of each report lists exactly which finding IDs were re-verified and records the verdicts and any remaining assumption-dependent caveats; findings outside the sample rest on the single-pass review's cited evidence.
 
 == Severity scale
 

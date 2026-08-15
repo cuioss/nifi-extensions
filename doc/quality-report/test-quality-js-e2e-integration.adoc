@@ -12,7 +12,6 @@ Overall verdict: **high quality across all three suites** — real end-to-end JW
 
 * Severity: MAJOR | Category: missing-negative | Confidence: confirmed
 * Location: `integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java:140-171`; `e-2-e-playwright/tests/03-verify-token-verification-tab.spec.js:158-199`; `e-2-e-playwright/utils/constants.js:257`
-* Verification: _pending_
 
 Integration tests cover no-token (401), malformed token (401), wrong-realm signature (401), missing role (403), and missing scope (403) — but no test presents a *correctly signed but expired* token from `oauth_integration_tests`. The E2E "should display token expiration status" test uses `CONSTANTS.TEST_TOKENS.EXPIRED`, whose issuer is `test-issuer` (not configured) and whose signature is the literal string `fake-signature-for-testing` — rejection can therefore come from unknown-issuer or invalid-signature checks, and the assertion `/expired|invalid/i` passes either way. The `exp`-claim enforcement path is thus not distinctly verified end-to-end in any suite (it may be covered by the cui-jwt library's own unit tests, out of scope). Keycloak's configurable short token lifespan makes a genuine test feasible (a client with 1s lifespan + awaitility).
 
@@ -20,7 +19,6 @@ Integration tests cover no-token (401), malformed token (401), wrong-realm signa
 
 * Severity: MAJOR | Category: missing-negative | Confidence: confirmed
 * Location: `integration-testing/src/test/java/de/cuioss/nifi/integration/` (suite-wide)
-* Verification: _pending_
 
 No integration test stops or isolates Keycloak (or points an issuer at an unreachable JWKS URL) to verify the gateway/authenticator fails closed — i.e. rejects tokens with 401/5xx rather than accepting them when key material cannot be refreshed. The task's stated concern "Keycloak down" is untested. Wrong-realm and malformed cases are tested; infrastructure-outage behavior is not. This is the most security-relevant gap after TQF-01, since JWKS-cache fallback behavior is exactly the kind of logic that only an outage test catches. Corresponds to the fail-closed concerns in CORE-03/CORE-05.
 
@@ -30,7 +28,6 @@ No integration test stops or isolates Keycloak (or points an issuer at an unreac
 
 * Severity: MINOR | Category: assertion-quality | Confidence: confirmed
 * Location: `e-2-e-playwright/tests/accessibility-wcag-compliance.spec.js:410, 421, 431, 494, 508`
-* Verification: _pending_
 
 Several steps are wrapped in `if (await validateButton.isVisible())` / `if (await tokenInput.isVisible())`; if the button/input is not rendered (e.g. selector drift after a UI refactor), the step silently asserts nothing and the test passes. Line 420 uses `waitFor(...).catch(() => {})`, and the error/success contrast check at :431 is only `expect(contrast.color).not.toBe(contrast.background)` — decorative. The main axe scans are unaffected, but these dynamic-content/announcement checks can rot into no-ops undetected.
 
@@ -38,7 +35,6 @@ Several steps are wrapped in `if (await validateButton.isVisible())` / `if (awai
 
 * Severity: MINOR | Category: assertion-quality | Confidence: confirmed
 * Location: `e-2-e-playwright/utils/accessibility-helper.js:344-351, 405-434, 456-478, 585-598`
-* Verification: _pending_
 
 `ariaAttributes.check` returns `{ passed: true }` in its catch block; `runCustomChecks` catches element/check errors with `console.warn` and continues; `checkComponent` returns `passed: true, skipped: true` when the component exists but is hidden; `checkKeyboardNavigation` in frame context degrades to "focusable elements exist" with `limited: true`. Errors during checking reduce coverage silently rather than failing. The axe-core scans themselves fail hard on violations, so this affects only the supplementary custom checks.
 
@@ -46,7 +42,6 @@ Several steps are wrapped in `if (await validateButton.isVisible())` / `if (awai
 
 * Severity: MINOR | Category: assertion-quality | Confidence: confirmed
 * Location: `e-2-e-playwright/tests/01-verify-configuration-tab.spec.js:537-558`
-* Verification: _pending_
 
 After saving two issuers with the same name, the test asserts only `expect(hasError || hasSuccess).toBe(true)` — the comment says "Both are acceptable". The duplicate-handling contract is unpinned; a regression that silently starts allowing (or rejecting) duplicates would not be caught.
 
@@ -54,7 +49,6 @@ After saving two issuers with the same name, the test asserts only `expect(hasEr
 
 * Severity: MINOR | Category: flakiness | Confidence: confirmed
 * Location: `nifi-cuioss-ui/src/test/js/endpoint-tester.test.js:167` et al. (~20 occurrences); `app.test.js:104`; `token-verifier.test.js:60`
-* Verification: _pending_
 
 Many tests trigger a click then `await new Promise((r) => setTimeout(r, 10))` to let async handlers settle before asserting. This is timing-coupled: a handler that gains an extra macrotask hop would make assertions run too early, and it slows the suite. Low practical risk today (assertions are otherwise strong), but fake timers or awaitable handles would be more robust.
 
@@ -62,7 +56,6 @@ Many tests trigger a click then `await new Promise((r) => setTimeout(r, 10))` to
 
 * Severity: MINOR | Category: flakiness | Confidence: confirmed
 * Location: `e-2-e-playwright/utils/processor.js:380, 437, 505`; `utils/processor-api-manager.js:480, 551, 1006-1073`
-* Verification: _pending_
 
 `waitForTimeout(400/500)` and `setTimeout(..., 250)` appear inside retry loops (menu dismissal, canvas pan, frame detection, API polling). Each is documented as intentional loop pacing with an enclosing condition-based retry and bounded attempts, so they are polling intervals rather than "sleep and hope" waits — but they remain the suite's main residual timing coupling. Spec files themselves contain no fixed sleeps; assertions use Playwright auto-waiting and `expect.poll`.
 
@@ -70,7 +63,6 @@ Many tests trigger a click then `await new Promise((r) => setTimeout(r, 10))` to
 
 * Severity: MINOR | Category: convention | Confidence: confirmed
 * Location: `e-2-e-playwright/utils/accessibility-helper.js:346, 429, 437, 464, 560, 587`
-* Verification: _pending_
 
 The suite's convention is `testLogger` (used in all specs and most utils); `accessibility-helper.js` uses raw `console.warn/error/log` throughout. Diagnostics from swallowed a11y check errors (TQF-04) therefore bypass the per-test persisted logs, making silent-skip incidents harder to audit after a run.
 
@@ -80,7 +72,6 @@ The suite's convention is `testLogger` (used in all specs and most utils); `acce
 
 * Severity: INFO | Category: coverage-gaming | Confidence: confirmed
 * Location: `nifi-cuioss-ui/package.json:49-102`; `nifi-cuioss-ui/pom.xml:254`
-* Verification: _pending_
 
 The Maven build runs `npm run test:coverage` (jest `--coverage`), so `coverageThreshold` (global 80 lines / 75 branches / 78 functions / 80 statements, plus a stricter per-file gate for `app.js`: 95/95/90) fails the build when unmet. `coveragePathIgnorePatterns` excludes only `<rootDir>/src/test/js/` — no production files hidden; all 13 webapp modules have a matching `.test.js`; no `istanbul ignore` pragmas in `src/main/webapp/js`. One latent risk: the unused `test:ci` script carries `--passWithNoTests`, which would mask an empty-suite condition if CI ever switched to it.
 
@@ -88,7 +79,6 @@ The Maven build runs `npm run test:coverage` (jest `--coverage`), so `coverageTh
 
 * Severity: INFO | Category: assertion-quality | Confidence: confirmed
 * Location: `integration-testing/src/test/java/de/cuioss/nifi/integration/RestApiGatewayIT.java:218-274`; `AttachmentFlowIT.java:291-345`
-* Verification: _pending_
 
 OWASP Top-10 / Apache CVE / ModSecurity CRS attack strings are fed into live path parameters, asserting non-2xx while *also* asserting the status is not 401/403 — explicitly to prevent a mid-run expired class token from making every attack case pass vacuously. Transport exceptions are deliberately not caught so a crashed gateway fails the test. The opposite of coverage theater.
 
@@ -96,7 +86,6 @@ OWASP Top-10 / Apache CVE / ModSecurity CRS attack strings are fed into live pat
 
 * Severity: INFO | Category: missing-negative | Confidence: confirmed
 * Location: `RestApiGatewayIT.java:141-171, 571-587, 611-621, 672-695`; `NiFiFlowPipelineIT.java:106-209`
-* Verification: _pending_
 
 Verified present against live NiFi+Keycloak with real tokens: 401 without token (GET and POST), 401 malformed, 401 wrong-realm-signed (distinct RSA key pair, confirmed by `KeycloakRealmConfigIT` kid comparison), 403 missing ADMIN role, 403 missing scope with `insufficient_scope` detail, 401-before-403 ordering, 401 on `/metrics`, `/health`/`/status` without/with invalid token, auth-mode=none anonymous route with and without token. `NiFiFlowPipelineIT` asserts `jwt.error.code`/`jwt.error.category` semantics — the pipeline suite asserts integrated behavior, not container liveness.
 
@@ -104,7 +93,6 @@ Verified present against live NiFi+Keycloak with real tokens: 401 without token 
 
 * Severity: INFO | Category: flakiness | Confidence: confirmed
 * Location: `e-2-e-playwright/playwright.config.cjs:77-82`; `integration-testing/src/test/resources/junit-platform.properties`; `IntegrationTestSupport.java:165-188`
-* Verification: _pending_
 
 Playwright: `retries: 0`, `forbidOnly` on CI, `workers: 1`; zero `test.skip/fixme/only` in specs; global-setup hard-fails on missing CSRF token, login failure, or undeployed processor. Integration: no `@Disabled`, no `assumeTrue`; `waitForEndpoint` calls `fail(...)` after timeout instead of skipping. Jest: no skipped tests. The "if server not available, pass" anti-pattern is absent everywhere. Serial ordering dependencies in E2E exist but are declared (`mode: "serial"`) with idempotency cleanup.
 
@@ -112,7 +100,6 @@ Playwright: `retries: 0`, `forbidOnly` on CI, `workers: 1`; zero `test.skip/fixm
 
 * Severity: INFO | Category: assertion-quality | Confidence: confirmed
 * Location: `RestApiGatewayIT.java:933-955`
-* Verification: _pending_
 
 The forwarded-client-IP test asserts only 200 + non-empty body; the resolved IP is observable only in audit logs and a FlowFile attribute the IT cannot read. The gap is documented in-line with the unit-level owner (`ForwardedRequestResolverTest`) named. Honest, but the display name ("honors... end-to-end") slightly overstates what is asserted.
 
@@ -120,7 +107,6 @@ The forwarded-client-IP test asserts only 200 + non-empty body; the resolved IP 
 
 * Severity: INFO | Category: assertion-quality | Confidence: confirmed
 * Location: `nifi-cuioss-ui/src/test/js/` (suite-wide); `api.test.js:70-181`; `app.test.js:8-30`
-* Verification: _pending_
 
 `fetch` is the mocked boundary in `api.test.js`, with assertions on exact request URLs, methods, JSON bodies, CSRF headers, revision round-trips, and `await expect(...).rejects.toThrow` on ID-validation (properly awaited). Component tests mock sibling modules but drive real DOM and assert on resulting DOM state / call arguments, including error paths. Only 3 vague assertions (`toBeTruthy`/`toBeDefined`) exist in ~8,800 test lines, each followed by specific assertions. No snapshot tests.
 
@@ -128,7 +114,6 @@ The forwarded-client-IP test asserts only 200 + non-empty body; the resolved IP 
 
 * Severity: INFO | Category: assertion-quality | Confidence: confirmed
 * Location: `e-2-e-playwright/tests/accessibility-wcag-compliance.spec.js:118-143`; `utils/accessibility-helper.js:7-43`
-* Verification: _pending_
 
 `@axe-core/playwright` scans with tags `wcag2aa, wcag21aa, best-practice` run on the real custom-UI frame; violations fail via `expect(formatted).toHaveLength(0)` and `expect(result.passed).toBe(true)`. Three rules are disabled (`bypass, landmark-one-main, region`) — defensible for an embedded iframe UI. `knownIssues: []` means the skip mechanism exists but currently filters nothing. A correct WCAG 1.4.3 contrast-ratio computation with large-text thresholds is included. Weaknesses are the guarded steps (TQF-03/TQF-04), not the core scans.
 
@@ -136,7 +121,6 @@ The forwarded-client-IP test asserts only 200 + non-empty body; the resolved IP 
 
 * Severity: INFO | Category: missing-negative | Confidence: confirmed
 * Location: `e-2-e-playwright/tests/02-verify-jwks-validation.spec.js:39-417`; `03-verify-token-verification-tab.spec.js:115-328`
-* Verification: _pending_
 
 Verified: invalid-signature JWT rejected, wrong-issuer (real other_realm token) rejected, empty/malformed rejected — each also asserting the success indicator is NOT shown and the result is not an auth/CSRF infrastructure error (`assertNoAuthError`); JWKS path traversal (`../../etc/passwd`) blocked, path outside base dir blocked, non-HTTP scheme rejected, empty keys array rejected; security headers (nosniff, XFO, CSP, referrer-policy) asserted on real responses. Tests deliberately fail when Keycloak is unavailable rather than falling back to canned tokens.
 
@@ -144,7 +128,6 @@ Verified: invalid-signature JWT rejected, wrong-issuer (real other_realm token) 
 
 * Severity: INFO | Category: flakiness | Confidence: confirmed
 * Location: `integration-testing/src/test/java/de/cuioss/nifi/integration/GatewayMetricsPrometheusIT.java:143-144`
-* Verification: _pending_
 
 The counters poll ignores all Throwables each iteration so transient startup failures retry. The poll has a hard timeout converting to a loud `fail(...)`, so this cannot convert a failure into a pass — but ignoring `Throwable` (including assertion errors from helpers) can mask the *reason* for a timeout, slowing diagnosis.
 
@@ -155,3 +138,10 @@ The counters poll ignores all Throwables each iteration so transient startup fai
 * *nifi-cuioss-ui Jest — HIGH.* Boundary-only mocking with behavioral DOM assertions; properly awaited rejection tests; essentially no vague assertions; no snapshots; no skips; enforced thresholds with no exclusion gaming (TQF-09). Minor risks: real-timer micro-sleeps (TQF-06) and the unused `--passWithNoTests`.
 
 Review coverage honesty: the reviewing agent fully read `RestApiGatewayIT`, `NiFiFlowPipelineIT`, `KeycloakRealmConfigIT`, `IntegrationTestSupport`, the a11y spec + helper, specs 02–05, `playwright.config`, global-setup, `app.test.js`, and the jest config; it skimmed `AttachmentFlowIT`, `CustomUIEndpointsIT`, `GatewayMetricsPrometheusIT`, specs 01/06/07, and sampled `api`/`token-verifier`/`endpoint-tester` tests; it did *not* line-read all of `rest-endpoint-config.test.js` (3,127 lines), `api.test.js` (1,036 lines), or `06-verify-gateway-tabs.spec.js` (~1,200 lines) — findings there rest on structural greps plus representative samples, so a localized weak assertion inside those files could have escaped notice.
+
+== Adversarial verification
+
+A clean, fresh-context sub-agent independently re-checked the two MAJOR findings against the source, instructed to refute rather than confirm.
+
+* *Re-verified and CONFIRMED:* TQF-01 — no expired-token test with a real realm token exists in `RestApiGatewayIT`; `constants.js:257`'s `EXPIRED` token decodes to `"iss":"test-issuer"` (an unconfigured issuer) with the literal signature `fake-signature-for-testing`, and the E2E assertion `/expired|invalid/i` passes on any rejection reason. TQF-02 — a grep across `integration-testing/src/test/java` found no test that stops/isolates Keycloak or points an issuer at an unreachable JWKS URL to assert fail-closed on infrastructure outage.
+* *Not in the adversarial sample* (rest on the single-pass review's cited evidence, including the many positive verifications TQF-09 through TQF-17): TQF-03 through TQF-17.
