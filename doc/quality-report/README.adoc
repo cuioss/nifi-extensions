@@ -4,7 +4,9 @@
 
 == Overview
 
-This directory contains the results of a full-repository quality review covering all code and documentation, performed on 2026-08-15 against commit `62313b0` (project version 2.11.0, NiFi 2.11.0).
+This directory contains the results of a repository quality review performed on 2026-08-15 against commit `62313b0` (project version 2.11.0, NiFi 2.11.0).
+
+*Reviewed scope:* the Java main and test sources of all nine reactor modules, the `nifi-cuioss-ui` JavaScript (main and Jest tests), the Playwright E2E/WCAG suite, the Docker integration tests, all AsciiDoc documentation, Javadoc across the modules, and `CLAUDE.md`. *Not covered:* build files (`pom.xml`, npm config beyond test/coverage settings), CI/workflow configuration, Docker/Keycloak provisioning scripts, and non-Java resource files except where a finding explicitly cites one (e.g. the shipped example YAML in CORE-01 and the i18n bundles in CORE-10). The per-report scope lines state exactly what each report examined.
 
 The review checked for **correctness, consistency, completeness, lack of ambiguity, and duplication**, with special attention to:
 
@@ -45,12 +47,12 @@ The review checked for **correctness, consistency, completeness, lack of ambigui
 |4 |12 |7
 |===
 
-Total: **119 findings** (17 major, 60 minor, 42 info, after the adversarial pass downgraded UI-01 from MAJOR to MINOR). No CRITICAL findings — no remote authentication bypass or token-forgery path was found in any module.
+Total: **119 findings** (17 major, 60 minor, 42 info, after the adversarial pass downgraded UI-01 from MAJOR to MINOR). No CRITICAL findings of any category (see the severity scale below) were identified within the reviewed scope — no exploitable security flaw (no remote authentication bypass or token-forgery path) and no data-loss defect. The most serious data-integrity issue found is GW-01 (a tracked request can be silently stranded on FlowFile-creation failure), rated MAJOR, not CRITICAL, because it does not corrupt or lose already-persisted data.
 
 == Methodology
 
 . Six independent, parallel deep reviews, each scoped to one aspect (three code reviews, two test-quality reviews, one documentation review). Every reported finding cites concrete file/line evidence; assumptions about third-party library behavior (token-sheriff/cui-jwt-validation, Jetty 12, cui-http) are explicitly marked as such.
-. An **adversarial verification pass** using clean (fresh-context) sub-agents that re-verified the findings end-to-end against the actual code, with instructions to refute rather than confirm. The pass sampled all MAJOR findings plus a broad selection of the more consequential MINOR findings (43 of the 119 in total). Every sampled finding was CONFIRMED against the source except UI-01, whose injection mechanism was confirmed but whose severity was judged overstated and downgraded from MAJOR to MINOR (the CSP `script-src 'self'` header contains it). No finding was refuted. The per-report *Adversarial verification* section at the end of each report lists exactly which finding IDs were re-verified and records the verdicts and any remaining assumption-dependent caveats; findings outside the sample rest on the single-pass review's cited evidence.
+. An **adversarial verification pass** using clean (fresh-context) sub-agents that re-verified the findings end-to-end against the actual code, with instructions to refute rather than confirm. The pass sampled all MAJOR findings plus a broad selection of the more consequential MINOR findings (43 of the 119 in total). All 43 sampled findings were CONFIRMED against the source; none was refuted. The only severity change was UI-01: its attribute-injection mechanism was confirmed exactly, but the severity was judged overstated and downgraded from MAJOR to MINOR (the CSP `script-src 'self'` header contains it). The per-report *Adversarial verification* section at the end of each report lists exactly which finding IDs were re-verified and records the verdicts and any remaining assumption-dependent caveats; findings outside the sample rest on the single-pass review's cited evidence.
 
 == Severity scale
 

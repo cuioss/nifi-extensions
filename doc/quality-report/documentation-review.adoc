@@ -2,7 +2,7 @@
 :toc: left
 :toclevels: 2
 
-Scope: all AsciiDoc files (root `README.adoc`, the `doc/` tree, module READMEs), Javadoc across all modules (spot-checked, prioritizing public API), and `CLAUDE.md` claims versus the build. Reviewed at commit `62313b0`. Every reported mismatch was verified against both the documentation and the code.
+Scope: all AsciiDoc files (root `README.adoc`, the `doc/` tree, module READMEs), Javadoc across all modules (spot-checked, prioritizing public API), and `CLAUDE.md` claims versus the build. Reviewed at commit `62313b0`. Every *confirmed* mismatch was verified against both the documentation and the code; the sole exception is DOC-23, which is explicitly marked `needs-verification` because the build tooling it concerns may be runtime-provisioned outside this checkout.
 
 Structure is strong: `doc/README.adoc` is a complete working index; every cross-file link, image, and include target in all 31 AsciiDoc files resolves (verified programmatically — one intra-file xref broken, DOC-12). Coverage is very good for the gateway reference. The findings below are the exceptions.
 
@@ -29,12 +29,12 @@ metrics-api.adoc shows `"gatewayEvents": { "MISSING_BEARER_TOKEN": 12, ... }` wi
 
 jwt-processor.adoc says `jwt.error.reason` is "also set on `success` FlowFiles when token is missing and not required: 'No token provided'" and repeats "(with `jwt.present=false` and `jwt.error.reason` set)". `handleMissingToken` sets only `jwt.present=false`, with an in-code comment: "a missing token is an accepted outcome here, not an error, so jwt.error.reason must not be set on the success FlowFile." Flow designers routing on `jwt.error.reason` presence per the doc would misbehave.
 
-=== DOC-08 — The AUTH-001…AUTH-010 `jwt.error.code` taxonomy is completely undocumented
+=== DOC-08 — The `jwt.error.code` taxonomy (AUTH-001, -002, -003, -005, -006, -007, -008, -010) is completely undocumented
 
 * Severity: MAJOR | Category: completeness | Confidence: confirmed
-* Location: `doc/` (no coverage) vs `MultiIssuerJWTTokenAuthenticator.java:190, 215, 240, 264-278`; acknowledged in `AuthLogMessages.java:30-32`
+* Location: `doc/` user-facing pages (no coverage) vs `MultiIssuerJWTTokenAuthenticator.java:190, 215, 240, 264-278`; acknowledged in `AuthLogMessages.java:30-32`
 
-The processor writes fine-grained error codes to `jwt.error.code` (AUTH-001 missing token, AUTH-002 generic validation failure, AUTH-003 token size, AUTH-005 expired, AUTH-006 signature, AUTH-007 issuer, AUTH-008 audience, AUTH-010 authorization failed). No doc file lists them (`grep AUTH-` in `doc/` returns nothing); jwt-processor.adoc and the guide only say "Error code on validation failure". `AuthLogMessages`' own Javadoc concedes error-reference.adoc "does not cover these codes". Flow designers routing on error codes have no reference. Error *categories* are only partially documented.
+The processor writes exactly these eight fine-grained error codes to `jwt.error.code`: AUTH-001 (missing token), AUTH-002 (generic validation failure — the default), AUTH-003 (token size), AUTH-005 (expired), AUTH-006 (signature), AUTH-007 (issuer), AUTH-008 (audience), AUTH-010 (authorization failed). AUTH-004 and AUTH-009 are not emitted by the current code (unassigned in the emitted set). No user-facing documentation page lists them — a `grep` for `AUTH-` across the reference, architecture, and guide pages (i.e. `doc/` excluding this `doc/quality-report/` directory, which necessarily mentions the codes) returns nothing; jwt-processor.adoc and the guide only say "Error code on validation failure". `AuthLogMessages`' own Javadoc concedes error-reference.adoc "does not cover these codes". Flow designers routing on error codes have no reference. Error *categories* are only partially documented. The list above is transcribed from the processor source and should be regenerated from it if the emitted set changes.
 
 == Minor findings
 
@@ -169,7 +169,7 @@ The Javadoc claims the class "Contains generic constants for token location, HTT
 === DOC-23 — Canonical build entrypoint `.plan/execute-script.py` not present in the checkout
 
 * Severity: INFO | Category: doc-code-mismatch | Confidence: needs-verification
-* Location: `CLAUDE.md` (Build Commands) vs `/home/user/nifi-extensions/.plan/` (contains only `marshal.json` and `project-architecture/`)
+* Location: `CLAUDE.md` (Build Commands) vs the repository-relative `.plan/` directory (contains only `marshal.json` and `project-architecture/` in this checkout)
 
 Every mandated build command is `python3 .plan/execute-script.py plan-marshall:...`, but that script is absent (git-ignored tooling presumably provisioned by the plan-marshall runtime). As checked out, the canonical commands fail; only the fallback `./mvnw` commands in BuildingGuide.adoc work. Marked needs-verification because the script may be installed by the runtime outside this snapshot.
 

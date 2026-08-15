@@ -89,12 +89,12 @@ OWASP Top-10 / Apache CVE / ModSecurity CRS attack strings are fed into live pat
 
 Verified present against live NiFi+Keycloak with real tokens: 401 without token (GET and POST), 401 malformed, 401 wrong-realm-signed (distinct RSA key pair, confirmed by `KeycloakRealmConfigIT` kid comparison), 403 missing ADMIN role, 403 missing scope with `insufficient_scope` detail, 401-before-403 ordering, 401 on `/metrics`, `/health`/`/status` without/with invalid token, auth-mode=none anonymous route with and without token. `NiFiFlowPipelineIT` asserts `jwt.error.code`/`jwt.error.category` semantics — the pipeline suite asserts integrated behavior, not container liveness.
 
-=== TQF-12 — No skips, no retries, fail-loud unavailability handling across all three suites (positive)
+=== TQF-12 — No skipped tests, no test-runner retries, fail-loud unavailability handling across all three suites (positive)
 
 * Severity: INFO | Category: flakiness | Confidence: confirmed
 * Location: `e-2-e-playwright/playwright.config.cjs:77-82`; `integration-testing/src/test/resources/junit-platform.properties`; `IntegrationTestSupport.java:165-188`
 
-Playwright: `retries: 0`, `forbidOnly` on CI, `workers: 1`; zero `test.skip/fixme/only` in specs; global-setup hard-fails on missing CSRF token, login failure, or undeployed processor. Integration: no `@Disabled`, no `assumeTrue`; `waitForEndpoint` calls `fail(...)` after timeout instead of skipping. Jest: no skipped tests. The "if server not available, pass" anti-pattern is absent everywhere. Serial ordering dependencies in E2E exist but are declared (`mode: "serial"`) with idempotency cleanup.
+This concerns *test-runner-level* retries, not the helper-level retry loops covered in TQF-07 and TQF-12's sibling findings (those bounded `sendWithRetry`/polling loops are intentional and remain). At the runner level: Playwright `retries: 0`, `forbidOnly` on CI, `workers: 1`; zero `test.skip/fixme/only` in specs; global-setup hard-fails on missing CSRF token, login failure, or undeployed processor. Integration: no `@Disabled`, no `assumeTrue`; `waitForEndpoint` calls `fail(...)` after timeout instead of skipping. Jest: no skipped tests. The "if server not available, pass" anti-pattern is absent everywhere. Serial ordering dependencies in E2E exist but are declared (`mode: "serial"`) with idempotency cleanup. (The one place a broad retry-swallow could slow diagnosis is the awaitility poll flagged separately in TQF-17.)
 
 === TQF-13 — X-Forwarded-For test asserts only chain acceptance, not resolved client IP — documented limitation
 
