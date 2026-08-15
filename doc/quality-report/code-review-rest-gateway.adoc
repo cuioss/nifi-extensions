@@ -1,0 +1,229 @@
+= Code Review: REST Gateway Module
+:toc: left
+:toclevels: 2
+
+Scope: `nifi-cuioss-rest-processors` (main sources) — the `RestApiGateway` processor, its Jetty server, dispatcher, endpoint handlers, and request tracking. Reviewed at commit `62313b0`.
+
+Statements about third-party behavior (Jetty 12 defaults, cui-http pipeline semantics, token-sheriff exception content) are marked as assumptions.
+
+== Major findings
+
+=== GW-01 — onTrigger failure path orphans tracking entries and strands clients that already got 202
+
+* Severity: MAJOR | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayProcessor.java:586-601`
+* Verification: _pending_
+
+When FlowFile creation fails, the catch block creates an error FlowFile carrying only `error.message` and transfers it to `failure` — but for a tracked container (`container.traceId() != null`) it neither removes the tracking entry nor transitions it to `ERROR`. The client already received `202 Accepted` with a traceId and `_links.status`, so it will poll `/status/{traceId}` forever seeing `ACCEPTED`/`COLLECTING_ATTACHMENTS`. The shutdown path was explicitly fixed for this ("M5: evict their non-terminal tracking entries", `removeTrackedEntries`), but the equivalent in-flight failure path was not. The failure FlowFile also carries no traceId/route attributes, so a downstream flow cannot repair the status either.
+
+=== GW-02 — Required roles/scopes silently unenforced whenever the token is null (LOCAL_ONLY loopback and NONE)
+
+* Severity: MAJOR | Category: fail-closed | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/GatewayRequestHandler.java:304-305, 410-436, 443-454`
+* Verification: _pending_
+
+Authorization runs only `if (token != null && hasAuthorizationRequirements(handler) && !authorizeRequest(...))`. With the default management auth-mode `local-only,bearer`, a loopback request without a token gets `AuthResult.Success(null)` and skips the role/scope check entirely — so configuring `required-roles`/`required-scopes` on `/status`, `/metrics`, `/attachments` (or a `local-only` user route) appears to secure the endpoint while any local process bypasses it. Perversely, a loopback caller *presenting* a valid token lacking the roles gets 403 while presenting nothing gets 200; an *invalid* token on loopback is silently swallowed by `extractAndValidateTokenOptionally`. `warnIfNoneAuthWithRolesOrScopes` warns only for user routes with `NONE`, not for `LOCAL_ONLY` and not for management endpoints.
+
+=== GW-03 — Loopback bypass is the default for all management endpoints, including the state-mutating POST /attachments
+
+* Severity: MAJOR | Category: security | Confidence: confirmed (behavior); design-intent judgment
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/RestApiGatewayConstants.java:52`; `handler/RequestUtils.java:53-58`
+* Verification: _pending_
+
+`DEFAULT_AUTH_MODE = "local-only,bearer"` applies to `/health`, `/metrics`, `/status`, and `/attachments`. `/attachments` is not read-only: an anonymous loopback POST injects a FlowFile into the NiFi flow and mutates tracking state. In containerized/co-located deployments (sidecar proxies, same network namespace, any local process on the NiFi host), "loopback" includes untrusted-in-practice callers, and a local reverse proxy would make *all* remote clients loopback. The loopback check correctly uses the raw socket address (not spoofable via headers), but the default posture of anonymous local write access to the data flow deserves an explicit fail-closed default (`bearer`) or prominent documentation.
+
+== Minor findings
+
+=== GW-04 — Token-validation internals leaked to remote clients in 401 problem detail
+
+* Severity: MINOR | Category: security | Confidence: likely (depends on third-party exception message content)
+* Location: `GatewayRequestHandler.java:474-480`
+* Verification: _pending_
+
+`ProblemDetail.unauthorized("Token validation failed: " + e.getMessage())` reflects the `TokenValidationException` message verbatim to the client; depending on the library these messages can disclose configured issuer names, expected audiences, or key-resolution details. Contrast: `MultiIssuerJWTTokenAuthenticator` maps the same exception to coarse internal AUTH-xxx codes, never to an external surface. The 403 path similarly enumerates the exact missing roles/scopes (RFC 6750 sanctions disclosing scopes via `WWW-Authenticate`, but not roles).
+
+=== GW-05 — Jetty defaults left in place: Server-version header, SNI host check, idle timeout, thread pool, header limits
+
+* Severity: MINOR | Category: security | Confidence: likely (marked assumptions about Jetty 12 defaults)
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/server/JettyServerManager.java:135-160`
+* Verification: _pending_
+
+`new ServerConnector(server)` (HTTP) and `new HttpConfiguration()` (HTTPS) keep Jetty defaults: `sendServerVersion=true` leaks `Server: Jetty(12.x)` on every response; `new SecureRequestCustomizer()` defaults `sniHostCheck=true`, known to 400-reject HTTPS requests addressed by IP or via some proxies; no explicit idle timeout, accept-queue size, thread pool bound, or max header size — DoS posture relies entirely on Jetty defaults. No `Strict-Transport-Security`, `X-Content-Type-Options`, or `Cache-Control` headers are emitted on any response.
+
+=== GW-06 — Default port 9443 serves plain HTTP on 0.0.0.0 unless an SSL service is configured
+
+* Severity: MINOR | Category: security / hidden trap | Confidence: confirmed
+* Location: `RestApiGatewayConstants.java:59-66, 94-111`
+* Verification: _pending_
+
+`LISTENING_PORT` defaults to `9443` (a conventionally-TLS port number) and `LISTENING_HOST` defaults to `0.0.0.0`, but `SSL_CONTEXT_SERVICE` is optional; with no SSL service the gateway accepts Bearer tokens in cleartext on all interfaces. Nothing warns at validation time that a bearer-auth gateway is running plaintext. A `customValidate` warning or a non-TLS-looking default port would remove the false sense of security.
+
+=== GW-07 — Malformed query string yields 500 (HANDLER_ERROR) instead of 400
+
+* Severity: MINOR | Category: correctness | Confidence: likely (exact exception type thrown by Jetty 12's query decoder is an assumption)
+* Location: `GatewayRequestHandler.java:522-529, 229-238`
+* Verification: _pending_
+
+`Request.extractQueryParameters(request)` throws a runtime exception on malformed %-encoding; the surrounding try only catches `UrlSecurityException`, so the request falls through to the top-level catch in `handle()`, returning a 500 "Internal Server Error" problem and incrementing HANDLER_ERROR for what is a client error. Client-triggerable at will, pre-auth.
+
+=== GW-08 — Unexpected RuntimeException in onTrigger silently loses an already-202'd request
+
+* Severity: MINOR | Category: correctness | Confidence: likely (trigger conditions need verification; loss-on-escape mechanics confirmed)
+* Location: `RestApiGatewayProcessor.java:483-601`
+* Verification: _pending_
+
+The catch covers only `ProcessException | FlowFileAccessException`. Any other runtime exception escapes, NiFi rolls the session back, and the container — already polled off the queue and already acknowledged with 202/200 — is gone: no failure FlowFile, no tracking eviction. Related nit: `session.putAttribute(errorFile, "error.message", e.getMessage())` NPEs if `getMessage()` is null.
+
+=== GW-09 — Duplicate/conflicting route paths only detected at start time via constructor throw, not in customValidate
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:206-221`; `RestApiGatewayProcessor.java:212-235`
+* Verification: _pending_
+
+`GatewayRequestHandler`'s constructor throws `IllegalArgumentException` on duplicate handler paths — including a user route colliding with a built-in (`/health`, `/metrics`, `/status`, `/attachments`). This surfaces as an `@OnScheduled` failure loop rather than a validation error in the UI; `customValidate` checks only the cache-client/tracking rule. Similarly, an invalid JSON schema path throws `IllegalStateException` at schedule time only.
+
+=== GW-10 — Attachment max-count enforcement is per-node, in-memory, and resets on restart
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/AttachmentsEndpointHandler.java:65, 231-245`
+* Verification: _pending_
+
+`attachmentCounters` is a local `ConcurrentHashMap`; in a NiFi cluster every node runs its own gateway instance, so a parent's `attachments-max-count` can be exceeded by up to (nodes × max). Restart reset is documented in the class Javadoc, but the cluster multiplication is not, and the persisted `RequestStatusEntry.attachmentsMaxCount` in the shared cache is never used as a distributed counter.
+
+=== GW-11 — tracking-mode=simple|attachments with create-flowfile=false creates permanently-ACCEPTED entries
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ApiRouteHandler.java:157-186, 276-279`
+* Verification: _pending_
+
+For a tracked route, `registerTracking` persists ACCEPTED/COLLECTING_ATTACHMENTS and the client receives 202 with a status link; but with `create-flowfile=false`, `enqueueFlowFile` returns `true` without enqueuing anything, so no FlowFile and no downstream status transition ever occur — every request leaves an eternal non-terminal cache entry. This combination is not rejected by any validation. Relatedly, terminal entries in the distributed cache are never TTL'd or removed by the gateway; unbounded cache growth relies entirely on the cache server's eviction policy.
+
+=== GW-12 — Client-controlled X-Parent-Trace-Id persisted and echoed without format validation
+
+* Severity: MINOR | Category: security | Confidence: confirmed
+* Location: `ApiRouteHandler.java:163, 242-243`
+* Verification: _pending_
+
+`parentTraceId` accepts any header-pipeline-surviving string and persists it into the cache entry, the FlowFile attribute `rest.trace.parent.id`, and the `/status` JSON response. Unlike `/attachments/{parentTraceId}` (UUID-validated), the header path enforces no UUID shape, so arbitrary strings flow into stored data and downstream Wait/Notify logic. JSON encoding prevents injection into the response itself; the risk is data pollution and downstream Expression Language surprise.
+
+=== GW-13 — A disabled exact-match handler shadows pattern routes that would match the same path
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:339-359`
+* Verification: _pending_
+
+`resolveHandler` returns the exact-match handler even when disabled; `dispatch` then 404s without trying the prefix/pattern passes. A pattern route like `/api/{id}` that would legitimately match a path equal to a disabled exact route's path is unreachable.
+
+=== GW-14 — Query parameter *names* bypass the sanitization pipeline and become FlowFile attribute keys
+
+* Severity: MINOR | Category: security | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:523-529`; `RestApiGatewayProcessor.java:522-523`
+* Verification: _pending_
+
+Only `queryParams.getValue(name)` goes through `urlParameterPipeline().validate(...)`; the decoded parameter name is used raw as map key and later as FlowFile attribute suffix (`http.query.<name>`). A %-decoded name containing control characters or EL-significant sequences lands verbatim in the attribute namespace. Prefixing prevents collision with `rest.*`/`jwt.*` attributes, so impact is limited to downstream attribute-handling surprise, but it is an asymmetry against the module's own "everything sanitized" claim in `SanitizedRequest`'s Javadoc.
+
+=== GW-15 — Routes (including auth-mode=none) can be injected via external config file, invisible in the flow definition
+
+* Severity: MINOR | Category: fail-closed / trust boundary | Confidence: confirmed
+* Location: `RestApiGatewayProcessor.java:248-260, 268-273`
+* Verification: _pending_
+
+`getExternalRouteProperties()` merges `restapi.*` keys from `ConfigurationManager` (a file resolved from environment/base path) beneath the NiFi dynamic properties. Anyone with write access to that file can add a route with `auth-mode=none` and `create-flowfile=true` that never appears on the canvas as a property. NiFi dynamic properties override same-named keys, but wholly new external routes are additive. This is a feature, but it widens the trust boundary from "flow authors" to "filesystem writers" without validation-time surfacing of externally-loaded routes.
+
+=== GW-16 — Problem responses lack Retry-After on 503; possible double-write on mid-stream handler failure
+
+* Severity: MINOR | Category: RFC 9457 | Confidence: likely (Jetty 12 commit semantics assumption)
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/ProblemDetail.java:288-294`; `GatewayRequestHandler.java:229-238`
+* Verification: _pending_
+
+The 503 queue-full/status-store responses omit `Retry-After` despite the detail text saying "please retry later". Separately, the top-level catch in `handle()` calls `sendProblemResponse` unconditionally; if the underlying handler already committed a partial response before throwing, writing to a committed Jetty response fails and the secondary exception propagates into Jetty's default error handling — precisely the raw-error path the catch was built to avoid.
+
+== Info findings
+
+=== GW-17 — Bearer extraction mostly solid; minor edge gaps
+
+* Severity: INFO | Category: security | Confidence: confirmed (multiple-header semantics marked as assumption)
+* Location: `GatewayRequestHandler.java:648-655`
+* Verification: _pending_
+
+`regionMatches(true, 0, "Bearer ", 0, 7)` correctly handles case variants; the trailing `.trim()` handles extra whitespace; empty token → 401. Gaps: (a) with multiple `Authorization` headers only the first is used, with no ambiguity rejection; (b) `Bearer\ttoken` (tab separator) is rejected as missing-token — acceptable per RFC 6750 ABNF; (c) there is no shared bearer-extraction utility in `nifi-cuioss-common`, so future header-based consumers will re-implement this.
+
+=== GW-18 — 404 is deliberately pre-auth, enabling unauthenticated route enumeration (documented trade-off)
+
+* Severity: INFO | Category: security | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:272-279`
+* Verification: _pending_
+
+The dispatcher comments explain the choice: 405/body-buffering are post-auth, but 404 stays pre-auth. An unauthenticated scanner can distinguish configured routes (401) from unconfigured paths (404). Defensible and documented in-code; recorded so the trade-off is a decision, not an accident. TRACE/OPTIONS/HEAD have no special-case bypass, and there is no CORS layer at all (preflights fail closed).
+
+=== GW-19 — Property text implies rate limiting exists; none is implemented
+
+* Severity: INFO | Category: ambiguity / hidden trap | Confidence: confirmed
+* Location: `RestApiGatewayConstants.java:336-343`; `HealthEndpointHandler.java:62`
+* Verification: _pending_
+
+`PROXY_TRUSTED_PROXIES`'s description says the forwarded client IP is used "for audit and rate-limit logging". The module contains no rate limiter or per-IP throttling; the only back-pressure is the FlowFile queue's 503. Also in the misleading-wording family: `/health` always returns `"UP"` unconditionally — it proves the listener is alive, not that the queue, cache client, or JWT service are functional.
+
+=== GW-20 — Naive Accept matching; HEAD unsupported everywhere
+
+* Severity: INFO | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/MetricsEndpointHandler.java:85-90`; `AbstractManagementHandler.java:44-47`
+* Verification: _pending_
+
+`accept.contains("application/json")` matches `Accept: application/json;q=0` — not real content negotiation. All handlers exclude HEAD, so `HEAD /health` gets 405 (RFC 9110 says HEAD should mirror GET); OPTIONS likewise 405s with no `Allow`-only handling. Fail-closed, polish only.
+
+=== GW-21 — Body reading correctly bounded and post-auth; residual unread bytes rely on Jetty semantics
+
+* Severity: INFO | Category: correctness | Confidence: confirmed (drain behavior marked assumption)
+* Location: `GatewayRequestHandler.java:657-661`
+* Verification: _pending_
+
+`readNBytes(maxSize + 1)` bounds memory for both Content-Length and chunked bodies, and the read happens after authentication (explicitly to stop unauthenticated buffer-fill). On oversize, remaining request content is never drained before the 413; connection reuse/close is left to Jetty 12 semantics. Multiple containers each hold a full body copy (`HttpRequestContainer` clones on construction and on every `body()` call), bounded by queue size × max body — worst-case ~50 MB at defaults.
+
+=== GW-22 — Start/stop lifecycle is sound; two narrow edges
+
+* Severity: INFO | Category: correctness | Confidence: confirmed
+* Location: `JettyServerManager.java:166-183`; `RestApiGatewayProcessor.java:262-282, 672-684`
+* Verification: _pending_
+
+Lifecycle is generally correct (start refuses when running, cleans up on bind failure, stop idempotent, Jetty stopped *before* queue drain, fresh queue/counters on reschedule). Edges: (1) `stop()` sets `server = null` in `finally` even when `server.stop()` threw — a failed stop leaks the connector, the port stays bound, and the manager forgets the instance, so the next start hits a raw bind-exception loop instead of the "already running" guard; (2) with zero valid routes `onScheduled` returns early and never starts the server (documented) — but management endpoints silently vanish too; operators may not expect `/health` to disappear because a route had a typo.
+
+=== GW-23 — Authorization/issuer-config handling well shared with the JWT processor; error-surface conventions diverge
+
+* Severity: INFO | Category: consistency | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:484-510` vs `MultiIssuerJWTTokenAuthenticator.java:180-196`
+* Verification: _pending_
+
+Both processors delegate to the shared `AuthorizationValidator`/`AuthorizationRequirements` and the same `JwtIssuerConfigService`/`TokenClaimMapper` (good). Divergences: the gateway hand-rolls `new AuthorizationRequirements(true, roles, scopes)` instead of the existing `RouteConfiguration.toAuthorizationRequirements()`; MultiIssuer emits i18n-resolved, coded errors internally while the gateway emits raw exception text externally (GW-04); MultiIssuer enforces a max token byte size before validation, while the gateway passes the extracted bearer straight to `validateToken` with no explicit size gate — its only bound is Jetty's default request-header size limit (assumption).
+
+=== GW-24 — Location header host derives from client-supplied Host header when forwarding is not honored
+
+* Severity: INFO | Category: security | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler/RequestUtils.java:105-117`
+* Verification: _pending_
+
+`buildStatusLocationUri` falls back to `Request.getServerName/getServerPort`, which derive from the client's `Host` header — a client can make the gateway emit a 202 `Location` pointing at an arbitrary host, reflected only to the requester itself; CRLF injection is impossible (Jetty rejects control characters in Host). The forwarded-header trust model itself (allowlist / trust-all / trusted-proxies, secure-by-default empty) is well designed and candidly documented.
+
+=== GW-25 — Duplicated fallback/reserved-key/choreography logic
+
+* Severity: INFO | Category: duplication | Confidence: confirmed
+* Location: `GatewayRequestHandler.java:386`; `ApiRouteHandler.java:137-139`; `StatusEndpointHandler`/`RequestStatusEntry` reserved-key sets
+* Verification: _pending_
+
+The max-request-size 0→global fallback is computed in both the dispatcher and `ApiRouteHandler.maxRequestSize()` — two owners of one rule. `StatusEndpointHandler.RESERVED_RESPONSE_KEYS` and `RequestStatusEntry.RESERVED_KEYS` are overlapping-but-different sets that must be co-maintained. The queue-full 503 + tracking-eviction choreography exists twice (`ApiRouteHandler.enqueueFlowFile` / `AttachmentsEndpointHandler.enqueueAttachment`) with mirrored comments rather than a shared helper.
+
+=== GW-26 — Trace IDs are pure capability tokens
+
+* Severity: INFO | Category: correctness / security | Confidence: confirmed
+* Location: `StatusEndpointHandler.java` (whole); `AttachmentsEndpointHandler.java:226-229`
+* Verification: _pending_
+
+`/status/{traceId}` and `/attachments/{parentTraceId}` bind no ownership between the JWT that created a tracked request and the JWT querying/attaching — possession of the UUID is the only secret. UUIDv4 makes guessing infeasible; leakage via logs/referrers is the practical risk. Also: the attachment window deliberately stays open in status `PROCESSED` (documented as N18), so attachments continue to be accepted after the parent flow has "finished" — surprising but intentional.
+
+== Overall assessment
+
+The module is well architected: a single Jetty dispatcher performing shared concerns in a defensible, explicitly-reasoned order (sanitize → route → authenticate → 405 → authorize → bounded body read → delegate), a sealed `EndpointHandler` interface, immutable config records, and a clean HTTP-thread → queue → onTrigger bridge. Thread-safety is handled with unusual care. In-code commentary referencing prior review findings shows failure-ordering issues were thought through.
+
+Fail-closed defaults hold almost everywhere: routes default to BEARER; invalid auth-mode strings fall back to BEARER (not NONE); forwarded/proxy headers honored only on explicit opt-in; credential headers stripped from FlowFile attributes; loopback detection uses the socket address; auth precedes 405 and body buffering. RFC 9457 compliance is genuinely good: correct `application/problem+json`, matching status/body codes, required members, `Allow` on 405, `WWW-Authenticate` on 401 and on insufficient-scope 403 per RFC 6750 §3.1, and a 500 fallback that never leaks stack traces.
+
+Overall risk: **moderate-low**. No critical auth bypass exists for remote clients on default config. The two most significant items are the tracked-request lifecycle gap (GW-01) and the null-token authorization semantics (GW-02/GW-03). The rest is hardening polish rather than exploitable holes.

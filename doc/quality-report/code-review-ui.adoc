@@ -1,0 +1,129 @@
+= Code Review: UI Module
+:toc: left
+:toclevels: 2
+
+Scope: `nifi-cuioss-ui` (main sources) — Java servlets/filters and the JavaScript frontend (13 modules). Reviewed at commit `62313b0`.
+
+== Major findings
+
+=== UI-01 — `sanitizeHtml` does not escape quotes but is used inside double-quoted HTML attributes (attribute injection)
+
+* Severity: MAJOR | Category: security | Confidence: confirmed (injection); likely (real-world exploitability, given CSP)
+* Location: `nifi-cuioss-ui/src/main/webapp/js/utils.js:890-895`; `endpoint-tester.js:200, 230, 433`
+* Verification: _pending_
+
+`sanitizeHtml` uses `d.textContent = html; return d.innerHTML`, which escapes `&`, `<`, `>` but **not** `"` or `'`. It is interpolated into attribute contexts: `<option value="${sanitizeHtml(r.path)}" data-methods="${sanitizeHtml(...)}">` (endpoint-tester.js:200), and similarly at lines 230 and 433. A route path or issuer URI containing `"` (settable by anyone who can edit processor/CS properties or the external route config file) breaks out of the `value` attribute and injects arbitrary attributes (e.g. event handlers) on the `<option>`. Exploitability is materially reduced by `SecurityHeadersFilter`'s CSP (`script-src 'self'` blocks inline event handlers), so this is a defense-in-depth failure rather than a demonstrated XSS — but the sole protection is the CSP header, and any future CSP relaxation reactivates it. Element-content usages of `sanitizeHtml` elsewhere are correct; fix at the sink by escaping quotes or switching these `<option>` builders to DOM APIs (as `issuer-config.js` already does for datalist/schema fields).
+
+=== UI-02 — `endpointCache` hit skips the per-user NiFi authorization read (IDOR on `/gateway/metrics` and `/gateway/test`)
+
+* Severity: MAJOR | Category: security | Confidence: confirmed (cache-skips-config-read is in the code); likely (impact assumes `getComponentDetails` is the authorization point, which the code's own security comments state)
+* Location: `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/GatewayProxyServlet.java:419-421, 230-232, 337, 485-487`
+* Verification: _pending_
+
+`resolveGatewayEndpoint` returns early on a cache hit: `GatewayEndpoint cached = endpointCache.get(processorId); if (cached != null) return cached;`. The only per-user authorization enforcement on these endpoints is the `ComponentConfigReader.getComponentConfig(processorId, request)` call (NiFi's `getComponentDetails` authorizes the requesting user for the component). Once any authorized user has primed the cache for processor X, a different authenticated user who merely knows X's UUID can `GET /gateway/metrics` or `POST /gateway/test` with `X-Processor-Id: <X>` and the servlet proxies straight to the localhost gateway — whose management endpoints grant a loopback bypass ("Authentication is handled transparently via loopback bypass") — without NiFi ever authorizing that user against X. `GET /config` is unaffected (it calls `invalidateCaches` first). Effect: any authenticated NiFi user can read gateway metrics and send arbitrary test requests through gateways they have no component permission on.
+
+== Minor findings
+
+=== UI-03 — `localhost`/`127.0.0.1`/`::1` unconditionally in the token-endpoint allowlist — loopback SSRF/port-scan oracle
+
+* Severity: MINOR | Category: security | Confidence: confirmed
+* Location: `GatewayProxyServlet.java:816-819, 682-758`
+* Verification: _pending_
+
+`resolveAllowedIssuerHosts` always seeds `localhost`, `127.0.0.1`, `::1`. `/gateway/discover-token-endpoint` then issues a server-side GET to `<issuerUrl>/.well-known/openid-configuration` for any localhost URL the user supplies (arbitrary port/path), and `/gateway/token-fetch` POSTs an attacker-shaped form body to any localhost URL. Response disclosure is narrow (only `token_endpoint`, `access_token`, `expires_in` plus HTTP status), but distinct error messages (`OIDC discovery failed (HTTP n)` vs `OIDC discovery failed`) make a loopback port-scan/service-fingerprint oracle, and blind POSTs can hit non-idempotent local services. Audience is authenticated NiFi UI users, which limits severity.
+
+=== UI-04 — JWKS-URL validation has an accepted DNS-rebinding TOCTOU window and does not constrain HTTP redirects
+
+* Severity: MINOR | Category: security | Confidence: needs-verification (cui-http `HttpHandler` default redirect policy could not be inspected — jars not present)
+* Location: `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwksValidationServlet.java:245-267, 448-470`
+* Verification: _pending_
+
+The code resolves DNS once for the SSRF pre-check then fetches by hostname, so a rebinding resolver can return a public IP for the check and a private IP for the fetch. The class comment explicitly documents and accepts this trade-off for the admin-facing endpoint. Separately, the `HttpHandler`/`HttpClient` use default redirect behavior; if redirects are followed, the post-resolution SSRF check does not re-validate a redirect `Location` (a public JWKS URL could 302 to `http://169.254.169.254/…`). The 200-only status gate limits but does not eliminate disclosure. Flagged because the redirect vector is not mentioned in the accepted-risk comment.
+
+=== UI-05 — Attachment-timeout validation parses a value with a trailing unit — the range check is partly dead
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/webapp/js/rest-endpoint-config.js:1504, 1488`
+* Verification: _pending_
+
+`extractFormFields` builds `attachments-timeout` as `` `${value} ${unit}` `` (e.g. `"30 sec"`). `validateAttachments` then does `Number.parseInt(f['attachments-timeout'], 10)`, which parses `"30 sec"` → `30`, silently discarding the unit. The numeric input already has `min="1"` and is coerced with `|| '30'`, so the `NaN`/`< 1` branch is effectively unreachable from the UI. Harmless today, but the validation reads as if it validates the composite string when it only ever validates the leading integer.
+
+=== UI-06 — `updateProcessorWithStopStart` can leave a processor stopped with no restart attempt
+
+* Severity: MINOR | Category: correctness | Confidence: likely (control-flow confirmed; frequency depends on NiFi timing)
+* Location: `nifi-cuioss-ui/src/main/webapp/js/api.js:169-222, 187-189`
+* Verification: _pending_
+
+Each `request()` arms its own 30s `AbortController`; the stop→wait→update→restart flow chains many sequential requests with no overall cap. A throw inside `waitForProcessorState` (up to ~10s of polling) happens before the try/finally that restarts the processor, so a failed poll can leave a previously-running processor STOPPED with no restart. Not data corruption, but an operational trap.
+
+=== UI-07 — `processorId` accepted from the request BODY, bypassing the header-only trust narrative
+
+* Severity: MINOR | Category: correctness / consistency | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/JwtVerificationServlet.java:202-206`
+* Verification: _pending_
+
+`extractVerificationRequest` reads `processorId` from the JSON body first and only falls back to the `X-Processor-Id` header. `ProcessorIdValidationFilter` validates the *header*, while the servlet re-validates whatever it uses via `validateProcessorIdSecurity` (so the body value still gets the UUID check + NiFi authorization — no privilege escape). But it is inconsistent with the sibling servlets (header-only) and with the filter's stated trust model: the filter validated one value while the servlet acted on another. Recommend using the header as the single source of truth.
+
+=== UI-08 — Standard vs gateway issuer editors duplicate save/clear/parse logic
+
+* Severity: MINOR | Category: duplication | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/webapp/js/issuer-config.js:445-455 & 791-801`, `428-443 vs 713-740`
+* Verification: _pending_
+
+`clearIssuerProperties` and `deleteIssuerProperties` are near-identical, differing only in the props accessor; `saveIssuer`/`removeIssuer` (standard) and `saveIssuerGateway`/`removeIssuerGateway` (gateway) carry parallel structure; `parseIssuerProperties` and `parseRouteProperties` are the same shape with a different prefix. Not a bug, but a maintenance hazard — a fix to one path (e.g. the "await delete before removing row" ordering) must be mirrored in the other.
+
+=== UI-09 — Deprecated `getProcessorProperties`/`updateProcessorProperties` retained with a divergent return shape
+
+* Severity: MINOR | Category: consistency / dead code | Confidence: confirmed (no production callers); needs-verification (test usage not in scope)
+* Location: `nifi-cuioss-ui/src/main/webapp/js/api.js:578-595`
+* Verification: _pending_
+
+Both are marked `@deprecated`, duplicate the processor path of `getComponentProperties`/`updateComponentProperties`, and return the raw NiFi response rather than the normalized `{properties, revision}` of the replacements. Grep confirms neither is imported/called anywhere in `src/main/webapp/js` — dead exports (possibly referenced by tests). `resetProxyContextPath`/`resetComponentCache` are likewise test-only exports (documented as such).
+
+== Info findings
+
+=== UI-10 — Full cookie jar and Authorization header forwarded to a self-constructed localhost URL
+
+* Severity: INFO | Category: security | Confidence: confirmed (behavior); no exploit path found
+* Location: `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util/ComponentConfigReader.java:353-390, 218-219`
+* Verification: _pending_
+
+`getComponentPropertiesViaRest` forwards the caller's `Authorization` header and all cookies (including `__Secure-Authorization-Bearer`) to `request.getScheme()://localhost:request.getLocalPort()/nifi-api/...`. The target derives from `getLocalPort()` (not attacker-controlled) and `componentId` is UUID-validated upstream, so there is no injection. Noted because credential-forwarding to a dynamically-built URL is a pattern worth keeping constrained.
+
+=== UI-11 — Token expiry computed client-side from an unverified decoded payload
+
+* Severity: INFO | Category: correctness | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/webapp/js/token-verifier.js:76-78, 116-124`
+* Verification: _pending_
+
+`renderResults` derives "expired" from `result.decoded.payload.exp`, produced by `NonValidatingJwtParser` (no signature check). This is display-only (the authoritative `result.valid` comes from the validating service), so it is not a security check — but a token with a forged future `exp` displays as non-expired, and it sits next to genuine validation output.
+
+=== UI-12 — Filter comments assert NiFi session auth as the trust boundary but the filter does not verify authentication
+
+* Severity: INFO | Category: ambiguity | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets/ProcessorIdValidationFilter.java:90-98`
+* Verification: _pending_
+
+The filter's Javadoc states that only authenticated users reach it "because the Custom UI is loaded inside NiFi's authenticated iframe," and it reads `getRemoteUser()` only to log it (never to enforce). Actual authentication/authorization enforcement lives entirely in the downstream `getComponentDetails`/REST calls. Architecturally fine — but the security relies wholly on every servlet path reaching one of those authorized reads. UI-02 is exactly the case where a code path (cache hit) skips that read.
+
+=== UI-13 — `log` utility uses raw `console.*` (correctly eslint-disabled); no convention violations found (positive)
+
+* Severity: INFO | Category: convention | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/main/webapp/js/utils.js:16-22`; `nifi-common-init.js:15,20`
+* Verification: _pending_
+
+The "no raw console.log" rule is satisfied everywhere: the only `console.*` calls are inside the `log` wrapper (eslint-disabled) and in `nifi-common-init.js` (a classic non-module script that cannot import `log`, explicitly documented). All feature modules import and use `log`. No `var` anywhere in the 13 files; `const`-over-`let` broadly followed. Recorded to confirm the sweep.
+
+=== UI-14 — Deprecated processor-property helpers may still be test-referenced
+
+* Severity: INFO | Category: consistency | Confidence: needs-verification
+* Location: `api.js:578-595` (see UI-09)
+* Verification: _pending_
+
+Companion note to UI-09: if the deprecated helpers are retained only for tests, that should be stated in a comment; otherwise they are removable.
+
+== Overall assessment
+
+The module is well structured and unusually careful for a config UI. Servlets share one processor-ID validation rule across a filter and all component-facing endpoints; request-body size is capped by reading `MAX+1` bytes rather than trusting `Content-Length` (correctly handling chunked encoding); JSON responses are built with the Jakarta JSON builder (no string concatenation → no JSON injection); error paths map to JSON 4xx/5xx instead of leaking stack traces. SSRF defenses are present and thoughtfully commented (private-address blocking including CGNAT/ULA/benchmark ranges, path-traversal base-dir restriction for JWKS files, issuer-host allowlist for token fetch). The JS layer defaults to `textContent`/DOM APIs for user data. CSP, X-Frame-Options SAMEORIGIN (correct for the iframe), nosniff, and Referrer-Policy are set globally. i18n is complete and parallel across en/de.
+
+Overall risk: **moderate**, concentrated in two items. UI-02 (cache-hit skips the per-user authorization read on `/gateway/metrics` and `/gateway/test`) is the most important — a cross-user IDOR against localhost gateway management endpoints that trust loopback, reachable by any authenticated NiFi user who knows a processor UUID. UI-01 (quote-unescaping `sanitizeHtml` used in attribute contexts) is a real injection currently contained only by the CSP `script-src 'self'` header. The remaining items are minor correctness/UX traps, an accepted-risk SSRF window with an unmentioned redirect vector, a header-vs-body inconsistency, and duplication/dead-export cleanup.
