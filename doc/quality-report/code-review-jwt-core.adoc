@@ -1,0 +1,197 @@
+= Code Review: JWT Core Modules
+:toc: left
+:toclevels: 2
+
+Scope: `nifi-cuioss-api`, `nifi-cuioss-common`, `nifi-cuioss-processors` (main sources). Reviewed at commit `62313b0`.
+
+All cryptographic validation (signature, `exp`/`nbf`, issuer matching, algorithm policy) is delegated to the cui-jwt-validation library (token-sheriff 0.9.4). Findings below concern the integration and configuration layer owned by this repository; statements about library-internal behavior are marked as assumptions.
+
+== Major findings
+
+=== CORE-01 — Shipped example config advertises security settings that are never enforced
+
+* Severity: MAJOR | Category: security / hidden trap | Confidence: confirmed
+* Location: `nifi-cuioss-processors/src/main/resources/cui-nifi-extensions-example.yml:5-56`
+
+The example file documents `jwt.validation.enabled`, `clockSkew: 60`, `cache: {enabled, ttl}`, `security.algorithms`, `security.minKeySize: 2048`, and per-issuer `requiredClaims`. No main-source code consumes any of these keys — `IssuerConfigurationParser` reads only `name`/`issuer`, the JWKS source keys, `audience`, `client-id`, and `enabled`; the `jwt.validation.*` keys map only to the six controller-service properties. An operator setting `minKeySize: 2048` or `requiredClaims: [sub, email]` gets zero enforcement and no warning — a textbook false sense of security. `doc/reference/configuration.adoc` (lines 551-564) shows the correct minimal format, contradicting this shipped resource.
+
+=== CORE-02 — `name` overrides `issuer` as the issuer identifier; the example file therefore breaks validation
+
+* Severity: MAJOR | Category: correctness / ambiguity | Confidence: confirmed (rejection outcome assumes the library matches `iss` against `issuerIdentifier`)
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerConfigurationParser.java:276-286`; example YAML lines 30-33
+
+`resolveIssuerName` prefers the `name` property over `issuer`, and the result is passed to `IssuerConfig.builder().issuerIdentifier(...)`, which must match the token `iss` claim. The shipped example (`name: Google OAuth2` + `issuer: https://accounts.google.com`) therefore produces `issuerIdentifier = "Google OAuth2"`, which can never match an `iss` claim — every token from that issuer is rejected (fail-closed, but silently broken configuration). `ConfigurationManager.getIssuerId` also treats `name` as an ID fallback, compounding the dual meaning of `name` (display name vs. `iss` value). The docs' own YAML example omits `name` entirely.
+
+=== CORE-03 — Private-network opt-in silently dropped when the JWKS host is unresolvable at enable time
+
+* Severity: MAJOR | Category: correctness | Confidence: likely (code path confirmed; loader-guard behavior sourced from the in-code Javadoc)
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/IssuerConfigurationParser.java:262-274, 409-412`
+
+`applyEgressPolicy` forwards the operator's `Allow Private Network Addresses` opt-in to the token-sheriff loader only when `resolvesToPrivateAddress(...)` returns `true` at enable time; on `UnknownHostException` it returns `false`. With `allowPrivate=true` and an IdP whose DNS is not yet resolvable (a common container start-ordering situation that `isJwksUrlAllowed`'s Javadoc says should be "deferred to the JWKS loader"), neither `allowLoopbackEgress(true)` nor `allowedEgressHost(host)` is set. Per the method's own Javadoc, the loader's built-in SSRF guard then blocks every fetch once the host resolves privately — permanently denying all tokens despite the explicit opt-in, with only a WARN about deferral. Fail-closed, but an operational trap directly contradicting the deferral intent.
+
+== Minor findings
+
+=== CORE-04 — Asymmetric `jwks-type` guard: `jwks-type=file` with a URL source feeds a URL into `jwksFilePath`
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `IssuerConfigurationParser.java:195-219, 288-308`
+
+`resolveJwksSource` always prefers `jwks-url`/`jwksUri` over `jwks-file` regardless of the declared `jwks-type`. The mismatch `type=url` + file-only source is detected and corrected, but the mirror case — `jwks-type=file` while a `jwks-url` is also configured (e.g. after merging env + UI properties) — passes the resolved `https://...` string to `builder.jwksFilePath(...)`. The result is a file-not-found style failure (fail-closed) with a misleading error message.
+
+=== CORE-05 — Service enables successfully with zero valid issuers; misconfiguration only WARNs
+
+* Severity: MINOR | Category: fail-closed / hidden trap | Confidence: confirmed
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigService.java:203-205`
+
+When all issuers are skipped (missing name, HTTP URL under require-HTTPS, private address, parse errors — each a warn-and-skip), `onEnabled` logs `NO_VALID_ISSUER_CONFIGS` and still builds a `TokenValidator` with an empty issuer list. Every token is then denied at runtime (fail-closed — good), but the operator sees a green, enabled service; the denial surfaces only as per-token issuer-mismatch failures. There is no `customValidate` override to flag an empty/invalid issuer set at configuration time.
+
+=== CORE-06 — `Require Valid Token=false` bypasses required roles/scopes for token-less FlowFiles
+
+* Severity: MINOR | Category: fail-closed | Confidence: confirmed
+* Location: `nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticator.java:227-244`
+
+With `REQUIRE_VALID_TOKEN=false`, `handleMissingToken` routes a FlowFile with no/blank token straight to SUCCESS (`jwt.present=false`), skipping `authorizationRequirements` entirely, while a FlowFile carrying a valid token lacking the required roles goes to `authentication-failed`. When both `Required Roles` and `Require Valid Token=false` are configured, simply omitting the token is strictly easier than presenting an insufficient one. The property description documents the routing but not this interplay; downstream flows must gate on `jwt.present`/`jwt.authorized` themselves.
+
+=== CORE-07 — Audience validation disabled by default
+
+* Severity: MINOR | Category: security | Confidence: confirmed
+* Location: `IssuerConfigurationParser.java:220-225`
+
+When the per-issuer `audience` property is absent or blank, the code explicitly calls `builder.audienceValidationDisabled(true)`. Any token from the issuer intended for a different client/API is accepted. This is documented in UI help text ("Leave blank to accept any audience"), so it is a deliberate, discoverable default — but it is the one validation dimension where the default is open rather than closed.
+
+=== CORE-08 — "'none' is never allowed" claim and algorithm allowlist are enforced solely by the library
+
+* Severity: MINOR | Category: security / hidden trap | Confidence: needs-verification (library-internal behavior; local code paths confirmed)
+* Location: `StandardJwtIssuerConfigService.java:100-108`; `IssuerConfigurationParser.java:343-354`
+
+The `Allowed Algorithms` descriptor promises "The 'none' algorithm is never allowed regardless of this setting", but no code in these modules filters `none` (or symmetric HS*) out of the parsed list; the raw entries are handed to `new SignatureAlgorithmPreferences(algorithms)` per issuer. If token-sheriff's `SignatureAlgorithmPreferences` did not itself reject `none`, the descriptor claim would be false — an unverified trust boundary. Also, the only validator on the property is `NON_EMPTY_VALIDATOR`, so typos ("RSA256") silently yield an algorithm set matching nothing (fail-closed but undiagnosed at configuration time).
+
+=== CORE-09 — `JwtAuthenticationConfig.allowedAlgorithms`/`requireHttpsForJwks` are dead fields with a duplicate parser
+
+* Severity: MINOR | Category: duplication / consistency | Confidence: confirmed
+* Location: `nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config/JwtAuthenticationConfig.java:35-46`; `StandardJwtIssuerConfigService.java:270-284`
+
+The only consumer of `getAuthenticationConfig()` is the processor's `maxTokenSize()` read. `buildAuthenticationConfig` re-parses `ALLOWED_ALGORITHMS` into an unordered Set while `IssuerConfigurationParser.parseAllowedAlgorithms` parses the same property into an ordered, distinct List for actual enforcement — two parsers, one unused result. The unused record fields suggest an enforcement surface that doesn't exist; divergence risk if only one parser is ever updated.
+
+=== CORE-10 — Processor i18n bundles (including all German translations) are never loaded
+
+* Severity: MINOR | Category: consistency / dead code | Confidence: confirmed
+* Location: `nifi-cuioss-processors/src/main/resources/i18n/nifi-cuioss-processors-resources.properties` (+ `_de`); `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n/NiFiI18nResolver.java:33`
+
+`NiFiI18nResolver` hardcodes `BUNDLE_NAME = "i18n/nifi-cuioss-common-resources"`; nothing references `nifi-cuioss-processors-resources`. Consequences: (1) both processor bundle files are dead resources; (2) the only German translations in the codebase live in the dead bundle and the live common bundle has no `_de` variant, so German-locale NiFi instances always get English despite a translation file existing; (3) the dead `_de` file contains mojibake (`g�ltigen`, `Pr�fix`); (4) the dead bundles still document removed features (Token Location, Bearer Token Prefix, Custom Header), and the live bundle's `error.token.malformed` key is never used.
+
+=== CORE-11 — Broad `IllegalStateException` catch conflates "CS not enabled" with any ISE → potential retry livelock
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed (behavior); another ISE source is hypothetical
+* Location: `MultiIssuerJWTTokenAuthenticator.java:163-170`
+
+The catch treats every `IllegalStateException` as the transient "service not enabled" case and does `yield()` + `rollback()`, requeueing the FlowFile forever. An ISE originating from the library, `TokenClaimMapper`, or a future code change would create a permanent poison-message loop rather than routing to `authentication-failed`. Fail-closed with respect to acceptance, but a denial-of-progress hazard.
+
+=== CORE-12 — Failed `onEnabled` leaves `authenticationConfig`/`configurationManager` populated
+
+* Severity: MINOR | Category: correctness | Confidence: confirmed
+* Location: `StandardJwtIssuerConfigService.java:190-218`
+
+`configurationManager` and `authenticationConfig` are assigned before issuer parsing and `TokenValidator` construction; the catch block rethrows without clearing them. After a failed enable, `getAuthenticationConfig()` returns a config as if enabled (its "not enabled" `IllegalStateException` guard is defeated) while `validateToken` correctly throws. Low impact because NiFi normally prevents use of a non-ENABLED service, but the object's own state contract is violated between a failed enable and the next lifecycle event.
+
+=== CORE-13 — `allowLoopbackEgress(true)` set even when the private address is only RFC1918
+
+* Severity: MINOR | Category: security | Confidence: confirmed (relaxation scope inside the library is an assumption of its flag semantics)
+* Location: `IssuerConfigurationParser.java:266-273`
+
+When the opt-in is active and the host resolves to any private range, the code sets both `allowLoopbackEgress(true)` and `allowedEgressHost(host)`. For a host resolving to e.g. 10.0.0.5, loopback egress is relaxed although never needed — a broader relaxation of the loader's SSRF guard than the situation requires.
+
+=== CORE-14 — Env-var issuer IDs cannot contain underscores; silent misparse
+
+* Severity: MINOR | Category: correctness / ambiguity | Confidence: confirmed
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config/ConfigurationManager.java:347-356`
+
+`parseIssuerEnvironmentVariable` splits at the first underscore after `JWT_ISSUER_`, so `JWT_ISSUER_MY_IDP_JWKS_URL` yields issuer `my` with property `idp-jwks-url` instead of issuer `my_idp`. No warning is emitted; the resulting issuer usually lacks a name and is later skipped (fail-closed) or, worse, merges into an unrelated issuer that happens to be named `my`. The docs do not state the single-token restriction.
+
+=== CORE-15 — `enabled` disables only on literal "false"; `audience`/`client-id` accept only a single value
+
+* Severity: MINOR | Category: ambiguity | Confidence: confirmed
+* Location: `IssuerConfigurationParser.java:186-190, 220-229`
+
+An issuer stays enabled for any `enabled` value other than case-insensitive `"false"` — in a properties file, `enabled=no` or `enabled=0` leaves an issuer the operator meant to disable actively accepting tokens (mild fail-open; YAML is safe since SnakeYAML booleanizes `no`). Separately, `expectedAudience(audience.trim())` treats a comma-separated audience list as one literal string, so `audience=api-a,api-b` matches nothing (fail-closed but confusing), and nothing documents whether multiple audiences are supported.
+
+=== CORE-16 — External-config static properties never influence global security settings
+
+* Severity: MINOR | Category: consistency | Confidence: confirmed
+* Location: `StandardJwtIssuerConfigService.java:192-201`
+
+`parseIssuerConfigs`/`parseParserConfig`/`isJwksUrlAllowed` receive NiFi UI properties only. `ConfigurationManager.getStaticProperties()` (populated from `JWT_*` env vars and file keys such as `jwt.validation.allowed.algorithms`) is consulted by no code in these three modules. Env/file-provided `JWT_REQUIRE_HTTPS_FOR_JWKS`, `JWT_ALLOWED_ALGORITHMS`, `JWT_MAXIMUM_TOKEN_SIZE` etc. are silently ignored by this controller service — always resolving to the (safe) UI defaults. Fail-closed, but an operator relying on env-based global settings gets no feedback.
+
+== Info findings
+
+=== CORE-17 — Raw token and all claims persist in FlowFile attributes / provenance
+
+* Severity: INFO | Category: security | Confidence: confirmed
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util/TokenClaimMapper.java:104-111`; `MultiIssuerJWTTokenAuthenticator.java:198-199`
+
+The processor never removes the incoming `jwt.token` attribute, and `mapToAttributes` copies every non-dedicated claim verbatim into `jwt.content.*`. Tokens and potentially sensitive claims (email, PII) land in the FlowFile repository and provenance events downstream of SUCCESS (the raw token also flows to `authentication-failed`). Arguably by design for a claim-extraction processor, but there is no option to strip the raw token after validation.
+
+=== CORE-18 — `jwt.error.reason` and WARN logs carry library exception messages — assumed token-free
+
+* Severity: INFO | Category: security | Confidence: needs-verification
+* Location: `MultiIssuerJWTTokenAuthenticator.java:250-261`
+
+`e.getMessage()` from `TokenValidationException` is logged at WARN and written to the `jwt.error.reason` attribute. Whether these messages can embed raw token material or key data is entirely a token-sheriff property; nothing local truncates or masks them (`TokenMasking` exists in common but is used only by the UI module).
+
+=== CORE-19 — Processor config fields are non-volatile across `@OnScheduled` → `onTrigger` threads
+
+* Severity: INFO | Category: correctness | Confidence: likely (safe in practice under current NiFi scheduling; formally unguaranteed)
+* Location: `MultiIssuerJWTTokenAuthenticator.java:95-98, 120-126`
+
+`jwtConfigService`, `authorizationRequirements`, `tokenAttributeName` are plain fields written by the scheduling thread and read by concurrent worker threads. NiFi's task submission after `@OnScheduled` normally establishes a happens-before edge, and the class comment documents the lifecycle reliance, but the conventional NiFi pattern — used by the sibling `StandardJwtIssuerConfigService` with documented publication discipline — is `volatile`.
+
+=== CORE-20 — Declared-but-unwritten attribute constants and duplicated literals
+
+* Severity: INFO | Category: consistency / dead code | Confidence: confirmed
+* Location: `nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/JwtAttributes.java:44,69,133-163`; `JwtConstants.java:44-77`; `JwtProcessorConstants.java:40`
+
+`EXTRACTED_AT`, `AUTHORIZATION_PASSED`, `BYPASSED`, `ROLES_PREFIX`/`GROUPS_PREFIX`/`SCOPES_PREFIX`, and `Config.REFRESHED` are never written by any main code — a reader of `JwtAttributes` would assume features (per-index role attributes, authorization bypass flag) that don't exist. `JwtConstants.Error.Code.NO_TOKEN_FOUND` ("AUTH-001") exists but the processor hardcodes `"AUTH-001"`…`"AUTH-010"` literals; `JwtProcessorConstants.DEFAULT_TOKEN_ATTRIBUTE` duplicates `JwtAttributes.Token.VALUE`, and the `@ReadsAttribute` annotation hardcodes "jwt.token" a third time.
+
+=== CORE-21 — Config file path is CWD-relative; hot-reload method exists but is never called
+
+* Severity: INFO | Category: ambiguity | Confidence: confirmed
+* Location: `ConfigurationManager.java:50-51, 156-185`
+
+The default constructor uses basePath `""`, so `conf/cui-nifi-extensions.{properties,yml}` resolves against the JVM working directory — which for NiFi depends on how the service is launched. `checkAndReloadConfiguration()` is implemented (with correct keep-previous-on-failure semantics) but invoked by no production code; the docs honestly acknowledge this. `.properties` silently wins over `.yml` when both exist, which is undocumented.
+
+=== CORE-22 — YAML issuers without `id`/`name` keyed by list index — identity churn on reorder
+
+* Severity: INFO | Category: ambiguity | Confidence: confirmed
+* Location: `ConfigurationManager.java:284-294`
+
+`getIssuerId` falls back to the list index, so reordering the `issuers:` list in YAML changes issuer IDs ("0", "1", …). Since UI dynamic properties are merged over external issuers by ID, index-keyed issuers can silently receive or lose UI overrides after a reorder. The docs example (no `id`) is exposed to this.
+
+=== CORE-23 — Doc examples define issuers without an `issuer` value — they would be skipped at enable
+
+* Severity: INFO | Category: security / documentation | Confidence: confirmed
+* Location: `doc/reference/configuration.adoc:580-607` vs `IssuerConfigurationParser.resolveIssuerName`
+
+The Kubernetes example sets only `JWT_ISSUER_KEYCLOAK_JWKS_URL`, and the "Basic JWT Processor with Single Issuer" example sets only `jwks-url` + `audience`. `resolveIssuerName` requires a `name` or `issuer` property and otherwise skips the issuer with `ISSUER_NO_NAME`. Users following these two examples verbatim get zero issuers (all tokens denied) — consistent with CORE-05's silent-enable behavior.
+
+=== CORE-24 — Fail-closed and hygiene measures that are correctly implemented (positive)
+
+* Severity: INFO | Category: security (positive observations) | Confidence: confirmed
+* Location: multiple
+
+Verified strengths worth recording: token size enforced in UTF-8 *bytes* before validation and again in the library `ParserConfig`, both derived from the same effective max-token-size value with a guard that rejects a non-positive configured size (this effective value is the controller-service / UI "Maximum Token Size" property; note that per CORE-16 the separate `JWT_MAXIMUM_TOKEN_SIZE` env/file static property is a *different* source that this controller service does not read — the two findings refer to distinct configuration sources and are not in conflict); HTTPS-for-JWKS required by default (the require-HTTPS property defaults to true) and private-address egress blocked by default (the `Allow Private Network Addresses` opt-in defaults to false), both resolving fail-closed when the property is absent; DNS TOCTOU limitation explicitly documented as accepted risk with CGN and ULA ranges covered; log values CR/LF/tab-escaped against log injection and sensitive keys (`client-id`, `jwks-content`, `client-secret`) masked; SnakeYAML `SafeConstructor` used; config reload keeps previous state on parse failure; CS lifecycle nulls state in `finally` on disable and closes the validator; the processor rolls back (never routes to success) on CS-unavailable; `jwks-content` explicitly rejected as unsupported rather than silently ignored.
+
+== Overall assessment
+
+The design is clean and appropriately thin: a controller service owns the token-sheriff `TokenValidator` lifecycle and shares it across processors; the processor is a small routing shell; all cryptographic validation is delegated to the library — the correct choice over hand-rolled JWT code. NAR layering is correct. Concurrency handling in the CS and `ConfigurationManager` is careful.
+
+Fail-closed posture is genuinely good: every runtime failure path (invalid token, size violation, authorization failure, CS unavailable, empty issuer set, unexpected exception) ends in denial or rollback. No path routes an unvalidated token to `success` except the explicitly configured, documented `Require Valid Token=false` missing-token case (see CORE-06 for its interplay with authorization).
+
+Overall risk: **low for token-acceptance bugs; moderate for configuration-surface traps** (CORE-01, CORE-02, CORE-03, CORE-05, CORE-23) — these all fail closed, so the practical risk is outage and operator confusion rather than token forgery. Residual security-relevant unknowns are library assumptions (no-`none` enforcement, HS/RS confusion resistance, clock-skew defaults, token-free exception messages: CORE-08, CORE-18).
+
+== Adversarial verification
+
+A clean, fresh-context sub-agent independently re-checked the sampled findings against the source, instructed to refute rather than confirm.
+
+* *Re-verified and CONFIRMED (code matches exactly):* CORE-01, CORE-02, CORE-03, CORE-05, CORE-06, CORE-09, CORE-10, CORE-11, CORE-14, CORE-15, CORE-16. No refutations or severity downgrades.
+* *Assumption-dependent caveats (mechanism confirmed in-repo; ultimate impact rests on token-sheriff library semantics):* CORE-02 (that `issuerIdentifier` is matched against the token `iss` claim) and CORE-03 (that the loader's SSRF guard then blocks the fetch). Both are consistent with standard JWT/library semantics but are not provable from this repo.
+* *Not in the adversarial sample* (rest on the single-pass review's cited evidence): CORE-04, CORE-07, CORE-08, CORE-12, CORE-13, CORE-17 through CORE-24. CORE-08 and CORE-18 remain `needs-verification` as originally marked (library-internal behavior).

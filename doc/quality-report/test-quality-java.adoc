@@ -1,0 +1,138 @@
+= Test Quality Review: Java
+:toc: left
+:toclevels: 2
+
+Scope: all Java test code (`src/test`) across `nifi-cuioss-api`, `nifi-cuioss-common`, `nifi-cuioss-processors`, `nifi-cuioss-rest-processors`, `nifi-cuioss-ui`. Reviewed at commit `62313b0`.
+
+Central question: are these real tests or "just coverage" tests? Verdict: **predominantly real tests** — ~20,700 lines of test code, consistent AAA with `@DisplayName`/`@Nested`/parameterized tests, extensive negative testing, real embedded Jetty servers, adversarial attack databases (OWASP Top 10, Apache CVE, ModSecurity CRS), and RFC-cited assertions. No CRITICAL findings: no systematic coverage-gaming, no disabled tests, no forbidden mocking frameworks. The findings below are the exceptions.
+
+== Major findings
+
+=== TQJ-01 — "Tampered Token Tests" test the mock, not token validation
+
+* Severity: MAJOR | Category: test-correctness | Confidence: confirmed
+* Location: `nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorExtendedTest.java:219-327`
+
+All 6 tests in `TamperedTokenTests` (including `shouldRejectAlgorithmNoneAttack`, `shouldRejectUnsignedToken`, and the parameterized `@EnumSource(TamperingStrategy.class)`) carefully tamper a token with `JwtTokenTamperingUtil`, then explicitly configure `mockConfigService.configureValidationFailure(...)` to throw. The processor never inspects token content — the tampered string is irrelevant; replacing it with `"hello"` would pass identically. These tests only re-verify "CS throws → route to AUTHENTICATION_FAILED", already covered by the parameterized error-code-mapping test in `MultiIssuerJWTTokenAuthenticatorTest:452-474`. They give a false impression that alg=none / signature-stripping attacks are verified in this module, when the actual defense lives entirely in the (mocked-out) library.
+
+=== TQJ-02 — Real cryptographic validation path is exercised with only one malformed-token case
+
+* Severity: MAJOR | Category: missing-negative | Confidence: confirmed (within the reviewed modules)
+* Location: `nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/config/StandardJwtIssuerConfigServiceTest.java:246-260`
+
+`StandardJwtIssuerConfigService` builds the real `TokenValidator` — the relevant issuer-configuration seam for this finding. (The `nifi-cuioss-ui` suite also contains one real-signature verification *success* test, noted under TQJ-14; it does not cover the missing negative cases below, and no test covers them at the issuer-config seam.) The `StandardJwtIssuerConfigService` enabled-state test validates just `"not-a-valid-token"` and asserts `TokenValidationException`. Missing against the real validator at unit level: a correctly signed token *accepted* at this seam (the infrastructure exists — `InMemoryKeyMaterialHandler.createDefaultJwks()` + `issuer.*.jwks-file`, used this way in `JwtValidationServiceTest:541-582`), plus expired, wrong-issuer, wrong-audience, alg=none, wrong-key-signed, and multi-issuer key isolation (a token from issuer B must not validate against issuer A's keys). Since processor and gateway tests mock the CS entirely, none of these negatives are proven anywhere in unit scope; they are presumably deferred to the Docker integration tests, leaving the unit suite blind to regressions in issuer-config-to-validator wiring.
+
+=== TQJ-03 — `shouldEnqueueSuccessfulPostRequest` is a fake test — sends GET, asserts only 200
+
+* Severity: MAJOR | Category: assertion-quality | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/handler/GatewayRequestHandlerTest.java:578-592`
+
+The test is displayed "Should enqueue successful POST request" but its body contains abandoned-intent comments ("Actually, let's test against data route... Instead, test... by verifying the response status for the existing health route") and ends up sending a **GET** to `/api/health`, asserting only `statusCode == 200` — duplicating `shouldMatchExactPath`. It asserts nothing about POST or enqueuing. POST enqueue is covered elsewhere (`RestApiGatewayProcessorTest.shouldCreateFlowFileFromPostRequest`), but this test is pure coverage noise with a misleading name.
+
+=== TQJ-04 — "Should throw" test passes when nothing is thrown
+
+* Severity: MAJOR | Category: test-correctness | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java:474-502`
+
+`shouldThrowIllegalStateExceptionWhenTokenValidatorBuildFails` wraps the call in `try { service.verifyToken(...); } catch (IllegalStateException e) { assertNotNull(e.getMessage()); }` with no `fail()` after the call and no `assertThrows`. If the invalid JWKS file stops causing a build failure (the regression the test exists to catch), the test still passes silently. The catch-branch assertion is also near-vacuous.
+
+== Minor findings
+
+=== TQJ-05 — Hedged either/or assertion accepts two contradictory outcomes
+
+* Severity: MINOR | Category: assertion-quality | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/service/JwtValidationServiceTest.java:338-370`
+
+`shouldReturnFailureForInvalidTokenWithValidConfig` accepts both "returns a failure result" and "throws IllegalStateException" as passes. The test cannot detect a regression flipping between the two contracts, and the URL-based JWKS config it uses (`https://example.com/...`) makes the outcome environment-dependent.
+
+=== TQJ-06 — I18n test class never exercises internationalization; near-vacuous assertions
+
+* Severity: MINOR | Category: assertion-quality | Confidence: confirmed
+* Location: `nifi-cuioss-processors/src/test/java/de/cuioss/nifi/processors/auth/MultiIssuerJWTTokenAuthenticatorI18nTest.java:74-122`
+
+The class claims to test i18n but never sets or varies a locale. `shouldReferenceTokenAttributeWhenMissingToken` asserts `errorReason.contains("jwt.token") || contains("Token") || contains("token") || contains("Kein")` — a disjunction almost any auth error message satisfies. `shouldPopulateErrorForMalformedToken` is assertNotNull-only. Only `shouldReportSizeLimitWhenTokenTooLarge` (asserts "16384" appears) has real teeth. Consistent with CORE-10: the German bundle this class implies is loaded is actually dead.
+
+=== TQJ-07 — Generator-driven tests lack `@EnableGeneratorController` — failures not seed-reproducible
+
+* Severity: MINOR | Category: generator-usage | Confidence: likely (depends on cui-test-generator behavior without the controller; usage itself is confirmed)
+* Location: `MultiIssuerJWTTokenAuthenticatorTest.java:57`; `ExtendedTest.java:59`; `AuthorizationValidatorTest.java:35`; `TokenClaimMapperTest.java:33`; `GatewayRequestHandlerTest.java:59`; `HttpRequestContainerTest.java`
+
+Only 3 in-scope classes carry `@EnableGeneratorController` (`RestApiGatewayProcessorTest`, `RoutePatternTest`, `JwtValidationServiceTest`). The listed classes consume `TypedGenerator`-based `TestTokenGenerators.accessTokens().next()` (and `Generators.*`) without the controller annotation, so a failing run does not report/fix the generator seed — undermining the reproducibility guarantee that is the point of the convention.
+
+=== TQJ-08 — Hardcoded magic test data dominates the UI and handler tests
+
+* Severity: MINOR | Category: generator-usage | Confidence: confirmed
+* Location: `nifi-cuioss-ui/src/test/java/de/cuioss/nifi/ui/servlets/*`; `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/handler/*`
+
+UI servlet tests and most rest-processors handler tests use fixed literals throughout ("test-processor-id", "d290f1ee-…", "acme-corp", "parent-trace-42"). Most are boundary/contract values where a literal is defensible, and `UUID.randomUUID()` appears in places, but generator adoption per the project convention is inconsistent — effectively confined to token content (via `TestTokenGenerators`) and 3 classes. No case of the worst anti-pattern (generating data then asserting a coincidentally-matching hardcoded value) was found; where generated values are asserted, the assertion references the generated value (e.g. `RestApiGatewayProcessorTest.shouldSetPathParameters:453-470`).
+
+=== TQJ-09 — Silent test skip via `return` when reflection fails
+
+* Severity: MINOR | Category: test-correctness | Confidence: confirmed
+* Location: `nifi-cuioss-common/src/test/java/de/cuioss/nifi/jwt/util/ErrorContextTest.java:355-362`
+
+`shouldHandleCircularCauseReference` builds a circular cause chain by reflecting into `Throwable.cause`; if reflection throws (e.g. future JDK module restrictions), the test silently `return`s green instead of using `Assumptions.abort()`. It would then permanently pass while verifying nothing. The subsequent depth-limit test (line 374) is robust.
+
+=== TQJ-10 — Tautological enum/constant tests
+
+* Severity: MINOR | Category: assertion-quality | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/config/TrackingModeTest.java:38-43`; `RestApiAttributesTest.java:30-40`
+
+`shouldParseValidValues` asserts `assertNotNull(TrackingMode.valueOf(value))` — `valueOf` can never return null (it throws), so the assertion is tautological; the test only "executes" the enum for coverage. `RestApiAttributesTest.shouldHaveNonNullConstants` reflectively asserts constants are non-blank. Low-value filler, though small and harmless.
+
+=== TQJ-11 — Gateway bearer-extraction negatives incomplete
+
+* Severity: MINOR | Category: missing-negative | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/handler/GatewayRequestHandlerTest.java:457-512`
+
+Authentication tests cover missing header, `"Bearer "` (empty), and CS-rejected token. Untested at the gateway HTTP boundary: non-Bearer schemes (`Basic ...`), case variants (`bearer x`, `BEARER x`), multiple `Authorization` headers, oversized token in the header, and leading/trailing whitespace. `ManagementEndpointHandlerTest` *does* cover non-Bearer scheme and empty Bearer (lines 481-505), so the equivalent negatives are conspicuously absent for the main API route path. Corresponds to code finding GW-17.
+
+=== TQJ-12 — Real-socket tests with retry/sleep and lenient rejection semantics (managed flakiness)
+
+* Severity: MINOR | Category: test-correctness | Confidence: confirmed
+* Location: `GatewayRequestHandlerTest.java:156-186`; `JwksValidationServletTest.java:453-461`
+
+The suite runs against real Jetty sockets with `sendWithRetry` (up to 4 attempts, `Thread.sleep(50L * attempt)`) and pins HTTP/1.1 — a documented mitigation of a known JDK-client flake, but it can mask genuine intermittent server errors. `assertRejected` treats any `IOException`/`IllegalArgumentException` as a pass for attack cases, so an attack test can never fail loudly on a transport bug. `JwksValidationServletTest.returnsNullForUnresolvableHost` performs a real DNS lookup of a `.invalid` name. Accepted, well-documented trade-offs, flagged for awareness.
+
+== Info findings
+
+=== TQJ-13 — `nifi-cuioss-api` module has no test directory (acceptable)
+
+* Severity: INFO | Category: convention | Confidence: confirmed
+* Location: `nifi-cuioss-api/src`
+
+The module contains only `JwtIssuerConfigService` (interface) and `JwtAuthenticationConfig` (record). The record's compact-constructor logic is tested from `nifi-cuioss-common/.../JwtAuthenticationConfigTest.java` (same package). Acceptable.
+
+=== TQJ-14 — Convention compliance verified (positive)
+
+* Severity: INFO | Category: convention | Confidence: confirmed
+* Location: suite-wide
+
+Direct `org.hamcrest.Matchers` imports (8+ UI files) all feed REST Assured's `.body()/.header()` API — within the documented "OK as REST Assured transitive dependency" carve-out; no standalone `assertThat(x, is(y))`. EasyMock is confined to `nifi-cuioss-ui` (7 files) exactly as the project exception allows; no Mockito/PowerMock anywhere; no `@Disabled`/`@Ignore`; `cui-test-juli-logger` (`@EnableTestLogger`/`LogAsserts`) is used consistently for log assertions.
+
+=== TQJ-15 — SSL/TLS path untested at unit level
+
+* Severity: INFO | Category: missing-negative | Confidence: confirmed
+* Location: `nifi-cuioss-rest-processors/src/test/java/de/cuioss/nifi/rest/RestApiGatewayProcessorTest.java:164`
+
+`SSL_CONTEXT_SERVICE` is asserted only to exist in the descriptor list; no test starts the gateway with TLS or asserts HTTPS behavior. `ssl=true` is only asserted in the UI's `/config` JSON. Probably integration-tested; noted as a unit-scope gap and relevant to code finding GW-06.
+
+== Overall assessment
+
+This is one of the stronger test suites reviewed. Per module:
+
+* *nifi-cuioss-rest-processors — excellent.* Real-server tests for routing, auth ordering (401-before-body-read), body limits, back-pressure 503, schema validation, proxy-prefix spoofing, XFF trust chains, counter delta/rollback math, tracking eviction on stop. One fake test (TQJ-03).
+* *nifi-cuioss-common — very good.* `ForwardedRequestResolver` (header injection, CRLF, protocol-relative, allowlists), `IssuerConfigurationParser` (HTTPS policy, private-address policy, algorithm allowlists), `AuthorizationValidator` (full positive/negative matrix), `TokenMasking` (exact boundary at 12/13 chars). Weak spot: the real-crypto validation seam (TQJ-02).
+* *nifi-cuioss-ui — very good.* Real servlet tests with SSRF classification down to CGN/benchmarking-range boundary neighbors, path traversal, oversized bodies, attack databases on headers, and the suite's only unit-level real-signature-verification success test. Two weak hedged tests (TQJ-04, TQJ-05).
+* *nifi-cuioss-processors — good but thinner than it looks.* Routing, attribute mapping, error-code mapping, byte-vs-char size limits, yield/rollback, and metrics-interval off-by-one are genuinely tested; but all token validation is mocked, the `TamperedTokenTests` are theater (TQJ-01), and the I18n class is filler (TQJ-06).
+* *nifi-cuioss-api — no tests, covered from common.* Acceptable.
+
+Most important missing negative scenarios, in priority order: (1) real-validator negatives at `StandardJwtIssuerConfigService` level (TQJ-02); (2) gateway bearer-extraction edge cases (TQJ-11); (3) JWKS refresh/rotation behavior — untested everywhere in unit scope; (4) TLS-enabled gateway startup (TQJ-15).
+
+== Adversarial verification
+
+A clean, fresh-context sub-agent independently re-checked the sampled findings against the source, instructed to refute rather than confirm.
+
+* *Re-verified and CONFIRMED (code matches exactly):* TQJ-01, TQJ-02, TQJ-03, TQJ-04, TQJ-06, TQJ-07. No refutations or severity downgrades. TQJ-02's infrastructure claim was corroborated — `JwtValidationServiceTest` (lines ~540-582) uses `InMemoryKeyMaterialHandler.createDefaultJwks()` + a `jwks-file` property with a real `TestTokenHolder` token, proving a real signed-token unit test is feasible at the `StandardJwtIssuerConfigService` seam.
+* *Framing note on TQJ-07:* `@EnableGeneratorController` appears in 5 files total, but 2 of those are integration-test classes (out of this report's scope); the "3 in-scope classes" statement is accurate.
+* *Not in the adversarial sample* (rest on the single-pass review's cited evidence): TQJ-05, TQJ-08 through TQJ-15.
