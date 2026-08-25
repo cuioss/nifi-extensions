@@ -537,6 +537,37 @@
                                         <plugin>org.apache.maven.plugins:maven-surefire-report-plugin</plugin>
                                     </plugins>
                                 </requireSameVersions>
+                                <!-- Artifact families that must resolve to one version.
+                                     Pinning only part of a family splits the stack: a parent's
+                                     direct dependencyManagement entries beat a child's imported
+                                     BOM (MNG-5971), but only for the artifacts actually listed.
+                                     This project pins io.rest-assured only partially
+                                     (rest-assured, json-schema-validator - not json-path,
+                                     xml-path, rest-assured-common), so it is exposed.
+                                     One block PER family: requireSameVersions demands a single
+                                     version across everything matched in the same block.
+                                     Kept in sync with cui-parent-pom, which this project cannot
+                                     inherit from - its parent is org.apache.nifi. -->
+                                <requireSameVersions>
+                                    <dependencies>
+                                        <dependency>io.rest-assured:*</dependency>
+                                    </dependencies>
+                                </requireSameVersions>
+                                <requireSameVersions>
+                                    <dependencies>
+                                        <dependency>org.junit.platform:*</dependency>
+                                    </dependencies>
+                                </requireSameVersions>
+                                <requireSameVersions>
+                                    <dependencies>
+                                        <dependency>io.jsonwebtoken:*</dependency>
+                                    </dependencies>
+                                </requireSameVersions>
+                                <requireSameVersions>
+                                    <dependencies>
+                                        <dependency>de.cuioss.nifi:*</dependency>
+                                    </dependencies>
+                                </requireSameVersions>
                                 <requireMavenVersion>
                                     <version>3.9.6</version>
                                 </requireMavenVersion>
