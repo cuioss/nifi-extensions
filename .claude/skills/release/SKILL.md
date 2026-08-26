@@ -2,7 +2,7 @@
 name: release
 description: Cut a project release — bump project.yml version, open and merge the release PR, wait for the automated Release workflow, then reformat the generated GitHub release notes
 user-invocable: true
-allowed-tools: Bash, Read, Edit
+allowed-tools: Bash, Read, Edit, AskUserQuestion
 ---
 
 # Release Skill
