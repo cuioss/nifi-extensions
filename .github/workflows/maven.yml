@@ -24,6 +24,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  actions: read        # the conclusion job verifies a covering run exists
 
 jobs:
   build:
