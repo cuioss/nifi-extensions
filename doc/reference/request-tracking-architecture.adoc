@@ -73,7 +73,27 @@ image::request-tracking-correlation.svg["Chained request correlation — a secon
 
 |`errorDetail`
 |String (optional)
-|Error description for REJECTED/ERROR statuses
+|RFC 9457 `detail` — explanation specific to this occurrence. Surfaces as `error.detail` whenever it is populated, independent of the entry's status.
+
+|`errorType`
+|String (optional)
+|RFC 9457 `type` — URI reference identifying the problem type. Surfaces as `error.type`.
+
+|`errorStatus`
+|String (optional)
+|RFC 9457 `status` — stored as a String holding an integer, parsed into the JSON **number** `error.status` at response time. No `100`-`599` range check is applied. A non-integer value omits `error.status` and logs WARN `REST-125`.
+
+|`errorTitle`
+|String (optional)
+|RFC 9457 `title` — short, human-readable summary. Surfaces as `error.title`.
+
+|`errorInstance`
+|String (optional)
+|RFC 9457 `instance` — URI reference identifying this occurrence. Surfaces as `error.instance`.
+
+|`errorViolations`
+|String (optional)
+|RFC 9457 `violations` — stored as a String holding a serialized JSON array, parsed into the JSON **array** `error.violations` at response time. Entries conventionally carry `pointer` (RFC 6901) and `detail`, passed through verbatim. An absent, blank or non-array value omits `error.violations` and logs WARN `REST-126`.
 
 |`attachmentsMaxCount`
 |int (default: 0)
@@ -87,6 +107,9 @@ image::request-tracking-correlation.svg["Chained request correlation — a secon
 |String (optional)
 |The route name that created this entry (for traceability)
 |===
+
+All six `error*` fields are reserved cache keys.
+A producer writing any of them feeds the typed `error` object; unlike free-form top-level keys they no longer round-trip as additional response fields.
 
 == Component Relationships
 
@@ -131,7 +154,10 @@ Headers:
 }
 ----
 
-=== Error Status Response (REJECTED/ERROR)
+=== Error Object Response
+
+The `error` object is emitted whenever any `error*` field is populated, independent of the entry's `status`; it is absent only when none is.
+Each member appears only when its producing field is populated.
 
 [source,json]
 ----
@@ -141,7 +167,17 @@ Headers:
   "acceptedAt": "2026-03-13T10:00:00Z",
   "updatedAt": "2026-03-13T10:00:10Z",
   "error": {
-    "detail": "Order validation failed: insufficient inventory"
+    "type": "https://example.com/problems/validation",
+    "status": 422,
+    "title": "Validation Failed",
+    "detail": "Order validation failed: insufficient inventory",
+    "instance": "/status/550e8400-e29b-41d4-a716-446655440000",
+    "violations": [
+      {
+        "pointer": "/items/0/sku",
+        "detail": "no inventory for this SKU"
+      }
+    ]
   }
 }
 ----
