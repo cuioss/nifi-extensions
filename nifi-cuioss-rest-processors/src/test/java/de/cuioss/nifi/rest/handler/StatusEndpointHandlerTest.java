@@ -568,8 +568,7 @@ class StatusEndpointHandlerTest {
         }
 
         @ParameterizedTest
-        @EnumSource(value = RequestStatus.class,
-                names = {"ACCEPTED", "PROCESSING", "PROCESSED", "COLLECTING_ATTACHMENTS"})
+        @EnumSource(RequestStatus.class)
         @DisplayName("Should emit the error object independent of the entry status")
         void shouldEmitErrorObjectIndependentOfStatus(RequestStatus status) throws Exception {
             var seeded = entry(status, "One attachment exceeded the inline size budget",
@@ -616,6 +615,38 @@ class StatusEndpointHandlerTest {
             assertFalse(error.containsKey("status"), "a malformed errorStatus must omit error.status");
             assertEquals("Boom", error.getString("detail"));
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-125");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"0", "99", "600", "-1", "1000"})
+        @DisplayName("Should omit error.status and warn REST-125 for an out-of-range errorStatus")
+        void shouldOmitStatusAndWarnForOutOfRangeErrorStatus(String rawStatus) throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "Boom",
+                    null, rawStatus, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertFalse(error.containsKey("status"),
+                    "an errorStatus outside the RFC 9457 100-599 range must omit error.status");
+            assertEquals("Boom", error.getString("detail"));
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-125");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"100", "422", "599"})
+        @DisplayName("Should emit error.status for an in-range errorStatus")
+        void shouldEmitStatusForInRangeErrorStatus(String rawStatus) throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "Boom",
+                    null, rawStatus, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertEquals(Integer.parseInt(rawStatus), error.getInt("status"),
+                    "an errorStatus inside the RFC 9457 100-599 range must be emitted as a JSON integer");
         }
 
         @ParameterizedTest

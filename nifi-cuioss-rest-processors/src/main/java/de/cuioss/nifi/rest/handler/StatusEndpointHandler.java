@@ -53,6 +53,12 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
     private static final String FIELD_TRACE_ID = "traceId";
     private static final String FIELD_STATUS = "status";
 
+    /** Lower bound of the RFC 9457 §3.1.2 {@code status} range. */
+    private static final int MIN_HTTP_STATUS = 100;
+
+    /** Upper bound of the RFC 9457 §3.1.2 {@code status} range. */
+    private static final int MAX_HTTP_STATUS = 599;
+
     /** Reserved response keys emitted before the additional fields; guards against re-emission. */
     private static final Set<String> RESERVED_RESPONSE_KEYS = Set.of(
             FIELD_TRACE_ID, FIELD_STATUS, "acceptedAt", "updatedAt", "parentTraceId", "error");
@@ -182,9 +188,10 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
     }
 
     /**
-     * Adds the {@code status} member as a JSON number. A non-integer value omits the member and
-     * logs {@link RestApiLogMessages.WARN#STATUS_ERROR_STATUS_MALFORMED}; the surrounding error
-     * object is still emitted, because the raw value proves an error was intended.
+     * Adds the {@code status} member as a JSON number. A value that is not an integer, or that
+     * falls outside the RFC 9457 &sect;3.1.2 range {@value #MIN_HTTP_STATUS}-{@value #MAX_HTTP_STATUS},
+     * omits the member and logs {@link RestApiLogMessages.WARN#STATUS_ERROR_STATUS_MALFORMED}; the
+     * surrounding error object is still emitted, because the raw value proves an error was intended.
      */
     private static boolean addStatusIfParseable(JsonObjectBuilder builder, RequestStatusEntry statusEntry) {
         String rawValue = statusEntry.errorStatus();
@@ -192,7 +199,11 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
             return false;
         }
         try {
-            builder.add("status", Integer.parseInt(rawValue.trim()));
+            int status = Integer.parseInt(rawValue.trim());
+            if (status < MIN_HTTP_STATUS || status > MAX_HTTP_STATUS) {
+                throw new NumberFormatException("HTTP status outside " + MIN_HTTP_STATUS + "-" + MAX_HTTP_STATUS);
+            }
+            builder.add("status", status);
             return true;
         } catch (NumberFormatException e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED,
