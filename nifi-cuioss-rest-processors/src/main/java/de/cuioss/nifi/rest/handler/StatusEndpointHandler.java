@@ -22,6 +22,7 @@ import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonException;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
@@ -30,6 +31,7 @@ import org.eclipse.jetty.util.Callback;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -129,12 +131,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
             jsonBuilder.add("parentTraceId", statusEntry.parentTraceId());
         }
 
-        if (statusEntry.errorDetail() != null
-                && (statusEntry.status() == RequestStatus.REJECTED
-                || statusEntry.status() == RequestStatus.ERROR)) {
-            jsonBuilder.add("error", Json.createObjectBuilder()
-                    .add("detail", statusEntry.errorDetail()));
-        }
+        buildErrorObject(statusEntry).ifPresent(error -> jsonBuilder.add("error", error));
 
         emitAdditionalFields(jsonBuilder, statusEntry);
 
@@ -143,6 +140,86 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
         response.getHeaders().put(HttpHeader.CONTENT_TYPE, JSON_CONTENT_TYPE);
         response.getHeaders().put(HttpHeader.CONTENT_LENGTH, responseBody.length);
         response.write(true, ByteBuffer.wrap(responseBody), callback);
+    }
+
+    /**
+     * Builds the RFC 9457 Problem Details {@code error} object from the entry's {@code error*}
+     * components. The object is emitted whenever ANY component is populated (non-null, non-blank),
+     * independent of the entry's {@link RequestStatus} — status gating is deliberately absent.
+     * <p>
+     * Members are added in RFC 9457 order: {@code type}, {@code status}, {@code title},
+     * {@code detail}, {@code instance}, {@code violations}. {@code status} is parsed from the
+     * String-encoded {@code errorStatus} component and {@code violations} is parsed from the
+     * JSON-array-serialized {@code errorViolations} component; a malformed value omits only that one
+     * member, propagates no exception, and is reported through the corresponding WARN LogRecord.
+     * No RFC 9457 §3.1.2 {@code 100-599} range check is applied — a parseable integer outside that
+     * range passes through verbatim.
+     *
+     * @param statusEntry the entry to read the error components from
+     * @return the populated error object, or empty when no error component is populated
+     */
+    private static Optional<JsonObject> buildErrorObject(RequestStatusEntry statusEntry) {
+        JsonObjectBuilder errorBuilder = Json.createObjectBuilder();
+        boolean populated = false;
+
+        populated |= addIfPresent(errorBuilder, "type", statusEntry.errorType());
+        populated |= addStatusIfParseable(errorBuilder, statusEntry);
+        populated |= addIfPresent(errorBuilder, "title", statusEntry.errorTitle());
+        populated |= addIfPresent(errorBuilder, "detail", statusEntry.errorDetail());
+        populated |= addIfPresent(errorBuilder, "instance", statusEntry.errorInstance());
+        populated |= addViolationsIfParseable(errorBuilder, statusEntry);
+
+        return populated ? Optional.of(errorBuilder.build()) : Optional.empty();
+    }
+
+    /** Adds a String member when the source component is neither null nor blank. */
+    private static boolean addIfPresent(JsonObjectBuilder builder, String member, @Nullable String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        builder.add(member, value);
+        return true;
+    }
+
+    /**
+     * Adds the {@code status} member as a JSON number. A non-integer value omits the member and
+     * logs {@link RestApiLogMessages.WARN#STATUS_ERROR_STATUS_MALFORMED}; the surrounding error
+     * object is still emitted, because the raw value proves an error was intended.
+     */
+    private static boolean addStatusIfParseable(JsonObjectBuilder builder, RequestStatusEntry statusEntry) {
+        String rawValue = statusEntry.errorStatus();
+        if (rawValue == null || rawValue.isBlank()) {
+            return false;
+        }
+        try {
+            builder.add("status", Integer.parseInt(rawValue.trim()));
+            return true;
+        } catch (NumberFormatException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED,
+                    statusEntry.traceId(), rawValue);
+            return true;
+        }
+    }
+
+    /**
+     * Adds the {@code violations} member as a real JSON array parsed from the JSON-array-serialized
+     * component. A value that is absent, blank, or does not parse as an array omits the member and
+     * logs {@link RestApiLogMessages.WARN#STATUS_ERROR_VIOLATIONS_MALFORMED}. Pointer values are
+     * passed through verbatim — RFC 6901 conformance is the producer's responsibility.
+     */
+    private static boolean addViolationsIfParseable(JsonObjectBuilder builder, RequestStatusEntry statusEntry) {
+        String rawValue = statusEntry.errorViolations();
+        if (rawValue == null || rawValue.isBlank()) {
+            return false;
+        }
+        try (var reader = Json.createReader(new StringReader(rawValue))) {
+            builder.add("violations", reader.readArray());
+            return true;
+        } catch (JsonException | IllegalStateException e) {
+            LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_VIOLATIONS_MALFORMED,
+                    statusEntry.traceId(), rawValue);
+            return true;
+        }
     }
 
     /**

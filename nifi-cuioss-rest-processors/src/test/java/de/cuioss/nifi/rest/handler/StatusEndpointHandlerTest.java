@@ -24,12 +24,19 @@ import de.cuioss.nifi.rest.config.RouteConfiguration;
 import de.cuioss.nifi.rest.config.TrackingMode;
 import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
 import de.cuioss.sheriff.token.validation.test.generator.TestTokenGenerators;
+import de.cuioss.test.juli.LogAsserts;
+import de.cuioss.test.juli.TestLogLevel;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -463,6 +470,169 @@ class StatusEndpointHandlerTest {
             } finally {
                 srv.stop();
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("RFC 9457 Error Object")
+    class Rfc9457ErrorObject {
+
+        private static final String VIOLATIONS_JSON =
+                "[{\"pointer\":\"/items/0/id\",\"detail\":\"must not be blank\"},"
+                        + "{\"pointer\":\"/customer/email\",\"detail\":\"must be a well-formed address\"}]";
+
+        /**
+         * Seeds a dedicated cache + server with the given entry, queries {@code /status/{traceId}} and
+         * returns the parsed response body. The per-test server is stopped before returning.
+         */
+        private JsonObject responseFor(RequestStatusEntry entry) throws Exception {
+            var cache = new RequestStatusStoreTest.InMemoryMapCacheClient();
+            cache.put(entry.traceId(), entry,
+                    RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
+            var store = new RequestStatusStore(cache);
+
+            var httpSecurityEvents = new SecurityEventCounter();
+            var gatewaySecurityEvents = new GatewaySecurityEvents();
+            List<EndpointHandler> handlers = new ArrayList<>(List.of(
+                    new StatusEndpointHandler(store, true,
+                            Set.of(AuthMode.LOCAL_ONLY, AuthMode.BEARER), Set.of(), Set.of(), 20)));
+            var handler = new GatewayRequestHandler(handlers, configService, GLOBAL_MAX_REQUEST_SIZE,
+                    httpSecurityEvents, gatewaySecurityEvents,
+                    ForwardedRequestResolver.secureDefault(), false);
+            var srv = new Server();
+            ServerConnector connector = new ServerConnector(srv);
+            connector.setPort(0);
+            srv.addConnector(connector);
+            srv.setHandler(handler);
+            srv.start();
+            try {
+                int localPort = connector.getLocalPort();
+                var response = httpClient.send(
+                        HttpRequest.newBuilder(
+                                        URI.create("http://127.0.0.1:" + localPort + "/status/" + entry.traceId()))
+                                .GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, response.statusCode());
+                return Json.createReader(new StringReader(response.body())).readObject();
+            } finally {
+                srv.stop();
+            }
+        }
+
+        private RequestStatusEntry entry(RequestStatus status, String errorDetail, String errorType,
+                String errorStatus, String errorTitle, String errorInstance, String errorViolations) {
+            return new RequestStatusEntry(UUID.randomUUID().toString(), status,
+                    Instant.now(), Instant.now(), null, errorDetail,
+                    errorType, errorStatus, errorTitle, errorInstance, errorViolations,
+                    0, 0, null, Map.of());
+        }
+
+        @Test
+        @DisplayName("Should emit the full six-member error object with a typed violations array")
+        void shouldEmitFullErrorObject() throws Exception {
+            var seeded = entry(RequestStatus.REJECTED, "One or more fields are invalid",
+                    "https://example.com/problems/validation", "422", "Validation Failed",
+                    "/status/abc", VIOLATIONS_JSON);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertEquals("https://example.com/problems/validation", error.getString("type"));
+            assertEquals("Validation Failed", error.getString("title"));
+            assertEquals("One or more fields are invalid", error.getString("detail"));
+            assertEquals("/status/abc", error.getString("instance"));
+            assertEquals(JsonValue.ValueType.NUMBER, error.get("status").getValueType(),
+                    "error.status must be a JSON number, not a string scalar");
+            assertEquals(422, error.getJsonNumber("status").intValue());
+            assertEquals(JsonValue.ValueType.ARRAY, error.get("violations").getValueType(),
+                    "error.violations must be a JSON array, not a string scalar");
+            JsonArray violations = error.getJsonArray("violations");
+            assertEquals(2, violations.size());
+            assertEquals("/items/0/id", violations.getJsonObject(0).getString("pointer"));
+            assertEquals("must not be blank", violations.getJsonObject(0).getString("detail"));
+            assertEquals("/customer/email", violations.getJsonObject(1).getString("pointer"));
+        }
+
+        @Test
+        @DisplayName("Should still yield error.detail alone for an errorDetail-only entry")
+        void shouldYieldDetailOnlyForDetailOnlyEntry() throws Exception {
+            var seeded = entry(RequestStatus.REJECTED, "Validation failed",
+                    null, null, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertEquals(Set.of("detail"), error.keySet());
+            assertEquals("Validation failed", error.getString("detail"));
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = RequestStatus.class,
+                names = {"ACCEPTED", "PROCESSING", "PROCESSED", "COLLECTING_ATTACHMENTS"})
+        @DisplayName("Should emit the error object independent of the entry status")
+        void shouldEmitErrorObjectIndependentOfStatus(RequestStatus status) throws Exception {
+            var seeded = entry(status, "One attachment exceeded the inline size budget",
+                    null, null, "Attachment Merge Warning", null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error, "error must be emitted for status " + status);
+            assertEquals("Attachment Merge Warning", error.getString("title"));
+            assertEquals("One attachment exceeded the inline size budget", error.getString("detail"));
+        }
+
+        @Test
+        @DisplayName("Should omit the error key entirely when no error component is populated")
+        void shouldOmitErrorKeyWhenNoComponentPopulated() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, null, null, null, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            assertFalse(json.containsKey("error"));
+        }
+
+        @Test
+        @DisplayName("Should treat blank error components as absent")
+        void shouldTreatBlankComponentsAsAbsent() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "  ", "", "   ", "", " ", "");
+
+            JsonObject json = responseFor(seeded);
+
+            assertFalse(json.containsKey("error"));
+        }
+
+        @Test
+        @DisplayName("Should omit error.status and warn REST-125 for a malformed errorStatus")
+        void shouldOmitStatusAndWarnForMalformedErrorStatus() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "Boom",
+                    null, "not-a-number", null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertFalse(error.containsKey("status"), "a malformed errorStatus must omit error.status");
+            assertEquals("Boom", error.getString("detail"));
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-125");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"{not json", "{\"pointer\":\"/id\"}", "[unclosed"})
+        @DisplayName("Should omit error.violations and warn REST-126 for a malformed errorViolations")
+        void shouldOmitViolationsAndWarnForMalformedErrorViolations(String rawViolations) throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "Boom",
+                    null, null, null, null, rawViolations);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertFalse(error.containsKey("violations"),
+                    "a malformed errorViolations must omit error.violations");
+            assertEquals("Boom", error.getString("detail"));
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-126");
         }
     }
 }
