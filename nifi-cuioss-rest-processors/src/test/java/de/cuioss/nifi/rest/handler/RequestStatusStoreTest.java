@@ -132,7 +132,8 @@ public class RequestStatusStoreTest {
             extras.put("tenant", "acme");
             extras.put("priority", "5");
             var entry = new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS,
-                    Instant.now(), Instant.now(), null, null, 5, 1, "upload", extras);
+                    Instant.now(), Instant.now(), null, null,
+                    null, null, null, null, null, 5, 1, "upload", extras);
             cacheClient.put(traceId, entry,
                     RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
 
@@ -142,6 +143,31 @@ public class RequestStatusStoreTest {
             assertTrue(result.isPresent());
             assertEquals(RequestStatus.PROCESSING, result.get().status());
             assertEquals(extras, result.get().additionalFields());
+        }
+
+        @Test
+        @DisplayName("Should preserve all five RFC 9457 error components across a status transition")
+        void shouldPreserveErrorComponentsAcrossStatusTransition() throws Exception {
+            String traceId = UUID.randomUUID().toString();
+            var entry = new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS,
+                    Instant.now(), Instant.now(), null, "One or more fields are invalid",
+                    "https://example.com/problems/validation", "422", "Validation Failed",
+                    "/status/" + traceId, "[{\"pointer\":\"/items/0/id\"}]",
+                    5, 1, "upload", Map.of());
+            cacheClient.put(traceId, entry,
+                    RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
+
+            store.updateStatus(traceId, RequestStatus.ERROR);
+            var result = store.getStatus(traceId);
+
+            assertTrue(result.isPresent());
+            assertEquals(RequestStatus.ERROR, result.get().status());
+            assertEquals("One or more fields are invalid", result.get().errorDetail());
+            assertEquals("https://example.com/problems/validation", result.get().errorType());
+            assertEquals("422", result.get().errorStatus());
+            assertEquals("Validation Failed", result.get().errorTitle());
+            assertEquals("/status/" + traceId, result.get().errorInstance());
+            assertEquals("[{\"pointer\":\"/items/0/id\"}]", result.get().errorViolations());
         }
 
         @Test

@@ -27,7 +27,8 @@ import lombok.experimental.UtilityClass;
  * Identifier ranges:
  * <ul>
  *   <li>INFO 1-22: server lifecycle, route matching, request processing, proxy configuration</li>
- *   <li>WARN 100-124: auth failures, validation failures, back-pressure, tracking-store errors</li>
+ *   <li>WARN 100-126: auth failures, validation failures, back-pressure, tracking-store errors,
+ *       malformed status-error input</li>
  *   <li>ERROR 200-203: server start/stop failures, handler errors, FlowFile creation failures</li>
  * </ul>
  */
@@ -328,6 +329,20 @@ public final class RestApiLogMessages {
                 .prefix(PREFIX)
                 .identifier(124)
                 .template("Status update for traceId '%s' abandoned after exhausting compare-and-swap retries")
+                .build();
+
+        public static final LogRecord STATUS_ERROR_STATUS_MALFORMED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(125)
+                .template("Malformed errorStatus for traceId '%s': '%s' — the status member was omitted "
+                        + "from the status response")
+                .build();
+
+        public static final LogRecord STATUS_ERROR_VIOLATIONS_MALFORMED = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(126)
+                .template("Malformed errorViolations for traceId '%s': '%s' — the violations member was "
+                        + "omitted from the status response")
                 .build();
     }
 

@@ -1281,7 +1281,7 @@
             },
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
-              "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
+              "Target Signal Count": "${rest.trace.attachments.min.count:replaceEmpty('1')}",
               "Expiration Duration": "30 sec",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
@@ -1396,7 +1396,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-ftch00000001",
-            "name": "FetchDistributedMapCache",
+            "name": "FetchDistributedMapCache (expiry)",
             "type": "org.apache.nifi.processors.standard.FetchDistributedMapCache",
             "bundle": {
               "group": "org.apache.nifi",
@@ -1447,7 +1447,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000001",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-rplc00000001",
-            "name": "ReplaceText (status transition)",
+            "name": "ReplaceText (expiry status transition)",
             "type": "org.apache.nifi.processors.standard.ReplaceText",
             "bundle": {
               "group": "org.apache.nifi",
@@ -1503,7 +1503,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-putc00000001",
-            "name": "PutDistributedMapCache",
+            "name": "PutDistributedMapCache (expiry)",
             "type": "org.apache.nifi.processors.standard.PutDistributedMapCache",
             "bundle": {
               "group": "org.apache.nifi",
@@ -1543,6 +1543,170 @@
             "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
             "position": {
               "x": 600.0,
+              "y": 1200.0
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-ftch00000002",
+            "name": "FetchDistributedMapCache (upload)",
+            "type": "org.apache.nifi.processors.standard.FetchDistributedMapCache",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Cache Entry Identifier": "${rest.trace.id}",
+              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
+            },
+            "propertyDescriptors": {
+              "Cache Entry Identifier": {
+                "name": "Cache Entry Identifier",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Distributed Cache Service": {
+                "name": "Distributed Cache Service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "style": {},
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "executionNode": "ALL",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure",
+              "not-found"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 100.0,
+              "y": 900.0
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-rplc00000002",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-rplc00000002",
+            "name": "ReplaceText (upload error seed)",
+            "type": "org.apache.nifi.processors.standard.ReplaceText",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Search Value": "\"status\":\"(?:COLLECTING_ATTACHMENTS|PROCESSED)\"",
+              "Replacement Value": "\"status\":\"PROCESSED\",\"errorTitle\":\"Attachment Merge Warning\",\"errorDetail\":\"One attachment exceeded the inline size budget and was stored by reference\"",
+              "Replacement Strategy": "Regex Replace",
+              "Evaluation Mode": "Entire text"
+            },
+            "propertyDescriptors": {
+              "Search Value": {
+                "name": "Search Value",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Replacement Value": {
+                "name": "Replacement Value",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Replacement Strategy": {
+                "name": "Replacement Strategy",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Evaluation Mode": {
+                "name": "Evaluation Mode",
+                "identifiesControllerService": false,
+                "sensitive": false
+              }
+            },
+            "style": {},
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "executionNode": "ALL",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 100.0,
+              "y": 1050.0
+            },
+            "backoffMechanism": "PENALIZE_FLOWFILE",
+            "maxBackoffPeriod": "10 mins",
+            "retriedRelationships": [],
+            "retryCount": 0,
+            "scheduledState": "ENABLED"
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-putc00000002",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-putc00000002",
+            "name": "PutDistributedMapCache (upload)",
+            "type": "org.apache.nifi.processors.standard.PutDistributedMapCache",
+            "bundle": {
+              "group": "org.apache.nifi",
+              "artifact": "nifi-standard-nar",
+              "version": "2.4.0"
+            },
+            "properties": {
+              "Cache Entry Identifier": "${rest.trace.id}",
+              "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b",
+              "Cache update strategy": "replace"
+            },
+            "propertyDescriptors": {
+              "Cache Entry Identifier": {
+                "name": "Cache Entry Identifier",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "Distributed Cache Service": {
+                "name": "Distributed Cache Service",
+                "identifiesControllerService": true,
+                "sensitive": false
+              }
+            },
+            "style": {},
+            "schedulingPeriod": "0 sec",
+            "schedulingStrategy": "TIMER_DRIVEN",
+            "executionNode": "ALL",
+            "penaltyDuration": "30 sec",
+            "yieldDuration": "1 sec",
+            "bulletinLevel": "WARN",
+            "runDurationMillis": 0,
+            "concurrentlySchedulableTaskCount": 1,
+            "autoTerminatedRelationships": [
+              "failure"
+            ],
+            "componentType": "PROCESSOR",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "position": {
+              "x": 100.0,
               "y": 1200.0
             },
             "backoffMechanism": "PENALIZE_FLOWFILE",
@@ -1641,7 +1805,7 @@
             },
             "properties": {
               "Release Signal Identifier": "merge-signal-${rest.trace.id}",
-              "Target Signal Count": "${rest.trace.attachments.min.count:ifEmpty('1')}",
+              "Target Signal Count": "${rest.trace.attachments.min.count:replaceEmpty('1')}",
               "Expiration Duration": "3 sec",
               "Distributed Cache Service": "e3f4a5b6-c7d8-5e9f-0a1b-2c3d4e5f6a7b"
             },
@@ -1974,7 +2138,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000004",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000004",
-            "name": "Wait (wait-for-attachments) \u2192 FetchDistributedMapCache",
+            "name": "Wait (wait-for-attachments) \u2192 FetchDistributedMapCache (upload)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-wait00000001",
               "type": "PROCESSOR",
@@ -1982,7 +2146,7 @@
               "name": ""
             },
             "destination": {
-              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
+              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
               "type": "PROCESSOR",
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": ""
@@ -2006,7 +2170,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000005",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000005",
-            "name": "Wait (wait-for-attachments) \u2192 FetchDistributedMapCache",
+            "name": "Wait (wait-for-attachments) \u2192 FetchDistributedMapCache (upload)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-wait00000001",
               "type": "PROCESSOR",
@@ -2014,7 +2178,7 @@
               "name": ""
             },
             "destination": {
-              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
+              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
               "type": "PROCESSOR",
               "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
               "name": ""
@@ -2038,7 +2202,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000006",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000006",
-            "name": "FetchDistributedMapCache \u2192 ReplaceText (status transition)",
+            "name": "FetchDistributedMapCache (expiry) \u2192 ReplaceText (expiry status transition)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000001",
               "type": "PROCESSOR",
@@ -2070,7 +2234,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000007",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000007",
-            "name": "ReplaceText (status transition) \u2192 PutDistributedMapCache",
+            "name": "ReplaceText (expiry status transition) \u2192 PutDistributedMapCache (expiry)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-rplc00000001",
               "type": "PROCESSOR",
@@ -2100,9 +2264,105 @@
             "zIndex": 0
           },
           {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000030",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000030",
+            "name": "FetchDistributedMapCache (upload) → ReplaceText (upload error seed)",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-ftch00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-rplc00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000031",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000031",
+            "name": "ReplaceText (upload error seed) → PutDistributedMapCache (upload)",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-rplc00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-putc00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
+            "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000032",
+            "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000032",
+            "name": "PutDistributedMapCache (upload) → LogAttribute (gateway-merged)",
+            "source": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-putc00000002",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "destination": {
+              "id": "f0a1b2c3-d4e5-5012-abcd-logm00000001",
+              "type": "PROCESSOR",
+              "groupId": "e69afb16-58cb-5d27-b767-42b6809917fa",
+              "name": ""
+            },
+            "selectedRelationships": [
+              "success"
+            ],
+            "backPressureObjectThreshold": 10000,
+            "backPressureDataSizeThreshold": "1 GB",
+            "flowFileExpiration": "0 sec",
+            "prioritizers": [],
+            "bends": [],
+            "loadBalanceStrategy": "DO_NOT_LOAD_BALANCE",
+            "partitioningAttribute": "",
+            "loadBalanceCompression": "DO_NOT_COMPRESS",
+            "componentType": "CONNECTION",
+            "groupIdentifier": "e69afb16-58cb-5d27-b767-42b6809917fa",
+            "labelIndex": 1,
+            "zIndex": 0
+          },
+          {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000008",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000008",
-            "name": "PutDistributedMapCache \u2192 LogAttribute (gateway-merged)",
+            "name": "PutDistributedMapCache (expiry) \u2192 LogAttribute (gateway-merged)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-putc00000001",
               "type": "PROCESSOR",
@@ -2230,7 +2490,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000022",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000022",
-            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache",
+            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache (expiry)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
               "type": "PROCESSOR",
@@ -2262,7 +2522,7 @@
           {
             "identifier": "f0a1b2c3-d4e5-5012-abcd-conn00000023",
             "instanceIdentifier": "f0a1b2c3-d4e5-5012-bcde-conn00000023",
-            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache",
+            "name": "Wait (sandbox-expiry) \u2192 FetchDistributedMapCache (expiry)",
             "source": {
               "id": "f0a1b2c3-d4e5-5012-abcd-wait00000002",
               "type": "PROCESSOR",

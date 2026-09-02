@@ -86,6 +86,17 @@ class RestApiLogMessagesTest {
         }
 
         @Test
+        @DisplayName("Should expose the two malformed-error-input records at REST-125 and REST-126")
+        void shouldExposeMalformedErrorInputRecords() {
+            assertEquals("REST-125",
+                    RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED.resolveIdentifierString());
+            assertEquals("REST-126",
+                    RestApiLogMessages.WARN.STATUS_ERROR_VIOLATIONS_MALFORMED.resolveIdentifierString());
+            assertFalse(RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED.getTemplate().isBlank());
+            assertFalse(RestApiLogMessages.WARN.STATUS_ERROR_VIOLATIONS_MALFORMED.getTemplate().isBlank());
+        }
+
+        @Test
         @DisplayName("Should not overlap with INFO identifiers")
         void shouldNotOverlapWithInfoIdentifiers() {
             Set<String> infoIds = new HashSet<>();
@@ -125,9 +136,9 @@ class RestApiLogMessagesTest {
         }
 
         @Test
-        @DisplayName("WARN identifiers stay within the documented 100-124 range")
+        @DisplayName("WARN identifiers stay within the documented 100-126 range")
         void warnIdentifiersInRange() {
-            assertIdentifiersInRange(RestApiLogMessages.WARN.class, 100, 124);
+            assertIdentifiersInRange(RestApiLogMessages.WARN.class, 100, 126);
         }
 
         @Test
