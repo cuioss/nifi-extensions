@@ -153,64 +153,64 @@ class GatewayProxyServletTest {
         handle = EmbeddedServletTestSupport.startServer(ctx -> {
             ctx.setAttribute("nifi-web-configuration-context", dummyContext);
             ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
-                    @Override
-                    protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
-                        throwConfiguredResolveException();
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
-                        return 9443;
-                    }
+                @Override
+                protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
+                    throwConfiguredResolveException();
+                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    return 9443;
+                }
 
-                    @Override
-                    protected Map<String, String> resolveProcessorProperties(
-                            String processorId, HttpServletRequest req) throws IOException {
-                        throwConfiguredResolveException();
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
-                        return processorProperties.get();
-                    }
+                @Override
+                protected Map<String, String> resolveProcessorProperties(
+                        String processorId, HttpServletRequest req) throws IOException {
+                    throwConfiguredResolveException();
+                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    return processorProperties.get();
+                }
 
-                    @Override
-                    protected ComponentConfigReader.ComponentConfig resolveComponentConfig(
-                            String processorId, HttpServletRequest req) throws IOException {
-                        throwConfiguredResolveException();
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
-                        return new ComponentConfigReader.ComponentConfig(
-                                ComponentConfigReader.ComponentType.PROCESSOR,
-                                "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
-                                processorProperties.get());
-                    }
+                @Override
+                protected ComponentConfigReader.ComponentConfig resolveComponentConfig(
+                        String processorId, HttpServletRequest req) throws IOException {
+                    throwConfiguredResolveException();
+                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    return new ComponentConfigReader.ComponentConfig(
+                            ComponentConfigReader.ComponentType.PROCESSOR,
+                            "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
+                            processorProperties.get());
+                }
 
-                    @Override
-                    protected GatewayGetResponse executeGatewayGet(String url, String accept) throws IOException {
-                        if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
-                            throw new IOException("Connection refused");
-                        }
-                        return new GatewayGetResponse(gatewayGetStatusCode.get(), gatewayGetResponse.get());
+                @Override
+                protected GatewayGetResponse executeGatewayGet(String url, String accept) throws IOException {
+                    if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                        throw new IOException("Connection refused");
                     }
+                    return new GatewayGetResponse(gatewayGetStatusCode.get(), gatewayGetResponse.get());
+                }
 
-                    @Override
-                    protected GatewayResponse executeGatewayRequest(
-                            String url, String method, Map<String, String> headers, String body)
-                            throws IOException {
-                        if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
-                            throw new IOException("Connection refused");
-                        }
-                        return new GatewayResponse(200, "{\"result\":\"ok\"}",
-                                Map.of("Content-Type", "application/json"));
+                @Override
+                protected GatewayResponse executeGatewayRequest(
+                        String url, String method, Map<String, String> headers, String body)
+                        throws IOException {
+                    if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                        throw new IOException("Connection refused");
                     }
+                    return new GatewayResponse(200, "{\"result\":\"ok\"}",
+                            Map.of("Content-Type", "application/json"));
+                }
 
-                    @Override
-                    protected IdpResponse executeIdpRequest(String url, String method,
-                            String contentType, String body) throws IOException {
-                        if (gatewayFailing.get()) throw new IOException("Connection refused");
-                        return new IdpResponse(idpResponseStatus.get(), idpResponseBody.get());
-                    }
+                @Override
+                protected IdpResponse executeIdpRequest(String url, String method,
+                        String contentType, String body) throws IOException {
+                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    return new IdpResponse(idpResponseStatus.get(), idpResponseBody.get());
+                }
 
-                    @Override
-                    protected Map<String, String> resolveControllerServiceProperties(
-                            String csId, HttpServletRequest request) {
-                        if (gatewayFailing.get()) throw new UncheckedIOException(new IOException("Connection refused"));
-                        return csProperties.get();
-                    }
+                @Override
+                protected Map<String, String> resolveControllerServiceProperties(
+                        String csId, HttpServletRequest request) {
+                    if (gatewayFailing.get()) throw new UncheckedIOException(new IOException("Connection refused"));
+                    return csProperties.get();
+                }
             }), "/gateway/*");
         });
     }
@@ -259,7 +259,7 @@ class GatewayProxyServletTest {
             // null configContext. Every gateway request must yield a uniform JSON 503 instead
             // of NPEing into a container 500 page on the first config lookup.
             try (var noContextHandle = EmbeddedServletTestSupport.startServer(ctx ->
-                    ctx.addServlet(new ServletHolder(new GatewayProxyServlet()), "/gateway/*"))) {
+                         ctx.addServlet(new ServletHolder(new GatewayProxyServlet()), "/gateway/*"))) {
                 noContextHandle.spec()
                         .header("X-Processor-Id", PROCESSOR_ID)
                         .when()

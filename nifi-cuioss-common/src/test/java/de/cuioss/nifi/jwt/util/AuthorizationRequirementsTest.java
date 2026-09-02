@@ -102,9 +102,9 @@ class AuthorizationRequirementsTest {
         @Test
         @DisplayName("Should create defensive copy of roles set")
         void shouldCreateDefensiveCopyOfRoles() {
-            Set<String> originalRoles = new HashSet<>();
-            originalRoles.add("role1");
-            originalRoles.add("role2");
+            Set<String> originalRoles = new HashSet<>(Set.of(
+                    "role1",
+                    "role2"));
 
             var requirements = new AuthorizationRequirements(true, originalRoles, Set.of());
             originalRoles.add("role3");
@@ -118,9 +118,9 @@ class AuthorizationRequirementsTest {
         @Test
         @DisplayName("Should create defensive copy of scopes set")
         void shouldCreateDefensiveCopyOfScopes() {
-            Set<String> originalScopes = new HashSet<>();
-            originalScopes.add("scope1");
-            originalScopes.add("scope2");
+            Set<String> originalScopes = new HashSet<>(Set.of(
+                    "scope1",
+                    "scope2"));
 
             var requirements = new AuthorizationRequirements(true, Set.of(), originalScopes);
             originalScopes.add("scope3");

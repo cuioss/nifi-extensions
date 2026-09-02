@@ -35,10 +35,10 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should parse properties with a single group")
         void shouldParsePropertiesWithSingleGroup() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.methods", "GET");
-            properties.put("restapi.health.schema", "health-schema");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.methods", "GET",
+                    "restapi.health.schema", "health-schema"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
@@ -52,11 +52,11 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should parse properties with multiple groups")
         void shouldParsePropertiesWithMultipleGroups() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.methods", "GET");
-            properties.put("restapi.users.path", "/api/users");
-            properties.put("restapi.users.methods", "GET,POST");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.methods", "GET",
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.methods", "GET,POST"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
@@ -70,10 +70,10 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should ignore properties without matching prefix")
         void shouldIgnorePropertiesWithoutPrefix() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("other.setting", "value");
-            properties.put("unrelated", "data");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "other.setting", "value",
+                    "unrelated", "data"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
@@ -84,9 +84,9 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should ignore properties without dot after group name")
         void shouldIgnorePropertiesWithoutDotAfterGroupName() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health", "value-without-property");
-            properties.put("restapi.health.path", "/api/health");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health", "value-without-property",
+                    "restapi.health.path", "/api/health"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("restapi.", properties);
 
@@ -138,9 +138,9 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should strip prefix correctly")
         void shouldStripPrefixCorrectly() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.myIssuer.name", "TestIssuer");
-            properties.put("issuer.myIssuer.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.myIssuer.name", "TestIssuer",
+                    "issuer.myIssuer.jwks-url", "https://example.com/jwks"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("issuer.", properties);
 
@@ -153,9 +153,9 @@ class DynamicPropertyGroupParserTest {
         @Test
         @DisplayName("Should work with different prefixes")
         void shouldWorkWithDifferentPrefixes() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("custom.prefix.group1.key", "value1");
-            properties.put("custom.prefix.group2.key", "value2");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "custom.prefix.group1.key", "value1",
+                    "custom.prefix.group2.key", "value2"));
 
             Map<String, Map<String, String>> result = DynamicPropertyGroupParser.parse("custom.prefix.", properties);
 

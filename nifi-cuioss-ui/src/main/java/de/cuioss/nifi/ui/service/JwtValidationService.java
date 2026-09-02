@@ -20,8 +20,8 @@ import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.jwt.config.IssuerConfigurationParser;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
-import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.commons.transport.ParserConfig;
+import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.validation.TokenValidator;
 import de.cuioss.sheriff.token.validation.domain.context.AccessTokenRequest;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
@@ -358,12 +358,12 @@ public class JwtValidationService {
          */
         public Map<String, Object> getClaims() {
             if (tokenContent != null) {
-                Map<String, Object> claims = new HashMap<>();
+                Map<String, Object> claims = new HashMap<>(Map.of(
 
-                // Add token identity information
-                claims.put("sub", tokenContent.getSubject().orElse(""));
-                claims.put("iss", tokenContent.getIssuer());
-                claims.put("exp", tokenContent.getExpirationDateTime().toString());
+                        // Add token identity information
+                        "sub", tokenContent.getSubject().orElse(""),
+                        "iss", tokenContent.getIssuer(),
+                        "exp", tokenContent.getExpirationDateTime().toString()));
 
                 // Add roles as a list if available
                 List<String> tokenRoles = tokenContent.getRoles();

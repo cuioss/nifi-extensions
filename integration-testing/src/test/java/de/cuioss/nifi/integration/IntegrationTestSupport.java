@@ -118,7 +118,7 @@ class IntegrationTestSupport {
     private static Map<String, String> loadCredentials() {
         Map<String, String> values = new LinkedHashMap<>();
         try {
-            for (String line : Files.readAllLines(CREDENTIALS_FILE, StandardCharsets.UTF_8)) {
+            for (String line : Files.readAllLines(CREDENTIALS_FILE)) {
                 String trimmed = line.strip();
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                     continue;

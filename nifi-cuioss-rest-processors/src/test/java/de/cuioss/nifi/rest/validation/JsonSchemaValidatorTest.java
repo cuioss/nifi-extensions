@@ -51,7 +51,7 @@ class JsonSchemaValidatorTest {
 
     private Path writeSchema(String content) throws IOException {
         Path schemaFile = tempDir.resolve("schema.json");
-        Files.writeString(schemaFile, content, StandardCharsets.UTF_8);
+        Files.writeString(schemaFile, content);
         return schemaFile;
     }
 
@@ -237,7 +237,7 @@ class JsonSchemaValidatorTest {
                         "item": { "type": "string" }
                       }
                     }
-                    """, StandardCharsets.UTF_8);
+                    """);
 
             var validator = new JsonSchemaValidator(Map.of(
                     "users", userSchema.toString(),

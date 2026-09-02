@@ -79,7 +79,7 @@ public class JsonSchemaValidator {
         }
         try {
             Path schemaPath = Path.of(schemaSource).normalize();
-            String content = Files.readString(schemaPath, StandardCharsets.UTF_8);
+            String content = Files.readString(schemaPath);
             LOGGER.info(RestApiLogMessages.INFO.SCHEMA_REGISTERED_FROM_FILE, routeName, schemaPath);
             return content;
         } catch (InvalidPathException e) {

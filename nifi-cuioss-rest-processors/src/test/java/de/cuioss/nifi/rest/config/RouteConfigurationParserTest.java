@@ -55,10 +55,10 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should coerce a parseable but non-positive max-request-size to the default")
         void shouldCoerceNonPositiveMaxRequestSizeToDefault() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            // A parseable but non-positive value is coerced to the default (0) with a warning.
-            properties.put("restapi.health.max-request-size", "0");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    // A parseable but non-positive value is coerced to the default (0) with a warning.
+                    "restapi.health.max-request-size", "0"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -69,11 +69,11 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should warn and skip a route whose attachment settings are invalid")
         void shouldSkipRouteWithInvalidAttachmentSettings() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            // attachments-* without tracking-mode=attachments makes RouteConfiguration
-            // reject the build; the single invalid route is warn-and-skipped.
-            properties.put("restapi.health.attachments-min-count", "5");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    // attachments-* without tracking-mode=attachments makes RouteConfiguration
+                    // reject the build; the single invalid route is warn-and-skipped.
+                    "restapi.health.attachments-min-count", "5"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -84,12 +84,12 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse multiple routes")
         void shouldParseMultipleRoutes() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.methods", "GET");
-            properties.put("restapi.users.path", "/api/users");
-            properties.put("restapi.users.methods", "GET,POST,PUT,DELETE");
-            properties.put("restapi.orders.path", "/api/orders");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.methods", "GET",
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.methods", "GET,POST,PUT,DELETE",
+                    "restapi.orders.path", "/api/orders"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -110,9 +110,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse custom methods")
         void shouldParseCustomMethods() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.methods", "GET");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.methods", "GET"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -122,10 +122,10 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse roles and scopes")
         void shouldParseRolesAndScopes() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.users.path", "/api/users");
-            properties.put("restapi.users.required-roles", "admin,user");
-            properties.put("restapi.users.required-scopes", "read,write");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.required-roles", "admin,user",
+                    "restapi.users.required-scopes", "read,write"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -148,9 +148,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse enabled=false")
         void shouldParseEnabledFalse() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.enabled", "false");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.enabled", "false"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -160,9 +160,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse enabled=true explicitly")
         void shouldParseEnabledTrue() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.enabled", "true");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.enabled", "true"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -172,9 +172,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should handle schema property as file path")
         void shouldHandleSchemaProperty() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.users.path", "/api/users");
-            properties.put("restapi.users.schema", "./conf/schemas/user-schema.json");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.users.path", "/api/users",
+                    "restapi.users.schema", "./conf/schemas/user-schema.json"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -189,9 +189,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse success-outcome property")
         void shouldParseSuccessOutcome() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health-get.path", "/api/health");
-            properties.put("restapi.health-get.success-outcome", "health");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health-get.path", "/api/health",
+                    "restapi.health-get.success-outcome", "health"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -213,9 +213,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should have null success-outcome when create-flowfile is false")
         void shouldHaveNullOutcomeWhenCreateFlowFileFalse() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.create-flowfile", "false");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.create-flowfile", "false"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -225,9 +225,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse create-flowfile=false")
         void shouldParseCreateFlowFileFalse() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.create-flowfile", "false");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.create-flowfile", "false"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -248,9 +248,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse create-flowfile=FALSE case-insensitive")
         void shouldParseCreateFlowFileCaseInsensitive() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.create-flowfile", "FALSE");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.create-flowfile", "FALSE"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -265,9 +265,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse auth-mode property")
         void shouldParseAuthMode() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.auth-mode", "none");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.auth-mode", "none"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -278,9 +278,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse auth-mode=local-only")
         void shouldParseAuthModeLocalOnly() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.auth-mode", "local-only");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.auth-mode", "local-only"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -301,9 +301,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse comma-separated auth-mode values")
         void shouldParseCommaSeparatedAuthModes() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.health.path", "/api/health");
-            properties.put("restapi.health.auth-mode", "local-only,bearer");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.health.path", "/api/health",
+                    "restapi.health.auth-mode", "local-only,bearer"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -313,9 +313,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse max-request-size property")
         void shouldParseMaxRequestSize() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.max-request-size", "524288");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.max-request-size", "524288"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -337,9 +337,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should ignore non-numeric max-request-size")
         void shouldIgnoreNonNumericMaxRequestSize() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.max-request-size", "invalid");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.max-request-size", "invalid"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -432,9 +432,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse tracking-mode=simple")
         void shouldParseTrackingModeSimple() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.tracking-mode", "simple");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.tracking-mode", "simple"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -444,11 +444,11 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse tracking-mode=attachments with bounds")
         void shouldParseTrackingModeAttachments() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.upload.path", "/api/upload");
-            properties.put("restapi.upload.tracking-mode", "attachments");
-            properties.put("restapi.upload.attachments-min-count", "1");
-            properties.put("restapi.upload.attachments-max-count", "5");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.upload.path", "/api/upload",
+                    "restapi.upload.tracking-mode", "attachments",
+                    "restapi.upload.attachments-min-count", "1",
+                    "restapi.upload.attachments-max-count", "5"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -471,9 +471,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should default tracking-mode to NONE for invalid value")
         void shouldDefaultForInvalidValue() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.tracking-mode", "invalid");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.tracking-mode", "invalid"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -483,9 +483,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse tracking-mode case-insensitively")
         void shouldParseCaseInsensitive() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.tracking-mode", "Simple");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.tracking-mode", "Simple"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -495,10 +495,10 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should parse attachments-timeout")
         void shouldParseAttachmentsTimeout() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.upload.path", "/api/upload");
-            properties.put("restapi.upload.tracking-mode", "attachments");
-            properties.put("restapi.upload.attachments-timeout", "1 min");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.upload.path", "/api/upload",
+                    "restapi.upload.tracking-mode", "attachments",
+                    "restapi.upload.attachments-timeout", "1 min"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -508,9 +508,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should default attachments-timeout to 30 sec")
         void shouldDefaultAttachmentsTimeout() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.upload.path", "/api/upload");
-            properties.put("restapi.upload.tracking-mode", "attachments");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.upload.path", "/api/upload",
+                    "restapi.upload.tracking-mode", "attachments"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 
@@ -520,9 +520,9 @@ class RouteConfigurationParserTest {
         @Test
         @DisplayName("Should not set attachments-timeout for non-ATTACHMENTS mode")
         void shouldNotSetTimeoutForNonAttachments() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("restapi.data.path", "/api/data");
-            properties.put("restapi.data.tracking-mode", "simple");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "restapi.data.path", "/api/data",
+                    "restapi.data.tracking-mode", "simple"));
 
             List<RouteConfiguration> routes = RouteConfigurationParser.parse(properties);
 

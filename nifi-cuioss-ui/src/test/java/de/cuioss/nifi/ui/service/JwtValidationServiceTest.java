@@ -339,9 +339,9 @@ class JwtValidationServiceTest {
         void shouldReturnFailureForInvalidTokenWithValidConfig() {
             // Arrange — provide minimal issuer configuration with a JWKS URL
             String processorId = UUID.randomUUID().toString();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.1.name", "test-issuer");
-            properties.put("issuer.1.jwks-url", "https://example.com/.well-known/jwks.json");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.1.name", "test-issuer",
+                    "issuer.1.jwks-url", "https://example.com/.well-known/jwks.json"));
 
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -383,9 +383,9 @@ class JwtValidationServiceTest {
             // Controller service properties: actual issuer configurations
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
-            Map<String, String> csProperties = new HashMap<>();
-            csProperties.put("issuer.1.name", "test-issuer");
-            csProperties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+            Map<String, String> csProperties = new HashMap<>(Map.of(
+                    "issuer.1.name", "test-issuer",
+                    "issuer.1.jwks-file", jwksFile.toAbsolutePath().toString()));
 
             ComponentDetails processorDetails = new ComponentDetails.Builder()
                     .id(processorId)
@@ -478,9 +478,9 @@ class JwtValidationServiceTest {
             Files.writeString(invalidJwksFile, "{ not a valid JWKS }");
 
             String processorId = UUID.randomUUID().toString();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.1.name", "test-issuer");
-            properties.put("issuer.1.jwks-file", invalidJwksFile.toAbsolutePath().toString());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.1.name", "test-issuer",
+                    "issuer.1.jwks-file", invalidJwksFile.toAbsolutePath().toString()));
 
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -509,9 +509,9 @@ class JwtValidationServiceTest {
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
 
             String processorId = UUID.randomUUID().toString();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.1.name", "test-issuer");
-            properties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.1.name", "test-issuer",
+                    "issuer.1.jwks-file", jwksFile.toAbsolutePath().toString()));
 
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -551,11 +551,11 @@ class JwtValidationServiceTest {
             Files.writeString(jwksFile, jwksContent);
 
             String processorId = UUID.randomUUID().toString();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.1.name", TestTokenHolder.TEST_ISSUER);
-            properties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
-            properties.put("issuer.1.audience", TestTokenHolder.TEST_AUDIENCE);
-            properties.put("issuer.1.client-id", TestTokenHolder.TEST_CLIENT_ID);
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.1.name", TestTokenHolder.TEST_ISSUER,
+                    "issuer.1.jwks-file", jwksFile.toAbsolutePath().toString(),
+                    "issuer.1.audience", TestTokenHolder.TEST_AUDIENCE,
+                    "issuer.1.client-id", TestTokenHolder.TEST_CLIENT_ID));
 
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)
@@ -589,9 +589,9 @@ class JwtValidationServiceTest {
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
 
             String processorId = UUID.randomUUID().toString();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.1.name", "test-issuer");
-            properties.put("issuer.1.jwks-file", jwksFile.toAbsolutePath().toString());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.1.name", "test-issuer",
+                    "issuer.1.jwks-file", jwksFile.toAbsolutePath().toString()));
 
             ComponentDetails details = new ComponentDetails.Builder()
                     .id(processorId)

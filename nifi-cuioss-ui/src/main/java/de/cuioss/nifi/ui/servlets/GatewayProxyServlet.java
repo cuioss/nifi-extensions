@@ -812,11 +812,11 @@ public class GatewayProxyServlet extends HttpServlet {
      */
     Set<String> resolveAllowedIssuerHosts(String processorId,
             HttpServletRequest request) throws IOException {
-        Set<String> hosts = new HashSet<>();
-        // Always allow localhost
-        hosts.add("localhost");
-        hosts.add("127.0.0.1");
-        hosts.add("::1");
+        Set<String> hosts = new HashSet<>(Set.of(
+                // Always allow localhost
+                "localhost",
+                "127.0.0.1",
+                "::1"));
 
         try {
             Map<String, String> processorProps = resolveProcessorProperties(
