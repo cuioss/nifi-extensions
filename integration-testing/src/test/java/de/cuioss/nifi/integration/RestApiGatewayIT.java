@@ -515,12 +515,15 @@ class RestApiGatewayIT {
         @Test
         @DisplayName("should surface flow-seeded errorTitle/errorDetail as error.title/error.detail")
         void shouldSurfaceFlowSeededErrorObject() {
-            // The "ReplaceText (status transition)" processor in flow.json seeds errorTitle and
-            // errorDetail into the cached entry alongside the PROCESSED transition. This test
-            // proves the cache -> HTTP response path end-to-end: the seeded fields must come back
-            // as a nested RFC 9457 error object even though the status is PROCESSED — i.e. not
-            // REJECTED/ERROR — which also exercises the removed status gating against a live
-            // container.
+            // The "ReplaceText (upload error seed)" processor in flow.json seeds errorTitle and
+            // errorDetail into the cached entry on the /api/upload branch. That branch has its own
+            // Fetch -> ReplaceText -> Put chain, deliberately separate from the "(expiry)" chain
+            // fed by "Wait (sandbox-expiry)": the expiry chain performs the
+            // COLLECTING_ATTACHMENTS -> PROCESSED transition that AttachmentFlowIT depends on and
+            // must NOT gain error fields. This test proves the cache -> HTTP response path
+            // end-to-end: the seeded fields must come back as a nested RFC 9457 error object even
+            // though the status is PROCESSED — i.e. not REJECTED/ERROR — which also exercises the
+            // removed status gating against a live container.
             String parentTraceId = given().spec(authSpec)
                     .body("{\"document\": \"error-object-roundtrip\"}")
                     .when()
