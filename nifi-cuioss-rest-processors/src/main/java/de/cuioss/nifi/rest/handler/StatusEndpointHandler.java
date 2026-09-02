@@ -158,8 +158,8 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
      * String-encoded {@code errorStatus} component and {@code violations} is parsed from the
      * JSON-array-serialized {@code errorViolations} component; a malformed value omits only that one
      * member, propagates no exception, and is reported through the corresponding WARN LogRecord.
-     * No RFC 9457 §3.1.2 {@code 100-599} range check is applied — a parseable integer outside that
-     * range passes through verbatim.
+     * An {@code errorStatus} outside the RFC 9457 §3.1.2 range {@value #MIN_HTTP_STATUS}-{@value
+     * #MAX_HTTP_STATUS} counts as malformed and takes that same path.
      *
      * @param statusEntry the entry to read the error components from
      * @return the populated error object, or empty when no error component is populated

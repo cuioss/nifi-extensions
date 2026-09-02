@@ -296,7 +296,7 @@ Writing any one of them makes the gateway emit `error` — no particular `status
 All six are written as JSON *string* scalars in the cache entry; only `errorStatus` and `errorViolations` are re-typed on the way out.
 A blank value counts as absent.
 
-IMPORTANT: A malformed `errorStatus` (not an integer, or outside the `100`-`599` range) or `errorViolations` (not a serialized JSON array) silently omits *only that one response member*.
+IMPORTANT: A malformed `errorStatus` (not an integer, or outside the `100`-`599` range) or `errorViolations` (not a serialized JSON array) omits *only that one response member*, without failing the response.
 The rest of the `error` object is still returned, the request never fails, and the gateway records a WARN in the NiFi log — `REST-125` for `errorStatus`, `REST-126` for `errorViolations`.
 Check the NiFi log when a member you expected does not appear in the response.
 

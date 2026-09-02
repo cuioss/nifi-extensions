@@ -81,7 +81,7 @@ image::request-tracking-correlation.svg["Chained request correlation — a secon
 
 |`errorStatus`
 |String (optional)
-|RFC 9457 `status` — stored as a String holding an integer, parsed into the JSON **number** `error.status` at response time. No `100`-`599` range check is applied. A non-integer value omits `error.status` and logs WARN `REST-125`.
+|RFC 9457 `status` — stored as a String holding an integer, parsed into the JSON **number** `error.status` at response time. A value that is not an integer, or that falls outside the RFC 9457 §3.1.2 range `100`-`599`, omits `error.status` and logs WARN `REST-125`.
 
 |`errorTitle`
 |String (optional)
