@@ -540,7 +540,14 @@ class RestApiGatewayIT {
                     .then()
                     .statusCode(202);
 
-            await().atMost(Duration.ofSeconds(30))
+            // Budget deliberately exceeds the 30 sec "Expiration Duration" of
+            // "Wait (wait-for-attachments)" in flow.json. Both of that processor's outlets --
+            // "success" (the Notify release, normally ~1s) and "expired" (the fallback at 30s) --
+            // feed the same upload seed chain, so the seeded fields arrive either way and this
+            // test is about the cache -> response round-trip, not about which outlet fired. A
+            // budget equal to the expiration made the two coincide and the assertion raced the
+            // fallback, which produced an observed CI flake that passed on an unmodified re-run.
+            await().atMost(Duration.ofSeconds(60))
                     .pollInterval(Duration.ofSeconds(1))
                     .untilAsserted(() ->
                             given().spec(authSpec)
