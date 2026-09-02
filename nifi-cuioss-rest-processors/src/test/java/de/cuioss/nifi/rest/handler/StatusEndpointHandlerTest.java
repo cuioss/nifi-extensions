@@ -485,6 +485,7 @@ class StatusEndpointHandlerTest {
          * Seeds a dedicated cache + server with the given entry, queries {@code /status/{traceId}} and
          * returns the parsed response body. The per-test server is stopped before returning.
          */
+        @SuppressWarnings("java:S2093") // Server is not AutoCloseable, so try-with-resources does not compile
         private JsonObject responseFor(RequestStatusEntry entry) throws Exception {
             var cache = new RequestStatusStoreTest.InMemoryMapCacheClient();
             cache.put(entry.traceId(), entry,

@@ -203,7 +203,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
             if (status < MIN_HTTP_STATUS || status > MAX_HTTP_STATUS) {
                 throw new NumberFormatException("HTTP status outside " + MIN_HTTP_STATUS + "-" + MAX_HTTP_STATUS);
             }
-            builder.add("status", status);
+            builder.add(FIELD_STATUS, status);
             return true;
         } catch (NumberFormatException e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED,
