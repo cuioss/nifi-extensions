@@ -509,7 +509,7 @@ class StatusEndpointHandlerTest {
                 int localPort = connector.getLocalPort();
                 var response = httpClient.send(
                         HttpRequest.newBuilder(
-                                        URI.create("http://127.0.0.1:" + localPort + "/status/" + entry.traceId()))
+                                URI.create("http://127.0.0.1:" + localPort + "/status/" + entry.traceId()))
                                 .GET().build(),
                         HttpResponse.BodyHandlers.ofString());
                 assertEquals(200, response.statusCode());
