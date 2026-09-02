@@ -42,6 +42,7 @@ import java.time.Duration;
 
 import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.*;
 
 /**
@@ -60,6 +61,8 @@ import static org.hamcrest.Matchers.*;
  *   <li>{@code /api/validated} — POST only (JSON Schema validated via file path)</li>
  *   <li>{@code /api/inline-validated} — POST only (JSON Schema validated via inline JSON)</li>
  *   <li>{@code /api/items/{itemId}} — GET only (path-parameter route; extracts {@code rest.api.pathparam.itemId})</li>
+ *   <li>{@code /api/upload} — POST only (tracking-mode=attachments, min=1, max=5)</li>
+ *   <li>{@code /attachments/{parentTraceId}} — POST only (built-in attachment endpoint)</li>
  *   <li>{@code /metrics} — GET only (management, loopback or JWT auth)</li>
  *   <li>{@code /health} — GET only (management, loopback or JWT auth)</li>
  * </ul>
@@ -507,6 +510,45 @@ class RestApiGatewayIT {
                     .statusCode(200)
                     .body("traceId", equalTo(childTraceId))
                     .body("parentTraceId", equalTo(parentTraceId));
+        }
+
+        @Test
+        @DisplayName("should surface flow-seeded errorTitle/errorDetail as error.title/error.detail")
+        void shouldSurfaceFlowSeededErrorObject() {
+            // The "ReplaceText (status transition)" processor in flow.json seeds errorTitle and
+            // errorDetail into the cached entry alongside the PROCESSED transition. This test
+            // proves the cache -> HTTP response path end-to-end: the seeded fields must come back
+            // as a nested RFC 9457 error object even though the status is PROCESSED — i.e. not
+            // REJECTED/ERROR — which also exercises the removed status gating against a live
+            // container.
+            String parentTraceId = given().spec(authSpec)
+                    .body("{\"document\": \"error-object-roundtrip\"}")
+                    .when()
+                    .post("/api/upload")
+                    .then()
+                    .statusCode(202)
+                    .extract()
+                    .path("traceId");
+
+            given().spec(authSpec)
+                    .body("{\"file\": \"trigger-attachment\"}")
+                    .when()
+                    .post("/attachments/" + parentTraceId)
+                    .then()
+                    .statusCode(202);
+
+            await().atMost(Duration.ofSeconds(30))
+                    .pollInterval(Duration.ofSeconds(1))
+                    .untilAsserted(() ->
+                            given().spec(authSpec)
+                                    .when()
+                                    .get("/status/" + parentTraceId)
+                                    .then()
+                                    .statusCode(200)
+                                    .body("error.title", equalTo("Attachment Merge Warning"))
+                                    .body("error.detail", equalTo(
+                                            "One attachment exceeded the inline size budget "
+                                                    + "and was stored by reference")));
         }
 
         @Test

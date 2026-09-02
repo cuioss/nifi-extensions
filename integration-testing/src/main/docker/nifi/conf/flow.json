@@ -1456,7 +1456,7 @@
             },
             "properties": {
               "Search Value": "\"status\":\"COLLECTING_ATTACHMENTS\"",
-              "Replacement Value": "\"status\":\"PROCESSED\"",
+              "Replacement Value": "\"status\":\"PROCESSED\",\"errorTitle\":\"Attachment Merge Warning\",\"errorDetail\":\"One attachment exceeded the inline size budget and was stored by reference\"",
               "Replacement Strategy": "Literal Replace"
             },
             "propertyDescriptors": {
