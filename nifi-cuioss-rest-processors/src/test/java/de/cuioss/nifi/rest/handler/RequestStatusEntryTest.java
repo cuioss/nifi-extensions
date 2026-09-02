@@ -16,12 +16,17 @@
  */
 package de.cuioss.nifi.rest.handler;
 
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.io.StringReader;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -113,7 +118,8 @@ class RequestStatusEntryTest {
             Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
                     traceId, RequestStatus.REJECTED, now, now,
-                    parentTraceId, "Validation failed", 0, 0, null, Map.of());
+                    parentTraceId, "Validation failed", null, null, null, null, null,
+                    0, 0, null, Map.of());
 
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
@@ -130,7 +136,8 @@ class RequestStatusEntryTest {
         void shouldSerializeAllStatusValues(RequestStatus status) {
             Instant now = FIXED_INSTANT;
             var entry = new RequestStatusEntry(
-                    UUID.randomUUID().toString(), status, now, now, null, null, 0, 0, null, Map.of());
+                    UUID.randomUUID().toString(), status, now, now, null, null,
+                    null, null, null, null, null, 0, 0, null, Map.of());
 
             String json = entry.toJson();
             var deserialized = RequestStatusEntry.fromJson(json);
@@ -260,7 +267,7 @@ class RequestStatusEntryTest {
             extras.put("priority", "5");
             var entry = new RequestStatusEntry(
                     UUID.randomUUID().toString(), RequestStatus.ACCEPTED, FIXED_INSTANT, FIXED_INSTANT,
-                    null, null, 0, 0, null, extras);
+                    null, null, null, null, null, null, null, 0, 0, null, extras);
 
             var deserialized = RequestStatusEntry.fromJson(entry.toJson());
 
@@ -275,13 +282,172 @@ class RequestStatusEntryTest {
             extras.put("extra", "kept");
             var entry = new RequestStatusEntry(
                     "abc", RequestStatus.ACCEPTED, FIXED_INSTANT, FIXED_INSTANT,
-                    null, null, 0, 0, "real", extras);
+                    null, null, null, null, null, null, null, 0, 0, "real", extras);
 
             var deserialized = RequestStatusEntry.fromJson(entry.toJson());
 
             // The typed routeName wins; the shadow additional-field entry is not re-emitted.
             assertEquals("real", deserialized.routeName());
             assertEquals(Map.of("extra", "kept"), deserialized.additionalFields());
+        }
+    }
+
+    @Nested
+    @DisplayName("RFC 9457 Error Components")
+    class Rfc9457ErrorComponents {
+
+        private static final String VIOLATIONS_JSON =
+                "[{\"pointer\":\"/items/0/id\",\"detail\":\"must not be blank\"},"
+                        + "{\"pointer\":\"/customer/email\",\"detail\":\"must be a well-formed address\"}]";
+
+        /** Entry carrying every RFC 9457 error component, all as String scalars. */
+        private RequestStatusEntry fullErrorEntry() {
+            return new RequestStatusEntry(
+                    "abc", RequestStatus.REJECTED, FIXED_INSTANT, FIXED_INSTANT,
+                    null, "One or more fields are invalid",
+                    "https://example.com/problems/validation", "422", "Validation Failed",
+                    "/status/abc", VIOLATIONS_JSON,
+                    0, 0, null, Map.of());
+        }
+
+        /** Minimal valid reserved-field JSON prefix; extra keys are appended per test. */
+        private String baseJson(String extraKeysWithLeadingComma) {
+            return "{\"traceId\":\"abc\",\"status\":\"ERROR\","
+                    + "\"acceptedAt\":\"2024-01-01T00:00:00Z\",\"updatedAt\":\"2024-01-01T00:00:00Z\""
+                    + extraKeysWithLeadingComma + "}";
+        }
+
+        private String componentOf(RequestStatusEntry entry, String key) {
+            return switch (key) {
+                case "errorType" -> entry.errorType();
+                case "errorStatus" -> entry.errorStatus();
+                case "errorTitle" -> entry.errorTitle();
+                case "errorInstance" -> entry.errorInstance();
+                case "errorViolations" -> entry.errorViolations();
+                default -> throw new IllegalArgumentException("Unknown error component: " + key);
+            };
+        }
+
+        @Test
+        @DisplayName("Should round-trip all five error components through toJson/fromJson")
+        void shouldRoundTripAllErrorComponents() {
+            var entry = fullErrorEntry();
+
+            var deserialized = RequestStatusEntry.fromJson(entry.toJson());
+
+            assertEquals("One or more fields are invalid", deserialized.errorDetail());
+            assertEquals("https://example.com/problems/validation", deserialized.errorType());
+            assertEquals("422", deserialized.errorStatus());
+            assertEquals("Validation Failed", deserialized.errorTitle());
+            assertEquals("/status/abc", deserialized.errorInstance());
+            assertEquals(VIOLATIONS_JSON, deserialized.errorViolations());
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+                "errorType,https://example.com/problems/validation",
+                "errorStatus,422",
+                "errorTitle,Validation Failed",
+                "errorInstance,/status/abc",
+                "errorViolations,[]"
+        })
+        @DisplayName("Should read each error component from the cache JSON as a String scalar")
+        void shouldReadEachErrorComponentAsStringScalar(String key, String value) {
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"" + key + "\":\"" + value + "\""));
+
+            assertEquals(value, componentOf(deserialized, key));
+        }
+
+        @ParameterizedTest
+        @CsvSource({"errorType", "errorStatus", "errorTitle", "errorInstance", "errorViolations"})
+        @DisplayName("Should not capture a reserved error key into additionalFields")
+        void shouldNotCaptureErrorKeyAsAdditionalField(String key) {
+            var deserialized = RequestStatusEntry.fromJson(
+                    baseJson(",\"" + key + "\":\"seeded\",\"tenant\":\"acme\""));
+
+            assertEquals("seeded", componentOf(deserialized, key));
+            assertFalse(deserialized.additionalFields().containsKey(key),
+                    key + " is reserved and must not leak into additionalFields");
+            assertEquals(Map.of("tenant", "acme"), deserialized.additionalFields());
+        }
+
+        @Test
+        @DisplayName("Should keep the five error keys out of additionalFields when all are present")
+        void shouldKeepAllErrorKeysOutOfAdditionalFields() {
+            var deserialized = RequestStatusEntry.fromJson(baseJson(
+                    ",\"errorDetail\":\"boom\""
+                            + ",\"errorType\":\"https://example.com/problems/validation\""
+                            + ",\"errorStatus\":\"422\""
+                            + ",\"errorTitle\":\"Validation Failed\""
+                            + ",\"errorInstance\":\"/status/abc\""
+                            + ",\"errorViolations\":\"[]\""
+                            + ",\"tenant\":\"acme\""));
+
+            assertEquals(Map.of("tenant", "acme"), deserialized.additionalFields());
+            assertEquals("boom", deserialized.errorDetail());
+            assertEquals("https://example.com/problems/validation", deserialized.errorType());
+            assertEquals("422", deserialized.errorStatus());
+            assertEquals("Validation Failed", deserialized.errorTitle());
+            assertEquals("/status/abc", deserialized.errorInstance());
+            assertEquals("[]", deserialized.errorViolations());
+        }
+
+        @Test
+        @DisplayName("Should preserve errorViolations verbatim as a JSON-array-serialized String")
+        void shouldPreserveViolationsVerbatim() {
+            var entry = fullErrorEntry();
+
+            String json = entry.toJson();
+
+            JsonObject raw = Json.createReader(new StringReader(json)).readObject();
+            assertEquals(JsonValue.ValueType.STRING, raw.get("errorViolations").getValueType(),
+                    "errorViolations is stored as a String scalar, never as a nested JSON array");
+            assertEquals(VIOLATIONS_JSON, raw.getString("errorViolations"));
+            assertEquals(VIOLATIONS_JSON, RequestStatusEntry.fromJson(json).errorViolations());
+        }
+
+        @Test
+        @DisplayName("Should emit none of the five error keys when no error component is set")
+        void shouldEmitNoErrorKeysWhenAbsent() {
+            var entry = RequestStatusEntry.accepted("abc", null);
+
+            String json = entry.toJson();
+
+            JsonObject raw = Json.createReader(new StringReader(json)).readObject();
+            assertFalse(raw.containsKey("errorDetail"));
+            assertFalse(raw.containsKey("errorType"));
+            assertFalse(raw.containsKey("errorStatus"));
+            assertFalse(raw.containsKey("errorTitle"));
+            assertFalse(raw.containsKey("errorInstance"));
+            assertFalse(raw.containsKey("errorViolations"));
+        }
+
+        @Test
+        @DisplayName("Should expose null error components on factory-created entries")
+        void shouldExposeNullErrorComponentsOnFactoryEntries() {
+            var accepted = RequestStatusEntry.accepted("abc", null);
+            var collecting = RequestStatusEntry.collectingAttachments("abc", null, "upload", 3, 1);
+
+            for (RequestStatusEntry entry : List.of(accepted, collecting)) {
+                assertNull(entry.errorType());
+                assertNull(entry.errorStatus());
+                assertNull(entry.errorTitle());
+                assertNull(entry.errorInstance());
+                assertNull(entry.errorViolations());
+            }
+        }
+
+        @Test
+        @DisplayName("Should deserialize to null error components when the keys are absent")
+        void shouldDeserializeAbsentErrorComponentsAsNull() {
+            var deserialized = RequestStatusEntry.fromJson(baseJson(""));
+
+            assertNull(deserialized.errorType());
+            assertNull(deserialized.errorStatus());
+            assertNull(deserialized.errorTitle());
+            assertNull(deserialized.errorInstance());
+            assertNull(deserialized.errorViolations());
         }
     }
 }

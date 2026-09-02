@@ -1,5 +1,9 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "61bf7ec437bf55ee2c8e84ebd1a60939d4577958afe870e957e0eb04e9675d1d"
+  },
   "insights": [],
   "internal_dependencies": [],
   "key_dependencies": [],
@@ -39,8 +43,29 @@
           "skill": "pm-documents:ref-svg-diagrams"
         }
       ]
+    },
+    "implementation": {
+      "defaults": [
+        {
+          "description": "AsciiDoc formatting, validation, link verification, and template creation",
+          "skill": "pm-documents:ref-asciidoc"
+        },
+        {
+          "description": "Content quality, tone analysis, organization standards, and review orchestration",
+          "skill": "pm-documents:ref-documentation"
+        },
+        {
+          "description": "Narrative styles for technical documentation \u2014 tone, voice, and arc per surface (concept pages, user guides, spec references)",
+          "skill": "pm-documents:ref-narrative-styles"
+        },
+        {
+          "description": "SVG diagram authoring standards \u2014 visual language, theme handling, AsciiDoc embedding, per-diagram-type patterns",
+          "skill": "pm-documents:ref-svg-diagrams"
+        }
+      ]
     }
   },
-  "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
-  "tips": []
+  "skills_by_profile_reasoning": "Mirror the documentation-profile skills under the implementation profile key. The outline validator (manage-solution-outline valid_profiles) accepts only implementation/module_testing/integration_testing/verification, so a deliverable targeting the documentation module could resolve zero skills. Mirroring keeps the canonical documentation key intact while making the AsciiDoc standards reachable from a validator-legal profile.",
+  "tips": [],
+  "type": "module"
 }

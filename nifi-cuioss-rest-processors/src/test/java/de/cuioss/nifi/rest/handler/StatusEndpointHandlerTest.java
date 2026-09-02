@@ -362,7 +362,8 @@ class StatusEndpointHandlerTest {
         private RequestStatusStore storeWith(String traceId, Map<String, String> additionalFields) throws Exception {
             var cache = new RequestStatusStoreTest.InMemoryMapCacheClient();
             var entry = new RequestStatusEntry(traceId, RequestStatus.ACCEPTED,
-                    Instant.now(), Instant.now(), null, null, 0, 0, null, additionalFields);
+                    Instant.now(), Instant.now(), null, null,
+                    null, null, null, null, null, 0, 0, null, additionalFields);
             cache.put(traceId, entry,
                     RequestStatusStore.STRING_SERIALIZER, RequestStatusStore.ENTRY_SERIALIZER);
             return new RequestStatusStore(cache);

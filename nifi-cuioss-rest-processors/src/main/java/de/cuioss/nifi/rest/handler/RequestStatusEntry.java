@@ -39,7 +39,14 @@ import java.util.Set;
  * @param acceptedAt          when the request was first accepted
  * @param updatedAt           when the status was last updated
  * @param parentTraceId       optional parent trace ID for chained requests
- * @param errorDetail         optional error detail for REJECTED/ERROR statuses (RFC 9457 detail string)
+ * @param errorDetail         optional RFC 9457 {@code detail} string
+ * @param errorType           optional RFC 9457 {@code type} URI reference
+ * @param errorStatus         optional RFC 9457 {@code status} code, stored as its textual form
+ *                            (parsed to an integer only at response-serialization time)
+ * @param errorTitle          optional RFC 9457 {@code title} string
+ * @param errorInstance       optional RFC 9457 {@code instance} URI reference
+ * @param errorViolations     optional RFC 9457 {@code violations} array, stored as a
+ *                            JSON-array-serialized String (parsed only at response-serialization time)
  * @param attachmentsMaxCount maximum attachments allowed for this request (0 = no attachments expected)
  * @param attachmentsMinCount minimum attachments required before auto-transitioning to PROCESSED (0 = no auto-transition)
  * @param routeName           the route name that created this entry (for traceability)
@@ -53,6 +60,11 @@ record RequestStatusEntry(
 @NonNull Instant updatedAt,
 @Nullable String parentTraceId,
 @Nullable String errorDetail,
+@Nullable String errorType,
+@Nullable String errorStatus,
+@Nullable String errorTitle,
+@Nullable String errorInstance,
+@Nullable String errorViolations,
 int attachmentsMaxCount,
 int attachmentsMinCount,
 @Nullable String routeName,
@@ -75,6 +87,11 @@ int attachmentsMinCount,
     private static final String KEY_UPDATED_AT = "updatedAt";
     private static final String KEY_PARENT_TRACE_ID = "parentTraceId";
     private static final String KEY_ERROR_DETAIL = "errorDetail";
+    private static final String KEY_ERROR_TYPE = "errorType";
+    private static final String KEY_ERROR_STATUS = "errorStatus";
+    private static final String KEY_ERROR_TITLE = "errorTitle";
+    private static final String KEY_ERROR_INSTANCE = "errorInstance";
+    private static final String KEY_ERROR_VIOLATIONS = "errorViolations";
     private static final String KEY_ATTACHMENTS_MAX_COUNT = "attachmentsMaxCount";
     private static final String KEY_ATTACHMENTS_MIN_COUNT = "attachmentsMinCount";
     private static final String KEY_ROUTE_NAME = "routeName";
@@ -82,14 +99,16 @@ int attachmentsMinCount,
     /** Reserved top-level JSON keys owned by the typed record components. */
     private static final Set<String> RESERVED_KEYS = Set.of(
             KEY_TRACE_ID, KEY_STATUS, KEY_ACCEPTED_AT, KEY_UPDATED_AT, KEY_PARENT_TRACE_ID,
-            KEY_ERROR_DETAIL, KEY_ATTACHMENTS_MAX_COUNT, KEY_ATTACHMENTS_MIN_COUNT, KEY_ROUTE_NAME);
+            KEY_ERROR_DETAIL, KEY_ERROR_TYPE, KEY_ERROR_STATUS, KEY_ERROR_TITLE, KEY_ERROR_INSTANCE,
+            KEY_ERROR_VIOLATIONS, KEY_ATTACHMENTS_MAX_COUNT, KEY_ATTACHMENTS_MIN_COUNT, KEY_ROUTE_NAME);
 
     /**
      * Creates a new ACCEPTED entry with the given trace ID.
      */
     public static RequestStatusEntry accepted(String traceId, @Nullable String parentTraceId) {
         Instant now = Instant.now();
-        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null, 0, 0, null, Map.of());
+        return new RequestStatusEntry(traceId, RequestStatus.ACCEPTED, now, now, parentTraceId, null,
+                null, null, null, null, null, 0, 0, null, Map.of());
     }
 
     /**
@@ -100,7 +119,8 @@ int attachmentsMinCount,
             @Nullable String routeName, int attachmentsMaxCount, int attachmentsMinCount) {
         Instant now = Instant.now();
         return new RequestStatusEntry(traceId, RequestStatus.COLLECTING_ATTACHMENTS, now, now,
-                parentTraceId, null, attachmentsMaxCount, attachmentsMinCount, routeName, Map.of());
+                parentTraceId, null, null, null, null, null, null,
+                attachmentsMaxCount, attachmentsMinCount, routeName, Map.of());
     }
 
     /**
@@ -117,6 +137,21 @@ int attachmentsMinCount,
         }
         if (errorDetail != null) {
             builder.add(KEY_ERROR_DETAIL, errorDetail);
+        }
+        if (errorType != null) {
+            builder.add(KEY_ERROR_TYPE, errorType);
+        }
+        if (errorStatus != null) {
+            builder.add(KEY_ERROR_STATUS, errorStatus);
+        }
+        if (errorTitle != null) {
+            builder.add(KEY_ERROR_TITLE, errorTitle);
+        }
+        if (errorInstance != null) {
+            builder.add(KEY_ERROR_INSTANCE, errorInstance);
+        }
+        if (errorViolations != null) {
+            builder.add(KEY_ERROR_VIOLATIONS, errorViolations);
         }
         if (attachmentsMaxCount > 0) {
             builder.add(KEY_ATTACHMENTS_MAX_COUNT, attachmentsMaxCount);
@@ -153,15 +188,25 @@ int attachmentsMinCount,
                 RequestStatus.valueOf(obj.getString(KEY_STATUS)),
                 Instant.parse(obj.getString(KEY_ACCEPTED_AT)),
                 Instant.parse(obj.getString(KEY_UPDATED_AT)),
-                obj.containsKey(KEY_PARENT_TRACE_ID) && !obj.isNull(KEY_PARENT_TRACE_ID)
-                        ? obj.getString(KEY_PARENT_TRACE_ID) : null,
-                obj.containsKey(KEY_ERROR_DETAIL) && !obj.isNull(KEY_ERROR_DETAIL)
-                        ? obj.getString(KEY_ERROR_DETAIL) : null,
+                optionalString(obj, KEY_PARENT_TRACE_ID),
+                optionalString(obj, KEY_ERROR_DETAIL),
+                optionalString(obj, KEY_ERROR_TYPE),
+                optionalString(obj, KEY_ERROR_STATUS),
+                optionalString(obj, KEY_ERROR_TITLE),
+                optionalString(obj, KEY_ERROR_INSTANCE),
+                optionalString(obj, KEY_ERROR_VIOLATIONS),
                 obj.containsKey(KEY_ATTACHMENTS_MAX_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MAX_COUNT) : 0,
                 obj.containsKey(KEY_ATTACHMENTS_MIN_COUNT) ? obj.getInt(KEY_ATTACHMENTS_MIN_COUNT) : 0,
-                obj.containsKey(KEY_ROUTE_NAME) && !obj.isNull(KEY_ROUTE_NAME)
-                        ? obj.getString(KEY_ROUTE_NAME) : null,
+                optionalString(obj, KEY_ROUTE_NAME),
                 captureAdditionalFields(obj));
+    }
+
+    /**
+     * Reads an optional top-level String member, yielding {@code null} when the key is absent or
+     * carries JSON null.
+     */
+    private static @Nullable String optionalString(JsonObject obj, String key) {
+        return obj.containsKey(key) && !obj.isNull(key) ? obj.getString(key) : null;
     }
 
     /**
