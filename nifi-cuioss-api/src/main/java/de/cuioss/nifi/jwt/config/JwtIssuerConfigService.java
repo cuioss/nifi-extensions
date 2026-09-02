@@ -16,9 +16,9 @@
  */
 package de.cuioss.nifi.jwt.config;
 
+import de.cuioss.sheriff.token.commons.events.SecurityEventCounter;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
-import de.cuioss.sheriff.token.commons.events.SecurityEventCounter;
 import org.apache.nifi.controller.ControllerService;
 
 import java.util.Optional;

@@ -238,7 +238,7 @@ class JwtVerificationServletTest {
         // by the real no-arg constructor so init() runs the production path. init() must leave the
         // validation service unpublished rather than NPE into a container error page.
         try (var localHandle = EmbeddedServletTestSupport.startServer(ctx ->
-                ctx.addServlet(new ServletHolder(new JwtVerificationServlet()), ENDPOINT))) {
+                     ctx.addServlet(new ServletHolder(new JwtVerificationServlet()), ENDPOINT))) {
 
             // Act + Assert — the request is answered with the sibling servlets' 503 contract
             localHandle.spec()

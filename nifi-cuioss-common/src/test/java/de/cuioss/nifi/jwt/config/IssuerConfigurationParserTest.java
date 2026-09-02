@@ -17,8 +17,8 @@
 package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
-import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.commons.transport.ParserConfig;
+import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.LogAsserts;
 import de.cuioss.test.juli.TestLogLevel;
@@ -73,9 +73,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should create IssuerConfig from UI property with JWKS URL")
         void shouldCreateIssuerConfigWithJwksUrl() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -92,9 +92,9 @@ class IssuerConfigurationParserTest {
             // Arrange — create a real JWKS file since the builder validates existence
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-file", jwksFile.toString());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-file", jwksFile.toString()));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -106,10 +106,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should skip disabled issuer")
         void shouldSkipDisabledIssuer() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put("issuer.test.enabled", "false");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.enabled", "false"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -146,10 +146,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should set audience when present")
         void shouldSetAudience() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put("issuer.test.audience", "test-audience");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.audience", "test-audience"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -162,10 +162,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should set client ID when present")
         void shouldSetClientId() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put("issuer.test.client-id", "test-client");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.client-id", "test-client"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -179,13 +179,13 @@ class IssuerConfigurationParserTest {
         @DisplayName("Should parse multiple issuers from UI properties")
         void shouldParseMultipleIssuers() {
             // Arrange — use only URL-based issuers to avoid file existence checks
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test1.name", "TestIssuer1");
-            properties.put("issuer.test1.jwks-url", "https://example1.com/jwks");
-            properties.put("issuer.test2.name", "TestIssuer2");
-            properties.put("issuer.test2.jwks-url", "https://example2.com/jwks");
-            properties.put("issuer.test3.name", "TestIssuer3");
-            properties.put("issuer.test3.jwks-url", "https://example3.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test1.name", "TestIssuer1",
+                    "issuer.test1.jwks-url", "https://example1.com/jwks",
+                    "issuer.test2.name", "TestIssuer2",
+                    "issuer.test2.jwks-url", "https://example2.com/jwks",
+                    "issuer.test3.name", "TestIssuer3",
+                    "issuer.test3.jwks-url", "https://example3.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -196,9 +196,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should use issuer key as fallback name")
         void shouldUseIssuerPropertyAsFallbackName() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.issuer", "FallbackIssuerName");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "FallbackIssuerName",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -210,9 +210,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should resolve jwksUri as alternative URL key")
         void shouldResolveJwksUri() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwksUri", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwksUri", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -224,9 +224,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should warn when jwks-content is used")
         void shouldWarnOnJwksContent() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-content", "{\"keys\":[]}");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-content", "{\"keys\":[]}"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -243,10 +243,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should use explicit JWKS URL type when specified")
         void shouldUseExplicitUrlType() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put("issuer.test.jwks-type", "url");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.jwks-type", "url"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -258,9 +258,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should infer URL type from jwks-url property")
         void shouldInferUrlTypeFromJwksUrl() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -273,9 +273,9 @@ class IssuerConfigurationParserTest {
         void shouldInferFileTypeFromJwksFile(@TempDir Path tempDir) throws Exception {
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-file", jwksFile.toString());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-file", jwksFile.toString()));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -286,10 +286,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should warn and infer the type from the source for an unknown jwks-type")
         void shouldInferTypeForUnknownJwksType() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put("issuer.test.jwks-type", "ftp");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.jwks-type", "ftp"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -304,10 +304,10 @@ class IssuerConfigurationParserTest {
         void shouldTreatUrlTypeWithFileSourceAsFile(@TempDir Path tempDir) throws Exception {
             Path jwksFile = tempDir.resolve("test-jwks.json");
             Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-file", jwksFile.toString());
-            properties.put("issuer.test.jwks-type", "url");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-file", jwksFile.toString(),
+                    "issuer.test.jwks-type", "url"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -389,10 +389,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should apply valid JWKS refresh interval")
         void shouldApplyValidRefreshInterval() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "7200");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "7200"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -403,10 +403,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should log warning for invalid refresh interval")
         void shouldLogWarningForInvalidRefreshInterval() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "invalid");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_REFRESH_INTERVAL, "invalid"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -418,10 +418,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should log warning for invalid connection timeout")
         void shouldLogWarningForInvalidConnectionTimeout() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT, "invalid");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_CONNECTION_TIMEOUT, "invalid"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
@@ -469,9 +469,9 @@ class IssuerConfigurationParserTest {
             Files.writeString(configFile, content);
 
             ConfigurationManager configManager = new ConfigurationManager(tempDir.toString() + "/");
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.ui1.name", "UI Issuer");
-            properties.put("issuer.ui1.jwks-url", "https://ui.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.ui1.name", "UI Issuer",
+                    "issuer.ui1.jwks-url", "https://ui.com/jwks"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
@@ -482,9 +482,9 @@ class IssuerConfigurationParserTest {
         @DisplayName("Should handle ConfigurationManager with no config loaded")
         void shouldHandleConfigManagerWithNoConfig() {
             ConfigurationManager configManager = new ConfigurationManager();
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
 
@@ -494,9 +494,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should handle null ConfigurationManager")
         void shouldHandleNullConfigManager() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -511,9 +511,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should apply ParserConfig when provided")
         void shouldApplyParserConfig() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
             ParserConfig parserConfig = ParserConfig.builder().maxTokenSize(32768).build();
 
@@ -527,9 +527,9 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should work without ParserConfig")
         void shouldWorkWithoutParserConfig() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks"));
             ConfigurationManager configManager = new ConfigurationManager();
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(
@@ -554,9 +554,9 @@ class IssuerConfigurationParserTest {
             // Covers the non-HTTPS default rejection, the loopback rejection, and the carrier-grade
             // NAT (100.64.0.0/10, RFC 6598) rejection — the latter is not covered by
             // InetAddress#isSiteLocalAddress() and relies on the dedicated CGNAT check.
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", jwksUrl);
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", jwksUrl));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -571,11 +571,11 @@ class IssuerConfigurationParserTest {
             // JWKS loader offers no opt-in, so an https:// JWKS URL is required even when the
             // NiFi-level "Require HTTPS for JWKS URLs" guard and private-address checks are
             // both lifted. The plaintext-HTTP rejection is covered by the loopback tests below.
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://localhost:8080/jwks");
-            properties.put(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://localhost:8080/jwks",
+                    JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -588,11 +588,11 @@ class IssuerConfigurationParserTest {
             // Even with the NiFi-level HTTPS requirement disabled, cui-http 2.0.0 refuses to
             // build a plaintext HTTP handler (no allowInsecureHttp opt-in is exposed by the
             // token-sheriff JWKS loader), so the issuer configuration fails closed.
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "http://localhost:8080/jwks");
-            properties.put(JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "http://localhost:8080/jwks",
+                    JwtAttributes.Properties.Validation.REQUIRE_HTTPS_FOR_JWKS, "false",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -603,10 +603,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should allow JWKS URL resolving to loopback when private addresses enabled")
         void shouldAllowLoopbackJwksUrlWhenPrivateAllowed() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://localhost/jwks");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://localhost/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -619,10 +619,10 @@ class IssuerConfigurationParserTest {
             // A public JWKS host is not blocked by the token-sheriff SSRF egress guard, so the
             // allow-private opt-in must NOT allow-list it with the loader: applyEgressPolicy short-
             // circuits at the !resolvesToPrivateAddress branch. The issuer is still created.
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
@@ -632,10 +632,10 @@ class IssuerConfigurationParserTest {
         @Test
         @DisplayName("Should apply trimmed, de-duplicated allowed algorithms to issuer configs")
         void shouldApplyAllowedAlgorithms() {
-            Map<String, String> properties = new HashMap<>();
-            properties.put("issuer.test.name", "TestIssuer");
-            properties.put("issuer.test.jwks-url", "https://example.com/jwks");
-            properties.put(JwtAttributes.Properties.Validation.ALLOWED_ALGORITHMS, "RS256, ES256,RS256, ");
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.name", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    JwtAttributes.Properties.Validation.ALLOWED_ALGORITHMS, "RS256, ES256,RS256, "));
 
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 

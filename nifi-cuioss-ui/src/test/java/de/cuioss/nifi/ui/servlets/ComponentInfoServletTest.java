@@ -229,7 +229,7 @@ class ComponentInfoServletTest {
             // null configContext. A valid processor-ID request must yield a uniform JSON 503
             // instead of NPEing into a container 500 page.
             try (var noContextHandle = EmbeddedServletTestSupport.startServer(ctx ->
-                    ctx.addServlet(new ServletHolder(new ComponentInfoServlet()), "/component-info"))) {
+                         ctx.addServlet(new ServletHolder(new ComponentInfoServlet()), "/component-info"))) {
                 noContextHandle.spec()
                         .header("X-Processor-Id", PROCESSOR_ID)
                         .when()

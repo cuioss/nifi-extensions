@@ -285,10 +285,10 @@ public class MultiIssuerJWTTokenAuthenticator extends AbstractProcessor {
                 .errorCategory(errorCategory)
                 .build();
 
-        Map<String, String> attributes = new HashMap<>();
-        attributes.put(JwtAttributes.Error.CODE, error.errorCode());
-        attributes.put(JwtAttributes.Error.REASON, error.errorReason());
-        attributes.put(JwtAttributes.Error.CATEGORY, error.errorCategory());
+        Map<String, String> attributes = new HashMap<>(Map.of(
+                JwtAttributes.Error.CODE, error.errorCode(),
+                JwtAttributes.Error.REASON, error.errorReason(),
+                JwtAttributes.Error.CATEGORY, error.errorCategory()));
 
         flowFile = session.putAllAttributes(flowFile, attributes);
         session.transfer(flowFile, Relationships.AUTHENTICATION_FAILED);

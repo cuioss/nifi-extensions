@@ -28,6 +28,7 @@ import de.cuioss.nifi.jwt.config.JwtIssuerConfigService;
 import de.cuioss.nifi.jwt.test.TestJwtIssuerConfigService;
 import de.cuioss.nifi.rest.handler.GatewaySecurityEvents;
 import de.cuioss.nifi.rest.handler.HttpRequestContainer;
+import de.cuioss.nifi.rest.handler.RequestStatusStoreTest;
 import de.cuioss.sheriff.token.validation.domain.token.AccessTokenContent;
 import de.cuioss.sheriff.token.validation.exception.TokenValidationException;
 import de.cuioss.sheriff.token.validation.test.TestTokenHolder;
@@ -238,7 +239,7 @@ class RestApiGatewayProcessorTest {
         @Test
         @DisplayName("M4/I14: a tracked route with a cache client is valid and advertises ATTACHMENTS")
         void shouldBeValidAndAdvertiseAttachmentsWithCacheClient() throws Exception {
-            var cache = new de.cuioss.nifi.rest.handler.RequestStatusStoreTest.InMemoryMapCacheClient();
+            var cache = new RequestStatusStoreTest.InMemoryMapCacheClient();
             testRunner.addControllerService("cache", cache);
             testRunner.enableControllerService(cache);
             testRunner.setProperty(
@@ -1221,7 +1222,7 @@ class RestApiGatewayProcessorTest {
      * {@code store} is protected, which a subclass may read even across packages.
      */
     private static class CountingMapCacheClient
-            extends de.cuioss.nifi.rest.handler.RequestStatusStoreTest.InMemoryMapCacheClient {
+            extends RequestStatusStoreTest.InMemoryMapCacheClient {
 
         int entryCount() {
             return store.size();

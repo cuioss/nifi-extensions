@@ -50,9 +50,9 @@ class JwtAuthenticationConfigTest {
         @Test
         @DisplayName("Should create defensive copy of allowed algorithms")
         void shouldCreateDefensiveCopyOfAlgorithms() {
-            Set<String> originalSet = new HashSet<>();
-            originalSet.add("RS256");
-            originalSet.add("RS512");
+            Set<String> originalSet = new HashSet<>(Set.of(
+                    "RS256",
+                    "RS512"));
 
             JwtAuthenticationConfig config = new JwtAuthenticationConfig(
                     2048, originalSet, true);

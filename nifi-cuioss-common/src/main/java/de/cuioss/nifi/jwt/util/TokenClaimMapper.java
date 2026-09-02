@@ -71,15 +71,15 @@ public class TokenClaimMapper {
     public static Map<String, String> mapToAttributes(AccessTokenContent token) {
         Objects.requireNonNull(token, "token must not be null");
 
-        Map<String, String> attributes = new HashMap<>();
+        Map<String, String> attributes = new HashMap<>(Map.of(
 
-        // Validation timestamp
-        attributes.put(JwtAttributes.Token.VALIDATED_AT, Instant.now().toString());
+                // Validation timestamp
+                JwtAttributes.Token.VALIDATED_AT, Instant.now().toString(),
 
-        // Standard claims
-        attributes.put(JwtAttributes.Token.SUBJECT, token.getSubject().orElse(""));
-        attributes.put(JwtAttributes.Token.ISSUER, token.getIssuer());
-        attributes.put(JwtAttributes.Token.EXPIRATION, token.getExpirationDateTime().toString());
+                // Standard claims
+                JwtAttributes.Token.SUBJECT, token.getSubject().orElse(""),
+                JwtAttributes.Token.ISSUER, token.getIssuer(),
+                JwtAttributes.Token.EXPIRATION, token.getExpirationDateTime().toString()));
 
         // Roles
         List<String> roles = token.getRoles();
