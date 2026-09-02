@@ -733,7 +733,15 @@
                                 <recipe>org.openrewrite.java.format.AutoFormat</recipe>
                                 <recipe>org.openrewrite.java.format.NormalizeLineBreaks</recipe>
                                 <recipe>org.openrewrite.java.format.RemoveTrailingWhitespace</recipe>
-                                <recipe>org.openrewrite.java.migrate.UpgradeToJava21</recipe>
+                                <!-- UpgradeToJava21 intentionally omitted: the project already targets
+                                     Java 21, so it performs no source migration here — but it is a
+                                     composite that also upgrades build-plugin and dependency versions
+                                     to whatever is current at run time. That made the profile
+                                     non-idempotent: consecutive whole-repo runs each produced a fresh
+                                     diff (maven-compiler-plugin 3.15.0 -> 3.16.0, lombok
+                                     1.18.46 -> 1.18.48), so "run the profile, then commit" silently
+                                     shipped unreviewed version changes. Version upgrades belong in a
+                                     deliberate, reviewed bump. -->
                                 <recipe>org.openrewrite.java.migrate.util.JavaUtilAPIs</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotEmptyToIsPresent</recipe>
                                 <recipe>org.openrewrite.java.migrate.util.OptionalNotPresentToIsEmpty</recipe>
@@ -743,7 +751,19 @@
                                      Map.of(...), which throws on null values/keys and duplicate keys, has
                                      unspecified iteration order, and previously rewrote unrelated files
                                      during whole-repo pre-commit runs. -->
-                                <recipe>org.openrewrite.java.OrderImports</recipe>
+                                <!-- OrderImports intentionally omitted: it applies an ImportLayoutStyle
+                                     whose default collapses a package into a wildcard once 5 regular
+                                     (or 3 static) imports from it are present, so whole-repo runs
+                                     rewrote hand-written explicit imports into `.*` — e.g. five
+                                     org.apache.nifi.distributed.cache.client imports in
+                                     RequestStatusStore, and the JUnit/Hamcrest static imports across
+                                     the test tree. Wildcard imports are a regression against the
+                                     codebase's explicit-import convention. Configuring the thresholds
+                                     via an activeStyles/rewrite.yml override was tried and rejected:
+                                     supplying an explicit style displaced the auto-detected one and
+                                     rewrote 130+ files far beyond imports. Dropping the recipe keeps
+                                     RemoveUnusedImports (which does the load-bearing cleanup) and
+                                     leaves import ORDER to the IDE. -->
                                 <recipe>org.openrewrite.java.RemoveUnusedImports</recipe>
                                 <recipe>org.openrewrite.java.ShortenFullyQualifiedTypeReferences</recipe>
                                 <recipe>org.openrewrite.java.testing.junit5.JUnit5BestPractices</recipe>
