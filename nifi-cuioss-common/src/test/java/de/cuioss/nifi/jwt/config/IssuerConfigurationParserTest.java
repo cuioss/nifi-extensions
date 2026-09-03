@@ -730,6 +730,28 @@ class IssuerConfigurationParserTest {
         }
 
         @Test
+        @DisplayName("Should degrade gracefully on a malformed JWKS URL when private addresses are enabled")
+        void shouldDegradeGracefullyOnMalformedJwksUrlWhenPrivateAllowed() {
+            // A malformed URL categorises as UNRESOLVABLE, which reaches the egress branch that
+            // needs the host. That branch resolves the host through the same tolerant parse the
+            // categoriser uses, so it yields null rather than throwing a second
+            // IllegalArgumentException at a site with no local handler. The issuer is still
+            // dropped -- the JWKS loader rejects the URL itself -- but parsing the whole
+            // configuration must not blow up over it.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "https://idp.example.com",
+                    "issuer.test.jwks-url", "https://mal formed.example.com/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
+
+            List<IssuerConfig> configs = assertDoesNotThrow(
+                    () -> IssuerConfigurationParser.parseIssuerConfigs(properties, null),
+                    "A malformed JWKS URL must not propagate an exception out of the parser");
+
+            assertEquals(0, configs.size(),
+                    "A malformed JWKS URL yields no usable issuer");
+        }
+
+        @Test
         @DisplayName("Should defer an unresolvable JWKS host to the loader when private addresses are not allowed")
         void shouldDeferUnresolvableJwksHostWithoutOptIn() {
             // Without the opt-in, UNRESOLVABLE must behave like PUBLIC (accepted, deferred) rather
