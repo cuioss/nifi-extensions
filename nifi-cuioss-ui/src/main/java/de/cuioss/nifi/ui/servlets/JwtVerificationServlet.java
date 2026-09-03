@@ -197,13 +197,11 @@ public class JwtVerificationServlet extends HttpServlet {
             throw new RequestException(400, "Token cannot be empty");
         }
 
-        // Read processorId from body first, fall back to X-Processor-Id header
-        // (the header is already validated by ProcessorIdValidationFilter)
-        String processorId = requestJson.containsKey("processorId") ?
-                requestJson.getString("processorId") : null;
-        if (processorId == null || processorId.trim().isEmpty()) {
-            processorId = req.getHeader("X-Processor-Id");
-        }
+        // The processor ID comes from the X-Processor-Id header only. A body-sourced field
+        // would be a second, unfiltered source: ProcessorIdValidationFilter validates the
+        // header, so acting on a body value let a caller pass the filter with one ID and be
+        // served another.
+        String processorId = req.getHeader("X-Processor-Id");
 
         LOGGER.debug("Request received - processorId: %s, token: %s", processorId, maskToken(token));
 
@@ -211,11 +209,10 @@ public class JwtVerificationServlet extends HttpServlet {
             throw new RequestException(400, "Processor ID cannot be empty");
         }
 
-        // Validate the externally-sourced processor ID (body-sourced value or the
-        // X-Processor-Id header fallback) through the cui-http header-value pipeline
-        // before it is used as a component lookup key. The token field is deliberately
-        // NOT validated here — JWT tokens are validated by the Token-Sheriff validation
-        // service and contain base64url characters a URL/path sanitizer would wrongly
+        // Re-validate the externally-sourced X-Processor-Id header through the cui-http
+        // header-value pipeline before it is used as a component lookup key. The token field is
+        // deliberately NOT validated here — JWT tokens are validated by the Token-Sheriff
+        // validation service and contain base64url characters a URL/path sanitizer would wrongly
         // reject; the X-Processor-Id value is the externally-sourced value in scope.
         validateProcessorIdSecurity(processorId);
 
