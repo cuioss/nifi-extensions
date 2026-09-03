@@ -203,7 +203,7 @@ Integration test::
 
 === Timeout (no attachments arrive)
 
-When the Wait processor's expiration duration elapses without reaching the target signal count, the parent FlowFile is released via the `expired` relationship and routed to `LogAttribute (gateway-merged)`. The status remains at `COLLECTING_ATTACHMENTS` in the cache unless the min count was already met (in which case it is already `PROCESSED`).
+When the Wait processor's expiration duration elapses without reaching the target signal count, the parent FlowFile is released via the `expired` relationship and flows through the expiry `FetchDistributedMapCache -> ReplaceText -> PutDistributedMapCache` chain to `LogAttribute (gateway-merged)`. That chain performs the `COLLECTING_ATTACHMENTS -> PROCESSED` transition, so an expired parent does *not* stay in the collecting state — `AttachmentFlowIT.shouldExpireWhenAttachmentsNeverArrive` asserts exactly that.
 
 === Multiple attachments before min count
 
