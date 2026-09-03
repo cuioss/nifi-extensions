@@ -134,6 +134,12 @@ gh pr checks <pr#> --repo cuioss/nifi-extensions --watch
 ```
 If using a scheduled/loop wait, poll roughly every few minutes up to ~15 min.
 
+In practice the *release* PR is usually much faster (~1 min): it touches only
+`.github/project.yml` and `README.adoc`, so the `check-changes` gates skip the build,
+integration-test and e2e jobs. Watch the checks rather than assuming the full ~15 min —
+but if a heavy job does run (e.g. the badge edit is bundled with other changes), let it
+finish.
+
 ### Step 9 — Handle PR comments / failures (if any)
 
 - If a check fails, read the failing run's log (`gh run view <id> --log-failed`), fix the
@@ -196,36 +202,89 @@ push the update:
 mkdir -p .plan/temp
 gh release view <version> --repo cuioss/nifi-extensions --json body --jq .body > .plan/temp/release-<version>-orig.md
 # ...build the reformatted body in .plan/temp/release-<version>.md...
+# run the mandatory duplicate check below, THEN publish:
 gh release edit <version> --repo cuioss/nifi-extensions --notes-file .plan/temp/release-<version>.md
 ```
 
 #### House format rules (apply exactly)
 
-1. **Two top-level groups:** `## Features & Enhancements` and `## Dependency Updates`.
-2. **Features & Enhancements** — group functional PRs by theme with `###` subheadings, e.g.:
+1. **Three top-level groups, in this order:** `## Apache NiFi`, `## Features & Enhancements`,
+   and `## Dependency Updates`.
+2. **Apache NiFi is the headline** — the NiFi version is the single most important fact in
+   a release, so it gets its **own top-level section at the very top**, never a bullet buried
+   under dependencies. Open it with a one-line statement of the target version, then the PR
+   line(s):
+
+   ```
+   ## Apache NiFi
+
+   This release targets **Apache NiFi <new>** (previously <old>).
+
+   * <PR line(s)>
+   ```
+
+   If NiFi did **not** change in this cycle, state the unchanged version on the same one-line
+   form and omit the PR line. Never also list NiFi under `### Infra`.
+3. **Features & Enhancements** — group functional PRs by theme with `###` subheadings, e.g.:
    - `### REST & Routing`
    - `### Security`
    - `### API & Code Quality` — also the home for refactor/standards/cleanup recipes
      (e.g. `refactor-to-profile-standards` belongs here, **not** under build/tooling)
+   - `### Build & Dependency Governance` — build-file correctness and dependency-hygiene
+     changes (e.g. guarding artifact families against version splits, Maven profile fixes)
    - `### Testing & Standards`
    - `### Documentation`
    Adapt theme headings to the actual PRs; omit empty sections.
-3. **Dependency Updates** — group by type with `###` subheadings:
+4. **Dependency Updates** — group by type with `###` subheadings:
    - `### Java` — Java libraries (e.g. lombok, junit, parsson, token-sheriff-validation)
    - `### JavaScript` — npm deps (in `/nifi-cuioss-ui` or `/e-2-e-playwright`)
-   - `### Infra` — platform/build/CI: Apache NiFi version, build plugins
-     (e.g. sonar-maven-plugin), org workflow bumps
-4. **Collapse version chains** — when the same artifact is bumped multiple times
-   (`A → B → C`), keep only the **latest** entry spanning the full range
-   (e.g. `token-sheriff-validation 0.6.0 → 0.7.0 → 0.8.0` becomes a single `0.6.0 → 0.8.0`).
-5. **Remove all OpenRewrite bumps and friends** — drop every `rewrite-maven-plugin`,
+   - `### Infra` — platform/build/CI: build plugins (e.g. sonar-maven-plugin), the Maven
+     wrapper, org workflow bumps. **Not** Apache NiFi — that has its own top section (rule 2).
+5. **Collapse by library identity — one line per library, spanning the full range.** The unit
+   of collapsing is the *library*, not the PR title. Merge into a single line whenever the
+   PRs concern the same library, including all three of these shapes:
+   - **Version chains** — `A → B → C` becomes one line `A → C` (e.g. three
+     `token-sheriff-validation` bumps `0.6.0 → 0.7.0 → 0.8.0` become one `0.6.0 → 0.8.0`).
+   - **Same library in several directories** — `eslint` bumped in `/nifi-cuioss-ui` *and*
+     `/e-2-e-playwright` is **one** line naming both directories, not two lines. The titles
+     differ only by the directory suffix, so do not wait for identical titles.
+   - **One upstream bump landing as several coordinates** — when a single upstream release
+     arrives as separate PRs against different coordinates (e.g. the `version.nifi` property
+     and the `org.apache.nifi:nifi-extension-bundles` parent), that is **one** bump: one line
+     naming the coordinates in parentheses.
+
+   Carry every merged PR's URL onto the surviving line, comma-separated.
+6. **Recover versions the title omits.** Dependabot sometimes truncates a title to
+   `bump <lib> in /<dir>` with no versions (it does this when several deps must move
+   together). Never publish a dependency line without a version range: read the PR body
+   (`gh pr view <n> --repo cuioss/nifi-extensions --json body --jq .body | head -6`, which
+   states `Updates \`<lib>\` from X to Y`) and use those versions when computing the range.
+7. **Remove all OpenRewrite bumps and friends** — drop every `rewrite-maven-plugin`,
    `rewrite-migrate-java`, `rewrite-testing-frameworks`, and related OpenRewrite dependency PR.
-6. **Remove internal tooling churn** — drop PRs that only touch dev/build orchestration with
+8. **Remove internal tooling churn** — drop PRs that only touch dev/build orchestration with
    no user-facing effect: `marshal.json`/plan-marshall config migrations, plan-marshall build
-   wiring, internal dev-skill changes, and the mechanical version-bump PR itself.
-7. Preserve each kept PR line verbatim (`* <title> by @author in <url>`); when two PRs share
-   an identical title, merge them onto one line with both URLs.
-8. Keep the trailing `**Full Changelog**: ...compare/<prev>...<version>` line.
+   wiring, `.plan/**` architecture data, internal dev-skill changes, and the mechanical
+   version-bump PR itself.
+9. Preserve each kept PR line in its original `* <title> by @author in <url>` shape. Rules 5
+   and 6 **override** verbatimness where they conflict: rewrite the title's version range to
+   span the collapsed chain, and name the several directories or coordinates on the surviving
+   line.
+10. Keep the trailing `**Full Changelog**: ...compare/<prev>...<version>` line.
+
+#### Verify before publishing (mandatory)
+
+The rules above are easy to under-apply — a duplicate survives whenever two PRs touch one
+library under differing titles. After building the notes file and **before**
+`gh release edit`, assert that every library appears exactly once:
+
+```bash
+grep -oE '(bump|update) [^ ]+ (from|in)' .plan/temp/release-<version>.md \
+  | sort | uniq -c | sort -rn | head
+```
+
+Every count must be `1`. Any count `>1` is an unmerged duplicate — collapse it per rule 5 and
+re-run. Also confirm no dependency line is missing a version range (rule 6), and that
+`grep -E '^##' ` on the file lists `## Apache NiFi` first (rule 2).
 
 ### Step 14 — Done
 
