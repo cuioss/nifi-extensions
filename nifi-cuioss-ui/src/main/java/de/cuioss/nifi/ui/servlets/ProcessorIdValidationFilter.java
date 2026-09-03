@@ -17,6 +17,7 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -80,14 +81,14 @@ public class ProcessorIdValidationFilter implements Filter {
         String requestPath = httpRequest.getServletPath();
         String method = httpRequest.getMethod();
 
-        LOGGER.debug("Processing request: %s %s", method, requestPath);
+        LOGGER.debug("Processing request: %s %s", method, LogSanitizer.forLog(requestPath));
 
         String processorId = httpRequest.getHeader(PROCESSOR_ID_HEADER);
 
         // Require the header to be present, then apply the shared processor-ID rule.
         // Both branches emit the identical 400-JSON contract the servlets use.
         if (processorId == null || processorId.trim().isEmpty()) {
-            LOGGER.warn(UILogMessages.WARN.MISSING_PROCESSOR_ID, requestPath);
+            LOGGER.warn(UILogMessages.WARN.MISSING_PROCESSOR_ID, LogSanitizer.forLog(requestPath));
             ProcessorIdHeaderValidator.sendBadRequest(httpResponse, "Missing processor ID");
             return;
         }

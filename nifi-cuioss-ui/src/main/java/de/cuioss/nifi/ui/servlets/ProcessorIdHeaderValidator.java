@@ -22,6 +22,7 @@ import de.cuioss.http.security.exceptions.UrlSecurityException;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.Json;
 import jakarta.json.JsonWriterFactory;
@@ -109,7 +110,7 @@ final class ProcessorIdHeaderValidator {
         if (error == null) {
             return true;
         }
-        LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, value, error);
+        LOGGER.warn(UILogMessages.WARN.HEADER_SECURITY_VIOLATION, LogSanitizer.forLog(value), error);
         sendBadRequest(resp, error);
         return false;
     }
