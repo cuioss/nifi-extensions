@@ -213,7 +213,9 @@ class GatewayProxyServletTest {
                 @Override
                 protected IdpResponse executeIdpRequest(String url, String method,
                         String contentType, String body) throws IOException {
-                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                        throw new IOException("Connection refused");
+                    }
                     return new IdpResponse(idpResponseStatus.get(), idpResponseBody.get());
                 }
 
@@ -1124,8 +1126,12 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should allow localhost for token endpoint")
-        void shouldAllowLocalhostForTokenEndpoint() {
+        @DisplayName("Should allow localhost only when a configured issuer is a loopback URL")
+        void shouldAllowLocalhostOnlyWhenConfiguredAsIssuer() {
+            // Arrange: the linked controller service declares localhost as its issuer host
+            csProperties.set(new HashMap<>(Map.of(
+                    "issuer.local.issuer", "http://localhost:8080/realms/local")));
+
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
@@ -1138,6 +1144,24 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should reject localhost when no configured issuer is a loopback URL")
+        void shouldRejectLocalhostWhenNotConfiguredAsIssuer() {
+            // The default controller service configures only the remote keycloak issuer, so the
+            // allowlist carries no loopback entry — the removed unconditional seed used to add one.
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Token endpoint host not allowed"));
         }
 
         @Test
@@ -1238,15 +1262,15 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should handle token fetch when gateway is unavailable (IOException)")
         void shouldHandleTokenFetchWhenGatewayUnavailable() {
-            gatewayFailing.set(true);
+            // Only the outgoing IDP call fails: the allowlist must still resolve, otherwise the
+            // request is rejected at the SSRF gate and never reaches the token fetch at all.
+            gatewayExecuteFailing.set(true);
 
-            // Use localhost URL because when gateway is failing, resolveProcessorProperties
-            // throws and SSRF check falls back to localhost-only allowed hosts
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
-                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
                             "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
                     .when()
                     .post("/gateway/token-fetch")
@@ -1256,13 +1280,14 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should fetch token when no controller service is configured")
-        void shouldFetchTokenWithNoControllerService() {
-            // Remove controller service reference — SSRF check falls back to localhost-only
+        @DisplayName("Should reject every token endpoint when no controller service is configured")
+        void shouldRejectTokenFetchWithNoControllerService() {
+            // Arrange: no controller service reference — the allowlist resolves to the empty set
             Map<String, String> propsNoCs = new HashMap<>(createDefaultProperties());
             propsNoCs.remove("rest.gateway.jwt.config.service");
             processorProperties.set(propsNoCs);
 
+            // Act + Assert: an empty allowlist denies everything; it is never read as allow-all
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
@@ -1272,8 +1297,8 @@ class GatewayProxyServletTest {
                     .when()
                     .post("/gateway/token-fetch")
                     .then()
-                    .statusCode(200)
-                    .body("access_token", equalTo("test-token"));
+                    .statusCode(400)
+                    .body("error", containsString("Token endpoint host not allowed"));
         }
 
         @Test
@@ -1396,7 +1421,7 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should handle IDP discovery failure")
+        @DisplayName("Should handle IDP discovery failure without echoing the upstream status")
         void shouldHandleIdpDiscoveryFailure() {
             idpResponseStatus.set(404);
             idpResponseBody.set("Not Found");
@@ -1410,7 +1435,126 @@ class GatewayProxyServletTest {
                     .post("/gateway/discover-token-endpoint")
                     .then()
                     .statusCode(502)
-                    .body("error", containsString("OIDC discovery failed"));
+                    .body("error", equalTo("OIDC discovery failed"))
+                    // The upstream status must not leak — it would turn this endpoint into a
+                    // port scanner that distinguishes 404 from 401 from connection-refused.
+                    .body("error", not(containsString("404")));
+        }
+
+        @Test
+        @DisplayName("Should return a byte-identical discovery error for every upstream status")
+        void shouldReturnIdenticalDiscoveryErrorForEveryUpstreamStatus() {
+            // Arrange + Act: collect the error body for three distinguishable upstream outcomes
+            String notFoundError = discoveryErrorForUpstreamStatus(404);
+            String unauthorizedError = discoveryErrorForUpstreamStatus(401);
+            String serverErrorError = discoveryErrorForUpstreamStatus(500);
+
+            // Assert: all three collapse to the same opaque message — no oracle
+            assertEquals("OIDC discovery failed", notFoundError);
+            assertEquals(notFoundError, unauthorizedError);
+            assertEquals(notFoundError, serverErrorError);
+        }
+
+        private String discoveryErrorForUpstreamStatus(int upstreamStatus) {
+            idpResponseStatus.set(upstreamStatus);
+            idpResponseBody.set("irrelevant");
+            return handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(502)
+                    .extract()
+                    .path("error");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Issuer host allowlist resolution (deny-by-default)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("resolveAllowedIssuerHosts")
+    class ResolveAllowedIssuerHostsTests {
+
+        private static final String CS_REFERENCE_KEY = "rest.gateway.jwt.config.service";
+        private static final String LOOPBACK_TOKEN_URL = "http://localhost:8080/token";
+
+        /** The request is only an authentication carrier here; both resolve hooks are stubbed. */
+        private HttpServletRequest stubRequest() {
+            HttpServletRequest request = createNiceMock(HttpServletRequest.class);
+            replay(request);
+            return request;
+        }
+
+        private GatewayProxyServlet servletWith(Map<String, String> procProps,
+                Map<String, String> csProps) {
+            return new GatewayProxyServlet() {
+                @Override
+                protected Map<String, String> resolveProcessorProperties(
+                        String processorId, HttpServletRequest request) {
+                    return procProps;
+                }
+
+                @Override
+                protected Map<String, String> resolveControllerServiceProperties(
+                        String csId, HttpServletRequest request) {
+                    return csProps;
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should yield an empty allowlist that rejects loopback when no issuer is configured")
+        void shouldRejectLoopbackWhenNoIssuerConfigured() throws IOException {
+            // Arrange: no controller-service reference at all
+            GatewayProxyServlet servlet = servletWith(Map.of(), Map.of());
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert: deny-by-default — an empty allowlist is not allow-all
+            assertTrue(hosts.isEmpty(), "Allowlist must start empty, with no implicit loopback seed");
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+        }
+
+        @Test
+        @DisplayName("Should allow loopback only when a configured issuer is itself a loopback URL")
+        void shouldAllowLoopbackOnlyWhenConfiguredAsIssuer() throws IOException {
+            // Arrange: the linked controller service declares a loopback issuer
+            GatewayProxyServlet servlet = servletWith(
+                    Map.of(CS_REFERENCE_KEY, "cs-id-1234"),
+                    Map.of("issuer.local.issuer", "http://127.0.0.1:8443/realms/local"));
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert: exactly the configured host — the sibling loopback spellings stay out
+            assertEquals(Set.of("127.0.0.1"), hosts);
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://127.0.0.1:8443/token", hosts));
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+        }
+
+        @Test
+        @DisplayName("Should still reject loopback when only a remote issuer is configured")
+        void shouldRejectLoopbackWhenOnlyRemoteIssuerConfigured() throws IOException {
+            // Arrange: the linked controller service declares a remote issuer only
+            GatewayProxyServlet servlet = servletWith(
+                    Map.of(CS_REFERENCE_KEY, "cs-id-1234"),
+                    Map.of("issuer.primary.issuer", "https://keycloak:8443/realms/master"));
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert
+            assertEquals(Set.of("keycloak"), hosts);
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://127.0.0.1:8443/token", hosts));
         }
     }
 
@@ -1423,8 +1567,8 @@ class GatewayProxyServletTest {
     class AllowedIssuerHosts {
 
         @Test
-        @DisplayName("Should always allow localhost variants")
-        void shouldAlwaysAllowLocalhost() {
+        @DisplayName("Should allow localhost variants that the allowlist explicitly contains")
+        void shouldAllowExplicitlyListedLocalhostVariants() {
             Set<String> hosts = Set.of("localhost", "127.0.0.1", "::1");
             assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
                     "http://localhost:8080/token", hosts));

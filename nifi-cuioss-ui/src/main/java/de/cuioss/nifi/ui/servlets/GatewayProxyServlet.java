@@ -117,6 +117,12 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
+    /**
+     * Single opaque discovery-failure message. Every discovery failure — transport error or
+     * non-OK upstream status — returns this exact string so the endpoint cannot be used to
+     * probe which hosts and ports are reachable; the distinguishing detail goes to the log.
+     */
+    private static final String MSG_OIDC_DISCOVERY_FAILED = "OIDC discovery failed";
     private static final String FALSE_STRING = "false";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_METHODS = "methods";
@@ -667,8 +673,12 @@ public class GatewayProxyServlet extends HttpServlet {
                     null, null);
 
             if (idpResp.statusCode() != 200) {
+                // The upstream status stays in the log only — echoing it lets a caller use this
+                // endpoint as a port scanner by distinguishing connection-refused from 404 from 401.
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_OIDC_DISCOVERY_STATUS,
+                        discoveryUrl, idpResp.statusCode());
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                        "OIDC discovery failed (HTTP " + idpResp.statusCode() + ")");
+                        MSG_OIDC_DISCOVERY_FAILED);
                 return;
             }
 
@@ -695,7 +705,7 @@ public class GatewayProxyServlet extends HttpServlet {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_OIDC_DISCOVERY_FAILED,
                     e.getMessage());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                    "OIDC discovery failed");
+                    MSG_OIDC_DISCOVERY_FAILED);
         }
     }
 
@@ -747,17 +757,18 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
-     * Resolves the set of allowed hosts for token endpoint SSRF protection.
-     * Extracts hosts from configured issuer URLs in the linked controller service,
-     * plus localhost variants.
+     * Resolves the set of allowed hosts for token endpoint SSRF protection: exactly the hosts of
+     * the {@code issuer.*.issuer} URLs configured on the linked controller service.
+     *
+     * <p>The set starts empty and is deny-by-default — an empty result rejects every candidate
+     * through {@link #isAllowedTokenEndpointHost}, it is never treated as allow-all. Loopback is
+     * reachable only when a configured issuer URL is itself a loopback URL; there is no
+     * unconditional localhost seed, because that seed let any caller reach every service bound to
+     * the NiFi host's loopback interface.
      */
     Set<String> resolveAllowedIssuerHosts(String processorId,
             HttpServletRequest request) throws IOException {
-        Set<String> hosts = new HashSet<>(Set.of(
-                // Always allow localhost
-                "localhost",
-                "127.0.0.1",
-                "::1"));
+        Set<String> hosts = new HashSet<>();
 
         try {
             Map<String, String> processorProps = resolveProcessorProperties(
