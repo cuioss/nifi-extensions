@@ -677,7 +677,7 @@ public class GatewayProxyServlet extends HttpServlet {
                 // The upstream status stays in the log only — echoing it lets a caller use this
                 // endpoint as a port scanner by distinguishing connection-refused from 404 from 401.
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_OIDC_DISCOVERY_STATUS,
-                        discoveryUrl, idpResp.statusCode());
+                        LogSanitizer.forLog(discoveryUrl), idpResp.statusCode());
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
                         MSG_OIDC_DISCOVERY_FAILED);
                 return;

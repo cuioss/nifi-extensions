@@ -17,6 +17,7 @@
 package de.cuioss.nifi.ui.servlets;
 
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.nifi.ui.service.JwtValidationService;
 import de.cuioss.nifi.ui.service.JwtValidationService.TokenValidationResult;
 import de.cuioss.sheriff.token.commons.events.SecurityEventCounter;
@@ -231,7 +232,7 @@ public class JwtVerificationServlet extends HttpServlet {
      */
     private void validateProcessorIdSecurity(String processorId) throws RequestException {
         if (!processorIdValidator.isSafe(processorId)) {
-            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, processorId);
+            LOGGER.warn(UILogMessages.WARN.INVALID_PROCESSOR_ID_FORMAT, LogSanitizer.forLog(processorId));
             throw new RequestException(400, "Invalid processor ID: contains illegal characters");
         }
     }

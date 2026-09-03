@@ -64,7 +64,7 @@ public final class UILogMessages {
         public static final LogRecord INVALID_PROCESSOR_ID_FORMAT = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(101)
-                .template("Invalid processor ID format in request to %s")
+                .template("Invalid processor ID format: %s")
                 .build();
 
         public static final LogRecord INVALID_JSON_FORMAT = LogRecordModel.builder()
