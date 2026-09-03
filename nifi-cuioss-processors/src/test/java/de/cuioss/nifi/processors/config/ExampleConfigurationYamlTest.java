@@ -16,6 +16,7 @@
 package de.cuioss.nifi.processors.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
+import de.cuioss.nifi.jwt.JwtPropertyKeys;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,8 +71,16 @@ class ExampleConfigurationYamlTest {
      * express issuer identity through {@code issuer} only.
      */
     private static final Set<String> CONSUMED_ISSUER_KEYS = Set.of(
-            "id", "issuer", "jwks-url", "jwksUri", "jwks-file", "jwks-content",
-            "jwks-type", "audience", "client-id", "enabled");
+            JwtPropertyKeys.Issuer.ISSUER_NAME,
+            JwtPropertyKeys.Issuer.JWKS_URL,
+            JwtPropertyKeys.Issuer.JWKS_FILE,
+            JwtPropertyKeys.Issuer.JWKS_CONTENT,
+            JwtPropertyKeys.Issuer.JWKS_TYPE,
+            JwtPropertyKeys.Issuer.AUDIENCE,
+            JwtPropertyKeys.Issuer.CLIENT_ID,
+            // Not declared in JwtPropertyKeys: read as literals by ConfigurationManager
+            // (issuer-group id) and IssuerConfigurationParser (enabled flag, jwksUri alias).
+            "id", "enabled", "jwksUri");
 
     @TempDir
     Path tempDir;
@@ -88,16 +97,29 @@ class ExampleConfigurationYamlTest {
         ConfigurationManager environmentOnly = new ConfigurationManager(emptyBase.toString());
         ConfigurationManager withExample = new ConfigurationManager(exampleBase.toString());
 
+        // Isolate the environment at the input boundary rather than subtracting it out of the
+        // merged result. Subtracting by key NAME would drop a key the example legitimately
+        // declares whenever an ambient JWT_* variable happens to carry the same name — hiding an
+        // invalid example key from the contract checks below, which is the one failure mode this
+        // test exists to prevent. Asserting the empty-directory manager contributes nothing makes
+        // a polluted environment a loud, explained failure instead of a silent false pass.
+        assertTrue(environmentOnly.getStaticProperties().isEmpty(),
+                "Ambient JWT_* environment variables would make this contract check unsound: "
+                        + "a manager over an empty directory contributed global properties "
+                        + environmentOnly.getStaticProperties().keySet()
+                        + ". Unset them before running this test.");
+        assertTrue(environmentOnly.getIssuerProperties().isEmpty(),
+                "Ambient JWT_* environment variables would make this contract check unsound: "
+                        + "a manager over an empty directory contributed issuers "
+                        + environmentOnly.getIssuerProperties().keySet()
+                        + ". Unset them before running this test.");
+
         exampleGlobalKeys = new HashSet<>(withExample.getStaticProperties().keySet());
-        exampleGlobalKeys.removeAll(environmentOnly.getStaticProperties().keySet());
 
         exampleIssuerKeys = new HashMap<>();
-        Map<String, Map<String, String>> environmentIssuers = environmentOnly.getIssuerProperties();
         withExample.getIssuerProperties().forEach((issuerId, properties) -> {
-            Set<String> keys = new HashSet<>(properties.keySet());
-            keys.removeAll(environmentIssuers.getOrDefault(issuerId, Map.of()).keySet());
-            if (!keys.isEmpty()) {
-                exampleIssuerKeys.put(issuerId, keys);
+            if (!properties.isEmpty()) {
+                exampleIssuerKeys.put(issuerId, new HashSet<>(properties.keySet()));
             }
         });
     }

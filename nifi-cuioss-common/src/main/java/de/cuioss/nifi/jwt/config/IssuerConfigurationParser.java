@@ -343,7 +343,7 @@ public class IssuerConfigurationParser {
      */
     private static String reconcileJwksType(String issuerId, Map<String, String> issuerProps) {
         String jwksType = resolveJwksType(issuerId, issuerProps);
-        if ("url".equals(jwksType) && !hasUrlSource(issuerProps)) {
+        if ("url".equals(jwksType) && !hasUrlSource(issuerProps) && hasFileSource(issuerProps)) {
             LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
             return "file";
         }

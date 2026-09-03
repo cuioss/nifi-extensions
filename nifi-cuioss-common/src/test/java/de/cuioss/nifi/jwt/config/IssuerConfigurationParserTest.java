@@ -289,6 +289,25 @@ class IssuerConfigurationParserTest {
         }
 
         @Test
+        @DisplayName("Should not claim a file source when jwks-type=url has only jwks-content")
+        void shouldNotFallBackToFileWhenUrlTypeHasNoFileSource() {
+            // The url-declared fall-back must be the mirror of the file-declared one: it may only
+            // fire when a file source actually exists to fall back TO. A content-only issuer has
+            // neither a jwks-url nor a jwks-file, so reporting "URL type with file source" would
+            // name a source that is not configured.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "TestIssuer",
+                    "issuer.test.jwks-content", "{\"keys\":[]}",
+                    "issuer.test.jwks-type", "url"));
+            ConfigurationManager configManager = new ConfigurationManager();
+
+            IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+
+            LogAsserts.assertNoLogMessagePresent(TestLogLevel.WARN,
+                    JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE.format("test"));
+        }
+
+        @Test
         @DisplayName("Should infer URL type from jwks-url property")
         void shouldInferUrlTypeFromJwksUrl() {
             Map<String, String> properties = new HashMap<>(Map.of(
