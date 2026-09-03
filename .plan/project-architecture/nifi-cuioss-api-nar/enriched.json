@@ -77,5 +77,6 @@
     }
   },
   "skills_by_profile_reasoning": "wizard architectural enrichment; post domain-config skills_by_profile population",
-  "tips": []
+  "tips": [],
+  "type": "module"
 }

@@ -111,10 +111,11 @@ public final class JwtLogMessages {
                 .template("Invalid value '%s' for %s, falling back to default %s")
                 .build();
 
-        public static final LogRecord ISSUER_NO_NAME = LogRecordModel.builder()
+        public static final LogRecord ISSUER_NO_IDENTIFIER = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(102)
-                .template("Issuer %s has no name configured, skipping")
+                .template("Issuer %s has no 'issuer' configured, skipping. Set 'issuer' to the "
+                        + "exact 'iss' claim value the identity provider puts in its tokens")
                 .build();
 
         public static final LogRecord JWKS_CONTENT_NOT_SUPPORTED = LogRecordModel.builder()
@@ -179,6 +180,29 @@ public final class JwtLogMessages {
                 .prefix(PREFIX)
                 .identifier(114)
                 .template("Non-positive maximum token size '%s' for %s, falling back to default %s")
+                .build();
+
+        public static final LogRecord JWKS_TYPE_FILE_WITH_URL_SOURCE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(117)
+                .template("Issuer %s declares jwks-type 'file' but only a jwks-url is configured; "
+                        + "treating the source as a URL")
+                .build();
+
+        public static final LogRecord JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(116)
+                .template("Granted JWKS egress to host '%s' for issuer %s although the host could "
+                        + "not be resolved; the private-network opt-in is in effect and the "
+                        + "address check is deferred to the JWKS loader")
+                .build();
+
+        public static final LogRecord ISSUER_NAME_WITHOUT_IDENTIFIER = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(115)
+                .template("Issuer %s configures name '%s' but no 'issuer'. 'name' is no longer read "
+                        + "as the issuer identifier; set 'issuer' to the identity provider's "
+                        + "'iss' claim value")
                 .build();
     }
 

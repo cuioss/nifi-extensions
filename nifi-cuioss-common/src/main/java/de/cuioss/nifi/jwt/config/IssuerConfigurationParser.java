@@ -169,9 +169,10 @@ public class IssuerConfigurationParser {
                         .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
                         .cause(e)
                         .build()
-                        .with("issuerId", issuerId)
-                        .with("issuerName", issuerProps.get("name"))
-                        .with("jwksUrl", issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL))
+                        .with("issuerId", sanitizeLogValue(issuerId))
+                        .with("issuerIdentifier",
+                                sanitizeLogValue(issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME)))
+                        .with("jwksUrl", sanitizeLogValue(issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL)))
                         .buildMessage("Failed to create issuer configuration");
                 LOGGER.error(e, JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
                 LOGGER.debug(contextMessage);
@@ -188,32 +189,28 @@ public class IssuerConfigurationParser {
             LOGGER.info(JwtLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));
             return Optional.empty();
         }
-        Optional<String> issuerName = resolveIssuerName(issuerId, issuerProps);
-        if (issuerName.isEmpty()) {
+        Optional<String> issuerIdentifier = resolveIssuerIdentifier(issuerId, issuerProps);
+        if (issuerIdentifier.isEmpty()) {
             return Optional.empty();
         }
-        Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps);
+        // The type is resolved BEFORE the source so the source can be selected to match it. Picking
+        // a source first and reconciling afterwards is what let a jwks-url reach jwksFilePath.
+        String jwksType = reconcileJwksType(issuerId, issuerProps);
+        Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps, jwksType);
         if (jwksSource.isEmpty()) {
             return Optional.empty();
         }
         var builder = IssuerConfig.builder()
-                .issuerIdentifier(issuerName.get());
+                .issuerIdentifier(issuerIdentifier.get());
         parseAllowedAlgorithms(globalProperties)
                 .ifPresent(algorithms -> builder.algorithmPreferences(
                         new SignatureAlgorithmPreferences(algorithms)));
-        String jwksType = resolveJwksType(issuerId, issuerProps);
-        if ("url".equals(jwksType) && !hasUrlSource(issuerProps)) {
-            // jwks-type=url was declared but only a jwks-file is present; the resolved source is a
-            // file path and must NOT be routed through the URL/HTTPS/private-address checks.
-            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
-            jwksType = "file";
-        }
         if ("url".equals(jwksType)) {
             if (!isJwksUrlAllowed(issuerId, jwksSource.get(), globalProperties)) {
                 return Optional.empty();
             }
             builder.httpJwksLoaderConfig(buildHttpJwksLoaderConfig(
-                    jwksSource.get(), issuerName.get(), globalProperties, parserConfig));
+                    jwksSource.get(), issuerIdentifier.get(), globalProperties, parserConfig));
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
@@ -256,47 +253,121 @@ public class IssuerConfigurationParser {
      * disallowed address ..."). {@link #isJwksUrlAllowed} has already rejected private-addressed
      * issuers unless the operator explicitly opted in, so when we reach this point with a
      * private-resolving host that opt-in is in effect and must be forwarded to the loader — otherwise
-     * the guard silently blocks the fetch and the issuer never becomes healthy. Loopback has a
-     * dedicated toggle; other private ranges are allowlisted per-host. Public hosts need no opt-out.
+     * the guard silently blocks the fetch and the issuer never becomes healthy.
+     * <p>
+     * The opt-in is forwarded per resolved host category, narrowest grant first:
+     * <ul>
+     *   <li>{@code LOOPBACK} — the dedicated loopback relaxation plus the per-host allowance.</li>
+     *   <li>{@code PRIVATE} — the per-host allowance only; loopback stays blocked.</li>
+     *   <li>{@code UNRESOLVABLE} — the per-host allowance only, with a WARN recording that the
+     *       allowance was granted without a resolved address.</li>
+     *   <li>{@code PUBLIC} — nothing; a public host is not blocked by the loader's guard.</li>
+     * </ul>
+     * <p>
+     * <b>Accepted trade-off for {@code UNRESOLVABLE}:</b> the loopback relaxation is deliberately
+     * NOT granted to a host that could not be resolved. Resolution runs once, at configuration
+     * time, so a host that only later resolves to loopback stays blocked by the loader until the
+     * next restart re-runs resolution. Granting the relaxation pre-emptively would widen the SSRF
+     * surface for every unresolvable host, which is the larger risk of the two.
      */
     private static void applyEgressPolicy(HttpJwksLoaderConfig.HttpJwksLoaderConfigBuilder builder,
             String jwksUrl, String issuerName, Map<String, String> globalProperties) {
         boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
                 .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
-        if (!allowPrivate || !resolvesToPrivateAddress(issuerName, jwksUrl)) {
+        if (!allowPrivate) {
             return;
         }
-        // resolvesToPrivateAddress only returns true after resolving a non-null host, so
-        // getHost() here is guaranteed non-null for the same URL.
-        String host = URI.create(jwksUrl).getHost();
-        builder.allowLoopbackEgress(true);
-        builder.allowedEgressHost(host);
+        HostCategory category = categorizeJwksHost(issuerName, jwksUrl);
+        if (category == HostCategory.PUBLIC) {
+            return;
+        }
+        Optional<String> host = parseJwksHost(jwksUrl);
+        if (host.isEmpty()) {
+            // No host to allow-list; the loader reports the malformed URL itself. Only an
+            // UNRESOLVABLE category can reach this, since every other category was resolved
+            // from a host that parsed.
+            return;
+        }
+        if (category == HostCategory.UNRESOLVABLE) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST,
+                    sanitizeLogValue(host.get()), sanitizeLogValue(issuerName));
+            builder.allowedEgressHost(host.get());
+            return;
+        }
+        if (category == HostCategory.LOOPBACK) {
+            builder.allowLoopbackEgress(true);
+        }
+        builder.allowedEgressHost(host.get());
     }
 
-    private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
-        String issuerName = issuerProps.get("name");
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            issuerName = issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME);
+    /**
+     * Resolves the issuer identifier from the configured {@code issuer} property — the {@code iss}
+     * claim value the identity provider puts in its tokens — and from nothing else.
+     * <p>
+     * {@code name} is deliberately NOT read here: it is a human-readable label, and treating it as
+     * the identifier silently accepted a display string where the {@code iss} claim was required,
+     * producing issuers that could never match a token. {@code name} remains an accepted key
+     * elsewhere ({@link ConfigurationManager} falls back to it for the issuer-group id when a YAML
+     * entry declares no {@code id}), so configuring it is ignored for identity rather than
+     * rejected.
+     *
+     * @param issuerId    the issuer group id, used for diagnostics
+     * @param issuerProps the issuer's configured properties
+     * @return the trimmed issuer identifier, or empty if {@code issuer} is absent or blank
+     */
+    private static Optional<String> resolveIssuerIdentifier(String issuerId, Map<String, String> issuerProps) {
+        String issuerIdentifier = issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME);
+        if (issuerIdentifier != null && !issuerIdentifier.trim().isEmpty()) {
+            return Optional.of(issuerIdentifier.trim());
         }
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_NAME, sanitizeLogValue(issuerId));
-            return Optional.empty();
+        String configuredName = issuerProps.get("name");
+        if (configuredName != null && !configuredName.trim().isEmpty()) {
+            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NAME_WITHOUT_IDENTIFIER,
+                    sanitizeLogValue(issuerId), sanitizeLogValue(configuredName.trim()));
+        } else {
+            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_IDENTIFIER, sanitizeLogValue(issuerId));
         }
-        return Optional.of(issuerName.trim());
+        return Optional.empty();
     }
 
-    private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps) {
-        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            return Optional.of(jwksUrl.trim());
+    /**
+     * Reconciles the declared JWKS type against the sources that are actually configured, so the
+     * type handed to {@link #resolveJwksSource} always has a matching source.
+     * <p>
+     * Both directions are guarded symmetrically: a {@code url} type with only a file source is
+     * treated as a file (so a path is not routed through the URL/HTTPS/private-address checks), and
+     * a {@code file} type with only a URL source is treated as a URL (so a URL is not handed to
+     * {@code jwksFilePath} as though it were a path, silently bypassing those same checks). An
+     * inferred type — one no configuration declared — always already matches a configured source,
+     * so neither branch fires for it.
+     */
+    private static String reconcileJwksType(String issuerId, Map<String, String> issuerProps) {
+        String jwksType = resolveJwksType(issuerId, issuerProps);
+        if ("url".equals(jwksType) && !hasUrlSource(issuerProps) && hasFileSource(issuerProps)) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
+            return "file";
         }
-        String jwksUri = issuerProps.get("jwksUri");
-        if (jwksUri != null && !jwksUri.trim().isEmpty()) {
-            return Optional.of(jwksUri.trim());
+        if ("file".equals(jwksType) && !hasFileSource(issuerProps) && hasUrlSource(issuerProps)) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_FILE_WITH_URL_SOURCE, sanitizeLogValue(issuerId));
+            return "url";
         }
-        String jwksFile = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_FILE);
-        if (jwksFile != null && !jwksFile.trim().isEmpty()) {
-            return Optional.of(jwksFile.trim());
+        return jwksType;
+    }
+
+    /**
+     * Selects the JWKS source matching the reconciled type. The selection is deliberately NOT
+     * cross-type: a {@code file} type never falls back to a URL and a {@code url} type never falls
+     * back to a file path, because that fallback is precisely how a value of one kind ends up being
+     * interpreted as the other. {@link #reconcileJwksType} has already flipped the type for the
+     * only configurations where the mismatched source is the sole one available.
+     */
+    private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps,
+            String jwksType) {
+        Optional<String> source = "file".equals(jwksType)
+                ? firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_FILE)
+                : firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_URL, "jwksUri");
+        if (source.isPresent()) {
+            return source;
         }
         String jwksContent = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_CONTENT);
         if (jwksContent != null && !jwksContent.trim().isEmpty()) {
@@ -305,6 +376,21 @@ public class IssuerConfigurationParser {
         }
         LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_JWKS_SOURCE, sanitizeLogValue(issuerId));
         return Optional.empty();
+    }
+
+    /** Returns the first configured, non-blank value among {@code keys}, trimmed. */
+    private static Optional<String> firstNonBlank(Map<String, String> issuerProps, String... keys) {
+        for (String key : keys) {
+            String value = issuerProps.get(key);
+            if (value != null && !value.trim().isEmpty()) {
+                return Optional.of(value.trim());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean hasFileSource(Map<String, String> issuerProps) {
+        return firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_FILE).isPresent();
     }
 
     private static String resolveJwksType(String issuerId, Map<String, String> issuerProps) {
@@ -325,12 +411,7 @@ public class IssuerConfigurationParser {
     }
 
     private static boolean hasUrlSource(Map<String, String> issuerProps) {
-        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            return true;
-        }
-        String jwksUri = issuerProps.get("jwksUri");
-        return jwksUri != null && !jwksUri.trim().isEmpty();
+        return firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_URL, "jwksUri").isPresent();
     }
 
     /**
@@ -379,7 +460,13 @@ public class IssuerConfigurationParser {
         }
         boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
                 .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
-        if (!allowPrivate && resolvesToPrivateAddress(issuerId, jwksUrl)) {
+        if (allowPrivate) {
+            return true;
+        }
+        HostCategory category = categorizeJwksHost(issuerId, jwksUrl);
+        // UNRESOLVABLE and PUBLIC both pass: an unresolvable host defers to the JWKS loader rather
+        // than permanently excluding an issuer whose IdP may simply not be up yet.
+        if (category == HostCategory.LOOPBACK || category == HostCategory.PRIVATE) {
             LOGGER.error(JwtLogMessages.ERROR.ISSUER_JWKS_PRIVATE_ADDRESS_REJECTED,
                     sanitizeLogValue(issuerId), sanitizeLogValue(jwksUrl));
             return false;
@@ -387,30 +474,76 @@ public class IssuerConfigurationParser {
         return true;
     }
 
-    private static boolean resolvesToPrivateAddress(String issuerId, String jwksUrl) {
-        String host;
+    /**
+     * The address category a JWKS host resolves to. Categorising once — rather than answering the
+     * single boolean question "is this private?" — lets the egress policy distinguish a host that
+     * genuinely resolves to loopback from one that could not be resolved at all, which are two
+     * materially different situations that a boolean collapsed into the same "not private" answer.
+     */
+    private enum HostCategory {
+        /** Resolved, and at least one address is a loopback address. */
+        LOOPBACK,
+        /** Resolved, and at least one address is private but none is loopback. */
+        PRIVATE,
+        /** Resolved, and no address is private. */
+        PUBLIC,
+        /** Not resolvable: unknown host, malformed URL, or no host component. */
+        UNRESOLVABLE
+    }
+
+    /**
+     * Extracts the host component of a configured JWKS URL, tolerating a malformed value.
+     * <p>
+     * {@link URI#create(String)} throws {@link IllegalArgumentException} on a malformed URL, and a
+     * JWKS URL is operator-supplied configuration, so a malformed value is an expected input rather
+     * than a programming error. Both callers treat "no usable host" identically — the JWKS loader
+     * is what reports the malformed URL to the operator — so the failure is folded into a
+     * {@code null} return instead of being re-thrown at each call site.
+     *
+     * @param jwksUrl the configured JWKS URL
+     * @return the host component, or empty when the URL is malformed or carries no host
+     */
+    private static Optional<String> parseJwksHost(String jwksUrl) {
         try {
-            host = URI.create(jwksUrl).getHost();
+            return Optional.ofNullable(URI.create(jwksUrl).getHost());
         } catch (IllegalArgumentException e) {
             // Malformed URL — leave rejection to the JWKS loader, which reports it properly
-            return false;
+            return Optional.empty();
         }
-        if (host == null) {
-            return false;
+    }
+
+    /**
+     * Categorises the addresses the JWKS host resolves to.
+     * <p>
+     * Loopback takes precedence over the other private ranges: a host resolving to both is treated
+     * as {@link HostCategory#LOOPBACK} so the narrower loopback relaxation is what gets applied.
+     * Covered private ranges are loopback, link-local, site-local (RFC 1918), IPv6 unique-local
+     * (fc00::/7) and carrier-grade NAT (100.64.0.0/10, RFC 6598).
+     */
+    private static HostCategory categorizeJwksHost(String issuerId, String jwksUrl) {
+        Optional<String> parsedHost = parseJwksHost(jwksUrl);
+        if (parsedHost.isEmpty()) {
+            return HostCategory.UNRESOLVABLE;
         }
+        String host = parsedHost.get();
         try {
+            boolean anyPrivate = false;
             for (InetAddress address : InetAddress.getAllByName(host)) {
-                if (address.isLoopbackAddress() || address.isSiteLocalAddress()
-                        || address.isLinkLocalAddress() || address.isAnyLocalAddress()
-                        || isUniqueLocalIpv6(address) || isCarrierGradeNat(address)) {
-                    return true;
+                if (address.isLoopbackAddress()) {
+                    return HostCategory.LOOPBACK;
+                }
+                if (address.isSiteLocalAddress() || address.isLinkLocalAddress()
+                        || address.isAnyLocalAddress() || isUniqueLocalIpv6(address)
+                        || isCarrierGradeNat(address)) {
+                    anyPrivate = true;
                 }
             }
+            return anyPrivate ? HostCategory.PRIVATE : HostCategory.PUBLIC;
         } catch (UnknownHostException e) {
             LOGGER.warn(JwtLogMessages.WARN.JWKS_HOST_NOT_RESOLVABLE,
                     sanitizeLogValue(host), sanitizeLogValue(issuerId));
+            return HostCategory.UNRESOLVABLE;
         }
-        return false;
     }
 
     /** IPv6 unique-local addresses (fc00::/7) are not covered by isSiteLocalAddress(). */

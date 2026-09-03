@@ -6,19 +6,61 @@
     "pm-documents"
   ],
   "modules": {
-    "documentation": {},
-    "e-2-e-playwright-maven": {},
-    "e-2-e-playwright-npm": {},
-    "integration-testing": {},
-    "nifi-cuioss-api": {},
-    "nifi-cuioss-api-nar": {},
-    "nifi-cuioss-common": {},
-    "nifi-cuioss-nar": {},
-    "nifi-cuioss-processors": {},
-    "nifi-cuioss-rest-processors": {},
-    "nifi-cuioss-ui-maven": {},
-    "nifi-cuioss-ui-npm": {},
-    "nifi-extensions": {}
+    "documentation": {
+      "description": "Project documentation set in AsciiDoc covering architecture overviews, processor selection guides, configuration/error/request-tracking reference, and PlantUML diagram generation.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "2763eb2497d7cf2ec516c2bee6a9841594fc30eb4c6486de672430791478e37c"
+      }
+    },
+    "e-2-e-playwright-maven": {
+      "description": "Maven wrapper module that orchestrates the Playwright E2E test suite within the Maven reactor and integration-test lifecycle, delegating execution to the sibling npm project.",
+      "generation": {}
+    },
+    "e-2-e-playwright-npm": {
+      "description": "Playwright end-to-end and WCAG accessibility test suite validating JWT processor behavior, custom UI components/tabs, and login against a live NiFi + Keycloak environment.",
+      "generation": {}
+    },
+    "integration-testing": {
+      "description": "Docker-based integration test environment providing containerized NiFi (HTTPS) and Keycloak instances, with Failsafe ITs exercising JWT validation, the REST API gateway, attachment flows, metrics, and custom UI endpoints against real JWT tokens.",
+      "generation": {}
+    },
+    "nifi-cuioss-api": {
+      "description": "Controller Service API types: the JwtIssuerConfigService interface and JwtAuthenticationConfig record. Packaged separately to satisfy NiFi 2.x classloader separation between Controller Service APIs and their implementations.",
+      "generation": {}
+    },
+    "nifi-cuioss-api-nar": {
+      "description": "NiFi Archive (NAR) bundling the nifi-cuioss-api Controller Service API types. Required as a standalone NAR so NiFi 2.x can load the Controller Service interface separately from its implementation NAR.",
+      "generation": {}
+    },
+    "nifi-cuioss-common": {
+      "description": "Shared JWT infrastructure: the StandardJwtIssuerConfigService implementation, configuration management and issuer parsing, authorization validation, token claim mapping/masking, dynamic property parsing, and i18n resolution reused by both processors and the UI.",
+      "generation": {}
+    },
+    "nifi-cuioss-nar": {
+      "description": "Primary NiFi Archive (NAR) deployment bundle aggregating the processors, the Controller Service implementation, the configuration UI WAR, and all runtime dependencies into a single deployable unit for NiFi 2.x.",
+      "generation": {}
+    },
+    "nifi-cuioss-processors": {
+      "description": "Hosts the MultiIssuerJWTTokenAuthenticator processor that validates JWT tokens from a configurable FlowFile attribute against multiple identity providers and routes FlowFiles to success or authentication-failed.",
+      "generation": {}
+    },
+    "nifi-cuioss-rest-processors": {
+      "description": "Hosts the RestApiGatewayProcessor: a self-contained REST API gateway embedding a Jetty 12 server with route-based dispatching, per-route JWT authorization, RFC 9457 error responses, request-tracking/attachment handling, and management endpoints (/metrics, /health, /status).",
+      "generation": {}
+    },
+    "nifi-cuioss-ui-maven": {
+      "description": "Web configuration UI packaged as a WAR: Java servlets and filters (JWKS/JWT verification, component-info, gateway proxy, security headers, processor-id validation) backing the JavaScript configuration front-end for the processors.",
+      "generation": {}
+    },
+    "nifi-cuioss-ui-npm": {
+      "description": "JavaScript front-end of the NiFi processor configuration UI: issuer-config editor, chip inputs, JWKS/endpoint testers, metrics view, and context help, built and unit-tested (Jest) with ESLint/Stylelint, then packaged into the UI WAR.",
+      "generation": {}
+    },
+    "nifi-extensions": {
+      "description": "Root Maven aggregator and parent POM for the NiFi Extensions project. Defines shared build configuration, dependency management, quality-gate/coverage/integration-test profiles, and aggregates all submodules.",
+      "generation": {}
+    }
   },
   "name": "nifi-extensions"
 }
