@@ -24,6 +24,7 @@ import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
@@ -214,7 +215,7 @@ public class GatewayProxyServlet extends HttpServlet {
 
             if (pathInfo == null || !ALLOWED_MANAGEMENT_PATHS.contains(pathInfo)) {
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                        pathInfo != null ? pathInfo : "null");
+                        LogSanitizer.forLog(pathInfo));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid management path");
                 return;
@@ -269,7 +270,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                    pathInfo != null ? pathInfo : "null");
+                    LogSanitizer.forLog(pathInfo));
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid path for POST");
 
@@ -326,7 +327,7 @@ public class GatewayProxyServlet extends HttpServlet {
 
         // SSRF protection
         if (!isLocalhostTarget(URI.create(targetUrl))) {
-            LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, targetUrl);
+            LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, LogSanitizer.forLog(targetUrl));
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Only localhost targets allowed");
             return;
@@ -582,7 +583,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             if (!ALLOWED_GRANT_TYPES.contains(grantType)) {
-                LOGGER.warn(UILogMessages.WARN.GATEWAY_INVALID_GRANT_TYPE, grantType);
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_INVALID_GRANT_TYPE, LogSanitizer.forLog(grantType));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid grant type. Allowed: password, client_credentials");
                 return;
@@ -599,7 +600,7 @@ public class GatewayProxyServlet extends HttpServlet {
             Set<String> allowedHosts = resolveAllowedIssuerHosts(processorId, req);
             if (!isAllowedTokenEndpointHost(tokenEndpointUrl, allowedHosts)) {
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED,
-                        tokenEndpointUrl);
+                        LogSanitizer.forLog(tokenEndpointUrl));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Token endpoint host not allowed");
                 return;
@@ -657,7 +658,7 @@ public class GatewayProxyServlet extends HttpServlet {
             // SSRF protection
             Set<String> allowedHosts = resolveAllowedIssuerHosts(processorId, req);
             if (!isAllowedTokenEndpointHost(issuerUrl, allowedHosts)) {
-                LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED, issuerUrl);
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED, LogSanitizer.forLog(issuerUrl));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Issuer host not allowed");
                 return;
@@ -823,7 +824,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
         } catch (IllegalArgumentException e) {
             LOGGER.warn(UILogMessages.WARN.MALFORMED_ISSUER_URL,
-                    urlString);
+                    LogSanitizer.forLog(urlString));
         }
     }
 
@@ -1117,8 +1118,11 @@ public class GatewayProxyServlet extends HttpServlet {
         String host = uri.getHost();
         if (host == null) return false;
         // URI.getHost() returns brackets for IPv6, e.g. "[::1]"
-        String normalizedHost = host.startsWith("[") && host.endsWith("]")
+        String bracketStripped = host.startsWith("[") && host.endsWith("]")
                 ? host.substring(1, host.length() - 1) : host;
+        // Host components are case-insensitive; lowercase before comparing so this guard
+        // agrees with the file's other two host checks (extractHost, isAllowedTokenEndpointHost).
+        String normalizedHost = bracketStripped.toLowerCase(Locale.ROOT);
         return "localhost".equals(normalizedHost)
                 || "127.0.0.1".equals(normalizedHost)
                 || "::1".equals(normalizedHost);
@@ -1152,7 +1156,7 @@ public class GatewayProxyServlet extends HttpServlet {
             urlPathValidator.validate(value);
             return true;
         } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, value, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, LogSanitizer.forLog(value), e.getFailureType());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid URL: " + e.getFailureType().getDescription());
             return false;

@@ -33,6 +33,7 @@ import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -962,6 +963,16 @@ class GatewayProxyServletTest {
         void shouldRejectBracketedNonLoopbackIpv6() {
             // startsWith('[') && endsWith(']') is true, but the normalized host is not a loopback.
             assertFalse(GatewayProxyServlet.isLocalhostTarget(URI.create("http://[fe80::1]:9443/x")));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"LOCALHOST", "LocalHost", "localHOST"})
+        @DisplayName("Should allow localhost regardless of case, matching the sibling host guards")
+        void shouldAllowLocalhostCaseInsensitively(String host) {
+            // Host components are case-insensitive; extractHost and isAllowedTokenEndpointHost
+            // both lowercase before comparing, so this guard must agree with them.
+            assertTrue(GatewayProxyServlet.isLocalhostTarget(
+                    URI.create("http://" + host + ":9443/config")));
         }
     }
 
