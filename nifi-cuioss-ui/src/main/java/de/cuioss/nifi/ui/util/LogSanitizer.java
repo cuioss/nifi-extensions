@@ -33,11 +33,13 @@ import java.util.regex.Pattern;
 public final class LogSanitizer {
 
     /**
-     * Every ISO control character, not just CR and LF. NEL ({@code U+0085}) and the line/
-     * paragraph separators are excluded from {@code \p{Cntrl}} but are treated as line
-     * breaks by some log viewers, so they are matched explicitly.
+     * Every ISO control character ({@code \p{javaISOControl}}), not just CR and LF —
+     * {@code \p{Cntrl}} would cover only the ASCII C0 range plus DEL and would let a C1
+     * control such as {@code U+009B} through. The line and paragraph separators
+     * ({@code U+2028}/{@code U+2029}) are not ISO control characters but are treated as
+     * line breaks by some log viewers, so they are matched explicitly.
      */
-    private static final Pattern CONTROL_CHARS = Pattern.compile("[\\p{Cntrl}\\u0085\\u2028\\u2029]");
+    private static final Pattern CONTROL_CHARS = Pattern.compile("[\\p{javaISOControl}\\u2028\\u2029]");
 
     private static final String REPLACEMENT = "_";
 

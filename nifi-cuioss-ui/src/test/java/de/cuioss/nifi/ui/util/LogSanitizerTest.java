@@ -42,6 +42,7 @@ class LogSanitizerTest {
                     Arguments.of("bare CR", "path\rforged", "path_forged"),
                     Arguments.of("tab", "path\tforged", "path_forged"),
                     Arguments.of("NEL", "path\u0085forged", "path_forged"),
+                    Arguments.of("C1 control (CSI)", "path\u009bforged", "path_forged"),
                     Arguments.of("line separator", "path\u2028forged", "path_forged"),
                     Arguments.of("paragraph separator", "path\u2029forged", "path_forged"),
                     Arguments.of("NUL", "path\u0000forged", "path_forged"));
