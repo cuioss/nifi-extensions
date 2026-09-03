@@ -18,6 +18,7 @@ package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.jwt.JwtLogMessages;
+import de.cuioss.sheriff.token.commons.transport.JwksType;
 import de.cuioss.sheriff.token.commons.transport.ParserConfig;
 import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
@@ -348,6 +349,48 @@ class IssuerConfigurationParserTest {
                     "A file source declared as jwks-type=url must load as a file, not route through "
                             + "the URL/HTTPS/private-address checks");
             LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "only a jwks-file");
+        }
+
+        @Test
+        @DisplayName("Should honour jwks-type=file over a competing jwks-url when both sources are configured")
+        void shouldPreferFileSourceWhenFileTypeDeclaredWithBothSources(@TempDir Path tempDir) throws Exception {
+            // The declared type must win over the URL preference. The jwks-url here is deliberately
+            // plaintext HTTP: if the URL were selected, the HTTPS policy would reject the issuer, so
+            // the surviving FILE loader is what proves the file source was the one taken.
+            Path jwksFile = tempDir.resolve("test-jwks.json");
+            Files.writeString(jwksFile, InMemoryKeyMaterialHandler.createDefaultJwks());
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "TestIssuer",
+                    "issuer.test.jwks-file", jwksFile.toString(),
+                    "issuer.test.jwks-url", "http://example.com/jwks",
+                    "issuer.test.jwks-type", "file"));
+            ConfigurationManager configManager = new ConfigurationManager();
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+
+            assertEquals(1, configs.size(), "The declared file type must be honoured");
+            assertEquals(JwksType.FILE, configs.getFirst().getJwksLoader().getJwksType(),
+                    "A declared jwks-type=file must load the jwks-file, never the competing jwks-url");
+        }
+
+        @Test
+        @DisplayName("Should treat the source as a URL when jwks-type=file but only a jwks-url is present")
+        void shouldTreatFileTypeWithUrlSourceAsUrl() {
+            // The mirror of shouldTreatUrlTypeWithFileSourceAsFile: without this guard the URL was
+            // handed to jwksFilePath as though it were a path, bypassing the HTTPS and
+            // private-address checks entirely.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "TestIssuer",
+                    "issuer.test.jwks-url", "https://example.com/jwks",
+                    "issuer.test.jwks-type", "file"));
+            ConfigurationManager configManager = new ConfigurationManager();
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, configManager);
+
+            assertEquals(1, configs.size(), "A URL source declared as jwks-type=file must load as a URL");
+            assertEquals(JwksType.HTTP, configs.getFirst().getJwksLoader().getJwksType(),
+                    "The URL must be routed through URL handling, not treated as a file path");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "only a jwks-url");
         }
     }
 

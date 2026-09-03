@@ -192,7 +192,10 @@ public class IssuerConfigurationParser {
         if (issuerIdentifier.isEmpty()) {
             return Optional.empty();
         }
-        Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps);
+        // The type is resolved BEFORE the source so the source can be selected to match it. Picking
+        // a source first and reconciling afterwards is what let a jwks-url reach jwksFilePath.
+        String jwksType = reconcileJwksType(issuerId, issuerProps);
+        Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps, jwksType);
         if (jwksSource.isEmpty()) {
             return Optional.empty();
         }
@@ -201,13 +204,6 @@ public class IssuerConfigurationParser {
         parseAllowedAlgorithms(globalProperties)
                 .ifPresent(algorithms -> builder.algorithmPreferences(
                         new SignatureAlgorithmPreferences(algorithms)));
-        String jwksType = resolveJwksType(issuerId, issuerProps);
-        if ("url".equals(jwksType) && !hasUrlSource(issuerProps)) {
-            // jwks-type=url was declared but only a jwks-file is present; the resolved source is a
-            // file path and must NOT be routed through the URL/HTTPS/private-address checks.
-            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
-            jwksType = "file";
-        }
         if ("url".equals(jwksType)) {
             if (!isJwksUrlAllowed(issuerId, jwksSource.get(), globalProperties)) {
                 return Optional.empty();
@@ -331,18 +327,44 @@ public class IssuerConfigurationParser {
         return Optional.empty();
     }
 
-    private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps) {
-        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            return Optional.of(jwksUrl.trim());
+    /**
+     * Reconciles the declared JWKS type against the sources that are actually configured, so the
+     * type handed to {@link #resolveJwksSource} always has a matching source.
+     * <p>
+     * Both directions are guarded symmetrically: a {@code url} type with only a file source is
+     * treated as a file (so a path is not routed through the URL/HTTPS/private-address checks), and
+     * a {@code file} type with only a URL source is treated as a URL (so a URL is not handed to
+     * {@code jwksFilePath} as though it were a path, silently bypassing those same checks). An
+     * inferred type — one no configuration declared — always already matches a configured source,
+     * so neither branch fires for it.
+     */
+    private static String reconcileJwksType(String issuerId, Map<String, String> issuerProps) {
+        String jwksType = resolveJwksType(issuerId, issuerProps);
+        if ("url".equals(jwksType) && !hasUrlSource(issuerProps)) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_URL_WITH_FILE_SOURCE, sanitizeLogValue(issuerId));
+            return "file";
         }
-        String jwksUri = issuerProps.get("jwksUri");
-        if (jwksUri != null && !jwksUri.trim().isEmpty()) {
-            return Optional.of(jwksUri.trim());
+        if ("file".equals(jwksType) && !hasFileSource(issuerProps) && hasUrlSource(issuerProps)) {
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_TYPE_FILE_WITH_URL_SOURCE, sanitizeLogValue(issuerId));
+            return "url";
         }
-        String jwksFile = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_FILE);
-        if (jwksFile != null && !jwksFile.trim().isEmpty()) {
-            return Optional.of(jwksFile.trim());
+        return jwksType;
+    }
+
+    /**
+     * Selects the JWKS source matching the reconciled type. The selection is deliberately NOT
+     * cross-type: a {@code file} type never falls back to a URL and a {@code url} type never falls
+     * back to a file path, because that fallback is precisely how a value of one kind ends up being
+     * interpreted as the other. {@link #reconcileJwksType} has already flipped the type for the
+     * only configurations where the mismatched source is the sole one available.
+     */
+    private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps,
+            String jwksType) {
+        Optional<String> source = "file".equals(jwksType)
+                ? firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_FILE)
+                : firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_URL, "jwksUri");
+        if (source.isPresent()) {
+            return source;
         }
         String jwksContent = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_CONTENT);
         if (jwksContent != null && !jwksContent.trim().isEmpty()) {
@@ -351,6 +373,21 @@ public class IssuerConfigurationParser {
         }
         LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_JWKS_SOURCE, sanitizeLogValue(issuerId));
         return Optional.empty();
+    }
+
+    /** Returns the first configured, non-blank value among {@code keys}, trimmed. */
+    private static Optional<String> firstNonBlank(Map<String, String> issuerProps, String... keys) {
+        for (String key : keys) {
+            String value = issuerProps.get(key);
+            if (value != null && !value.trim().isEmpty()) {
+                return Optional.of(value.trim());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean hasFileSource(Map<String, String> issuerProps) {
+        return firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_FILE).isPresent();
     }
 
     private static String resolveJwksType(String issuerId, Map<String, String> issuerProps) {
@@ -371,12 +408,7 @@ public class IssuerConfigurationParser {
     }
 
     private static boolean hasUrlSource(Map<String, String> issuerProps) {
-        String jwksUrl = issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL);
-        if (jwksUrl != null && !jwksUrl.trim().isEmpty()) {
-            return true;
-        }
-        String jwksUri = issuerProps.get("jwksUri");
-        return jwksUri != null && !jwksUri.trim().isEmpty();
+        return firstNonBlank(issuerProps, JwtPropertyKeys.Issuer.JWKS_URL, "jwksUri").isPresent();
     }
 
     /**

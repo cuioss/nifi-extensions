@@ -182,6 +182,13 @@ public final class JwtLogMessages {
                 .template("Non-positive maximum token size '%s' for %s, falling back to default %s")
                 .build();
 
+        public static final LogRecord JWKS_TYPE_FILE_WITH_URL_SOURCE = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(117)
+                .template("Issuer %s declares jwks-type 'file' but only a jwks-url is configured; "
+                        + "treating the source as a URL")
+                .build();
+
         public static final LogRecord JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(116)
