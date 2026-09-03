@@ -182,6 +182,14 @@ public final class JwtLogMessages {
                 .template("Non-positive maximum token size '%s' for %s, falling back to default %s")
                 .build();
 
+        public static final LogRecord JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(116)
+                .template("Granted JWKS egress to host '%s' for issuer %s although the host could "
+                        + "not be resolved; the private-network opt-in is in effect and the "
+                        + "address check is deferred to the JWKS loader")
+                .build();
+
         public static final LogRecord ISSUER_NAME_WITHOUT_IDENTIFIER = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(115)

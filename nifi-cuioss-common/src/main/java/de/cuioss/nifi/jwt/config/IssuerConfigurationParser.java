@@ -256,20 +256,48 @@ public class IssuerConfigurationParser {
      * disallowed address ..."). {@link #isJwksUrlAllowed} has already rejected private-addressed
      * issuers unless the operator explicitly opted in, so when we reach this point with a
      * private-resolving host that opt-in is in effect and must be forwarded to the loader — otherwise
-     * the guard silently blocks the fetch and the issuer never becomes healthy. Loopback has a
-     * dedicated toggle; other private ranges are allowlisted per-host. Public hosts need no opt-out.
+     * the guard silently blocks the fetch and the issuer never becomes healthy.
+     * <p>
+     * The opt-in is forwarded per resolved host category, narrowest grant first:
+     * <ul>
+     *   <li>{@code LOOPBACK} — the dedicated loopback relaxation plus the per-host allowance.</li>
+     *   <li>{@code PRIVATE} — the per-host allowance only; loopback stays blocked.</li>
+     *   <li>{@code UNRESOLVABLE} — the per-host allowance only, with a WARN recording that the
+     *       allowance was granted without a resolved address.</li>
+     *   <li>{@code PUBLIC} — nothing; a public host is not blocked by the loader's guard.</li>
+     * </ul>
+     * <p>
+     * <b>Accepted trade-off for {@code UNRESOLVABLE}:</b> the loopback relaxation is deliberately
+     * NOT granted to a host that could not be resolved. Resolution runs once, at configuration
+     * time, so a host that only later resolves to loopback stays blocked by the loader until the
+     * next restart re-runs resolution. Granting the relaxation pre-emptively would widen the SSRF
+     * surface for every unresolvable host, which is the larger risk of the two.
      */
     private static void applyEgressPolicy(HttpJwksLoaderConfig.HttpJwksLoaderConfigBuilder builder,
             String jwksUrl, String issuerName, Map<String, String> globalProperties) {
         boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
                 .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
-        if (!allowPrivate || !resolvesToPrivateAddress(issuerName, jwksUrl)) {
+        if (!allowPrivate) {
             return;
         }
-        // resolvesToPrivateAddress only returns true after resolving a non-null host, so
-        // getHost() here is guaranteed non-null for the same URL.
+        HostCategory category = categorizeJwksHost(issuerName, jwksUrl);
+        if (category == HostCategory.PUBLIC) {
+            return;
+        }
         String host = URI.create(jwksUrl).getHost();
-        builder.allowLoopbackEgress(true);
+        if (category == HostCategory.UNRESOLVABLE) {
+            if (host == null) {
+                // No host to allow-list; the loader reports the malformed URL itself.
+                return;
+            }
+            LOGGER.warn(JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST,
+                    sanitizeLogValue(host), sanitizeLogValue(issuerName));
+            builder.allowedEgressHost(host);
+            return;
+        }
+        if (category == HostCategory.LOOPBACK) {
+            builder.allowLoopbackEgress(true);
+        }
         builder.allowedEgressHost(host);
     }
 
@@ -397,7 +425,13 @@ public class IssuerConfigurationParser {
         }
         boolean allowPrivate = "true".equalsIgnoreCase(globalProperties
                 .get(JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES));
-        if (!allowPrivate && resolvesToPrivateAddress(issuerId, jwksUrl)) {
+        if (allowPrivate) {
+            return true;
+        }
+        HostCategory category = categorizeJwksHost(issuerId, jwksUrl);
+        // UNRESOLVABLE and PUBLIC both pass: an unresolvable host defers to the JWKS loader rather
+        // than permanently excluding an issuer whose IdP may simply not be up yet.
+        if (category == HostCategory.LOOPBACK || category == HostCategory.PRIVATE) {
             LOGGER.error(JwtLogMessages.ERROR.ISSUER_JWKS_PRIVATE_ADDRESS_REJECTED,
                     sanitizeLogValue(issuerId), sanitizeLogValue(jwksUrl));
             return false;
@@ -405,30 +439,60 @@ public class IssuerConfigurationParser {
         return true;
     }
 
-    private static boolean resolvesToPrivateAddress(String issuerId, String jwksUrl) {
+    /**
+     * The address category a JWKS host resolves to. Categorising once — rather than answering the
+     * single boolean question "is this private?" — lets the egress policy distinguish a host that
+     * genuinely resolves to loopback from one that could not be resolved at all, which are two
+     * materially different situations that a boolean collapsed into the same "not private" answer.
+     */
+    private enum HostCategory {
+        /** Resolved, and at least one address is a loopback address. */
+        LOOPBACK,
+        /** Resolved, and at least one address is private but none is loopback. */
+        PRIVATE,
+        /** Resolved, and no address is private. */
+        PUBLIC,
+        /** Not resolvable: unknown host, malformed URL, or no host component. */
+        UNRESOLVABLE
+    }
+
+    /**
+     * Categorises the addresses the JWKS host resolves to.
+     * <p>
+     * Loopback takes precedence over the other private ranges: a host resolving to both is treated
+     * as {@link HostCategory#LOOPBACK} so the narrower loopback relaxation is what gets applied.
+     * Covered private ranges are loopback, link-local, site-local (RFC 1918), IPv6 unique-local
+     * (fc00::/7) and carrier-grade NAT (100.64.0.0/10, RFC 6598).
+     */
+    private static HostCategory categorizeJwksHost(String issuerId, String jwksUrl) {
         String host;
         try {
             host = URI.create(jwksUrl).getHost();
         } catch (IllegalArgumentException e) {
             // Malformed URL — leave rejection to the JWKS loader, which reports it properly
-            return false;
+            return HostCategory.UNRESOLVABLE;
         }
         if (host == null) {
-            return false;
+            return HostCategory.UNRESOLVABLE;
         }
         try {
+            boolean anyPrivate = false;
             for (InetAddress address : InetAddress.getAllByName(host)) {
-                if (address.isLoopbackAddress() || address.isSiteLocalAddress()
-                        || address.isLinkLocalAddress() || address.isAnyLocalAddress()
-                        || isUniqueLocalIpv6(address) || isCarrierGradeNat(address)) {
-                    return true;
+                if (address.isLoopbackAddress()) {
+                    return HostCategory.LOOPBACK;
+                }
+                if (address.isSiteLocalAddress() || address.isLinkLocalAddress()
+                        || address.isAnyLocalAddress() || isUniqueLocalIpv6(address)
+                        || isCarrierGradeNat(address)) {
+                    anyPrivate = true;
                 }
             }
+            return anyPrivate ? HostCategory.PRIVATE : HostCategory.PUBLIC;
         } catch (UnknownHostException e) {
             LOGGER.warn(JwtLogMessages.WARN.JWKS_HOST_NOT_RESOLVABLE,
                     sanitizeLogValue(host), sanitizeLogValue(issuerId));
+            return HostCategory.UNRESOLVABLE;
         }
-        return false;
     }
 
     /** IPv6 unique-local addresses (fc00::/7) are not covered by isSiteLocalAddress(). */

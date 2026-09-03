@@ -17,6 +17,7 @@
 package de.cuioss.nifi.jwt.config;
 
 import de.cuioss.nifi.jwt.JwtAttributes;
+import de.cuioss.nifi.jwt.JwtLogMessages;
 import de.cuioss.sheriff.token.commons.transport.ParserConfig;
 import de.cuioss.sheriff.token.validation.IssuerConfig;
 import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
@@ -578,6 +579,7 @@ class IssuerConfigurationParserTest {
         @CsvSource({
                 "http://example.com/jwks, does not use HTTPS",
                 "https://localhost/jwks, private/loopback",
+                "https://192.168.0.1/jwks, private/loopback",
                 "https://100.64.0.1/jwks, private/loopback"
         })
         @DisplayName("Should reject a JWKS URL that violates the HTTPS or private-address policy")
@@ -642,6 +644,66 @@ class IssuerConfigurationParserTest {
             List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
 
             assertEquals(1, configs.size(), "Loopback JWKS URL should pass when private addresses are allowed");
+            LogAsserts.assertNoLogMessagePresent(TestLogLevel.WARN,
+                    JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST.format("localhost", "test"));
+        }
+
+        @Test
+        @DisplayName("Should allow a non-loopback private JWKS host when private addresses enabled")
+        void shouldAllowNonLoopbackPrivateJwksUrlWhenPrivateAllowed() {
+            // A site-local (RFC 1918) host is the PRIVATE category: the old boolean lumped it in
+            // with loopback, so it never had a case of its own. It gets the per-host egress
+            // allowance, and — unlike loopback — no relaxation beyond it.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "https://idp.internal",
+                    "issuer.test.jwks-url", "https://192.168.0.1/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(),
+                    "A site-local JWKS host should pass when private addresses are allowed");
+            LogAsserts.assertNoLogMessagePresent(TestLogLevel.WARN,
+                    JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST.format("192.168.0.1", "test"));
+        }
+
+        @Test
+        @DisplayName("Should allow an unresolvable JWKS host when private addresses enabled and record the unresolved allowance")
+        void shouldAllowUnresolvableJwksHostWhenPrivateAllowed() {
+            // UNRESOLVABLE is the second state the old boolean hid: it answered "not private", so
+            // the opt-in was silently dropped and the loader's own guard blocked the fetch. The
+            // host allowance is now granted, and the WARN records that it was granted without a
+            // resolved address.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "https://idp.example.com",
+                    "issuer.test.jwks-url", "https://jwks.does-not-resolve.invalid/jwks",
+                    JwtAttributes.Properties.Validation.JWKS_ALLOW_PRIVATE_NETWORK_ADDRESSES, "true"));
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(),
+                    "An unresolvable JWKS host must still yield an issuer; resolution is deferred to the loader");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "Granted JWKS egress to host");
+        }
+
+        @Test
+        @DisplayName("Should defer an unresolvable JWKS host to the loader when private addresses are not allowed")
+        void shouldDeferUnresolvableJwksHostWithoutOptIn() {
+            // Without the opt-in, UNRESOLVABLE must behave like PUBLIC (accepted, deferred) rather
+            // than like PRIVATE (rejected) — an IdP that is simply not up yet must not be
+            // permanently excluded. No egress allowance is granted, so no JWT-116 is emitted.
+            Map<String, String> properties = new HashMap<>(Map.of(
+                    "issuer.test.issuer", "https://idp.example.com",
+                    "issuer.test.jwks-url", "https://jwks.does-not-resolve.invalid/jwks"));
+
+            List<IssuerConfig> configs = IssuerConfigurationParser.parseIssuerConfigs(properties, null);
+
+            assertEquals(1, configs.size(),
+                    "An unresolvable host must be deferred to the loader, not rejected outright");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "Could not resolve JWKS host");
+            LogAsserts.assertNoLogMessagePresent(TestLogLevel.WARN,
+                    JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST
+                            .format("jwks.does-not-resolve.invalid", "test"));
         }
 
         @Test
