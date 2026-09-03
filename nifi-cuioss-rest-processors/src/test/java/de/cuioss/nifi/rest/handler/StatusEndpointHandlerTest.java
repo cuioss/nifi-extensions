@@ -584,6 +584,33 @@ class StatusEndpointHandlerTest {
         }
 
         @Test
+        @DisplayName("Should emit error.type alone for a type-only entry")
+        void shouldEmitTypeAloneForTypeOnlyEntry() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, null, "https://example.test/problem/validation",
+                    null, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertEquals(Set.of("type"), error.keySet(), "a type-only entry must yield error.type alone");
+            assertEquals("https://example.test/problem/validation", error.getString("type"));
+        }
+
+        @Test
+        @DisplayName("Should emit error.status alone for a status-only entry")
+        void shouldEmitStatusAloneForStatusOnlyEntry() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, null, null, "422", null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error);
+            assertEquals(Set.of("status"), error.keySet(), "a status-only entry must yield error.status alone");
+            assertEquals(422, error.getInt("status"));
+        }
+
+        @Test
         @DisplayName("Should omit the error key entirely when no error component is populated")
         void shouldOmitErrorKeyWhenNoComponentPopulated() throws Exception {
             var seeded = entry(RequestStatus.ERROR, null, null, null, null, null, null);
@@ -591,6 +618,46 @@ class StatusEndpointHandlerTest {
             JsonObject json = responseFor(seeded);
 
             assertFalse(json.containsKey("error"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"not-a-number", "0", "600", "-1"})
+        @DisplayName("Should omit the error key when a malformed errorStatus is the only component")
+        void shouldOmitErrorKeyWhenOnlyComponentIsMalformedStatus(String rawStatus) throws Exception {
+            var seeded = entry(RequestStatus.ERROR, null, null, rawStatus, null, null, null);
+
+            JsonObject json = responseFor(seeded);
+
+            assertFalse(json.containsKey("error"),
+                    "a malformed errorStatus is treated as absent, so no error object may be emitted");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-125");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"{not json", "[unclosed", "{\"pointer\":\"/id\"}"})
+        @DisplayName("Should omit the error key when a malformed errorViolations is the only component")
+        void shouldOmitErrorKeyWhenOnlyComponentIsMalformedViolations(String rawViolations) throws Exception {
+            var seeded = entry(RequestStatus.ERROR, null, null, null, null, null, rawViolations);
+
+            JsonObject json = responseFor(seeded);
+
+            assertFalse(json.containsKey("error"),
+                    "a malformed errorViolations is treated as absent, so no error object may be emitted");
+            LogAsserts.assertLogMessagePresentContaining(TestLogLevel.WARN, "REST-126");
+        }
+
+        @Test
+        @DisplayName("Should still emit the error object when a malformed component sits beside a valid one")
+        void shouldStillEmitErrorObjectWhenMalformedSitsBesideValid() throws Exception {
+            var seeded = entry(RequestStatus.ERROR, "Boom", null, "not-a-number", null, null, "{not json");
+
+            JsonObject json = responseFor(seeded);
+
+            JsonObject error = json.getJsonObject("error");
+            assertNotNull(error, "a valid sibling component must still produce an error object");
+            assertEquals(Set.of("detail"), error.keySet(),
+                    "only the valid component survives; both malformed ones are omitted");
+            assertEquals("Boom", error.getString("detail"));
         }
 
         @Test

@@ -150,8 +150,11 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
 
     /**
      * Builds the RFC 9457 Problem Details {@code error} object from the entry's {@code error*}
-     * components. The object is emitted whenever ANY component is populated (non-null, non-blank),
-     * independent of the entry's {@link RequestStatus} — status gating is deliberately absent.
+     * components. The object is emitted whenever ANY component yields a MEMBER — that is, is
+     * non-null, non-blank AND well-formed — independent of the entry's {@link RequestStatus};
+     * status gating is deliberately absent. A component present but malformed counts as absent,
+     * so an entry whose only components are malformed emits no {@code error} key rather than an
+     * empty one.
      * <p>
      * Members are added in RFC 9457 order: {@code type}, {@code status}, {@code title},
      * {@code detail}, {@code instance}, {@code violations}. {@code status} is parsed from the
@@ -190,8 +193,10 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
     /**
      * Adds the {@code status} member as a JSON number. A value that is not an integer, or that
      * falls outside the RFC 9457 &sect;3.1.2 range {@value #MIN_HTTP_STATUS}-{@value #MAX_HTTP_STATUS},
-     * omits the member and logs {@link RestApiLogMessages.WARN#STATUS_ERROR_STATUS_MALFORMED}; the
-     * surrounding error object is still emitted, because the raw value proves an error was intended.
+     * omits the member and logs {@link RestApiLogMessages.WARN#STATUS_ERROR_STATUS_MALFORMED}. The
+     * malformed value counts as ABSENT, not as a populated component, so it cannot on its own keep
+     * the surrounding error object alive — an entry whose only component is malformed emits no
+     * {@code error} key at all.
      */
     private static boolean addStatusIfParseable(JsonObjectBuilder builder, RequestStatusEntry statusEntry) {
         String rawValue = statusEntry.errorStatus();
@@ -208,14 +213,15 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
         } catch (NumberFormatException e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_STATUS_MALFORMED,
                     statusEntry.traceId(), rawValue);
-            return true;
+            return false;
         }
     }
 
     /**
      * Adds the {@code violations} member as a real JSON array parsed from the JSON-array-serialized
-     * component. A value that is absent, blank, or does not parse as an array omits the member and
-     * logs {@link RestApiLogMessages.WARN#STATUS_ERROR_VIOLATIONS_MALFORMED}. Pointer values are
+     * component. A value that is absent, blank, or does not parse as an array counts as ABSENT: it
+     * omits the member, logs {@link RestApiLogMessages.WARN#STATUS_ERROR_VIOLATIONS_MALFORMED}, and
+     * does not on its own keep the surrounding error object alive. Pointer values are
      * passed through verbatim — RFC 6901 conformance is the producer's responsibility.
      */
     private static boolean addViolationsIfParseable(JsonObjectBuilder builder, RequestStatusEntry statusEntry) {
@@ -229,7 +235,7 @@ public final class StatusEndpointHandler extends AbstractManagementHandler {
         } catch (JsonException | IllegalStateException e) {
             LOGGER.warn(RestApiLogMessages.WARN.STATUS_ERROR_VIOLATIONS_MALFORMED,
                     statusEntry.traceId(), rawValue);
-            return true;
+            return false;
         }
     }
 
