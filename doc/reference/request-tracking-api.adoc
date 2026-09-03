@@ -103,8 +103,9 @@ While in this status, `POST /attachments/{traceId}` uploads are accepted. Once t
 ==== The error object
 
 The `error` object is an RFC 9457 Problem Details object.
-It is emitted whenever *any* `error*` cache field is populated, regardless of the entry's `status` — `REJECTED` and `ERROR` are the common cases, but a `PROCESSED` entry carrying a warning detail returns the object just the same.
-It is absent only when no `error*` field is populated.
+It is emitted whenever *any* `error*` cache field yields a member, regardless of the entry's `status` — `REJECTED` and `ERROR` are the common cases, but a `PROCESSED` entry carrying a warning detail returns the object just the same.
+It is absent when no `error*` field yields a member.
+A field that is present but malformed counts as absent for this purpose, so an entry whose only `error*` fields are malformed returns no `error` key rather than an empty object.
 
 [source,json]
 ----
@@ -297,7 +298,8 @@ All six are written as JSON *string* scalars in the cache entry; only `errorStat
 A blank value counts as absent.
 
 IMPORTANT: A malformed `errorStatus` (not an integer, or outside the `100`-`599` range) or `errorViolations` (not a serialized JSON array) omits *only that one response member*, without failing the response.
-The rest of the `error` object is still returned, the request never fails, and the gateway records a WARN in the NiFi log — `REST-125` for `errorStatus`, `REST-126` for `errorViolations`.
+Any sibling members that *are* well-formed are still returned, the request never fails, and the gateway records a WARN in the NiFi log — `REST-125` for `errorStatus`, `REST-126` for `errorViolations`.
+A malformed field counts as absent rather than as a populated component, so when it is the *only* `error*` field present the `error` key is omitted entirely instead of being returned empty.
 Check the NiFi log when a member you expected does not appear in the response.
 
 NOTE: These six keys are reserved. Unlike free-form top-level cache keys they are no longer echoed back as additional response fields — they feed the `error` object instead.
