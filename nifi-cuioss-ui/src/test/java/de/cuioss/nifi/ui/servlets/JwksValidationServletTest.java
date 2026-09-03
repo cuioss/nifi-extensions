@@ -20,6 +20,7 @@ import de.cuioss.http.client.result.HttpResult;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.sheriff.token.validation.test.InMemoryKeyMaterialHandler;
 import de.cuioss.test.juli.junit5.EnableTestLogger;
+import io.restassured.response.ValidatableResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
@@ -35,6 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.jspecify.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.nio.file.Files;
@@ -42,6 +44,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static org.easymock.EasyMock.*;
@@ -976,6 +979,149 @@ class JwksValidationServletTest {
                         .body("valid", equalTo(false))
                         .body("error", containsString("exceeds maximum size limit"));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("DNS-rebinding bracketing re-validation")
+    class DnsRebindingBracketTests {
+
+        private static MockWebServer mockServer;
+
+        @BeforeAll
+        static void startMockServer() throws Exception {
+            mockServer = new MockWebServer();
+            mockServer.start();
+        }
+
+        @AfterAll
+        static void stopMockServer() {
+            if (mockServer != null) {
+                mockServer.close();
+            }
+        }
+
+        /**
+         * Servlet whose SSRF resolution check fails on one chosen invocation, modelling a DNS
+         * record that flips between the pre-fetch and the post-fetch resolution.
+         */
+        private static final class RebindingServlet extends JwksValidationServlet {
+
+            private final transient AtomicInteger calls = new AtomicInteger();
+            private final int failOnCall;
+
+            RebindingServlet(int failOnCall) {
+                this.failOnCall = failOnCall;
+            }
+
+            @Override
+            @Nullable
+            InetAddress resolveAndValidateAddress(@Nullable String host,
+                    boolean allowPrivateAddresses) {
+                if (calls.incrementAndGet() == failOnCall) {
+                    return null;
+                }
+                return InetAddress.getLoopbackAddress();
+            }
+        }
+
+        private NiFiWebConfigurationContext contextAllowingPrivateAddresses(String processorId,
+                boolean allowPrivate) {
+            var details = new ComponentDetails.Builder()
+                    .id(processorId)
+                    .type("JwtAuthenticationProcessor")
+                    .properties(Map.of("jwt.validation.jwks.allow.private.network.addresses",
+                            String.valueOf(allowPrivate)))
+                    .build();
+            NiFiWebConfigurationContext mockCtx = createNiceMock(NiFiWebConfigurationContext.class);
+            expect(mockCtx.getComponentDetails(anyObject(NiFiWebRequestContext.class)))
+                    .andReturn(details).anyTimes();
+            replay(mockCtx);
+            return mockCtx;
+        }
+
+        private ValidatableResponse validateVia(RebindingServlet servlet,
+                NiFiWebConfigurationContext mockCtx, String processorId, String jwksUrl)
+                throws Exception {
+            try (var serverHandle = EmbeddedServletTestSupport.startServer(ctx -> {
+                     ctx.setAttribute("nifi-web-configuration-context", mockCtx);
+                     ctx.addServlet(new ServletHolder(servlet), URL_ENDPOINT);
+                 })) {
+                return serverHandle.spec()
+                        .contentType("application/json")
+                        .header("X-Processor-Id", processorId)
+                        .body("""
+                                {"jwksUrl":"%s","processorId":"%s"}"""
+                                .formatted(jwksUrl, processorId))
+                        .when()
+                        .post(URL_ENDPOINT)
+                        .then()
+                        .statusCode(200);
+            }
+        }
+
+        @Test
+        @DisplayName("Should reject when the host validates pre-fetch but no longer post-fetch")
+        void shouldRejectWhenHostRebindsAfterFetch() throws Exception {
+            // Arrange: the second resolution — the post-fetch one — fails
+            String processorId = UUID.randomUUID().toString();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(InMemoryKeyMaterialHandler.createDefaultJwks())
+                    .build());
+            RebindingServlet servlet = new RebindingServlet(2);
+
+            // Act + Assert: the fetched content is discarded, the SSRF failure is reported
+            validateVia(servlet, contextAllowingPrivateAddresses(processorId, false), processorId,
+                    mockServer.url("/.well-known/jwks.json").toString())
+                    .body("valid", equalTo(false))
+                    .body("error", containsString(
+                            "URL must not point to a private or loopback address"));
+            assertEquals(2, servlet.calls.get(),
+                    "Both the pre-fetch and the post-fetch resolution must run");
+        }
+
+        @Test
+        @DisplayName("Should accept when the host validates both pre-fetch and post-fetch")
+        void shouldAcceptWhenHostValidatesOnBothResolutions() throws Exception {
+            // Arrange: no resolution fails
+            String processorId = UUID.randomUUID().toString();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(InMemoryKeyMaterialHandler.createDefaultJwks())
+                    .build());
+            RebindingServlet servlet = new RebindingServlet(0);
+
+            // Act + Assert
+            validateVia(servlet, contextAllowingPrivateAddresses(processorId, false), processorId,
+                    mockServer.url("/.well-known/jwks.json").toString())
+                    .body("valid", equalTo(true))
+                    .body("keyCount", equalTo(1));
+            assertEquals(2, servlet.calls.get(),
+                    "Both the pre-fetch and the post-fetch resolution must run");
+        }
+
+        @Test
+        @DisplayName("Should skip the post-fetch re-validation when private addresses are allowed")
+        void shouldSkipReValidationWhenPrivateAddressesAllowed() throws Exception {
+            // Arrange: the post-fetch resolution WOULD fail, but that path must not run at all
+            String processorId = UUID.randomUUID().toString();
+            mockServer.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body(InMemoryKeyMaterialHandler.createDefaultJwks())
+                    .build());
+            RebindingServlet servlet = new RebindingServlet(2);
+
+            // Act + Assert: allowPrivateAddresses skips both SSRF checks, so the result is valid
+            validateVia(servlet, contextAllowingPrivateAddresses(processorId, true), processorId,
+                    mockServer.url("/.well-known/jwks.json").toString())
+                    .body("valid", equalTo(true))
+                    .body("keyCount", equalTo(1));
+            assertEquals(1, servlet.calls.get(),
+                    "Only the pre-fetch resolution runs when private addresses are allowed");
         }
     }
 

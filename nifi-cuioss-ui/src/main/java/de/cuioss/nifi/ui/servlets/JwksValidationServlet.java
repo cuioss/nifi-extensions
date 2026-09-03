@@ -249,18 +249,33 @@ public class JwksValidationServlet extends HttpServlet {
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
-            // Fetch JWKS content by hostname. The former resolved-IP fetch (with a manual
-            // Host header) failed at runtime: java.net.http rejects the restricted Host
-            // header unless -Djdk.httpclient.allowRestrictedHeaders=host is set on the NiFi
-            // JVM, and HTTPS-by-IP breaks SNI/hostname verification. The pre-resolution
-            // check above still blocks private targets; the residual DNS-rebinding TOCTOU
-            // window is an accepted trade-off for this admin-facing validation endpoint.
+            // Fetch JWKS content by hostname, bracketed by a second resolution check below.
+            //
+            // The DNS-rebinding window between the pre-check and the fetch is NARROWED by that
+            // bracketing re-validation, not closed: an attacker who flips the record for exactly
+            // the duration of the fetch and flips it back is still not caught. Two stronger
+            // shapes were considered and rejected:
+            //   - Connect to the resolved IP with a manual Host header. Implemented and reverted:
+            //     java.net.http rejects the restricted Host header unless the NiFi JVM is started
+            //     with -Djdk.httpclient.allowRestrictedHeaders=host, and HTTPS-by-IP breaks
+            //     SNI/hostname verification.
+            //   - Re-validate on redirect. Not applicable: the client never follows redirects and
+            //     a 3xx already fails the 200-only status gate in readSizeLimitedBody.
             HttpResult<String> fetchResult = fetchJwksContentByOriginalUrl(jwksUrl);
 
             if (!fetchResult.isSuccess()) {
                 return JwksValidationResult.failure(
                         fetchResult.getErrorMessage().orElse("Failed to fetch JWKS content"));
             }
+
+            // Post-fetch re-validation: the host must STILL resolve to public addresses only.
+            // Skipped together with the pre-check when private addresses are explicitly allowed.
+            if (!allowPrivateAddresses
+                    && resolveAndValidateAddress(uri.getHost(), false) == null) {
+                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, jwksUrl);
+                return JwksValidationResult.failure("URL must not point to a private or loopback address");
+            }
+
             String content = fetchResult.getContent().orElseThrow();
 
             // Validate content as JWKS
