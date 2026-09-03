@@ -281,21 +281,23 @@ public class IssuerConfigurationParser {
         if (category == HostCategory.PUBLIC) {
             return;
         }
-        String host = parseJwksHost(jwksUrl);
+        Optional<String> host = parseJwksHost(jwksUrl);
+        if (host.isEmpty()) {
+            // No host to allow-list; the loader reports the malformed URL itself. Only an
+            // UNRESOLVABLE category can reach this, since every other category was resolved
+            // from a host that parsed.
+            return;
+        }
         if (category == HostCategory.UNRESOLVABLE) {
-            if (host == null) {
-                // No host to allow-list; the loader reports the malformed URL itself.
-                return;
-            }
             LOGGER.warn(JwtLogMessages.WARN.JWKS_EGRESS_ALLOWED_UNRESOLVED_HOST,
-                    sanitizeLogValue(host), sanitizeLogValue(issuerName));
-            builder.allowedEgressHost(host);
+                    sanitizeLogValue(host.get()), sanitizeLogValue(issuerName));
+            builder.allowedEgressHost(host.get());
             return;
         }
         if (category == HostCategory.LOOPBACK) {
             builder.allowLoopbackEgress(true);
         }
-        builder.allowedEgressHost(host);
+        builder.allowedEgressHost(host.get());
     }
 
     /**
@@ -499,14 +501,14 @@ public class IssuerConfigurationParser {
      * {@code null} return instead of being re-thrown at each call site.
      *
      * @param jwksUrl the configured JWKS URL
-     * @return the host component, or {@code null} when the URL is malformed or carries no host
+     * @return the host component, or empty when the URL is malformed or carries no host
      */
-    private static String parseJwksHost(String jwksUrl) {
+    private static Optional<String> parseJwksHost(String jwksUrl) {
         try {
-            return URI.create(jwksUrl).getHost();
+            return Optional.ofNullable(URI.create(jwksUrl).getHost());
         } catch (IllegalArgumentException e) {
             // Malformed URL — leave rejection to the JWKS loader, which reports it properly
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -519,10 +521,11 @@ public class IssuerConfigurationParser {
      * (fc00::/7) and carrier-grade NAT (100.64.0.0/10, RFC 6598).
      */
     private static HostCategory categorizeJwksHost(String issuerId, String jwksUrl) {
-        String host = parseJwksHost(jwksUrl);
-        if (host == null) {
+        Optional<String> parsedHost = parseJwksHost(jwksUrl);
+        if (parsedHost.isEmpty()) {
             return HostCategory.UNRESOLVABLE;
         }
+        String host = parsedHost.get();
         try {
             boolean anyPrivate = false;
             for (InetAddress address : InetAddress.getAllByName(host)) {
