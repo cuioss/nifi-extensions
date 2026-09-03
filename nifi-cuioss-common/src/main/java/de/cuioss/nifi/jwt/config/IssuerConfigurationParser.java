@@ -170,7 +170,7 @@ public class IssuerConfigurationParser {
                         .cause(e)
                         .build()
                         .with("issuerId", issuerId)
-                        .with("issuerName", issuerProps.get("name"))
+                        .with("issuerIdentifier", issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME))
                         .with("jwksUrl", issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL))
                         .buildMessage("Failed to create issuer configuration");
                 LOGGER.error(e, JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
@@ -188,8 +188,8 @@ public class IssuerConfigurationParser {
             LOGGER.info(JwtLogMessages.INFO.ISSUER_DISABLED, sanitizeLogValue(issuerId));
             return Optional.empty();
         }
-        Optional<String> issuerName = resolveIssuerName(issuerId, issuerProps);
-        if (issuerName.isEmpty()) {
+        Optional<String> issuerIdentifier = resolveIssuerIdentifier(issuerId, issuerProps);
+        if (issuerIdentifier.isEmpty()) {
             return Optional.empty();
         }
         Optional<String> jwksSource = resolveJwksSource(issuerId, issuerProps);
@@ -197,7 +197,7 @@ public class IssuerConfigurationParser {
             return Optional.empty();
         }
         var builder = IssuerConfig.builder()
-                .issuerIdentifier(issuerName.get());
+                .issuerIdentifier(issuerIdentifier.get());
         parseAllowedAlgorithms(globalProperties)
                 .ifPresent(algorithms -> builder.algorithmPreferences(
                         new SignatureAlgorithmPreferences(algorithms)));
@@ -213,7 +213,7 @@ public class IssuerConfigurationParser {
                 return Optional.empty();
             }
             builder.httpJwksLoaderConfig(buildHttpJwksLoaderConfig(
-                    jwksSource.get(), issuerName.get(), globalProperties, parserConfig));
+                    jwksSource.get(), issuerIdentifier.get(), globalProperties, parserConfig));
         } else {
             builder.jwksFilePath(jwksSource.get());
         }
@@ -273,16 +273,34 @@ public class IssuerConfigurationParser {
         builder.allowedEgressHost(host);
     }
 
-    private static Optional<String> resolveIssuerName(String issuerId, Map<String, String> issuerProps) {
-        String issuerName = issuerProps.get("name");
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            issuerName = issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME);
+    /**
+     * Resolves the issuer identifier from the configured {@code issuer} property — the {@code iss}
+     * claim value the identity provider puts in its tokens — and from nothing else.
+     * <p>
+     * {@code name} is deliberately NOT read here: it is a human-readable label, and treating it as
+     * the identifier silently accepted a display string where the {@code iss} claim was required,
+     * producing issuers that could never match a token. {@code name} remains an accepted key
+     * elsewhere ({@link ConfigurationManager} falls back to it for the issuer-group id when a YAML
+     * entry declares no {@code id}), so configuring it is ignored for identity rather than
+     * rejected.
+     *
+     * @param issuerId    the issuer group id, used for diagnostics
+     * @param issuerProps the issuer's configured properties
+     * @return the trimmed issuer identifier, or empty if {@code issuer} is absent or blank
+     */
+    private static Optional<String> resolveIssuerIdentifier(String issuerId, Map<String, String> issuerProps) {
+        String issuerIdentifier = issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME);
+        if (issuerIdentifier != null && !issuerIdentifier.trim().isEmpty()) {
+            return Optional.of(issuerIdentifier.trim());
         }
-        if (issuerName == null || issuerName.trim().isEmpty()) {
-            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_NAME, sanitizeLogValue(issuerId));
-            return Optional.empty();
+        String configuredName = issuerProps.get("name");
+        if (configuredName != null && !configuredName.trim().isEmpty()) {
+            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NAME_WITHOUT_IDENTIFIER,
+                    sanitizeLogValue(issuerId), sanitizeLogValue(configuredName.trim()));
+        } else {
+            LOGGER.warn(JwtLogMessages.WARN.ISSUER_NO_IDENTIFIER, sanitizeLogValue(issuerId));
         }
-        return Optional.of(issuerName.trim());
+        return Optional.empty();
     }
 
     private static Optional<String> resolveJwksSource(String issuerId, Map<String, String> issuerProps) {

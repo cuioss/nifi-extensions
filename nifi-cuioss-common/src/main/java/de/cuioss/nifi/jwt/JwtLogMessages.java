@@ -111,10 +111,11 @@ public final class JwtLogMessages {
                 .template("Invalid value '%s' for %s, falling back to default %s")
                 .build();
 
-        public static final LogRecord ISSUER_NO_NAME = LogRecordModel.builder()
+        public static final LogRecord ISSUER_NO_IDENTIFIER = LogRecordModel.builder()
                 .prefix(PREFIX)
                 .identifier(102)
-                .template("Issuer %s has no name configured, skipping")
+                .template("Issuer %s has no 'issuer' configured, skipping. Set 'issuer' to the "
+                        + "exact 'iss' claim value the identity provider puts in its tokens")
                 .build();
 
         public static final LogRecord JWKS_CONTENT_NOT_SUPPORTED = LogRecordModel.builder()
@@ -179,6 +180,14 @@ public final class JwtLogMessages {
                 .prefix(PREFIX)
                 .identifier(114)
                 .template("Non-positive maximum token size '%s' for %s, falling back to default %s")
+                .build();
+
+        public static final LogRecord ISSUER_NAME_WITHOUT_IDENTIFIER = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(115)
+                .template("Issuer %s configures name '%s' but no 'issuer'. 'name' is no longer read "
+                        + "as the issuer identifier; set 'issuer' to the identity provider's "
+                        + "'iss' claim value")
                 .build();
     }
 
