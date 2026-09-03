@@ -50,7 +50,6 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -133,15 +132,8 @@ public class GatewayProxyServlet extends HttpServlet {
     /** Placeholder for the processor ID in fail-secure error logs when it cannot be resolved. */
     private static final String UNKNOWN = "unknown";
 
-    /**
-     * Cached gateway endpoint (port plus protocol) by processor ID. Storing both in one
-     * immutable record behind a single map entry makes the port and protocol update atomic —
-     * a concurrent reader can never observe a freshly-cached port paired with a stale protocol.
-     */
-    private final Map<String, GatewayEndpoint> endpointCache = new ConcurrentHashMap<>();
-
-    /** Immutable gateway endpoint cache value: the resolved port and its protocol. */
-    private record GatewayEndpoint(int port, String protocol) {
+    /** Immutable gateway endpoint: the resolved port and its protocol, from one authorized read. */
+    record GatewayEndpoint(int port, String protocol) {
     }
 
     /**
@@ -208,8 +200,6 @@ public class GatewayProxyServlet extends HttpServlet {
 
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
-                // Invalidate cached port/protocol — properties may have changed
-                invalidateCaches(processorId);
                 var componentConfig = resolveComponentConfig(processorId, req);
                 writeConfigResponse(resp, componentConfig.properties(),
                         componentConfig.componentClass());
@@ -227,18 +217,9 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            int port = resolveGatewayPort(processorId, req);
-            String protocol = resolveCachedProtocol(processorId);
-            String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
-            GatewayGetResponse gwResp;
-            try {
-                gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
-            } catch (IOException e) {
-                // The cached port/protocol may be stale after a gateway reconfiguration —
-                // drop it so the next request re-resolves from the processor properties
-                invalidateCaches(processorId);
-                throw e;
-            }
+            GatewayEndpoint endpoint = resolveGatewayEndpoint(processorId, req);
+            String gatewayUrl = endpoint.protocol() + "://localhost:" + endpoint.port() + pathInfo;
+            GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
 
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding(CHARSET_UTF8);
@@ -334,9 +315,8 @@ public class GatewayProxyServlet extends HttpServlet {
             return;
         }
 
-        int port = resolveGatewayPort(processorId, req);
-        String protocol = resolveCachedProtocol(processorId);
-        String targetUrl = protocol + "://localhost:" + port + path;
+        GatewayEndpoint endpoint = resolveGatewayEndpoint(processorId, req);
+        String targetUrl = endpoint.protocol() + "://localhost:" + endpoint.port() + path;
 
         // SSRF protection
         if (!isLocalhostTarget(URI.create(targetUrl))) {
@@ -347,19 +327,8 @@ public class GatewayProxyServlet extends HttpServlet {
         }
 
         Map<String, String> headers = extractTestHeaders(testRequest);
-        GatewayResponse gatewayResp;
-        try {
-            gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
-        } catch (IOException e) {
-            // Stale cached port/protocol — re-resolve on the next request
-            invalidateCaches(processorId);
-            throw e;
-        }
+        GatewayResponse gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
         writeTestResponse(resp, gatewayResp);
-    }
-
-    private void invalidateCaches(String processorId) {
-        endpointCache.remove(processorId);
     }
 
     private static Map<String, String> extractTestHeaders(JsonObject testRequest) {
@@ -396,33 +365,20 @@ public class GatewayProxyServlet extends HttpServlet {
     // -----------------------------------------------------------------------
 
     /**
-     * Resolves the gateway listening port for the given processor ID.
-     *
-     * @param processorId the NiFi processor UUID
-     * @param request     the current HTTP servlet request (for authentication context)
-     * @return the gateway port
-     * @throws IOException if unable to fetch component config
-     */
-    protected int resolveGatewayPort(String processorId, HttpServletRequest request) throws IOException {
-        return resolveGatewayEndpoint(processorId, request).port();
-    }
-
-    /**
-     * Resolves the gateway endpoint (port and protocol) for a processor, caching both together
-     * in one atomic map entry. The port and protocol are derived from the same component
-     * configuration read, so they are always cached and evicted as a consistent pair.
+     * Resolves the gateway endpoint (port and protocol) for a processor from a single
+     * component-configuration read. The read is performed on <em>every</em> invocation so the
+     * caller's NiFi component permissions are re-checked per request — nothing is cached, because
+     * a cache hit would serve one user's resolved endpoint to another user who may hold no
+     * permission on the processor.
      *
      * @param processorId the NiFi processor UUID
      * @param request     the current HTTP servlet request (for authentication context)
      * @return the resolved gateway endpoint
+     * @throws IOException if unable to fetch component config
      */
-    private GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request) {
-        GatewayEndpoint cached = endpointCache.get(processorId);
-        if (cached != null) return cached;
-
-        var reader = new ComponentConfigReader(requireContext());
-        var config = reader.getComponentConfig(processorId, request);
-        Map<String, String> properties = config.properties();
+    protected GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request)
+            throws IOException {
+        Map<String, String> properties = resolveComponentConfig(processorId, request).properties();
 
         String portStr = properties.get(GATEWAY_PORT_PROPERTY);
         if (portStr == null) {
@@ -435,22 +391,7 @@ public class GatewayProxyServlet extends HttpServlet {
         String sslCs = properties.get(SSL_CONTEXT_SERVICE_PROPERTY);
         String protocol = (sslCs != null && !sslCs.isBlank()) ? "https" : "http";
 
-        GatewayEndpoint endpoint = new GatewayEndpoint(port, protocol);
-        endpointCache.put(processorId, endpoint);
-        return endpoint;
-    }
-
-    /**
-     * Returns the cached gateway protocol for a processor, or {@code "http"} when no endpoint
-     * has been resolved yet. Reads the same atomic cache entry populated by
-     * {@link #resolveGatewayEndpoint}, so the protocol is always consistent with the cached port.
-     *
-     * @param processorId the NiFi processor UUID
-     * @return the cached protocol, or {@code "http"} by default
-     */
-    private String resolveCachedProtocol(String processorId) {
-        GatewayEndpoint cached = endpointCache.get(processorId);
-        return cached != null ? cached.protocol() : "http";
+        return new GatewayEndpoint(port, protocol);
     }
 
     /**

@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.easymock.EasyMock.createNiceMock;
@@ -51,9 +52,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for {@link GatewayProxyServlet} using embedded Jetty + REST Assured.
  * <p>
- * Uses a test subclass to stub outgoing HTTP calls
- * ({@code resolveGatewayPort}, {@code executeGatewayGet},
- * {@code executeGatewayRequest}), allowing isolated testing
+ * Uses a test subclass to stub the per-request authorization read
+ * ({@code resolveComponentConfig}) and the outgoing HTTP calls
+ * ({@code executeGatewayGet}, {@code executeGatewayRequest}), allowing isolated testing
  * of path validation, SSRF protection, and response formatting.
  */
 @EnableTestLogger
@@ -86,10 +87,24 @@ class GatewayProxyServletTest {
 
     /**
      * When true, only the outgoing gateway HTTP calls (executeGatewayGet /
-     * executeGatewayRequest) throw IOException while port/property resolution
-     * succeeds — exercises the stale-cache invalidation on fetch failure.
+     * executeGatewayRequest) throw IOException while the authorization read and
+     * property resolution succeed — isolates a gateway-side failure from a config-side one.
      */
     private static final AtomicBoolean gatewayExecuteFailing = new AtomicBoolean(false);
+
+    /**
+     * Counts the per-request authorization reads ({@code resolveComponentConfig}), which is the
+     * NiFi component-permission check the gateway endpoints must perform on <em>every</em>
+     * request. Reset before each test.
+     */
+    private static final AtomicInteger componentConfigReads = new AtomicInteger();
+
+    /**
+     * When set to a positive 1-based ordinal, the authorization read with that ordinal is denied
+     * (throws {@link ClusterRequestException}) — models a second caller who holds no component
+     * permission on a processor another caller already resolved successfully. Reset before each test.
+     */
+    private static final AtomicInteger denyAuthorizationReadOrdinal = new AtomicInteger();
 
     /**
      * When set, config resolution (port/property/component lookup) throws this
@@ -154,13 +169,6 @@ class GatewayProxyServletTest {
             ctx.setAttribute("nifi-web-configuration-context", dummyContext);
             ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                 @Override
-                protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
-                    throwConfiguredResolveException();
-                    if (gatewayFailing.get()) throw new IOException("Connection refused");
-                    return 9443;
-                }
-
-                @Override
                 protected Map<String, String> resolveProcessorProperties(
                         String processorId, HttpServletRequest req) throws IOException {
                     throwConfiguredResolveException();
@@ -173,6 +181,10 @@ class GatewayProxyServletTest {
                         String processorId, HttpServletRequest req) throws IOException {
                     throwConfiguredResolveException();
                     if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    if (componentConfigReads.incrementAndGet() == denyAuthorizationReadOrdinal.get()) {
+                        throw new ClusterRequestException(
+                                new RuntimeException("No component permission for " + processorId));
+                    }
                     return new ComponentConfigReader.ComponentConfig(
                             ComponentConfigReader.ComponentType.PROCESSOR,
                             "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
@@ -238,6 +250,8 @@ class GatewayProxyServletTest {
         gatewayFailing.set(false);
         gatewayExecuteFailing.set(false);
         configResolveException.set(null);
+        componentConfigReads.set(0);
+        denyAuthorizationReadOrdinal.set(0);
         processorProperties.set(createDefaultProperties());
         idpResponseBody.set("{\"access_token\":\"test-token\",\"expires_in\":300}");
         idpResponseStatus.set(200);
@@ -502,9 +516,9 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 and drop stale cache when gateway fetch fails after port resolution")
-        void shouldInvalidateCachesWhenMetricsFetchFails() {
-            // Prime the port/protocol cache with a successful request
+        @DisplayName("Should return 503 when gateway fetch fails after a successful endpoint resolution")
+        void shouldReturn503WhenMetricsFetchFailsAfterEndpointResolution() {
+            // Arrange: a first request succeeds end-to-end
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
@@ -512,8 +526,7 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200);
 
-            // Port resolution succeeds but the gateway fetch itself fails —
-            // exercises the invalidate-on-IOException path in doGet
+            // Act + Assert: endpoint resolution still succeeds but the gateway fetch itself fails
             gatewayExecuteFailing.set(true);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -523,7 +536,7 @@ class GatewayProxyServletTest {
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
 
-            // Cache was invalidated — the next request re-resolves and succeeds
+            // Assert: the failure is not sticky — the next request succeeds again
             gatewayExecuteFailing.set(false);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -531,6 +544,54 @@ class GatewayProxyServletTest {
                     .get("/gateway/metrics")
                     .then()
                     .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should perform the authorization read on every metrics request, not just the first")
+        void shouldAuthorizeEveryMetricsRequest() {
+            // Arrange: a first request for this processor ID resolves the gateway endpoint
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+            assertEquals(1, componentConfigReads.get(),
+                    "First request must perform exactly one authorization read");
+
+            // Act: a second request for the SAME, already-resolved processor ID
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+
+            // Assert: the authorization read fired again — no cached endpoint short-circuits it
+            assertEquals(2, componentConfigReads.get(),
+                    "Second request for an already-resolved processor ID must re-authorize (IDOR regression)");
+        }
+
+        @Test
+        @DisplayName("Should reject the second caller when the authorization read is denied for them")
+        void shouldRejectSecondCallerDeniedByAuthorizationRead() {
+            // Arrange: the first caller is authorized, the second caller's read is denied
+            denyAuthorizationReadOrdinal.set(2);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+
+            // Act + Assert: the denied caller gets a rejection, never a proxied gateway response
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway configuration unavailable"));
         }
 
         @Test
@@ -739,10 +800,9 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 and drop stale cache when test call fails after port resolution")
-        void shouldInvalidateCachesWhenTestCallFails() {
-            // Port resolution succeeds but the proxied call itself fails —
-            // exercises the invalidate-on-IOException path in handleTestRequest
+        @DisplayName("Should return 503 when the proxied test call fails after endpoint resolution")
+        void shouldReturn503WhenTestCallFailsAfterEndpointResolution() {
+            // Arrange: endpoint resolution succeeds but the proxied call itself fails
             gatewayExecuteFailing.set(true);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -755,7 +815,7 @@ class GatewayProxyServletTest {
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
 
-            // Cache was invalidated — the next request re-resolves and succeeds
+            // Assert: the failure is not sticky — the next request re-resolves and succeeds
             gatewayExecuteFailing.set(false);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -766,6 +826,38 @@ class GatewayProxyServletTest {
                     .post("/gateway/test")
                     .then()
                     .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should perform the authorization read on every test request, not just the first")
+        void shouldAuthorizeEveryTestRequest() {
+            // Arrange: a first proxied test request resolves the gateway endpoint
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200);
+            assertEquals(1, componentConfigReads.get(),
+                    "First request must perform exactly one authorization read");
+
+            // Act: a second request for the SAME, already-resolved processor ID
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200);
+
+            // Assert: the authorization read fired again — no cached endpoint short-circuits it
+            assertEquals(2, componentConfigReads.get(),
+                    "Second request for an already-resolved processor ID must re-authorize (IDOR regression)");
         }
 
         @Test
