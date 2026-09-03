@@ -169,9 +169,10 @@ public class IssuerConfigurationParser {
                         .errorCode(ErrorContext.ErrorCodes.CONFIGURATION_ERROR)
                         .cause(e)
                         .build()
-                        .with("issuerId", issuerId)
-                        .with("issuerIdentifier", issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME))
-                        .with("jwksUrl", issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL))
+                        .with("issuerId", sanitizeLogValue(issuerId))
+                        .with("issuerIdentifier",
+                                sanitizeLogValue(issuerProps.get(JwtPropertyKeys.Issuer.ISSUER_NAME)))
+                        .with("jwksUrl", sanitizeLogValue(issuerProps.get(JwtPropertyKeys.Issuer.JWKS_URL)))
                         .buildMessage("Failed to create issuer configuration");
                 LOGGER.error(e, JwtLogMessages.ERROR.ISSUER_CONFIG_PARSE_ERROR);
                 LOGGER.debug(contextMessage);
