@@ -36,18 +36,19 @@ Observed timings (use these as the basis for the waits below):
 
 ### Step 1 — Determine the version number
 
-Read the current release block:
+`.github/project.yml` is the single source of truth for both versions — read it, never
+assume:
 
 ```bash
-# project.yml holds both numbers
+grep -E 'current-version|next-version' .github/project.yml
 ```
-Read `.github/project.yml` and look at:
-- `release.current-version` (e.g. `0.4.0`)
-- `release.next-version` (e.g. `0.5.0-SNAPSHOT`)
 
-**Default rule:** the release version is `next-version` with `-SNAPSHOT` stripped
-(normally a minor bump of the current version, e.g. `0.4.0` → `0.5.0`). The new
-`next-version` is the next minor bump plus `-SNAPSHOT` (e.g. `0.6.0-SNAPSHOT`).
+- `release.current-version` — the **last released** version.
+- `release.next-version` — what `pom.xml` carries between releases.
+
+**Default rule:** the release version is `next-version` with `-SNAPSHOT` stripped (normally
+a minor bump of `current-version`). The new `next-version` is the next minor bump plus
+`-SNAPSHOT`.
 
 **Ask the user** (AskUserQuestion) only if in doubt — e.g. the numbers don't follow the
 `X.Y.0` minor-bump pattern, a patch/major release is plausible, or `current-version` and
@@ -77,14 +78,14 @@ Branch name uses the `chore/` prefix (required — the Maven CI workflow only tr
 the `build` check and block auto-merge):
 
 ```bash
-git checkout -b chore/release_<version>   # e.g. chore/release_0.5.0
+git checkout -b chore/release_<version>
 ```
 
 ### Step 5 — Update `.github/project.yml`
 
 Edit the `release` block:
-- `current-version:` → the version determined in Step 1 (e.g. `0.5.0`)
-- `next-version:` → next minor + `-SNAPSHOT` (e.g. `0.6.0-SNAPSHOT`)
+- `current-version:` → the version determined in Step 1
+- `next-version:` → next minor + `-SNAPSHOT`
 
 Leave everything else untouched.
 
