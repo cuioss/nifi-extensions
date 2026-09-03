@@ -204,7 +204,11 @@ public class JwtVerificationServlet extends HttpServlet {
         // served another.
         String processorId = req.getHeader("X-Processor-Id");
 
-        LOGGER.debug("Request received - processorId: %s, token: %s", processorId, maskToken(token));
+        // Both values are externally sourced and reach the log sink before any validation:
+        // maskToken keeps the caller-controlled first characters verbatim, so it neutralizes
+        // nothing for CWE-117 purposes.
+        LOGGER.debug("Request received - processorId: %s, token: %s",
+                LogSanitizer.forLog(processorId), LogSanitizer.forLog(maskToken(token)));
 
         if (processorId == null || processorId.trim().isEmpty()) {
             throw new RequestException(400, "Processor ID cannot be empty");
