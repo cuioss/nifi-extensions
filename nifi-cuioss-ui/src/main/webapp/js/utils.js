@@ -139,9 +139,10 @@ export const TRANSLATIONS = {
         'token.status.verifying': 'Verifying token...',
         'token.status.valid': 'Token is valid',
         'token.status.invalid': 'Token is invalid',
-        'token.status.expired': 'Token has expired',
         'token.section.header': 'Header',
         'token.section.payload': 'Payload',
+        'token.section.decoded.unverified':
+            'Decoded token contents: shown as-is and not verified.',
         'token.error.prefix': 'Error',
         'token.claim.expiration': 'Expiration',
         'token.claim.expired': '(Expired)',
@@ -554,9 +555,10 @@ export const TRANSLATIONS = {
         'token.status.verifying': 'Token wird \u00fcberpr\u00fcft\u2026',
         'token.status.valid': 'Token ist g\u00fcltig',
         'token.status.invalid': 'Token ist ung\u00fcltig',
-        'token.status.expired': 'Token ist abgelaufen',
         'token.section.header': 'Header',
         'token.section.payload': 'Payload',
+        'token.section.decoded.unverified':
+            'Dekodierter Token-Inhalt: unver\u00e4ndert angezeigt und nicht \u00fcberpr\u00fcft.',
         'token.error.prefix': 'Fehler',
         'token.claim.expiration': 'Ablaufzeit',
         'token.claim.expired': '(Abgelaufen)',
