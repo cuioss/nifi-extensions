@@ -189,6 +189,11 @@ public class ComponentConfigReader {
 
         // Use the local server address (inside the JVM) rather than the
         // external/proxy address to reach NiFi's own REST API reliably.
+        //
+        // Not an SSRF sink: the host is the literal "localhost" and the port comes from
+        // ServletRequest.getLocalPort() — the port this JVM's connector is bound to. Neither is
+        // attacker-influenced; the only caller-supplied part of the URL is componentId, and
+        // validateComponentId above constrains it to an identifier.
         String baseUrl = request.getScheme() + "://localhost:" + request.getLocalPort();
         String apiUrl = baseUrl + "/nifi-api/" + apiPathSegment + "/" + componentId;
 
@@ -212,8 +217,8 @@ public class ComponentConfigReader {
                 LOGGER.warn(UILogMessages.WARN.NO_AUTH_CREDENTIALS_FOR_REST_FALLBACK, NIFI_AUTH_COOKIE);
             }
 
-            // Forward cookies as additional auth context
-            addCookieHeader(reqBuilder, request);
+            // Forward ONLY the NiFi auth cookie as additional auth context
+            addAuthCookieHeader(reqBuilder, request);
 
             HttpResponse<String> response = client.send(
                     reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
@@ -372,21 +377,26 @@ public class ComponentConfigReader {
     }
 
     /**
-     * Adds a Cookie header to the request builder if cookies are present.
+     * Forwards the single allowlisted authentication cookie — {@code __Secure-Authorization-Bearer}
+     * — onto the outbound NiFi REST call, and nothing else.
+     *
+     * <p>The bound is explicit and deliberate: the caller's cookie jar may carry session cookies,
+     * CSRF tokens and third-party cookies for unrelated applications on the same host, none of
+     * which the NiFi REST fallback needs. Copying the whole jar handed all of them to a request the
+     * servlet builds on the caller's behalf; only the auth cookie is forwarded now. When that
+     * cookie is absent, no {@code Cookie} header is sent at all.
      */
-    private static void addCookieHeader(HttpRequest.Builder reqBuilder, HttpServletRequest request) {
+    private static void addAuthCookieHeader(HttpRequest.Builder reqBuilder, HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
-        if (cookies == null || cookies.length == 0) {
+        if (cookies == null) {
             return;
         }
-        StringBuilder sb = new StringBuilder();
         for (Cookie cookie : cookies) {
-            if (!sb.isEmpty()) {
-                sb.append("; ");
+            if (NIFI_AUTH_COOKIE.equals(cookie.getName())) {
+                reqBuilder.header("Cookie", NIFI_AUTH_COOKIE + "=" + cookie.getValue());
+                return;
             }
-            sb.append(cookie.getName()).append("=").append(cookie.getValue());
         }
-        reqBuilder.header("Cookie", sb.toString());
     }
 
     /**

@@ -33,6 +33,7 @@ import org.eclipse.jetty.ee11.servlet.ServletHolder;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -41,6 +42,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.easymock.EasyMock.createNiceMock;
@@ -51,9 +53,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for {@link GatewayProxyServlet} using embedded Jetty + REST Assured.
  * <p>
- * Uses a test subclass to stub outgoing HTTP calls
- * ({@code resolveGatewayPort}, {@code executeGatewayGet},
- * {@code executeGatewayRequest}), allowing isolated testing
+ * Uses a test subclass to stub the per-request authorization read
+ * ({@code resolveComponentConfig}) and the outgoing HTTP calls
+ * ({@code executeGatewayGet}, {@code executeGatewayRequest}), allowing isolated testing
  * of path validation, SSRF protection, and response formatting.
  */
 @EnableTestLogger
@@ -86,10 +88,24 @@ class GatewayProxyServletTest {
 
     /**
      * When true, only the outgoing gateway HTTP calls (executeGatewayGet /
-     * executeGatewayRequest) throw IOException while port/property resolution
-     * succeeds — exercises the stale-cache invalidation on fetch failure.
+     * executeGatewayRequest) throw IOException while the authorization read and
+     * property resolution succeed — isolates a gateway-side failure from a config-side one.
      */
     private static final AtomicBoolean gatewayExecuteFailing = new AtomicBoolean(false);
+
+    /**
+     * Counts the per-request authorization reads ({@code resolveComponentConfig}), which is the
+     * NiFi component-permission check the gateway endpoints must perform on <em>every</em>
+     * request. Reset before each test.
+     */
+    private static final AtomicInteger componentConfigReads = new AtomicInteger();
+
+    /**
+     * When set to a positive 1-based ordinal, the authorization read with that ordinal is denied
+     * (throws {@link ClusterRequestException}) — models a second caller who holds no component
+     * permission on a processor another caller already resolved successfully. Reset before each test.
+     */
+    private static final AtomicInteger denyAuthorizationReadOrdinal = new AtomicInteger();
 
     /**
      * When set, config resolution (port/property/component lookup) throws this
@@ -154,13 +170,6 @@ class GatewayProxyServletTest {
             ctx.setAttribute("nifi-web-configuration-context", dummyContext);
             ctx.addServlet(new ServletHolder(new GatewayProxyServlet() {
                 @Override
-                protected int resolveGatewayPort(String processorId, HttpServletRequest req) throws IOException {
-                    throwConfiguredResolveException();
-                    if (gatewayFailing.get()) throw new IOException("Connection refused");
-                    return 9443;
-                }
-
-                @Override
                 protected Map<String, String> resolveProcessorProperties(
                         String processorId, HttpServletRequest req) throws IOException {
                     throwConfiguredResolveException();
@@ -173,6 +182,10 @@ class GatewayProxyServletTest {
                         String processorId, HttpServletRequest req) throws IOException {
                     throwConfiguredResolveException();
                     if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    if (componentConfigReads.incrementAndGet() == denyAuthorizationReadOrdinal.get()) {
+                        throw new ClusterRequestException(
+                                new RuntimeException("No component permission for " + processorId));
+                    }
                     return new ComponentConfigReader.ComponentConfig(
                             ComponentConfigReader.ComponentType.PROCESSOR,
                             "de.cuioss.nifi.processors.gateway.RestApiGatewayProcessor",
@@ -201,7 +214,9 @@ class GatewayProxyServletTest {
                 @Override
                 protected IdpResponse executeIdpRequest(String url, String method,
                         String contentType, String body) throws IOException {
-                    if (gatewayFailing.get()) throw new IOException("Connection refused");
+                    if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
+                        throw new IOException("Connection refused");
+                    }
                     return new IdpResponse(idpResponseStatus.get(), idpResponseBody.get());
                 }
 
@@ -238,6 +253,8 @@ class GatewayProxyServletTest {
         gatewayFailing.set(false);
         gatewayExecuteFailing.set(false);
         configResolveException.set(null);
+        componentConfigReads.set(0);
+        denyAuthorizationReadOrdinal.set(0);
         processorProperties.set(createDefaultProperties());
         idpResponseBody.set("{\"access_token\":\"test-token\",\"expires_in\":300}");
         idpResponseStatus.set(200);
@@ -502,9 +519,9 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 and drop stale cache when gateway fetch fails after port resolution")
-        void shouldInvalidateCachesWhenMetricsFetchFails() {
-            // Prime the port/protocol cache with a successful request
+        @DisplayName("Should return 503 when gateway fetch fails after a successful endpoint resolution")
+        void shouldReturn503WhenMetricsFetchFailsAfterEndpointResolution() {
+            // Arrange: a first request succeeds end-to-end
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .when()
@@ -512,8 +529,7 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200);
 
-            // Port resolution succeeds but the gateway fetch itself fails —
-            // exercises the invalidate-on-IOException path in doGet
+            // Act + Assert: endpoint resolution still succeeds but the gateway fetch itself fails
             gatewayExecuteFailing.set(true);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -523,7 +539,7 @@ class GatewayProxyServletTest {
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
 
-            // Cache was invalidated — the next request re-resolves and succeeds
+            // Assert: the failure is not sticky — the next request succeeds again
             gatewayExecuteFailing.set(false);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -531,6 +547,54 @@ class GatewayProxyServletTest {
                     .get("/gateway/metrics")
                     .then()
                     .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should perform the authorization read on every metrics request, not just the first")
+        void shouldAuthorizeEveryMetricsRequest() {
+            // Arrange: a first request for this processor ID resolves the gateway endpoint
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+            assertEquals(1, componentConfigReads.get(),
+                    "First request must perform exactly one authorization read");
+
+            // Act: a second request for the SAME, already-resolved processor ID
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+
+            // Assert: the authorization read fired again — no cached endpoint short-circuits it
+            assertEquals(2, componentConfigReads.get(),
+                    "Second request for an already-resolved processor ID must re-authorize (IDOR regression)");
+        }
+
+        @Test
+        @DisplayName("Should reject the second caller when the authorization read is denied for them")
+        void shouldRejectSecondCallerDeniedByAuthorizationRead() {
+            // Arrange: the first caller is authorized, the second caller's read is denied
+            denyAuthorizationReadOrdinal.set(2);
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(200);
+
+            // Act + Assert: the denied caller gets a rejection, never a proxied gateway response
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", containsString("Gateway configuration unavailable"));
         }
 
         @Test
@@ -739,10 +803,9 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should return 503 and drop stale cache when test call fails after port resolution")
-        void shouldInvalidateCachesWhenTestCallFails() {
-            // Port resolution succeeds but the proxied call itself fails —
-            // exercises the invalidate-on-IOException path in handleTestRequest
+        @DisplayName("Should return 503 when the proxied test call fails after endpoint resolution")
+        void shouldReturn503WhenTestCallFailsAfterEndpointResolution() {
+            // Arrange: endpoint resolution succeeds but the proxied call itself fails
             gatewayExecuteFailing.set(true);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -755,7 +818,7 @@ class GatewayProxyServletTest {
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
 
-            // Cache was invalidated — the next request re-resolves and succeeds
+            // Assert: the failure is not sticky — the next request re-resolves and succeeds
             gatewayExecuteFailing.set(false);
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
@@ -766,6 +829,38 @@ class GatewayProxyServletTest {
                     .post("/gateway/test")
                     .then()
                     .statusCode(200);
+        }
+
+        @Test
+        @DisplayName("Should perform the authorization read on every test request, not just the first")
+        void shouldAuthorizeEveryTestRequest() {
+            // Arrange: a first proxied test request resolves the gateway endpoint
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200);
+            assertEquals(1, componentConfigReads.get(),
+                    "First request must perform exactly one authorization read");
+
+            // Act: a second request for the SAME, already-resolved processor ID
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"path":"/api/users","method":"GET","headers":{}}""")
+                    .when()
+                    .post("/gateway/test")
+                    .then()
+                    .statusCode(200);
+
+            // Assert: the authorization read fired again — no cached endpoint short-circuits it
+            assertEquals(2, componentConfigReads.get(),
+                    "Second request for an already-resolved processor ID must re-authorize (IDOR regression)");
         }
 
         @Test
@@ -868,6 +963,16 @@ class GatewayProxyServletTest {
         void shouldRejectBracketedNonLoopbackIpv6() {
             // startsWith('[') && endsWith(']') is true, but the normalized host is not a loopback.
             assertFalse(GatewayProxyServlet.isLocalhostTarget(URI.create("http://[fe80::1]:9443/x")));
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"LOCALHOST", "LocalHost", "localHOST"})
+        @DisplayName("Should allow localhost regardless of case, matching the sibling host guards")
+        void shouldAllowLocalhostCaseInsensitively(String host) {
+            // Host components are case-insensitive; extractHost and isAllowedTokenEndpointHost
+            // both lowercase before comparing, so this guard must agree with them.
+            assertTrue(GatewayProxyServlet.isLocalhostTarget(
+                    URI.create("http://" + host + ":9443/config")));
         }
     }
 
@@ -1032,8 +1137,12 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should allow localhost for token endpoint")
-        void shouldAllowLocalhostForTokenEndpoint() {
+        @DisplayName("Should allow localhost only when a configured issuer is a loopback URL")
+        void shouldAllowLocalhostOnlyWhenConfiguredAsIssuer() {
+            // Arrange: the linked controller service declares localhost as its issuer host
+            csProperties.set(new HashMap<>(Map.of(
+                    "issuer.local.issuer", "http://localhost:8080/realms/local")));
+
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
@@ -1046,6 +1155,24 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(200)
                     .body("access_token", equalTo("test-token"));
+        }
+
+        @Test
+        @DisplayName("Should reject localhost when no configured issuer is a loopback URL")
+        void shouldRejectLocalhostWhenNotConfiguredAsIssuer() {
+            // The default controller service configures only the remote keycloak issuer, so the
+            // allowlist carries no loopback entry — the removed unconditional seed used to add one.
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
+                    .when()
+                    .post("/gateway/token-fetch")
+                    .then()
+                    .statusCode(400)
+                    .body("error", containsString("Token endpoint host not allowed"));
         }
 
         @Test
@@ -1146,15 +1273,15 @@ class GatewayProxyServletTest {
         @Test
         @DisplayName("Should handle token fetch when gateway is unavailable (IOException)")
         void shouldHandleTokenFetchWhenGatewayUnavailable() {
-            gatewayFailing.set(true);
+            // Only the outgoing IDP call fails: the allowlist must still resolve, otherwise the
+            // request is rejected at the SSRF gate and never reaches the token fetch at all.
+            gatewayExecuteFailing.set(true);
 
-            // Use localhost URL because when gateway is failing, resolveProcessorProperties
-            // throws and SSRF check falls back to localhost-only allowed hosts
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
                     .body("""
-                            {"tokenEndpointUrl":"http://localhost:8080/token",\
+                            {"tokenEndpointUrl":"https://keycloak:8443/realms/master/protocol/openid-connect/token",\
                             "grantType":"client_credentials","clientId":"c","clientSecret":"s"}""")
                     .when()
                     .post("/gateway/token-fetch")
@@ -1164,13 +1291,14 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should fetch token when no controller service is configured")
-        void shouldFetchTokenWithNoControllerService() {
-            // Remove controller service reference — SSRF check falls back to localhost-only
+        @DisplayName("Should reject every token endpoint when no controller service is configured")
+        void shouldRejectTokenFetchWithNoControllerService() {
+            // Arrange: no controller service reference — the allowlist resolves to the empty set
             Map<String, String> propsNoCs = new HashMap<>(createDefaultProperties());
             propsNoCs.remove("rest.gateway.jwt.config.service");
             processorProperties.set(propsNoCs);
 
+            // Act + Assert: an empty allowlist denies everything; it is never read as allow-all
             handle.spec()
                     .header("X-Processor-Id", PROCESSOR_ID)
                     .contentType("application/json")
@@ -1180,8 +1308,8 @@ class GatewayProxyServletTest {
                     .when()
                     .post("/gateway/token-fetch")
                     .then()
-                    .statusCode(200)
-                    .body("access_token", equalTo("test-token"));
+                    .statusCode(400)
+                    .body("error", containsString("Token endpoint host not allowed"));
         }
 
         @Test
@@ -1304,7 +1432,7 @@ class GatewayProxyServletTest {
         }
 
         @Test
-        @DisplayName("Should handle IDP discovery failure")
+        @DisplayName("Should handle IDP discovery failure without echoing the upstream status")
         void shouldHandleIdpDiscoveryFailure() {
             idpResponseStatus.set(404);
             idpResponseBody.set("Not Found");
@@ -1318,7 +1446,126 @@ class GatewayProxyServletTest {
                     .post("/gateway/discover-token-endpoint")
                     .then()
                     .statusCode(502)
-                    .body("error", containsString("OIDC discovery failed"));
+                    .body("error", equalTo("OIDC discovery failed"))
+                    // The upstream status must not leak — it would turn this endpoint into a
+                    // port scanner that distinguishes 404 from 401 from connection-refused.
+                    .body("error", not(containsString("404")));
+        }
+
+        @Test
+        @DisplayName("Should return a byte-identical discovery error for every upstream status")
+        void shouldReturnIdenticalDiscoveryErrorForEveryUpstreamStatus() {
+            // Arrange + Act: collect the error body for three distinguishable upstream outcomes
+            String notFoundError = discoveryErrorForUpstreamStatus(404);
+            String unauthorizedError = discoveryErrorForUpstreamStatus(401);
+            String serverErrorError = discoveryErrorForUpstreamStatus(500);
+
+            // Assert: all three collapse to the same opaque message — no oracle
+            assertEquals("OIDC discovery failed", notFoundError);
+            assertEquals(notFoundError, unauthorizedError);
+            assertEquals(notFoundError, serverErrorError);
+        }
+
+        private String discoveryErrorForUpstreamStatus(int upstreamStatus) {
+            idpResponseStatus.set(upstreamStatus);
+            idpResponseBody.set("irrelevant");
+            return handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .contentType("application/json")
+                    .body("""
+                            {"issuerUrl":"https://keycloak:8443/realms/master"}""")
+                    .when()
+                    .post("/gateway/discover-token-endpoint")
+                    .then()
+                    .statusCode(502)
+                    .extract()
+                    .path("error");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Issuer host allowlist resolution (deny-by-default)
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("resolveAllowedIssuerHosts")
+    class ResolveAllowedIssuerHostsTests {
+
+        private static final String CS_REFERENCE_KEY = "rest.gateway.jwt.config.service";
+        private static final String LOOPBACK_TOKEN_URL = "http://localhost:8080/token";
+
+        /** The request is only an authentication carrier here; both resolve hooks are stubbed. */
+        private HttpServletRequest stubRequest() {
+            HttpServletRequest request = createNiceMock(HttpServletRequest.class);
+            replay(request);
+            return request;
+        }
+
+        private GatewayProxyServlet servletWith(Map<String, String> procProps,
+                Map<String, String> csProps) {
+            return new GatewayProxyServlet() {
+                @Override
+                protected Map<String, String> resolveProcessorProperties(
+                        String processorId, HttpServletRequest request) {
+                    return procProps;
+                }
+
+                @Override
+                protected Map<String, String> resolveControllerServiceProperties(
+                        String csId, HttpServletRequest request) {
+                    return csProps;
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("Should yield an empty allowlist that rejects loopback when no issuer is configured")
+        void shouldRejectLoopbackWhenNoIssuerConfigured() throws IOException {
+            // Arrange: no controller-service reference at all
+            GatewayProxyServlet servlet = servletWith(Map.of(), Map.of());
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert: deny-by-default — an empty allowlist is not allow-all
+            assertTrue(hosts.isEmpty(), "Allowlist must start empty, with no implicit loopback seed");
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+        }
+
+        @Test
+        @DisplayName("Should allow loopback only when a configured issuer is itself a loopback URL")
+        void shouldAllowLoopbackOnlyWhenConfiguredAsIssuer() throws IOException {
+            // Arrange: the linked controller service declares a loopback issuer
+            GatewayProxyServlet servlet = servletWith(
+                    Map.of(CS_REFERENCE_KEY, "cs-id-1234"),
+                    Map.of("issuer.local.issuer", "http://127.0.0.1:8443/realms/local"));
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert: exactly the configured host — the sibling loopback spellings stay out
+            assertEquals(Set.of("127.0.0.1"), hosts);
+            assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://127.0.0.1:8443/token", hosts));
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+        }
+
+        @Test
+        @DisplayName("Should still reject loopback when only a remote issuer is configured")
+        void shouldRejectLoopbackWhenOnlyRemoteIssuerConfigured() throws IOException {
+            // Arrange: the linked controller service declares a remote issuer only
+            GatewayProxyServlet servlet = servletWith(
+                    Map.of(CS_REFERENCE_KEY, "cs-id-1234"),
+                    Map.of("issuer.primary.issuer", "https://keycloak:8443/realms/master"));
+
+            // Act
+            Set<String> hosts = servlet.resolveAllowedIssuerHosts(PROCESSOR_ID, stubRequest());
+
+            // Assert
+            assertEquals(Set.of("keycloak"), hosts);
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(LOOPBACK_TOKEN_URL, hosts));
+            assertFalse(GatewayProxyServlet.isAllowedTokenEndpointHost(
+                    "http://127.0.0.1:8443/token", hosts));
         }
     }
 
@@ -1331,8 +1578,8 @@ class GatewayProxyServletTest {
     class AllowedIssuerHosts {
 
         @Test
-        @DisplayName("Should always allow localhost variants")
-        void shouldAlwaysAllowLocalhost() {
+        @DisplayName("Should allow localhost variants that the allowlist explicitly contains")
+        void shouldAllowExplicitlyListedLocalhostVariants() {
             Set<String> hosts = Set.of("localhost", "127.0.0.1", "::1");
             assertTrue(GatewayProxyServlet.isAllowedTokenEndpointHost(
                     "http://localhost:8080/token", hosts));

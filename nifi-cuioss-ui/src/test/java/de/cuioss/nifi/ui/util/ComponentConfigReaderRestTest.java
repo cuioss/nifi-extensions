@@ -486,8 +486,9 @@ class ComponentConfigReaderRestTest {
     class CookieForwarding {
 
         @Test
-        @DisplayName("Should forward all cookies in REST API request")
-        void shouldForwardCookies() throws Exception {
+        @DisplayName("Should forward only the allowlisted auth cookie in the REST API request")
+        void shouldForwardOnlyTheAuthCookie() throws Exception {
+            // Arrange: the caller's jar carries the auth cookie plus unrelated cookies
             String processorId = UUID.randomUUID().toString();
             server.enqueue(new MockResponse.Builder()
                     .code(200)
@@ -497,18 +498,46 @@ class ComponentConfigReaderRestTest {
                     .build());
 
             Cookie[] cookies = {
+                    new Cookie("other-cookie", "other-value"),
                     new Cookie("__Secure-Authorization-Bearer", "jwt-token"),
-                    new Cookie("other-cookie", "other-value")
+                    new Cookie("JSESSIONID", "session-value")
             };
             HttpServletRequest request = mockRequest(null, cookies);
 
+            // Act
             reader.getProcessorPropertiesViaRest(processorId, request);
 
+            // Assert: the outbound header carries the auth cookie and nothing else
             RecordedRequest recorded = server.takeRequest();
             String cookieHeader = recorded.getHeaders().get("Cookie");
-            assertNotNull(cookieHeader);
-            assertTrue(cookieHeader.contains("__Secure-Authorization-Bearer=jwt-token"));
-            assertTrue(cookieHeader.contains("other-cookie=other-value"));
+            assertEquals("__Secure-Authorization-Bearer=jwt-token", cookieHeader);
+        }
+
+        @Test
+        @DisplayName("Should send no Cookie header when the auth cookie is absent")
+        void shouldSendNoCookieHeaderWithoutAuthCookie() throws Exception {
+            // Arrange: only unrelated cookies are present
+            String processorId = UUID.randomUUID().toString();
+            server.enqueue(new MockResponse.Builder()
+                    .code(200)
+                    .addHeader("Content-Type", "application/json")
+                    .body("""
+                            {"component": {"config": {"properties": {"k": "v"}}}}""")
+                    .build());
+
+            Cookie[] cookies = {
+                    new Cookie("other-cookie", "other-value"),
+                    new Cookie("JSESSIONID", "session-value")
+            };
+
+            // Act
+            reader.getProcessorPropertiesViaRest(processorId,
+                    mockRequest("Bearer token", cookies));
+
+            // Assert: nothing is forwarded, and the Authorization header still is
+            RecordedRequest recorded = server.takeRequest();
+            assertNull(recorded.getHeaders().get("Cookie"));
+            assertEquals("Bearer token", recorded.getHeaders().get("Authorization"));
         }
 
         @Test
@@ -527,6 +556,7 @@ class ComponentConfigReaderRestTest {
 
             RecordedRequest recorded = server.takeRequest();
             assertNull(recorded.getHeaders().get("Cookie"));
+            assertEquals("Bearer token", recorded.getHeaders().get("Authorization"));
         }
 
         @Test

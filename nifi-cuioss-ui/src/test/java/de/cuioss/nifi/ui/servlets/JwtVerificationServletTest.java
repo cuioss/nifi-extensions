@@ -40,11 +40,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.easymock.EasyMock.createNiceMock;
 import static org.easymock.EasyMock.replay;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for {@link JwtVerificationServlet} using embedded Jetty + REST Assured.
@@ -59,6 +61,14 @@ import static org.hamcrest.Matchers.*;
 class JwtVerificationServletTest {
 
     private static final String ENDPOINT = "/nifi-api/processors/jwt/verify-token";
+    private static final String PROCESSOR_ID_HEADER = "X-Processor-Id";
+
+    /**
+     * The processor ID every request carries. It is sent as the {@code X-Processor-Id} header —
+     * the servlet reads the processor ID from the header only, so a JSON body field would be
+     * silently ignored.
+     */
+    private static final String PROCESSOR_ID = "test-processor-id";
 
     /**
      * Configurable token verification behavior — each test sets this before
@@ -113,8 +123,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...","processorId":"test-processor-id"}""")
+                        {"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -132,8 +143,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"invalid-token","processorId":"test-processor-id"}""")
+                        {"token":"invalid-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -148,11 +160,12 @@ class JwtVerificationServletTest {
         // 1 MB of padding pushes the total body over MAX_REQUEST_BODY_SIZE; the
         // limit must hold even without a trustworthy Content-Length header
         String requestJson = """
-                {"token":"%s","processorId":"test-processor-id"}"""
+                {"token":"%s"}"""
                 .formatted("a".repeat(1024 * 1024));
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body(requestJson)
                 .when()
                 .post(ENDPOINT)
@@ -169,8 +182,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"expired-token","processorId":"test-processor-id"}""")
+                        {"token":"expired-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -179,31 +193,39 @@ class JwtVerificationServletTest {
                 .body("error", containsString("expired"));
     }
 
+    /**
+     * Bad-request cases as {@code (X-Processor-Id header or null when absent, body, expected error)}.
+     * The processor ID is header-sourced, so the two "Processor ID cannot be empty" cases are an
+     * absent header and a blank one — a body field can no longer supply or withhold the value.
+     */
     static Stream<Arguments> badRequestProvider() {
         return Stream.of(
-                Arguments.of("{\"processorId\": \"test-processor-id\"}", "Missing required field: token"),
-                Arguments.of("{\"token\": \"test-token\"}", "Processor ID cannot be empty"),
-                Arguments.of("{ invalid json }", "Invalid JSON format"),
-                Arguments.of("{\"token\": \"\", \"processorId\": \"test-processor-id\"}", "Token cannot be empty"),
-                Arguments.of("{\"token\": \"test-token\", \"processorId\": \"\"}", "Processor ID cannot be empty"),
+                Arguments.of(PROCESSOR_ID, "{}", "Missing required field: token"),
+                Arguments.of(null, "{\"token\": \"test-token\"}", "Processor ID cannot be empty"),
+                Arguments.of(PROCESSOR_ID, "{ invalid json }", "Invalid JSON format"),
+                Arguments.of(PROCESSOR_ID, "{\"token\": \"\"}", "Token cannot be empty"),
+                Arguments.of(" ", "{\"token\": \"test-token\"}", "Processor ID cannot be empty"),
                 // A non-string token value makes JsonObject.getString throw ClassCastException —
                 // it must map to a JSON 400 error, never a container 500 page.
-                Arguments.of("{\"token\": 123, \"processorId\": \"test-processor-id\"}", "Invalid field type")
+                Arguments.of(PROCESSOR_ID, "{\"token\": 123}", "Invalid field type")
         );
     }
 
-    @ParameterizedTest(name = "Bad request: {1}")
+    @ParameterizedTest(name = "Bad request: {2}")
     @MethodSource("badRequestProvider")
     @DisplayName("Should reject bad requests")
-    void shouldRejectBadRequest(String requestJson, String expectedError) {
+    void shouldRejectBadRequest(String processorIdHeader, String requestJson, String expectedError) {
         // Service should not be called for bad requests
         currentVerifier = (token, processorId) -> {
             throw new AssertionError("Service should not have been called");
         };
 
-        handle.spec()
-                .contentType("application/json")
-                .body(requestJson)
+        var spec = handle.spec().contentType("application/json");
+        if (processorIdHeader != null) {
+            spec = spec.header(PROCESSOR_ID_HEADER, processorIdHeader);
+        }
+
+        spec.body(requestJson)
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -221,8 +243,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -243,8 +266,9 @@ class JwtVerificationServletTest {
             // Act + Assert — the request is answered with the sibling servlets' 503 contract
             localHandle.spec()
                     .contentType("application/json")
+                    .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                     .body("""
-                            {"token":"test-token","processorId":"test-processor-id"}""")
+                            {"token":"test-token"}""")
                     .when()
                     .post(ENDPOINT)
                     .then()
@@ -263,8 +287,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -282,8 +307,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -305,8 +331,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"eyJhbGciOiJSUzI1NiJ9.test.sig","processorId":"test-processor-id"}""")
+                        {"token":"eyJhbGciOiJSUzI1NiJ9.test.sig"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -324,8 +351,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token-minimal","processorId":"test-processor-id"}""")
+                        {"token":"test-token-minimal"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -336,15 +364,17 @@ class JwtVerificationServletTest {
     }
 
     @Test
-    @DisplayName("Should read processorId from X-Processor-Id header when missing in body")
+    @DisplayName("Should read processorId from the X-Processor-Id header")
     void processorIdFromHeader() {
+        AtomicReference<String> seenProcessorId = new AtomicReference<>();
         currentVerifier = (token, processorId) -> {
+            seenProcessorId.set(processorId);
             return TokenValidationResult.success(null);
         };
 
         handle.spec()
                 .contentType("application/json")
-                .header("X-Processor-Id", "header-processor-id")
+                .header(PROCESSOR_ID_HEADER, "header-processor-id")
                 .body("""
                         {"token":"test-token"}""")
                 .when()
@@ -352,6 +382,34 @@ class JwtVerificationServletTest {
                 .then()
                 .statusCode(200)
                 .body("valid", equalTo(true));
+
+        assertEquals("header-processor-id", seenProcessorId.get());
+    }
+
+    @Test
+    @DisplayName("Should ignore a body processorId that differs from the X-Processor-Id header")
+    void bodyProcessorIdIsIgnored() {
+        // The filter validates the header, so acting on a body field would let a caller pass the
+        // filter with one processor ID and have the servlet act on another.
+        AtomicReference<String> seenProcessorId = new AtomicReference<>();
+        currentVerifier = (token, processorId) -> {
+            seenProcessorId.set(processorId);
+            return TokenValidationResult.success(null);
+        };
+
+        handle.spec()
+                .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, "header-processor-id")
+                .body("""
+                        {"token":"test-token","processorId":"body-processor-id"}""")
+                .when()
+                .post(ENDPOINT)
+                .then()
+                .statusCode(200)
+                .body("valid", equalTo(true));
+
+        assertEquals("header-processor-id", seenProcessorId.get(),
+                "The servlet must act on the header value the filter validated, not the body field");
     }
 
     @Test
@@ -367,8 +425,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -393,8 +452,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -411,8 +471,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -430,8 +491,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"bad-token","processorId":"test-processor-id"}""")
+                        {"token":"bad-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -455,8 +517,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -493,8 +556,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -529,8 +593,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -557,8 +622,9 @@ class JwtVerificationServletTest {
 
         handle.spec()
                 .contentType("application/json")
+                .header(PROCESSOR_ID_HEADER, PROCESSOR_ID)
                 .body("""
-                        {"token":"test-token","processorId":"test-processor-id"}""")
+                        {"token":"test-token"}""")
                 .when()
                 .post(ENDPOINT)
                 .then()
@@ -580,22 +646,27 @@ class JwtVerificationServletTest {
         private static final String LEGITIMATE_PROCESSOR_ID = "d290f1ee-6c54-4b01-90e6-d701748f0851";
 
         @Test
-        @DisplayName("Should reject malicious body processorId with 400")
-        void shouldRejectMaliciousBodyProcessorId() {
+        @DisplayName("Should ignore a malicious body processorId when the header is legitimate")
+        void shouldIgnoreMaliciousBodyProcessorId() {
+            AtomicReference<String> seenProcessorId = new AtomicReference<>();
             currentVerifier = (token, processorId) -> {
-                throw new AssertionError("Service should not be called for a rejected processor ID");
+                seenProcessorId.set(processorId);
+                return TokenValidationResult.success(null);
             };
 
             handle.spec()
                     .contentType("application/json")
+                    .header(PROCESSOR_ID_HEADER, LEGITIMATE_PROCESSOR_ID)
                     .body("""
                             {"token":"test-token","processorId":"../../../etc/passwd"}""")
                     .when()
                     .post(ENDPOINT)
                     .then()
-                    .statusCode(400)
-                    .body("valid", equalTo(false))
-                    .body("error", containsString("Invalid processor ID"));
+                    .statusCode(200)
+                    .body("valid", equalTo(true));
+
+            assertEquals(LEGITIMATE_PROCESSOR_ID, seenProcessorId.get(),
+                    "The traversal payload in the body must never reach the component lookup");
         }
 
         @Test
@@ -607,7 +678,7 @@ class JwtVerificationServletTest {
 
             handle.spec()
                     .contentType("application/json")
-                    .header("X-Processor-Id", TRAVERSAL_PROCESSOR_ID)
+                    .header(PROCESSOR_ID_HEADER, TRAVERSAL_PROCESSOR_ID)
                     .body("""
                             {"token":"test-token"}""")
                     .when()
@@ -619,24 +690,6 @@ class JwtVerificationServletTest {
         }
 
         @Test
-        @DisplayName("Should let a legitimate UUID processor ID pass header validation")
-        void shouldAllowLegitimateProcessorId() {
-            currentVerifier = (token, processorId) -> {
-                return TokenValidationResult.success(null);
-            };
-
-            handle.spec()
-                    .contentType("application/json")
-                    .body("""
-                            {"token":"test-token","processorId":"d290f1ee-6c54-4b01-90e6-d701748f0851"}""")
-                    .when()
-                    .post(ENDPOINT)
-                    .then()
-                    .statusCode(200)
-                    .body("valid", equalTo(true));
-        }
-
-        @Test
         @DisplayName("Should let a legitimate UUID X-Processor-Id header pass validation")
         void shouldAllowLegitimateProcessorIdHeader() {
             currentVerifier = (token, processorId) -> {
@@ -645,7 +698,7 @@ class JwtVerificationServletTest {
 
             handle.spec()
                     .contentType("application/json")
-                    .header("X-Processor-Id", LEGITIMATE_PROCESSOR_ID)
+                    .header(PROCESSOR_ID_HEADER, LEGITIMATE_PROCESSOR_ID)
                     .body("""
                             {"token":"test-token"}""")
                     .when()
@@ -698,7 +751,7 @@ class JwtVerificationServletTest {
             try {
                 handle.spec()
                         .contentType("application/json")
-                        .header("X-Processor-Id", testCase.attackString())
+                        .header(PROCESSOR_ID_HEADER, testCase.attackString())
                         .body("""
                                 {"token":"test-token"}""")
                         .when()

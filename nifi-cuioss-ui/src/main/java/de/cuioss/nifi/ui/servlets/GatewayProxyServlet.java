@@ -24,6 +24,7 @@ import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.jwt.config.ConfigurationManager;
 import de.cuioss.nifi.ui.UILogMessages;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
 import jakarta.servlet.ServletException;
@@ -50,7 +51,6 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -118,6 +118,12 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
+    /**
+     * Single opaque discovery-failure message. Every discovery failure — transport error or
+     * non-OK upstream status — returns this exact string so the endpoint cannot be used to
+     * probe which hosts and ports are reachable; the distinguishing detail goes to the log.
+     */
+    private static final String MSG_OIDC_DISCOVERY_FAILED = "OIDC discovery failed";
     private static final String FALSE_STRING = "false";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_METHODS = "methods";
@@ -133,15 +139,8 @@ public class GatewayProxyServlet extends HttpServlet {
     /** Placeholder for the processor ID in fail-secure error logs when it cannot be resolved. */
     private static final String UNKNOWN = "unknown";
 
-    /**
-     * Cached gateway endpoint (port plus protocol) by processor ID. Storing both in one
-     * immutable record behind a single map entry makes the port and protocol update atomic —
-     * a concurrent reader can never observe a freshly-cached port paired with a stale protocol.
-     */
-    private final Map<String, GatewayEndpoint> endpointCache = new ConcurrentHashMap<>();
-
-    /** Immutable gateway endpoint cache value: the resolved port and its protocol. */
-    private record GatewayEndpoint(int port, String protocol) {
+    /** Immutable gateway endpoint: the resolved port and its protocol, from one authorized read. */
+    record GatewayEndpoint(int port, String protocol) {
     }
 
     /**
@@ -208,8 +207,6 @@ public class GatewayProxyServlet extends HttpServlet {
 
             // Serve /config directly from processor properties
             if (CONFIG_PATH.equals(pathInfo)) {
-                // Invalidate cached port/protocol — properties may have changed
-                invalidateCaches(processorId);
                 var componentConfig = resolveComponentConfig(processorId, req);
                 writeConfigResponse(resp, componentConfig.properties(),
                         componentConfig.componentClass());
@@ -218,7 +215,7 @@ public class GatewayProxyServlet extends HttpServlet {
 
             if (pathInfo == null || !ALLOWED_MANAGEMENT_PATHS.contains(pathInfo)) {
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                        pathInfo != null ? pathInfo : "null");
+                        LogSanitizer.forLog(pathInfo));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid management path");
                 return;
@@ -227,18 +224,9 @@ public class GatewayProxyServlet extends HttpServlet {
                 return;
             }
 
-            int port = resolveGatewayPort(processorId, req);
-            String protocol = resolveCachedProtocol(processorId);
-            String gatewayUrl = protocol + "://localhost:" + port + pathInfo;
-            GatewayGetResponse gwResp;
-            try {
-                gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
-            } catch (IOException e) {
-                // The cached port/protocol may be stale after a gateway reconfiguration —
-                // drop it so the next request re-resolves from the processor properties
-                invalidateCaches(processorId);
-                throw e;
-            }
+            GatewayEndpoint endpoint = resolveGatewayEndpoint(processorId, req);
+            String gatewayUrl = endpoint.protocol() + "://localhost:" + endpoint.port() + pathInfo;
+            GatewayGetResponse gwResp = executeGatewayGet(gatewayUrl, CONTENT_TYPE_JSON);
 
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding(CHARSET_UTF8);
@@ -282,7 +270,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             LOGGER.warn(UILogMessages.WARN.GATEWAY_PROXY_PATH_REJECTED,
-                    pathInfo != null ? pathInfo : "null");
+                    LogSanitizer.forLog(pathInfo));
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid path for POST");
 
@@ -334,32 +322,20 @@ public class GatewayProxyServlet extends HttpServlet {
             return;
         }
 
-        int port = resolveGatewayPort(processorId, req);
-        String protocol = resolveCachedProtocol(processorId);
-        String targetUrl = protocol + "://localhost:" + port + path;
+        GatewayEndpoint endpoint = resolveGatewayEndpoint(processorId, req);
+        String targetUrl = endpoint.protocol() + "://localhost:" + endpoint.port() + path;
 
         // SSRF protection
         if (!isLocalhostTarget(URI.create(targetUrl))) {
-            LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, targetUrl);
+            LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, LogSanitizer.forLog(targetUrl));
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Only localhost targets allowed");
             return;
         }
 
         Map<String, String> headers = extractTestHeaders(testRequest);
-        GatewayResponse gatewayResp;
-        try {
-            gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
-        } catch (IOException e) {
-            // Stale cached port/protocol — re-resolve on the next request
-            invalidateCaches(processorId);
-            throw e;
-        }
+        GatewayResponse gatewayResp = executeGatewayRequest(targetUrl, method, headers, body);
         writeTestResponse(resp, gatewayResp);
-    }
-
-    private void invalidateCaches(String processorId) {
-        endpointCache.remove(processorId);
     }
 
     private static Map<String, String> extractTestHeaders(JsonObject testRequest) {
@@ -396,33 +372,20 @@ public class GatewayProxyServlet extends HttpServlet {
     // -----------------------------------------------------------------------
 
     /**
-     * Resolves the gateway listening port for the given processor ID.
-     *
-     * @param processorId the NiFi processor UUID
-     * @param request     the current HTTP servlet request (for authentication context)
-     * @return the gateway port
-     * @throws IOException if unable to fetch component config
-     */
-    protected int resolveGatewayPort(String processorId, HttpServletRequest request) throws IOException {
-        return resolveGatewayEndpoint(processorId, request).port();
-    }
-
-    /**
-     * Resolves the gateway endpoint (port and protocol) for a processor, caching both together
-     * in one atomic map entry. The port and protocol are derived from the same component
-     * configuration read, so they are always cached and evicted as a consistent pair.
+     * Resolves the gateway endpoint (port and protocol) for a processor from a single
+     * component-configuration read. The read is performed on <em>every</em> invocation so the
+     * caller's NiFi component permissions are re-checked per request — nothing is cached, because
+     * a cache hit would serve one user's resolved endpoint to another user who may hold no
+     * permission on the processor.
      *
      * @param processorId the NiFi processor UUID
      * @param request     the current HTTP servlet request (for authentication context)
      * @return the resolved gateway endpoint
+     * @throws IOException if unable to fetch component config
      */
-    private GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request) {
-        GatewayEndpoint cached = endpointCache.get(processorId);
-        if (cached != null) return cached;
-
-        var reader = new ComponentConfigReader(requireContext());
-        var config = reader.getComponentConfig(processorId, request);
-        Map<String, String> properties = config.properties();
+    protected GatewayEndpoint resolveGatewayEndpoint(String processorId, HttpServletRequest request)
+            throws IOException {
+        Map<String, String> properties = resolveComponentConfig(processorId, request).properties();
 
         String portStr = properties.get(GATEWAY_PORT_PROPERTY);
         if (portStr == null) {
@@ -435,22 +398,7 @@ public class GatewayProxyServlet extends HttpServlet {
         String sslCs = properties.get(SSL_CONTEXT_SERVICE_PROPERTY);
         String protocol = (sslCs != null && !sslCs.isBlank()) ? "https" : "http";
 
-        GatewayEndpoint endpoint = new GatewayEndpoint(port, protocol);
-        endpointCache.put(processorId, endpoint);
-        return endpoint;
-    }
-
-    /**
-     * Returns the cached gateway protocol for a processor, or {@code "http"} when no endpoint
-     * has been resolved yet. Reads the same atomic cache entry populated by
-     * {@link #resolveGatewayEndpoint}, so the protocol is always consistent with the cached port.
-     *
-     * @param processorId the NiFi processor UUID
-     * @return the cached protocol, or {@code "http"} by default
-     */
-    private String resolveCachedProtocol(String processorId) {
-        GatewayEndpoint cached = endpointCache.get(processorId);
-        return cached != null ? cached.protocol() : "http";
+        return new GatewayEndpoint(port, protocol);
     }
 
     /**
@@ -635,7 +583,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
 
             if (!ALLOWED_GRANT_TYPES.contains(grantType)) {
-                LOGGER.warn(UILogMessages.WARN.GATEWAY_INVALID_GRANT_TYPE, grantType);
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_INVALID_GRANT_TYPE, LogSanitizer.forLog(grantType));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Invalid grant type. Allowed: password, client_credentials");
                 return;
@@ -652,7 +600,7 @@ public class GatewayProxyServlet extends HttpServlet {
             Set<String> allowedHosts = resolveAllowedIssuerHosts(processorId, req);
             if (!isAllowedTokenEndpointHost(tokenEndpointUrl, allowedHosts)) {
                 LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED,
-                        tokenEndpointUrl);
+                        LogSanitizer.forLog(tokenEndpointUrl));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Token endpoint host not allowed");
                 return;
@@ -710,7 +658,7 @@ public class GatewayProxyServlet extends HttpServlet {
             // SSRF protection
             Set<String> allowedHosts = resolveAllowedIssuerHosts(processorId, req);
             if (!isAllowedTokenEndpointHost(issuerUrl, allowedHosts)) {
-                LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED, issuerUrl);
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_TOKEN_FETCH_SSRF_BLOCKED, LogSanitizer.forLog(issuerUrl));
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                         "Issuer host not allowed");
                 return;
@@ -726,8 +674,12 @@ public class GatewayProxyServlet extends HttpServlet {
                     null, null);
 
             if (idpResp.statusCode() != 200) {
+                // The upstream status stays in the log only — echoing it lets a caller use this
+                // endpoint as a port scanner by distinguishing connection-refused from 404 from 401.
+                LOGGER.warn(UILogMessages.WARN.GATEWAY_OIDC_DISCOVERY_STATUS,
+                        LogSanitizer.forLog(discoveryUrl), idpResp.statusCode());
                 sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                        "OIDC discovery failed (HTTP " + idpResp.statusCode() + ")");
+                        MSG_OIDC_DISCOVERY_FAILED);
                 return;
             }
 
@@ -754,7 +706,7 @@ public class GatewayProxyServlet extends HttpServlet {
             LOGGER.error(e, UILogMessages.ERROR.GATEWAY_OIDC_DISCOVERY_FAILED,
                     e.getMessage());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_GATEWAY,
-                    "OIDC discovery failed");
+                    MSG_OIDC_DISCOVERY_FAILED);
         }
     }
 
@@ -806,17 +758,18 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     /**
-     * Resolves the set of allowed hosts for token endpoint SSRF protection.
-     * Extracts hosts from configured issuer URLs in the linked controller service,
-     * plus localhost variants.
+     * Resolves the set of allowed hosts for token endpoint SSRF protection: exactly the hosts of
+     * the {@code issuer.*.issuer} URLs configured on the linked controller service.
+     *
+     * <p>The set starts empty and is deny-by-default — an empty result rejects every candidate
+     * through {@link #isAllowedTokenEndpointHost}, it is never treated as allow-all. Loopback is
+     * reachable only when a configured issuer URL is itself a loopback URL; there is no
+     * unconditional localhost seed, because that seed let any caller reach every service bound to
+     * the NiFi host's loopback interface.
      */
     Set<String> resolveAllowedIssuerHosts(String processorId,
             HttpServletRequest request) throws IOException {
-        Set<String> hosts = new HashSet<>(Set.of(
-                // Always allow localhost
-                "localhost",
-                "127.0.0.1",
-                "::1"));
+        Set<String> hosts = new HashSet<>();
 
         try {
             Map<String, String> processorProps = resolveProcessorProperties(
@@ -871,7 +824,7 @@ public class GatewayProxyServlet extends HttpServlet {
             }
         } catch (IllegalArgumentException e) {
             LOGGER.warn(UILogMessages.WARN.MALFORMED_ISSUER_URL,
-                    urlString);
+                    LogSanitizer.forLog(urlString));
         }
     }
 
@@ -1165,8 +1118,11 @@ public class GatewayProxyServlet extends HttpServlet {
         String host = uri.getHost();
         if (host == null) return false;
         // URI.getHost() returns brackets for IPv6, e.g. "[::1]"
-        String normalizedHost = host.startsWith("[") && host.endsWith("]")
+        String bracketStripped = host.startsWith("[") && host.endsWith("]")
                 ? host.substring(1, host.length() - 1) : host;
+        // Host components are case-insensitive; lowercase before comparing so this guard
+        // agrees with the file's other two host checks (extractHost, isAllowedTokenEndpointHost).
+        String normalizedHost = bracketStripped.toLowerCase(Locale.ROOT);
         return "localhost".equals(normalizedHost)
                 || "127.0.0.1".equals(normalizedHost)
                 || "::1".equals(normalizedHost);
@@ -1200,7 +1156,7 @@ public class GatewayProxyServlet extends HttpServlet {
             urlPathValidator.validate(value);
             return true;
         } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, value, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, LogSanitizer.forLog(value), e.getFailureType());
             sendErrorResponse(resp, HttpServletResponse.SC_BAD_REQUEST,
                     "Invalid URL: " + e.getFailureType().getDescription());
             return false;

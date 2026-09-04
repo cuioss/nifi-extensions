@@ -26,6 +26,7 @@ import de.cuioss.http.security.monitoring.SecurityEventCounter;
 import de.cuioss.http.security.pipeline.PipelineFactory;
 import de.cuioss.nifi.jwt.JwtAttributes;
 import de.cuioss.nifi.ui.UILogMessages;
+import de.cuioss.nifi.ui.util.LogSanitizer;
 import de.cuioss.nifi.ui.util.ComponentConfigReader;
 import de.cuioss.tools.logging.CuiLogger;
 import jakarta.json.*;
@@ -127,7 +128,7 @@ public class JwksValidationServlet extends HttpServlet {
             LOGGER.warn(UILogMessages.WARN.INVALID_JSON_FORMAT, e.getMessage());
             sendErrorResponse(resp, 400, "Invalid field type: expected a string value");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.FAILED_JWKS_REQUEST, requestPath);
+            LOGGER.error(e, UILogMessages.ERROR.FAILED_JWKS_REQUEST, LogSanitizer.forLog(requestPath));
             sendErrorResponse(resp, 500, "Internal error processing JWKS request");
         }
     }
@@ -245,22 +246,37 @@ public class JwksValidationServlet extends HttpServlet {
             // SSRF protection: resolve DNS once and validate all resolved addresses.
             InetAddress resolvedAddress = resolveAndValidateAddress(uri.getHost(), allowPrivateAddresses);
             if (resolvedAddress == null) {
-                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, jwksUrl);
+                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, LogSanitizer.forLog(jwksUrl));
                 return JwksValidationResult.failure("URL must not point to a private or loopback address");
             }
 
-            // Fetch JWKS content by hostname. The former resolved-IP fetch (with a manual
-            // Host header) failed at runtime: java.net.http rejects the restricted Host
-            // header unless -Djdk.httpclient.allowRestrictedHeaders=host is set on the NiFi
-            // JVM, and HTTPS-by-IP breaks SNI/hostname verification. The pre-resolution
-            // check above still blocks private targets; the residual DNS-rebinding TOCTOU
-            // window is an accepted trade-off for this admin-facing validation endpoint.
+            // Fetch JWKS content by hostname, bracketed by a second resolution check below.
+            //
+            // The DNS-rebinding window between the pre-check and the fetch is NARROWED by that
+            // bracketing re-validation, not closed: an attacker who flips the record for exactly
+            // the duration of the fetch and flips it back is still not caught. Two stronger
+            // shapes were considered and rejected:
+            //   - Connect to the resolved IP with a manual Host header. Implemented and reverted:
+            //     java.net.http rejects the restricted Host header unless the NiFi JVM is started
+            //     with -Djdk.httpclient.allowRestrictedHeaders=host, and HTTPS-by-IP breaks
+            //     SNI/hostname verification.
+            //   - Re-validate on redirect. Not applicable: the client never follows redirects and
+            //     a 3xx already fails the 200-only status gate in readSizeLimitedBody.
             HttpResult<String> fetchResult = fetchJwksContentByOriginalUrl(jwksUrl);
 
             if (!fetchResult.isSuccess()) {
                 return JwksValidationResult.failure(
                         fetchResult.getErrorMessage().orElse("Failed to fetch JWKS content"));
             }
+
+            // Post-fetch re-validation: the host must STILL resolve to public addresses only.
+            // Skipped together with the pre-check when private addresses are explicitly allowed.
+            if (!allowPrivateAddresses
+                    && resolveAndValidateAddress(uri.getHost(), false) == null) {
+                LOGGER.warn(UILogMessages.WARN.SSRF_BLOCKED, LogSanitizer.forLog(jwksUrl));
+                return JwksValidationResult.failure("URL must not point to a private or loopback address");
+            }
+
             String content = fetchResult.getContent().orElseThrow();
 
             // Validate content as JWKS
@@ -488,7 +504,7 @@ public class JwksValidationServlet extends HttpServlet {
         try (InputStream body = response.body()) {
             byte[] bytes = body.readNBytes(MAX_RESPONSE_BODY_SIZE + 1);
             if (bytes.length > MAX_RESPONSE_BODY_SIZE) {
-                LOGGER.warn(UILogMessages.WARN.JWKS_RESPONSE_TOO_LARGE, url);
+                LOGGER.warn(UILogMessages.WARN.JWKS_RESPONSE_TOO_LARGE, LogSanitizer.forLog(url));
                 return HttpResult.failure("JWKS response exceeds maximum size limit of 1 MB",
                         null, HttpErrorCategory.INVALID_CONTENT);
             }
@@ -526,7 +542,7 @@ public class JwksValidationServlet extends HttpServlet {
      */
     private JwksValidationResult handleValidationError(String jwksUrl, String errorMessage, boolean useWarnLevel) {
         if (useWarnLevel) {
-            LOGGER.warn(UILogMessages.WARN.JWKS_URL_VALIDATION_FAILED, jwksUrl, errorMessage);
+            LOGGER.warn(UILogMessages.WARN.JWKS_URL_VALIDATION_FAILED, LogSanitizer.forLog(jwksUrl), errorMessage);
         } else {
             LOGGER.debug(JWKS_VALIDATION_FAILED_MSG, jwksUrl, errorMessage);
         }
@@ -549,7 +565,8 @@ public class JwksValidationServlet extends HttpServlet {
             Path requestedPath = Path.of(jwksFilePath).normalize().toAbsolutePath();
             Path allowedBase = getJwksAllowedBasePath();
             if (!requestedPath.startsWith(allowedBase)) {
-                LOGGER.warn(UILogMessages.WARN.JWKS_FILE_OUTSIDE_BASE, requestedPath, allowedBase);
+                LOGGER.warn(UILogMessages.WARN.JWKS_FILE_OUTSIDE_BASE,
+                        LogSanitizer.forLog(requestedPath.toString()), allowedBase);
                 return JwksValidationResult.failure("File path must be within: " + allowedBase);
             }
 
@@ -568,7 +585,7 @@ public class JwksValidationServlet extends HttpServlet {
 
         } catch (IOException e) {
             String error = "JWKS file validation error: " + e.getMessage();
-            LOGGER.warn(e, UILogMessages.WARN.JWKS_FILE_VALIDATION_FAILED, jwksFilePath);
+            LOGGER.warn(e, UILogMessages.WARN.JWKS_FILE_VALIDATION_FAILED, LogSanitizer.forLog(jwksFilePath));
             return JwksValidationResult.failure(error);
         }
     }
@@ -609,7 +626,7 @@ public class JwksValidationServlet extends HttpServlet {
         try {
             urlPathValidator.validate(jwksUrl);
         } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, jwksUrl, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.URL_SECURITY_VIOLATION, LogSanitizer.forLog(jwksUrl), e.getFailureType());
             return JwksValidationResult.failure("Invalid URL: " + e.getFailureType().getDescription());
         }
         return null;
@@ -626,7 +643,7 @@ public class JwksValidationServlet extends HttpServlet {
         try {
             urlPathValidator.validate(jwksFilePath);
         } catch (UrlSecurityException e) {
-            LOGGER.warn(UILogMessages.WARN.PATH_SECURITY_VIOLATION, jwksFilePath, e.getFailureType());
+            LOGGER.warn(UILogMessages.WARN.PATH_SECURITY_VIOLATION, LogSanitizer.forLog(jwksFilePath), e.getFailureType());
             return JwksValidationResult.failure("Invalid file path: " + e.getFailureType().getDescription());
         }
         return null;
