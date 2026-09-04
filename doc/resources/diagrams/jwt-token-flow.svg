@@ -68,11 +68,11 @@
   <circle class="dot" cx="792" cy="264" r="4.5"/>
   <text x="792" y="292" class="term-lbl">route to failure</text>
 
-  <!-- D1b no -> set reason -> success -->
+  <!-- D1b no -> mark token absent -> success -->
   <line class="arrow" x1="620" y1="302" x2="620" y2="336" marker-end="url(#arrow)"/>
   <text x="646" y="322" class="lbl">no</text>
   <rect class="stroke" x="510" y="336" width="220" height="44" rx="6" ry="6"/>
-  <text x="620" y="363" class="box-lbl">Set jwt.error.reason</text>
+  <text x="620" y="363" class="box-lbl">Set jwt.present = false</text>
   <line class="arrow" x1="620" y1="380" x2="620" y2="410" marker-end="url(#arrow)"/>
   <circle class="term" cx="620" cy="424" r="10"/>
   <circle class="dot" cx="620" cy="424" r="4.5"/>

@@ -59,15 +59,17 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |`jwt.groups` |Comma-separated groups from the token (omitted if empty)
 |`jwt.scopes` |Comma-separated scopes from the token (omitted if no `scope` claim)
 |`jwt.authorized` |`true`/`false` if scope/role authorization was checked (only present when roles or scopes are configured)
-|`jwt.content.<claim>` |Individual token claims (prefixed); standard claims (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`, `scopes`) are excluded to avoid duplication
+|`jwt.content.<claim>` |Individual token claims (prefixed); the claims that already have a dedicated attribute (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
 |`jwt.error.code` |Error code on validation failure
-|`jwt.error.reason` |Human-readable error description (also set on `success` FlowFiles when token is missing and not required: "No token provided")
+|`jwt.error.reason` |Human-readable error description on validation failure
 |`jwt.error.category` |Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)
 |===
 
+NOTE: The three `jwt.error.*` attributes are written only on the `authentication-failed` route. A `success` FlowFile never carries them -- including the accepted missing-token case below, which sets `jwt.present=false` and nothing else.
+
 == Error Routing
 
-* **`success`**: token is valid and authorization passed; also used for missing tokens when `Require Valid Token` is `false` (with `jwt.present=false` and `jwt.error.reason` set)
+* **`success`**: token is valid and authorization passed; also used for missing tokens when `Require Valid Token` is `false` (with `jwt.present=false`)
 * **`authentication-failed`**: token is invalid, expired, wrong issuer, bad signature, or insufficient roles/scopes; also used for missing tokens when `Require Valid Token` is `true`
 
 == Token Verification UI
