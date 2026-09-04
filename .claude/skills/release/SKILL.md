@@ -122,8 +122,6 @@ gh pr create --repo cuioss/nifi-extensions --base main \
 The release PR is a mechanical version bump (`project.yml` + optional README badge) — no
 code review is necessary, so it carries the **`skip-bot-review`** label to skip bot review.
 
-Use the project commit convention: `Co-Authored-By: Claude <noreply@anthropic.com>` (no
-model name / no "Generated with Claude Code" footer).
 
 ### Step 8 — Wait for PR checks (~15 min)
 
@@ -300,4 +298,3 @@ short summary of how many dependency PRs were collapsed/removed during note refo
   and auto-merge is blocked.
 - Never merge a red PR; fix and re-wait.
 - Temporary files go under `.plan/temp/`.
-- Commit trailer: `Co-Authored-By: Claude <noreply@anthropic.com>`; no PR footer line.
