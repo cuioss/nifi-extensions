@@ -12,7 +12,7 @@ import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
-    buildOriginBadge, log
+    buildOriginBadge, buildActionButton, log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -170,23 +170,6 @@ const buildSchemaBadge = (schemaValue) => (schemaValue?.trim()
     ? buildIconBadge('schema-badge', t('route.table.schema.title'), 'fa-check-circle', 'Schema')
     : null);
 
-/**
- * Build a row action button carrying a leading icon and a text label.
- * @param {string} className  the button's class attribute
- * @param {string} title  the button tooltip
- * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
- * @param {string} label  the button label
- * @returns {HTMLButtonElement} the button element
- */
-const buildActionButton = (className, title, iconClass, label) => {
-    const button = document.createElement('button');
-    button.className = className;
-    button.title = title;
-    const icon = document.createElement('i');
-    icon.className = `fa ${iconClass}`;
-    button.append(icon, document.createTextNode(` ${label}`));
-    return button;
-};
 const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**

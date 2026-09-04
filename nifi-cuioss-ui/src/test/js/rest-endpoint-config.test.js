@@ -78,6 +78,15 @@ describe('rest-endpoint-config', () => {
             span.append(icon, document.createTextNode(` ${utils.t(`origin.badge.${o}`)}`));
             return span;
         });
+        utils.buildActionButton.mockImplementation((className, title, iconClass, label) => {
+            const button = document.createElement('button');
+            button.className = className;
+            button.title = title;
+            const icon = document.createElement('i');
+            icon.className = `fa ${iconClass}`;
+            button.append(icon, document.createTextNode(` ${label}`));
+            return button;
+        });
         createContextHelp.mockImplementation(mockCreateContextHelp);
         createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID

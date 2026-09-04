@@ -10,7 +10,7 @@ import * as api from './api.js';
 import {
     sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
     validateIssuerConfig, log, t,
-    buildOriginBadge
+    buildOriginBadge, buildActionButton
 } from './utils.js';
 import { createContextHelp, createFormField } from './context-help.js';
 
@@ -20,24 +20,6 @@ import { createContextHelp, createFormField } from './context-help.js';
 
 // Counter for unique form field IDs
 let formCounter = 0;
-
-/**
- * Build a button carrying a leading icon and a text label.
- * @param {string} className  the button's class attribute
- * @param {string} title  the button tooltip
- * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
- * @param {string} label  the button label
- * @returns {HTMLButtonElement} the button element
- */
-const buildActionButton = (className, title, iconClass, label) => {
-    const button = document.createElement('button');
-    button.className = className;
-    button.title = title;
-    const icon = document.createElement('i');
-    icon.className = `fa ${iconClass}`;
-    button.append(icon, document.createTextNode(` ${label}`));
-    return button;
-};
 
 const SAMPLE = {
     name: 'sample-issuer',

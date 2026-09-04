@@ -908,6 +908,25 @@ const ORIGIN_BADGE_CONFIG = {
 };
 
 /**
+ * Build a button carrying a leading icon and a text label. Shared by every editor
+ * (issuer, route/management) that renders an icon+label row action.
+ * @param {string} className  the button's class attribute
+ * @param {string} title  the button tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the button label
+ * @returns {HTMLButtonElement} the button element
+ */
+export const buildActionButton = (className, title, iconClass, label) => {
+    const button = document.createElement('button');
+    button.className = className;
+    button.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    button.append(icon, document.createTextNode(` ${label}`));
+    return button;
+};
+
+/**
  * Build an origin badge element.
  * @param {'persisted'|'modified'|'new'|'external'} origin  the origin state
  * @returns {HTMLSpanElement|null} the badge element, or null when no badge applies

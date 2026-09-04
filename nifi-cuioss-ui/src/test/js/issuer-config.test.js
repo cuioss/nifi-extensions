@@ -31,6 +31,15 @@ describe('issuer-config', () => {
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());
         utils.validateIssuerConfig.mockImplementation(() => ({ isValid: true }));
+        utils.buildActionButton.mockImplementation((className, title, iconClass, label) => {
+            const button = document.createElement('button');
+            button.className = className;
+            button.title = title;
+            const icon = document.createElement('i');
+            icon.className = `fa ${iconClass}`;
+            button.append(icon, document.createTextNode(` ${label}`));
+            return button;
+        });
         // Component ID is sourced from api.getComponentId() — which reads the ?id=<uuid>
         // query param in production (parity with rest-endpoint-config.js). Do NOT re-implement
         // ?id= parsing here: a diverging mock previously masked the bug where app.js never
