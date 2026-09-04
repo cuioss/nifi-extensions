@@ -444,66 +444,23 @@ const buildPropertyUpdates = (name, f) => {
     };
 };
 
-const saveIssuer = async (form, errEl, componentId) => {
-    const f = extractFormFields(form);
-    const v = validateFormData(f);
-    if (!v.isValid) { displayUiError(errEl, v.error, {}, 'issuerConfigEditor.error.title'); return; }
-    const updates = buildPropertyUpdates(f.issuerName, f);
-    if (componentId) {
-        try {
-            await api.updateComponentProperties(componentId, updates);
-            displayUiSuccess(errEl, t('issuer.save.success'));
-        } catch (error) {
-            displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
-        }
-    } else {
-        displayUiSuccess(errEl, t('issuer.save.success.standalone'));
-    }
-};
+// The standard editor is the gateway spine driven through a non-controller-service
+// context: getProps/updateProps resolve { useCS: false } to the very same component
+// API calls the standard path used to make directly.
+const standardContext = (componentId) => ({ componentId, useCS: false });
 
-const clearIssuerProperties = async (componentId, issuerName) => {
-    const res = await api.getComponentProperties(componentId);
-    const props = res.properties || {};
-    const updates = {};
-    for (const key of Object.keys(props)) {
-        if (key.startsWith(`issuer.${issuerName}.`)) updates[key] = null;
-    }
-    if (Object.keys(updates).length > 0) {
-        await api.updateComponentProperties(componentId, updates);
-    }
-};
+const saveIssuer = (form, errEl, componentId) =>
+    saveIssuerWithContext(form, errEl, standardContext(componentId), {
+        onPersisted: () => displayUiSuccess(errEl, t('issuer.save.success')),
+        onSkipped: () => displayUiSuccess(errEl, t('issuer.save.success.standalone'))
+    });
 
-const removeIssuer = async (form, issuerName) => {
-    // Scope the banner to THIS issuer editor's own container — `document.querySelector`
-    // would grab the route editor's identically-classed banner (hidden in gateway mode).
-    const editor = form.closest('.issuer-config-editor');
-    const globalErr = editor?.querySelector('.global-error-messages.issuer-form-error-messages');
-    const componentId = api.getComponentId();
-
-    if (issuerName && componentId) {
-        try {
-            // Await backend deletion BEFORE removing the row, so a failed delete does not
-            // leave the row gone while the config persists server-side.
-            await clearIssuerProperties(componentId, issuerName);
-            form.remove();
-            if (globalErr) {
-                displayUiSuccess(globalErr, t('issuer.remove.success', issuerName));
-                globalErr.classList.remove('hidden');
-            }
-        } catch (error) {
-            if (globalErr) {
-                displayUiError(globalErr, error, {}, 'issuerConfigEditor.error.removeFailedTitle');
-                globalErr.classList.remove('hidden');
-            }
-        }
-    } else {
-        form.remove();
-        if (issuerName && globalErr) {
-            displayUiSuccess(globalErr, t('issuer.remove.success.standalone', issuerName));
-            globalErr.classList.remove('hidden');
-        }
-    }
-};
+const removeIssuer = (form, issuerName) => removeIssuerWithContext({
+    node: form,
+    scope: form,
+    issuerName,
+    ctx: standardContext(api.getComponentId())
+});
 
 // ---------------------------------------------------------------------------
 // Gateway context: list-first UX with summary table + inline editor
@@ -731,33 +688,59 @@ const collectRenameCleanup = async (ctx, originalName, updates) => {
     }
 };
 
-const saveIssuerGateway = async (form, errEl, ctx, tableRow, issuersContainer) => {
+/**
+ * Shared issuer-save spine: extract → validate → build updates → persist.
+ * The standard and gateway editors differ only in what happens after the persist,
+ * which the caller supplies as hooks.
+ *
+ * @param {HTMLElement} form  the issuer form
+ * @param {HTMLElement} errEl  banner element for validation and persist errors
+ * @param {Object} ctx  accessor context: { componentId, useCS }
+ * @param {Object} hooks
+ * @param {(formData: Object, updates: Object) => Promise<void>} [hooks.beforePersist]
+ *   runs after validation, immediately before the persist call
+ * @param {(formData: Object) => void} hooks.onPersisted  tail after a successful persist
+ * @param {(formData: Object) => void} hooks.onSkipped  tail when there is no component to persist to
+ * @returns {Promise<void>}
+ */
+const saveIssuerWithContext = async (form, errEl, ctx, hooks) => {
     const f = extractFormFields(form);
-    const originalName = form.dataset.originalName || '';
     const v = validateFormData(f);
     if (!v.isValid) {
         displayUiError(errEl, v.error, {}, 'issuerConfigEditor.error.title');
         return;
     }
 
-    const nameChanged = originalName && originalName !== f.issuerName;
     const updates = buildPropertyUpdates(f.issuerName, f);
 
-    if (nameChanged && ctx.componentId) {
-        await collectRenameCleanup(ctx, originalName, updates);
-    }
-
     if (!ctx.componentId) {
-        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx);
+        hooks.onSkipped(f);
         return;
     }
 
+    await hooks.beforePersist?.(f, updates);
+
     try {
         await updateProps(ctx, updates);
-        applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx, 'persisted');
+        hooks.onPersisted(f);
     } catch (error) {
         displayUiError(errEl, error, {}, 'issuerConfigEditor.error.saveFailedTitle');
     }
+};
+
+const saveIssuerGateway = (form, errEl, ctx, tableRow, issuersContainer) => {
+    // Read the original name before the spine runs — applyIssuerSaveToUI overwrites it.
+    const originalName = form.dataset.originalName || '';
+    return saveIssuerWithContext(form, errEl, ctx, {
+        beforePersist: async (f, updates) => {
+            if (originalName && originalName !== f.issuerName) {
+                await collectRenameCleanup(ctx, originalName, updates);
+            }
+        },
+        onPersisted: (f) =>
+            applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx, 'persisted'),
+        onSkipped: (f) => applyIssuerSaveToUI(form, f, tableRow, issuersContainer, ctx)
+    });
 };
 
 const updateIssuerTableRow = (row, formData) => {
@@ -822,36 +805,49 @@ const deleteIssuerProperties = async (ctx, issuerName) => {
     }
 };
 
-const removeIssuerGateway = async (row, issuerName, issuersContainer, ctx) => {
-    const openForm = issuersContainer.querySelector('.issuer-inline-form');
-    if (openForm && openForm.dataset.originalName === issuerName) {
-        openForm.remove();
-    }
-
-    if (!issuerName) {
-        row.remove();
-        return;
-    }
-
-    // Scope the banner to THIS issuer editor's own container (not the route editor's).
-    const editor = issuersContainer.closest('.issuer-config-editor');
+/**
+ * Shared issuer-removal spine: resolve banner → guard → delete → remove node → report.
+ * The standard and gateway editors differ only in which node represents the issuer.
+ *
+ * @param {Object} args
+ * @param {HTMLElement} args.node  the node standing for the issuer (inline form or table row)
+ * @param {HTMLElement} args.scope  element whose .issuer-config-editor ancestor owns the banner
+ * @param {string} args.issuerName  the issuer being removed
+ * @param {Object} args.ctx  accessor context: { componentId, useCS }
+ * @returns {Promise<void>}
+ */
+const removeIssuerWithContext = async ({ node, scope, issuerName, ctx }) => {
+    // Scope the banner to THIS issuer editor's own container — `document.querySelector`
+    // would grab the route editor's identically-classed banner (hidden in gateway mode).
+    const editor = scope.closest('.issuer-config-editor');
     const globalErr = editor?.querySelector('.global-error-messages.issuer-form-error-messages');
 
-    if (!ctx.componentId) {
-        row.remove();
-        showGlobalBanner(globalErr, (el) =>
-            displayUiSuccess(el, t('issuer.remove.success.standalone', issuerName)));
+    if (!issuerName || !ctx.componentId) {
+        node.remove();
+        if (issuerName) {
+            showGlobalBanner(globalErr, (el) =>
+                displayUiSuccess(el, t('issuer.remove.success.standalone', issuerName)));
+        }
         return;
     }
 
     try {
-        // Await backend deletion BEFORE removing the row so a failed delete keeps the row.
+        // Await backend deletion BEFORE removing the node, so a failed delete does not
+        // leave it gone while the config persists server-side.
         await deleteIssuerProperties(ctx, issuerName);
-        row.remove();
+        node.remove();
         showGlobalBanner(globalErr, (el) =>
             displayUiSuccess(el, t('issuer.remove.success', issuerName)));
     } catch (error) {
         showGlobalBanner(globalErr, (el) =>
             displayUiError(el, error, {}, 'issuerConfigEditor.error.removeFailedTitle'));
     }
+};
+
+const removeIssuerGateway = (row, issuerName, issuersContainer, ctx) => {
+    const openForm = issuersContainer.querySelector('.issuer-inline-form');
+    if (openForm && openForm.dataset.originalName === issuerName) {
+        openForm.remove();
+    }
+    return removeIssuerWithContext({ node: row, scope: issuersContainer, issuerName, ctx });
 };
