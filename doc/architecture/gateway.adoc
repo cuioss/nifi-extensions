@@ -11,7 +11,7 @@ image::api-gateway-pattern.svg[RestApiGateway Pattern]
 The `GatewayRequestHandler` processes each request through a 7-stage pipeline:
 
 1. **Input Sanitization & Forwarded Resolution**: Normalizes path, query parameters, and headers using cui-http `PipelineSet`. Returns 400 on invalid input. In the same stage the full reverse-proxy / forwarded view is resolved *once* through the shared `ForwardedRequestResolver` (a thin wrapper over the cui-http `de.cuioss.http.forwarded.ForwardedHeaderResolver`): the honored context-path prefix, the forwarded scheme/host/port, and the forwarded client IP, all against the operator's trust model (allowlist / trust-all / trusted-proxies). cui-http handles the forwarded-value parsing, sanitization, and injection guards, while the gateway determines the context-path header precedence (`X-ProxyContextPath` before `X-Forwarded-Prefix`) via `GatewayRequestHandler.firstProxyContextPathHeader()`; the resolved `ResolvedForwarding` view is carried on the `SanitizedRequest`. Secure by default: with no opt-in nothing is honored, so a direct client cannot spoof any forwarded value. The honored context path is stripped from the path before route lookup; the honored scheme/host/port and context prefix are reflected in the absolute 202 `Location` header (built by `RequestUtils`); and the honored client IP is used for audit and rate-limit logging (falling back to the raw socket remote address).
-2. **Route Lookup**: Matches the sanitized path against configured routes using three ordered passes -- exact match, then prefix match, then pattern match against compiled `{placeholder}` route templates. The first pass to hit wins, so a literal path that also matches a pattern resolves to its exact handler. Pattern matches additionally extract the path parameters (see <<Path-Parameter Routes>>). Returns 404 if no pass matches.
+2. **Route Lookup**: Matches the sanitized path against the registered handlers using three ordered passes -- exact match, then prefix match, then pattern match against compiled `{placeholder}` route templates. The first pass to hit wins, so a literal path that also matches a pattern resolves to its exact handler. The prefix pass applies only to handlers that opt into it via `EndpointHandler.prefixMatch()`, which defaults to `false` -- in practice the built-in `/status` and `/attachments` handlers; a route configured through `restapi.<name>.path` is never prefix-matched. Pattern matches additionally extract the path parameters (see <<path-parameter-routes,Path-Parameter Routes>>). Returns 404 if no pass matches.
 3. **Method Check**: Verifies the HTTP method is allowed for the matched route. Returns 405 with `Allow` header if not.
 4. **JWT Authentication**: Auth-mode dispatch per endpoint: extracts `Bearer` token from the `Authorization` header and validates it via `JwtIssuerConfigService.validateToken()`. Returns 401 with `WWW-Authenticate: Bearer` on failure. Skipped for `NONE` and loopback `LOCAL_ONLY` requests. This runs before the body is read so unauthenticated clients cannot force the gateway to buffer request payloads.
 5. **Authorization**: Validates required roles and scopes using `AuthorizationValidator`. Returns 403 for missing roles and 403 with `insufficient_scope` for missing scopes (RFC 6750 Section 3.1). Skipped when the route has no role or scope requirements.
@@ -34,15 +34,17 @@ Placeholder syntax:
 
 Route resolution runs three ordered passes and the first to hit wins:
 
-. **Exact** -- the sanitized path equals a configured route `path` verbatim.
-. **Prefix** -- the path starts with a prefix-match route's `path` followed by `/`.
+. **Exact** -- the sanitized path equals a registered handler `path` verbatim.
+. **Prefix** -- the path starts with a prefix-matching handler's `path` followed by `/`. `EndpointHandler.prefixMatch()` returns `false` by default and is overridden only by the built-in `/status` and `/attachments` handlers, so this pass never reaches a `restapi.<name>.path` route.
 . **Pattern** -- the path matches a compiled `{placeholder}` template.
 
 Because exact precedes pattern, a literal route such as `/api/users/me` always resolves to its exact handler even when a pattern route `/api/users/{id}` is also configured.
 
+A configured route therefore matches its own path exactly, or by `{placeholder}` template when its path declares one. To route a variable trailing segment, declare it as a placeholder; there is no way to opt a configured route into the prefix pass.
+
 === Extracted Attributes
 
-Each captured placeholder becomes one FlowFile attribute named `rest.api.pathparam.<name>`, where `<name>` is the placeholder name. Exact and prefix-matched routes carry no such attributes.
+Each captured placeholder becomes one FlowFile attribute named `rest.api.pathparam.<name>`, where `<name>` is the placeholder name. Exact-matched routes carry no such attributes, and neither do the built-in prefix-matching handlers.
 
 === Worked Example
 
@@ -228,7 +230,11 @@ Management endpoint auth-mode is configured via static NiFi properties:
 
 The `/status/{traceId}` response always carries the fixed tracking fields
 (`traceId`, `status`, `acceptedAt`, `updatedAt`, and — when present —
-`parentTraceId` and an `error` object). In addition, an external processor may
+`parentTraceId`, the flat RFC 9457 error fields `errorDetail`, `errorType`,
+`errorStatus`, `errorTitle`, `errorInstance` and `errorViolations`, plus
+`attachmentsMaxCount`, `attachmentsMinCount` and `routeName`). The error
+information is emitted as those six flat `error*` keys, not as a nested `error`
+object. In addition, an external processor may
 write extra top-level JSON fields directly into the cache entry for a trace ID;
 the gateway captures those non-reserved fields and re-emits them **as string
 values** in the `/status` response alongside the fixed fields. This lets a downstream
@@ -239,7 +245,7 @@ The pass-through follows these rules:
 
 * **Scalar coercion** — string values are surfaced verbatim; numbers are stringified via their JSON literal; booleans become `"true"` / `"false"`.
 * **Non-scalar drop** — nested objects, arrays, and JSON `null` values are dropped (they are not surfaced and do not fail the parse).
-* **Reserved names take precedence** — a captured field whose key collides with a reserved response key (`traceId`, `status`, `acceptedAt`, `updatedAt`, `parentTraceId`, `error`) is discarded; the reserved, typed value always wins and is never double-emitted.
+* **Reserved names take precedence** — a captured field whose key collides with one of the fourteen reserved response keys is discarded; the reserved, typed value always wins and is never double-emitted. The reserved set is `traceId`, `status`, `acceptedAt`, `updatedAt`, `parentTraceId`, `errorDetail`, `errorType`, `errorStatus`, `errorTitle`, `errorInstance`, `errorViolations`, `attachmentsMaxCount`, `attachmentsMinCount`, `routeName`. Note that `error` is *not* reserved — the nested error object was replaced by the six flat `error*` keys, so a captured field literally named `error` is passed through like any other annotation.
 * **Bounded count** — the number of additional fields re-emitted is bounded by `rest.gateway.management.status.max-additional-fields` (default `20`). Fields beyond the bound are truncated in JSON key encounter order.
 
 Additional fields captured on write are also preserved across internal status
@@ -274,10 +280,10 @@ to `PROCESSED` keeps its externally-written annotations.
 |Query parameter values (one attribute per parameter)
 
 |`http.header.<name>`
-|Request header values (one attribute per forwarded header, lower-cased name; the `Authorization` header is excluded)
+|Request header values (one attribute per forwarded header, lower-cased name). Eight credential-bearing headers are stripped and never reach a FlowFile attribute or NiFi provenance: `authorization`, `cookie`, `set-cookie`, `proxy-authorization`, `x-api-key`, `api-key`, `x-api-token`, `x-auth-token`. The comparison is case-insensitive, so `Authorization` and `AUTHORIZATION` are excluded alike.
 
 |`rest.api.pathparam.<name>`
-|Path parameter values extracted from a `{placeholder}` route template (one attribute per parameter; absent for exact/prefix-matched routes)
+|Path parameter values extracted from a `{placeholder}` route template (one attribute per parameter; absent for exact-matched routes)
 
 |`jwt.validatedAt`
 |ISO-8601 timestamp when the token was validated
@@ -301,7 +307,7 @@ to `PROCESSED` keeps its externally-written annotations.
 |Comma-separated scopes from the token (omitted if empty)
 
 |`jwt.content.<claim>`
-|Individual token claims mapped by `TokenClaimMapper` (standard claims excluded to avoid duplication)
+|Individual token claims mapped by `TokenClaimMapper`; the claims that already have a dedicated attribute (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
 
 |`rest.trace.id`
 |Unique trace ID for tracked requests (set when `tracking-mode` is `simple` or `attachments`)
@@ -395,7 +401,7 @@ Requested with `Accept: application/json`:
 {
   "tokenValidation": { "valid_tokens": 15126, "invalid_tokens": 297 },
   "httpSecurity": { "sanitized_path": 42 },
-  "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
+  "gatewayEvents": { "missing_bearer_token": 12, "auth_failed": 85 }
 }
 ----
 

@@ -59,7 +59,7 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |Property |Description |Example
 
 |issuer.<name>.jwks-url
-|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
+|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead). The key `issuer.<name>.jwksUri` is accepted as an alias; `jwks-url` is checked first and wins when both are set.
 |https://auth.example.com/.well-known/jwks.json
 
 |issuer.<name>.enabled
@@ -285,22 +285,22 @@ issuer.keycloak.issuer=https://auth.example.com/realms/my-realm
 
 |rest.gateway.proxy.context-path.whitelist
 |-- (empty)
-|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.context-path.trust-all
 |false
-|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.trusted-proxies
 |-- (empty)
-|Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR ranges (e.g. `10.0.0.0/8, 192.168.1.5`). Required to honor the forwarded client IP from the `X-Forwarded-For` / `Forwarded` headers for audit and rate-limit logging: the chain is walked right-to-left, skipping these trusted hops, and the first untrusted address is used as the client IP. Empty (the default) honors no forwarded client IP and uses the raw socket remote address. Enable only when the gateway is exclusively reachable through the listed proxies. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR ranges (e.g. `10.0.0.0/8, 192.168.1.5`). Required to honor the forwarded client IP from the `X-Forwarded-For` / `Forwarded` headers for audit and rate-limit logging: the chain is walked right-to-left, skipping these trusted hops, and the first untrusted address is used as the client IP. Empty (the default) honors no forwarded client IP and uses the raw socket remote address. Enable only when the gateway is exclusively reachable through the listed proxies. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.security-config.preset
 |defaults
-|Security posture for the forwarded-header sanitization pipeline: `strict` (tightest restrictions), `lenient` (maximum compatibility, trusted environments only), or `defaults` (balanced). Governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized before they are honored. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Security posture for the forwarded-header sanitization pipeline: `strict` (tightest restrictions), `lenient` (maximum compatibility, trusted environments only), or `defaults` (balanced). Governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized before they are honored. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 |===
 
@@ -463,7 +463,7 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |===
 |Property Pattern |Description |Example
 
-|restapi.<name>.path |URL path for the route. Supports exact paths, prefix matching, and `{placeholder}` templates for path parameters (see <<Path-Parameter Routes>>) |/api/users/{id}
+|restapi.<name>.path |URL path for the route. Supports exact paths and `{placeholder}` templates for path parameters (see <<path-parameter-routes,Path-Parameter Routes>>). Prefix matching is *not* available to configured routes -- `/api/users` matches that path only, not `/api/users/42`. |/api/users/{id}
 |restapi.<name>.methods |Comma-separated HTTP methods (default: GET,POST,PUT,DELETE) |GET,POST
 |restapi.<name>.required-roles |Comma-separated roles the JWT must carry |admin,editor
 |restapi.<name>.required-scopes |Comma-separated scopes the JWT must carry |read,write
@@ -512,6 +512,8 @@ Placeholder syntax:
 * `{name:regex}` -- matches a single segment constrained by `regex`, e.g. `{id:\\d+}`.
 
 Routes resolve through three ordered passes -- exact match, prefix match, then `{placeholder}` pattern match -- and the first to hit wins. A literal route (for example `/api/users/me`) therefore takes precedence over a pattern route (`/api/users/{id}`) that would also match.
+
+The prefix pass exists solely for the built-in `/status` and `/attachments` handlers, which opt into it so that `/status/<id>` and `/attachments/<id>` reach them. A route configured through `restapi.<name>.path` never participates in that pass: it is matched exactly, or by `{placeholder}` template when its path declares one. To capture a variable trailing segment, declare it as a placeholder (`/api/users/{id}`) rather than relying on a prefix.
 
 [source,properties]
 ----
@@ -579,7 +581,10 @@ jwt:
 
 === Reload Behavior
 
-Configuration files are loaded once when the Controller Service is enabled (`@OnEnabled`). The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked automatically by either processor. To apply configuration file changes, disable and re-enable the Controller Service.
+Nothing is reloaded automatically. The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked by either processor. How a change is applied depends on which side owns the setting:
+
+* *Issuer and JWT validation settings* (`jwt.validation.*`, whether from a static file or from Controller Service properties) are loaded once when the Controller Service is enabled (`@OnEnabled`). Disable and re-enable the Controller Service to apply a change.
+* *Gateway route and static-file settings* (`restapi.*`, including static-file route definitions) are read by the `RestApiGatewayProcessor` when it starts. Stop and restart the processor to apply a change; re-enabling the Controller Service does not pick it up.
 
 == Environment Variables
 

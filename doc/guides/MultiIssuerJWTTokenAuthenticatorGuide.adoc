@@ -216,7 +216,7 @@ For Kubernetes and Docker deployments, core settings can be provided through env
 
 The JWT processor includes a custom web UI with four tabs beyond the standard NiFi properties dialog:
 
-* **Configuration**: visually manage issuer configurations (see <<Step 2>>)
+* **Configuration**: visually manage issuer configurations (see <<_step_2_configure_the_processor,Step 2>>)
 * **Token Verification**: paste a JWT to test it against the current configuration (isolated, does not affect processor metrics)
 * **Metrics**: displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
 * **Help**: built-in documentation and troubleshooting
