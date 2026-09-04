@@ -65,6 +65,7 @@ describe('rest-endpoint-config', () => {
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
         utils.sanitizeHtml.mockImplementation((s) => s || '');
+        utils.sanitizeAttr.mockImplementation((s) => s || '');
         utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});

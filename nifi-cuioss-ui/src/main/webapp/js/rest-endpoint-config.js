@@ -11,7 +11,7 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
+    sanitizeHtml, sanitizeAttr, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
     buildOriginBadge, buildActionButton, log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
@@ -313,7 +313,12 @@ const formatAuthModeBadges = (authModeValue) => {
     const modes = (authModeValue || 'bearer').split(',').map((m) => m.trim()).filter(Boolean);
     const labels = modes.map((m) => formatAuthMode(m));
     const combined = labels.join(', ');
-    const classes = modes.map((m) => `authmode-${sanitizeHtml(m)}`).join(' ');
+    // sanitizeAttr (not sanitizeHtml) — these mode tokens are interpolated into a
+    // quoted class="..." attribute, not a text node, so quote characters must also be
+    // escaped or a persisted auth-mode value containing '"' could break out of the
+    // attribute (e.g. a value set via the raw NiFi REST API or an external config file,
+    // bypassing this editor's own enum-restricted chip input).
+    const classes = modes.map((m) => `authmode-${sanitizeAttr(m)}`).join(' ');
     return `<span class="authmode-badge ${classes}">${sanitizeHtml(combined)}</span>`;
 };
 

@@ -886,8 +886,15 @@ export const t = (key, ...params) => {
 
 /**
  * Escapes HTML entities to prevent XSS.
+ *
+ * Safe for HTML **text-node** content (e.g. `<td>${sanitizeHtml(v)}</td>`) — the
+ * textContent/innerHTML round-trip escapes `&`, `<`, `>`. It does NOT escape `"` or `'`,
+ * so it must NOT be used to build a quoted HTML **attribute** value (e.g.
+ * `class="foo ${sanitizeHtml(v)}"`); a value containing `"` can then break out of the
+ * attribute. Use {@link sanitizeAttr} for that context instead.
+ *
  * @param {string} html  raw string
- * @returns {string}  safe string
+ * @returns {string}  safe string for text-node interpolation
  */
 export const sanitizeHtml = (html) => {
     if (!html) return '';
@@ -895,6 +902,19 @@ export const sanitizeHtml = (html) => {
     d.textContent = html;
     return d.innerHTML;
 };
+
+/**
+ * Escapes a string for safe interpolation inside a double-quoted HTML attribute value
+ * (e.g. `class="foo ${sanitizeAttr(v)}"`). Extends {@link sanitizeHtml}'s text-node
+ * escaping with quote-character escaping, since an attribute value can be broken out of
+ * by an unescaped `"` (or `'`, for a single-quoted attribute) that sanitizeHtml alone
+ * does not neutralize.
+ *
+ * @param {string} value  raw string
+ * @returns {string}  attribute-safe string
+ */
+export const sanitizeAttr = (value) =>
+    sanitizeHtml(value).replaceAll('"', '&quot;').replaceAll('\'', '&#39;');
 
 // ---------------------------------------------------------------------------
 // Origin badges
