@@ -578,25 +578,6 @@ export const resolveJwtConfigServiceId = async (processorId) => {
         || null;
 };
 
-// Backward-compatible aliases
-/** @deprecated Use getComponentProperties instead */
-export const getProcessorProperties = async (processorId) => {
-    assertValidUuid(processorId, 'Processor ID');
-    await getProxyContextPath();
-    return request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
-};
-
-/** @deprecated Use updateComponentProperties instead */
-export const updateProcessorProperties = async (processorId, properties) => {
-    assertValidUuid(processorId, 'Processor ID');
-    await getProxyContextPath();
-    const proc = await request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
-    return request('PUT', nifiApiUrl(`/nifi-api/processors/${processorId}`), {
-        revision: proc.revision,
-        component: { id: processorId, config: { properties } }
-    });
-};
-
 export {
     getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES,
     resetProxyContextPath

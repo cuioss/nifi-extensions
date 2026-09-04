@@ -7,7 +7,6 @@
 import {
     validateJwksUrl, validateJwksFile, validateJwksContent,
     verifyToken,
-    getProcessorProperties, updateProcessorProperties,
     getComponentProperties, updateComponentProperties,
     getControllerServiceProperties, updateControllerServiceProperties,
     resolveJwtConfigServiceId,
@@ -128,55 +127,6 @@ describe('verifyToken', () => {
         expect(url).toBe('nifi-api/processors/jwt/verify-token');
         expect(JSON.parse(opts.body)).toEqual({ token: 'eyJhbGci...' });
         expect(result.valid).toBe(true);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// getProcessorProperties (backward-compatible)
-// ---------------------------------------------------------------------------
-
-describe('getProcessorProperties', () => {
-    test('sends GET with processor ID using absolute path', async () => {
-        mockJsonResponse({ revision: { version: 1 }, properties: {} });
-
-        const result = await getProcessorProperties('44444444-4444-4444-4444-444444444444');
-
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
-        expect(result.revision.version).toBe(1);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// updateProcessorProperties (backward-compatible)
-// ---------------------------------------------------------------------------
-
-describe('updateProcessorProperties', () => {
-    test('fetches current revision then sends PUT', async () => {
-        // First call: GET current processor
-        mockJsonResponse({ revision: { version: 3 }, component: { id: '44444444-4444-4444-4444-444444444444' } });
-        // Second call: PUT update
-        mockJsonResponse({ revision: { version: 4 } });
-
-        const result = await updateProcessorProperties('44444444-4444-4444-4444-444444444444', {
-            'issuer.keycloak.issuer': 'https://auth.example.com'
-        });
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-
-        // First call: GET
-        expect(globalThis.fetch.mock.calls[0][0]).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
-        expect(globalThis.fetch.mock.calls[0][1].method).toBe('GET');
-
-        // Second call: PUT
-        const [putUrl, putOpts] = globalThis.fetch.mock.calls[1];
-        expect(putUrl).toBe('/nifi-api/processors/44444444-4444-4444-4444-444444444444');
-        expect(putOpts.method).toBe('PUT');
-        const putBody = JSON.parse(putOpts.body);
-        expect(putBody.revision.version).toBe(3);
-        // Properties must be under component.config.properties for processors
-        expect(putBody.component.config.properties['issuer.keycloak.issuer']).toBe(
-            'https://auth.example.com'
-        );
     });
 });
 
