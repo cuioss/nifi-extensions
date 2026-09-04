@@ -3020,6 +3020,42 @@ describe('rest-endpoint-config', () => {
         );
     });
 
+    it('should reject attachments when the timeout unit is outside the offered set', async () => {
+        // Arrange
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-timeout-value').value = '30';
+        // A select only accepts values it carries an option for, so inject the rogue
+        // unit to reach the composite-validation branch that parseInt used to skip.
+        const unitSelect = form.querySelector('.field-attachments-timeout-unit');
+        const rogueUnit = document.createElement('option');
+        rogueUnit.value = 'fortnight';
+        unitSelect.appendChild(rogueUnit);
+        unitSelect.value = 'fortnight';
+
+        // Act
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Assert
+        expect(utils.displayUiError).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ message: 'route.validate.attachments.timeout.invalid' }),
+            expect.anything(),
+            expect.anything()
+        );
+    });
+
     it('should include tracking properties in export for routes with tracking', async () => {
         const propsWithTracking = {
             ...SAMPLE_PROPERTIES,

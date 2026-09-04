@@ -108,6 +108,10 @@ const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+// The units the attachments-timeout unit control offers. Single source of truth for
+// both the select's options and the composite "{value} {unit}" validation, so the
+// offered set and the accepted set cannot drift apart.
+const ATTACHMENTS_TIMEOUT_UNITS = ['sec', 'min', 'hr', 'day'];
 const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
@@ -1158,16 +1162,11 @@ const buildAttachmentBoundsFields = (properties) => {
     timeoutUnitSelect.className = 'field-attachments-timeout-unit';
     timeoutUnitSelect.setAttribute('aria-label',
         t('route.form.attachments.timeout') + ' unit');
-    for (const tu of [
-        { value: 'sec', label: 'sec' },
-        { value: 'min', label: 'min' },
-        { value: 'hr', label: 'hr' },
-        { value: 'day', label: 'day' }
-    ]) {
+    for (const tu of ATTACHMENTS_TIMEOUT_UNITS) {
         const opt = document.createElement('option');
-        opt.value = tu.value;
-        opt.textContent = tu.label;
-        if (tu.value === timeoutUnit) opt.selected = true;
+        opt.value = tu;
+        opt.textContent = tu;
+        if (tu === timeoutUnit) opt.selected = true;
         timeoutUnitSelect.appendChild(opt);
     }
 
@@ -1557,8 +1556,14 @@ const validateAttachments = (f) => {
     if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
     if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
     if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
-    const timeoutValue = Number.parseInt(f['attachments-timeout'], 10);
-    if (Number.isNaN(timeoutValue) || timeoutValue < 1) {
+    // attachments-timeout is the composite "{value} {unit}" string extractFormFields
+    // builds. Validate both halves: parseInt alone stops at the space and would let any
+    // unit through, including one the unit control never offers.
+    const timeoutMatch = /^(\d+)\s*(\S+)$/.exec(String(f['attachments-timeout'] ?? '').trim());
+    const timeoutValue = timeoutMatch ? Number.parseInt(timeoutMatch[1], 10) : Number.NaN;
+    const timeoutUnit = timeoutMatch ? timeoutMatch[2].toLowerCase() : '';
+    if (Number.isNaN(timeoutValue) || timeoutValue < 1
+        || !ATTACHMENTS_TIMEOUT_UNITS.includes(timeoutUnit)) {
         return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
     }
     return null;
