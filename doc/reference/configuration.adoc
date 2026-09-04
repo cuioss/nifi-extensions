@@ -513,7 +513,7 @@ Placeholder syntax:
 
 Routes resolve through three ordered passes -- exact match, prefix match, then `{placeholder}` pattern match -- and the first to hit wins. A literal route (for example `/api/users/me`) therefore takes precedence over a pattern route (`/api/users/{id}`) that would also match.
 
-The prefix pass exists solely for the built-in `/status` and `/attachments` handlers, which opt into it so that `/status/<id>` and `/attachments/<id>` reach them. A route configured through `restapi.<name>.path` never participates in that pass: it is matched exactly, or by `{placeholder}` template when its path declares one. To capture a variable trailing segment, declare it as a placeholder (`/api/users/{id}`) rather than relying on a prefix.
+The prefix pass exists solely for the built-in `/status` and `/attachments` handlers, which opt into it so that `/status/<id>` and `/attachments/<id>` reach them; a route configured through `restapi.<name>.path` never participates in it. To capture a variable trailing segment, declare it as a placeholder (`/api/users/{id}`).
 
 [source,properties]
 ----

@@ -40,7 +40,7 @@ Route resolution runs three ordered passes and the first to hit wins:
 
 Because exact precedes pattern, a literal route such as `/api/users/me` always resolves to its exact handler even when a pattern route `/api/users/{id}` is also configured.
 
-A configured route therefore matches its own path exactly, or by `{placeholder}` template when its path declares one. To route a variable trailing segment, declare it as a placeholder; there is no way to opt a configured route into the prefix pass.
+To route a variable trailing segment on a configured route, declare it as a `{placeholder}`.
 
 === Extracted Attributes
 
@@ -245,7 +245,7 @@ The pass-through follows these rules:
 
 * **Scalar coercion** — string values are surfaced verbatim; numbers are stringified via their JSON literal; booleans become `"true"` / `"false"`.
 * **Non-scalar drop** — nested objects, arrays, and JSON `null` values are dropped (they are not surfaced and do not fail the parse).
-* **Reserved names take precedence** — a captured field whose key collides with one of the fourteen reserved response keys is discarded; the reserved, typed value always wins and is never double-emitted. The reserved set is `traceId`, `status`, `acceptedAt`, `updatedAt`, `parentTraceId`, `errorDetail`, `errorType`, `errorStatus`, `errorTitle`, `errorInstance`, `errorViolations`, `attachmentsMaxCount`, `attachmentsMinCount`, `routeName`. Note that `error` is *not* reserved — the nested error object was replaced by the six flat `error*` keys, so a captured field literally named `error` is passed through like any other annotation.
+* **Reserved names take precedence** — a captured field whose key collides with one of the fourteen reserved response keys is discarded; the reserved, typed value always wins and is never double-emitted. The reserved set is `traceId`, `status`, `acceptedAt`, `updatedAt`, `parentTraceId`, `errorDetail`, `errorType`, `errorStatus`, `errorTitle`, `errorInstance`, `errorViolations`, `attachmentsMaxCount`, `attachmentsMinCount`, `routeName`. Note that `error` is *not* reserved, so a captured field literally named `error` is passed through like any other annotation.
 * **Bounded count** — the number of additional fields re-emitted is bounded by `rest.gateway.management.status.max-additional-fields` (default `20`). Fields beyond the bound are truncated in JSON key encounter order.
 
 Additional fields captured on write are also preserved across internal status
