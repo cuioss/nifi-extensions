@@ -102,8 +102,8 @@
           "re_review_on_timeout": "ask",
           "review_rate_window_await": false,
           "review_rate_window_timeout_seconds": 3600,
-          "required_bots": "coderabbit,pr-agent",
-          "optional_bots": "sourcery",
+          "required_bots": "coderabbit",
+          "optional_bots": "sourcery,pr-agent",
           "review_completion_poll_timeout_seconds": 600,
           "lane": "standard"
         },
@@ -332,7 +332,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.1586",
+    "provisioned_version": "0.1.1592",
     "config_seed_fingerprint": "cf572469"
   }
 }
