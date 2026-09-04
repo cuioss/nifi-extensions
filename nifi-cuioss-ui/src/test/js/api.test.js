@@ -416,6 +416,52 @@ describe('updateComponentProperties', () => {
         expect(JSON.parse(restartCall[1].body).state).toBe('RUNNING');
     });
 
+    test('should still attempt the restart when the stop-state poll times out', async () => {
+        // Arrange — the processor never reports STOPPED, so waitForProcessorState
+        // exhausts its ~10s poll budget and throws from inside the stop phase.
+        const procId = '00000000-0000-0000-0000-000000000012';
+        globalThis.jwtAuthConfig = { processorId: procId };
+        jest.useFakeTimers();
+        // Detection
+        mockJsonResponse({ type: 'PROCESSOR', componentClass: 'SomeProcessor' });
+        // GET current — RUNNING
+        mockJsonResponse({ revision: { version: 1 }, component: { id: procId, state: 'RUNNING' } });
+        // PUT stop run-status
+        mockJsonResponse({ revision: { version: 2 } });
+        // Every remaining call (the 20 polls, then the restart sequence) resolves to a
+        // still-RUNNING processor, so no poll ever observes the desired STOPPED state.
+        globalThis.fetch.mockResolvedValue({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: () => Promise.resolve({
+                revision: { version: 2 },
+                component: { id: procId, state: 'RUNNING', validationErrors: [] }
+            }),
+            text: () => Promise.resolve('{}')
+        });
+
+        // Act
+        // Capture the outcome up front so the rejection stays handled while the fake
+        // clock advances past the poll budget.
+        const settled = updateComponentProperties(procId, { 'key': 'value' })
+            .then(() => null, (err) => err);
+        await jest.advanceTimersByTimeAsync(20 * 500);
+        const error = await settled;
+
+        // Assert — the poll gave up, and the finally block still issued a RUNNING PUT
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message).toMatch(/did not reach state/);
+        const restartCalls = globalThis.fetch.mock.calls.filter(
+            ([url, init]) => url === `/nifi-api/processors/${procId}/run-status`
+                && init?.method === 'PUT'
+                && JSON.parse(init.body).state === 'RUNNING'
+        );
+        expect(restartCalls).toHaveLength(1);
+
+        jest.useRealTimers();
+    });
+
     test('should auto-terminate stale relationships but keep active ones during restart', async () => {
         const procId = '00000000-0000-0000-0000-000000000011';
         globalThis.jwtAuthConfig = { processorId: procId };

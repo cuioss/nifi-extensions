@@ -348,26 +348,29 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
     const wasRunning = current.component?.status?.runStatus === 'Running'
         || current.component?.state === 'RUNNING';
 
-    // Stop the processor if running
-    if (wasRunning) {
-        await updateProcessorRunStatus(componentId, 'STOPPED', current.revision);
-        await waitForProcessorState(componentId, info, 'STOPPED');
-    }
-
-    // Fetch fresh revision after state change
-    const fresh = wasRunning
-        ? await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`))
-        : current;
-
-    // Preserve autoTerminatedRelationships so NiFi doesn't reset them
-    const autoTerminated = fresh.component?.config?.autoTerminatedRelationships || [];
-    const componentBody = buildComponentBody(componentId, info.propsPath, properties);
-    if (componentBody.config) {
-        componentBody.config.autoTerminatedRelationships = autoTerminated;
-    }
-
+    // Everything after the processor may have been stopped runs inside the guarded
+    // region: waitForProcessorState throws after ~10s of failed polling, and the
+    // fresh-revision GET can fail too, so both must reach the restart in `finally`.
     let result;
     try {
+        // Stop the processor if running
+        if (wasRunning) {
+            await updateProcessorRunStatus(componentId, 'STOPPED', current.revision);
+            await waitForProcessorState(componentId, info, 'STOPPED');
+        }
+
+        // Fetch fresh revision after state change
+        const fresh = wasRunning
+            ? await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`))
+            : current;
+
+        // Preserve autoTerminatedRelationships so NiFi doesn't reset them
+        const autoTerminated = fresh.component?.config?.autoTerminatedRelationships || [];
+        const componentBody = buildComponentBody(componentId, info.propsPath, properties);
+        if (componentBody.config) {
+            componentBody.config.autoTerminatedRelationships = autoTerminated;
+        }
+
         result = await request('PUT', nifiApiUrl(`${info.apiPath}/${componentId}`), {
             revision: fresh.revision,
             component: componentBody
