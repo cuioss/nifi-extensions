@@ -21,6 +21,24 @@ import { createContextHelp, createFormField } from './context-help.js';
 // Counter for unique form field IDs
 let formCounter = 0;
 
+/**
+ * Build a button carrying a leading icon and a text label.
+ * @param {string} className  the button's class attribute
+ * @param {string} title  the button tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the button label
+ * @returns {HTMLButtonElement} the button element
+ */
+const buildActionButton = (className, title, iconClass, label) => {
+    const button = document.createElement('button');
+    button.className = className;
+    button.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    button.append(icon, document.createTextNode(` ${label}`));
+    return button;
+};
+
 const SAMPLE = {
     name: 'sample-issuer',
     props: {
@@ -214,12 +232,13 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
     const tw = document.createElement('div');
     tw.className = 'jwks-button-wrapper';
     tw.innerHTML = `
-        <button type="button" class="verify-jwks-button"
-                title="${t('issuer.jwks.test.title')}">
-            <i class="fa fa-plug"></i> ${t('issuer.jwks.test.btn')}</button>
         <div class="verification-result" aria-live="polite"
              role="status">
             <em>${t('issuer.jwks.test.hint')}</em></div>`;
+    const verifyButton = buildActionButton('verify-jwks-button',
+        t('issuer.jwks.test.title'), 'fa-plug', t('issuer.jwks.test.btn'));
+    verifyButton.type = 'button';
+    tw.prepend(verifyButton);
     const urlField = fields.querySelector('.jwks-type-url');
     if (urlField) urlField.after(tw);
     else fields.appendChild(tw);
@@ -581,17 +600,19 @@ const createIssuerTableRow = (name, props, ctx, issuersContainer, origin = 'pers
     const typeBadgeHtml = sanitizeHtml(jwksType.toUpperCase());
 
     row.innerHTML = `
-        <td>${sanitizeHtml(name)}${originBadge}</td>
+        <td>${sanitizeHtml(name)}</td>
         <td class="issuer-source">${sanitizeHtml(jwksSource)}</td>
         <td><span class="method-badge">${typeBadgeHtml}</span></td>
         <td>${sanitizeHtml(issuerUri)}</td>
-        <td>
-            <button class="edit-issuer-button" title="${t('issuer.table.edit.title')}">
-                <i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
-            <button class="remove-issuer-gw-button"
-                    title="${t('issuer.table.remove.title')}">
-                <i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>
-        </td>`;
+        <td></td>`;
+
+    const cells = row.querySelectorAll('td');
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
+    cells[4].append(
+        buildActionButton('edit-issuer-button', t('issuer.table.edit.title'),
+            'fa-pencil', t('common.btn.edit')),
+        buildActionButton('remove-issuer-gw-button', t('issuer.table.remove.title'),
+            'fa-trash', t('common.btn.remove')));
 
     row.querySelector('.edit-issuer-button').addEventListener('click', () => {
         closeActiveIssuerEditor(issuersContainer);
@@ -749,7 +770,8 @@ const updateIssuerTableRow = (row, formData) => {
     const jwksSource = formData['jwks-url'] || formData['jwks-file'] || '(inline)';
 
     const cells = row.querySelectorAll('td');
-    cells[0].innerHTML = `${sanitizeHtml(formData.issuerName)}${originBadge}`;
+    cells[0].innerHTML = sanitizeHtml(formData.issuerName);
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
     cells[1].innerHTML = sanitizeHtml(jwksSource);
     const typeBadge = sanitizeHtml(jwksType.toUpperCase());
     cells[2].innerHTML = `<span class="method-badge">${typeBadge}</span>`;

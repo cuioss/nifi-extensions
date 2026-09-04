@@ -906,16 +906,20 @@ const ORIGIN_BADGE_CONFIG = {
 };
 
 /**
- * Build an origin badge HTML snippet.
+ * Build an origin badge element.
  * @param {'persisted'|'modified'|'new'|'external'} origin  the origin state
- * @returns {string} HTML string for the badge
+ * @returns {HTMLSpanElement|null} the badge element, or null when no badge applies
  */
 export const buildOriginBadge = (origin) => {
     const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
     const config = ORIGIN_BADGE_CONFIG[badgeType];
-    const title = sanitizeHtml(t(`${config.textKey}.title`));
-    const text = sanitizeHtml(t(config.textKey));
-    return ` <span class="origin-badge origin-${badgeType}" title="${title}"><i class="fa ${config.icon}"></i> ${text}</span>`;
+    const span = document.createElement('span');
+    span.className = `origin-badge origin-${badgeType}`;
+    span.title = t(`${config.textKey}.title`);
+    const icon = document.createElement('i');
+    icon.className = `fa ${config.icon}`;
+    span.append(icon, document.createTextNode(` ${t(config.textKey)}`));
+    return span;
 };
 
 // ---------------------------------------------------------------------------

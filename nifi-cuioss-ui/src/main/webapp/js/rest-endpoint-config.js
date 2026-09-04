@@ -112,29 +112,76 @@ const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
 /**
- * Build the tracking badge HTML for a route, showing tracking mode and attachment bounds.
+ * Build a badge element carrying a leading icon and a text label.
+ * @param {string} className  the badge element's class
+ * @param {string} title  the badge tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} text  the badge label
+ * @returns {HTMLSpanElement} the badge element
+ */
+const buildIconBadge = (className, title, iconClass, text) => {
+    const span = document.createElement('span');
+    span.className = className;
+    span.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    span.append(icon, document.createTextNode(` ${text}`));
+    return span;
+};
+
+/**
+ * Build the tracking badge element for a route, showing tracking mode and attachment bounds.
  * @param {string} trackingMode  'none', 'simple', or 'attachments'
  * @param {string} methods  comma-separated method list (empty = all methods)
  * @param {number} [minCount]  minimum attachment count (only for attachments mode)
  * @param {number} [maxCount]  maximum attachment count (only for attachments mode)
- * @returns {string} HTML string or empty
+ * @returns {HTMLSpanElement|null} the badge element, or null when no badge applies
  */
 const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
     const mode = (trackingMode || 'none').toLowerCase();
-    if (mode === 'none') return '';
+    if (mode === 'none') return null;
     const parsed = (methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
     const tracked = parsed.length === 0
         ? BODY_METHODS
         : parsed.filter((m) => BODY_METHODS.includes(m));
-    if (tracked.length === 0) return '';
+    if (tracked.length === 0) return null;
     const methodSuffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
+    let label = t('route.table.tracking');
     if (mode === 'attachments') {
         const min = Number.parseInt(minCount, 10) || 0;
         const max = Number.parseInt(maxCount, 10) || 0;
         const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
-        return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')} + ${t('route.form.tracking.attachments')} (${bounds})${methodSuffix}</span>`;
+        label += ` + ${t('route.form.tracking.attachments')} (${bounds})`;
     }
-    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${methodSuffix}</span>`;
+    return buildIconBadge('tracking-badge', t('route.table.tracking.title'), 'fa-clock',
+        `${label}${methodSuffix}`);
+};
+
+/**
+ * Build the schema badge element for a route.
+ * @param {string} [schemaValue]  the raw schema string
+ * @returns {HTMLSpanElement|null} the badge element, or null when no schema is configured
+ */
+const buildSchemaBadge = (schemaValue) => (schemaValue?.trim()
+    ? buildIconBadge('schema-badge', t('route.table.schema.title'), 'fa-check-circle', 'Schema')
+    : null);
+
+/**
+ * Build a row action button carrying a leading icon and a text label.
+ * @param {string} className  the button's class attribute
+ * @param {string} title  the button tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the button label
+ * @returns {HTMLButtonElement} the button element
+ */
+const buildActionButton = (className, title, iconClass, label) => {
+    const button = document.createElement('button');
+    button.className = className;
+    button.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    button.append(icon, document.createTextNode(` ${label}`));
+    return button;
 };
 const MGMT_PREFIX = 'rest.gateway.management.';
 
@@ -321,11 +368,10 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
             <td>${methodBadgesHtml}</td>
             <td><span class="${enabledClass}">${enabledText}</span></td>
             <td>${formatAuthModeBadges(ep.authMode)}</td>
-            <td>
-                <button class="edit-route-button btn-edit" title="${t('route.management.edit.title')}">
-                    <i class="fa fa-pencil"></i> ${t('mgmt.edit')}
-                </button>
-            </td>`;
+            <td></td>`;
+
+        row.querySelectorAll('td')[5].appendChild(buildActionButton(
+            'edit-route-button btn-edit', t('route.management.edit.title'), 'fa-pencil', t('mgmt.edit')));
 
         row.querySelector('.btn-edit').addEventListener('click', () => {
             openManagementEditor(mgmtEl, ep, componentId, row);
@@ -775,8 +821,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const statusClass = enabledVal ? 'status-enabled' : 'status-disabled';
     const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
-    const schemaBadge = (props?.schema?.trim())
-        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const schemaBadge = buildSchemaBadge(props?.schema);
     const trackingBadge = buildTrackingBadge(props?.['tracking-mode'], methods,
         props?.['attachments-min-count'], props?.['attachments-max-count']);
 
@@ -797,19 +842,28 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const isExternalOnly = origin === 'external';
     // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
-    const actionsHtml = isExternalOnly
-        ? `<button class="edit-route-button" title="${sanitizeHtml(t('route.source.external.edit.tooltip'))}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>`
-        : `<button class="edit-route-button" title="${t('route.table.edit.title')}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
-            <button class="remove-route-button" title="${t('route.table.remove.title')}"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
+    const actionButtons = isExternalOnly
+        ? [buildActionButton('edit-route-button', t('route.source.external.edit.tooltip'),
+            'fa-pencil', t('common.btn.edit'))]
+        : [buildActionButton('edit-route-button', t('route.table.edit.title'),
+            'fa-pencil', t('common.btn.edit')),
+        buildActionButton('remove-route-button', t('route.table.remove.title'),
+            'fa-trash', t('common.btn.remove'))];
 
     row.innerHTML = `
-        <td>${sanitizeHtml(name)}${originBadge}</td>
+        <td>${sanitizeHtml(name)}</td>
         <td>${outcomeCell}</td>
-        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}${trackingBadge}</td>
+        <td>${sanitizeHtml(props?.path || '')}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
-        <td>${actionsHtml}</td>`;
+        <td></td>`;
+
+    const cells = row.querySelectorAll('td');
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
+    if (schemaBadge) cells[2].append(document.createTextNode(' '), schemaBadge);
+    if (trackingBadge) cells[2].append(document.createTextNode(' '), trackingBadge);
+    cells[6].append(...actionButtons);
 
     // Store props reference on the row so it can be updated after save
     row._routeProps = props;
@@ -841,7 +895,8 @@ const updateTableRow = (row, formData) => {
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
-    cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
+    cells[0].innerHTML = sanitizeHtml(formData.routeName);
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
 
     // Connection column
     const createFlowFileVal = formData['create-flowfile'] !== false && formData['create-flowfile'] !== 'false';
@@ -852,11 +907,12 @@ const updateTableRow = (row, formData) => {
         cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
     }
 
-    const schemaBadge = formData.schema?.trim()
-        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const schemaBadge = buildSchemaBadge(formData.schema);
     const trackingBadge = buildTrackingBadge(formData['tracking-mode'], formData.methods,
         formData['attachments-min-count'], formData['attachments-max-count']);
-    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
+    cells[2].innerHTML = sanitizeHtml(formData.path);
+    if (schemaBadge) cells[2].append(document.createTextNode(' '), schemaBadge);
+    if (trackingBadge) cells[2].append(document.createTextNode(' '), trackingBadge);
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())

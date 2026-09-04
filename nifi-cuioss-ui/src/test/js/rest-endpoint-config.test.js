@@ -70,9 +70,13 @@ describe('rest-endpoint-config', () => {
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.buildOriginBadge.mockImplementation((origin) => {
             const o = origin || 'persisted';
-            const title = utils.t(`origin.badge.${o}.title`);
-            const text = utils.t(`origin.badge.${o}`);
-            return ` <span class="origin-badge origin-${o}" title="${title}"><i class="fa fa-database"></i> ${text}</span>`;
+            const span = document.createElement('span');
+            span.className = `origin-badge origin-${o}`;
+            span.title = utils.t(`origin.badge.${o}.title`);
+            const icon = document.createElement('i');
+            icon.className = 'fa fa-database';
+            span.append(icon, document.createTextNode(` ${utils.t(`origin.badge.${o}`)}`));
+            return span;
         });
         createContextHelp.mockImplementation(mockCreateContextHelp);
         createFormField.mockImplementation(mockCreateFormField);
