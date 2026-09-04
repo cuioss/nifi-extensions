@@ -46,7 +46,7 @@ The `JwtIssuerConfigService` manages issuer configuration and token validation s
 
 |jwt.validation.jwks.allow.private.network.addresses
 |false
-|Whether to allow JWKS URLs whose host resolves to a private/loopback network address. When enabled, the address is also allow-listed with the underlying JWKS loader's SSRF egress guard so the key set can actually be fetched. Enable only for development.
+|Whether to allow JWKS URLs whose host resolves to a private or loopback network address. When disabled, such an issuer is rejected. When enabled, the host is additionally allow-listed with the underlying JWKS loader's SSRF egress guard so the key set can actually be fetched -- narrowest grant first: a loopback host gets the loader's loopback relaxation plus a per-host allowance, a private-range host gets the per-host allowance only. A host that does not resolve is never rejected by this gate either way; the JWKS loader decides, so an IdP that is merely not up yet does not permanently exclude its issuer. Enable only for development.
 |Yes
 |===
 
@@ -70,13 +70,13 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |Required `aud` claim for tokens from this issuer
 |api://my-service
 
-|issuer.<name>.name
-|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required. *Warning*: This value becomes the `issuerIdentifier` used for token matching. If both `name` and `issuer` are set, `name` takes precedence. Use a URI matching the `iss` claim.
+|issuer.<name>.issuer
+|*Required.* Issuer URI; becomes the `issuerIdentifier` used to match incoming tokens, so it must equal the `iss` claim exactly. An issuer configured without this property is skipped.
 |https://auth.example.com/
 
-|issuer.<name>.issuer
-|Issuer URI (must match the `iss` claim in the JWT)
-|https://auth.example.com/
+|issuer.<name>.name
+|Accepted but ignored. A human-readable label only -- it never contributes to issuer identity. An issuer that sets `name` but omits `issuer` is skipped with a warning naming the configured label.
+|Keycloak (production)
 
 |issuer.<name>.jwks-file
 |File path to a local JWKS key file (alternative to `jwks-url`)
@@ -87,7 +87,7 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |`{"keys":[...]}`
 
 |issuer.<name>.jwks-type
-|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The `content` type is recognized but not yet supported.
+|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The source is then selected to match the declared type. If the declared type has no matching source but the other one is configured -- `url` with only a `jwks-file`, or `file` with only a `jwks-url` -- the type is corrected to the configured source and a warning is logged. The `content` type is recognized but not yet supported.
 |url
 
 |issuer.<name>.client-id
@@ -99,6 +99,20 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 NOTE: Roles and scopes are configured at the **processor level** (via `Required Roles` / `Required Scopes` on the `MultiIssuerJWTTokenAuthenticator`, or via `restapi.<name>.required-roles` / `restapi.<name>.required-scopes` on the `RestApiGatewayProcessor`), not as per-issuer dynamic properties.
 
 NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>.<property>` (see <<Static Configuration Files>>).
+
+[IMPORTANT]
+====
+*Breaking change.* Issuer identity is now derived solely from `issuer.<name>.issuer`. Earlier releases also accepted `issuer.<name>.name` as the identifier, and let it take precedence when both were set -- so a configuration whose `name` was a label rather than the `iss` URI matched no tokens at all while appearing correctly configured.
+
+To migrate, set the `iss` URI explicitly on every issuer:
+
+[source,properties]
+----
+issuer.keycloak.issuer=https://auth.example.com/realms/my-realm
+----
+
+`name` may stay in place; it is read and ignored. An issuer left with only a `name` is skipped, and the warning names the configured label so the offending entry is identifiable.
+====
 
 == MultiIssuerJWTTokenAuthenticator Properties
 
