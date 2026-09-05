@@ -112,6 +112,12 @@ const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 // both the select's options and the composite "{value} {unit}" validation, so the
 // offered set and the accepted set cannot drift apart.
 const ATTACHMENTS_TIMEOUT_UNITS = ['sec', 'min', 'hr', 'day'];
+// Membership lookup for the validation site, derived from the array above.
+const ATTACHMENTS_TIMEOUT_UNITS_SET = new Set(ATTACHMENTS_TIMEOUT_UNITS);
+// The one composite "{value} {unit}" pattern, derived from the same source. The unit
+// alternation is bounded (no generic `\S+` tail), so both the load-time parse and the
+// save-time validation accept exactly the units the select offers.
+const ATTACHMENTS_TIMEOUT_PATTERN = new RegExp(`^(\\d+)\\s*(${ATTACHMENTS_TIMEOUT_UNITS.join('|')})$`, 'i');
 const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
@@ -1132,8 +1138,7 @@ const buildAttachmentBoundsFields = (properties) => {
     maxLabel.appendChild(maxInput);
 
     const timeoutRaw = properties?.['attachments-timeout'] || '30 sec';
-    const timeoutMatch = timeoutRaw.match(
-        /^(\d+)\s*(ms|sec|min|hr|day)$/i);
+    const timeoutMatch = timeoutRaw.match(ATTACHMENTS_TIMEOUT_PATTERN);
     const timeoutNum = timeoutMatch ? timeoutMatch[1] : '30';
     const timeoutUnit = timeoutMatch
         ? timeoutMatch[2].toLowerCase() : 'sec';
@@ -1547,11 +1552,11 @@ const validateAttachments = (f) => {
     // attachments-timeout is the composite "{value} {unit}" string extractFormFields
     // builds. Validate both halves: parseInt alone stops at the space and would let any
     // unit through, including one the unit control never offers.
-    const timeoutMatch = /^(\d+)\s*(\S+)$/.exec(String(f['attachments-timeout'] ?? '').trim());
+    const timeoutMatch = ATTACHMENTS_TIMEOUT_PATTERN.exec(String(f['attachments-timeout'] ?? '').trim());
     const timeoutValue = timeoutMatch ? Number.parseInt(timeoutMatch[1], 10) : Number.NaN;
     const timeoutUnit = timeoutMatch ? timeoutMatch[2].toLowerCase() : '';
     if (Number.isNaN(timeoutValue) || timeoutValue < 1
-        || !ATTACHMENTS_TIMEOUT_UNITS.includes(timeoutUnit)) {
+        || !ATTACHMENTS_TIMEOUT_UNITS_SET.has(timeoutUnit)) {
         return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
     }
     return null;
