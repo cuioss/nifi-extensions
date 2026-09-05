@@ -161,16 +161,16 @@ key per source.
 {
   "tokenValidation": { "valid_tokens": 15126, "invalid_tokens": 297 },
   "httpSecurity": { "sanitized_path": 42 },
-  "gatewayEvents": { "MISSING_BEARER_TOKEN": 12, "AUTH_FAILED": 85 }
+  "gatewayEvents": { "missing_bearer_token": 12, "auth_failed": 85 }
 }
 ----
 
 [NOTE]
 ====
-The `gatewayEvents` keys in the JSON body use the *raw* event-type names in
-upper-case (`MISSING_BEARER_TOKEN`), unlike the lower-cased Prometheus labels.
-The `tokenValidation` and `httpSecurity` keys are lower-cased in both formats.
-This is the schema the custom UI Metrics view consumes.
+The `tokenValidation`, `httpSecurity` and `gatewayEvents` keys are all lower-cased
+event-type names, in the JSON body exactly as in the Prometheus labels -- there is
+no casing difference between the two formats. This is the schema the custom UI
+Metrics view consumes.
 ====
 
 [#authorization]

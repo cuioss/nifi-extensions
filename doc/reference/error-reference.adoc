@@ -120,3 +120,20 @@ When a route has JSON Schema validation enabled, the 422 response includes a `vi
 ----
 
 Each violation contains a https://www.rfc-editor.org/rfc/rfc6901[RFC 6901] JSON Pointer and a human-readable message.
+
+== JWT Configuration Log Messages
+
+JWT infrastructure messages are logged through `de.cuioss.nifi.jwt.JwtLogMessages` in the format `JWT-<identifier>: <message>`. The entries below are the ones this documentation set refers to explicitly; `JwtLogMessages` is the authoritative and complete list.
+
+[cols="1,1,4,4"]
+|===
+|Identifier |Level |Message Template |When Logged
+
+|anchor:jwt-115[]JWT-115
+|WARN
+a|
+----
+Issuer %s configures name '%s' but no 'issuer'. 'name' is no longer read as the issuer identifier; set 'issuer' to the identity provider's 'iss' claim value
+----
+|An issuer declares `issuer.<name>.name` but no `issuer.<name>.issuer`. Issuer identity is derived solely from `issuer.<name>.issuer`, so the issuer is skipped. The first `%s` is the issuer group id (the `<name>` segment of the property key), the second the configured label. See xref:configuration.adoc[Configuration Reference] for the migration note.
+|===

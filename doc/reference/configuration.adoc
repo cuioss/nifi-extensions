@@ -46,7 +46,7 @@ The `JwtIssuerConfigService` manages issuer configuration and token validation s
 
 |jwt.validation.jwks.allow.private.network.addresses
 |false
-|Whether to allow JWKS URLs whose host resolves to a private/loopback network address. When enabled, the address is also allow-listed with the underlying JWKS loader's SSRF egress guard so the key set can actually be fetched. Enable only for development.
+|Whether to allow JWKS URLs whose host resolves to a private or loopback network address. When disabled, such an issuer is rejected. When enabled, the host is additionally allow-listed with the underlying JWKS loader's SSRF egress guard so the key set can actually be fetched -- narrowest grant first: a loopback host gets the loader's loopback relaxation plus a per-host allowance, a private-range host gets the per-host allowance only. A host that does not resolve is never rejected by this gate either way; the JWKS loader decides, so an IdP that is merely not up yet does not permanently exclude its issuer. Enable only for development.
 |Yes
 |===
 
@@ -59,7 +59,7 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |Property |Description |Example
 
 |issuer.<name>.jwks-url
-|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead)
+|JWKS endpoint URL (for file-based JWKS, use `issuer.<name>.jwks-file` instead). The key `issuer.<name>.jwksUri` is accepted as an alias; `jwks-url` is checked first and wins when both are set.
 |https://auth.example.com/.well-known/jwks.json
 
 |issuer.<name>.enabled
@@ -70,13 +70,13 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |Required `aud` claim for tokens from this issuer
 |api://my-service
 
-|issuer.<name>.name
-|Issuer identifier name (alternative to `issuer.<name>.issuer`); at least one of `name` or `issuer` is required. *Warning*: This value becomes the `issuerIdentifier` used for token matching. If both `name` and `issuer` are set, `name` takes precedence. Use a URI matching the `iss` claim.
+|issuer.<name>.issuer
+|*Required.* Issuer URI; becomes the `issuerIdentifier` used to match incoming tokens, so it must equal the `iss` claim exactly. An issuer configured without this property is skipped.
 |https://auth.example.com/
 
-|issuer.<name>.issuer
-|Issuer URI (must match the `iss` claim in the JWT)
-|https://auth.example.com/
+|issuer.<name>.name
+|Accepted but ignored. A human-readable label only -- it never contributes to issuer identity. An issuer that sets `name` but omits `issuer` is skipped with a warning naming the configured label.
+|Keycloak (production)
 
 |issuer.<name>.jwks-file
 |File path to a local JWKS key file (alternative to `jwks-url`)
@@ -87,7 +87,7 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 |`{"keys":[...]}`
 
 |issuer.<name>.jwks-type
-|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The `content` type is recognized but not yet supported.
+|Explicit JWKS source type: `url` or `file` (auto-detected if omitted). The source is then selected to match the declared type. If the declared type has no matching source but the other one is configured -- `url` with only a `jwks-file`, or `file` with only a `jwks-url` -- the type is corrected to the configured source and a warning is logged. The `content` type is recognized but not yet supported.
 |url
 
 |issuer.<name>.client-id
@@ -99,6 +99,20 @@ The Controller Service supports multiple issuers through NiFi dynamic properties
 NOTE: Roles and scopes are configured at the **processor level** (via `Required Roles` / `Required Scopes` on the `MultiIssuerJWTTokenAuthenticator`, or via `restapi.<name>.required-roles` / `restapi.<name>.required-scopes` on the `RestApiGatewayProcessor`), not as per-issuer dynamic properties.
 
 NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>.<property>` (see <<Static Configuration Files>>).
+
+[IMPORTANT]
+====
+*Breaking change.* Issuer identity is now derived solely from `issuer.<name>.issuer`. Earlier releases also accepted `issuer.<name>.name` as the identifier, and let it take precedence when both were set -- so a configuration whose `name` was a label rather than the `iss` URI matched no tokens at all while appearing correctly configured.
+
+To migrate, set the `iss` URI explicitly on every issuer:
+
+[source,properties]
+----
+issuer.keycloak.issuer=https://auth.example.com/realms/my-realm
+----
+
+`name` may stay in place; it is read and ignored. An issuer left with only a `name` is skipped, and the warning names the configured label so the offending entry is identifiable.
+====
 
 == MultiIssuerJWTTokenAuthenticator Properties
 
@@ -271,22 +285,22 @@ NOTE: In static configuration files, the prefix is `jwt.validation.issuer.<name>
 
 |rest.gateway.proxy.context-path.whitelist
 |-- (empty)
-|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Comma-separated allowlist of reverse-proxy context paths honored from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers (e.g. `/nifi-proxy`). Empty (the default) ignores these client-supplied headers entirely. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.context-path.trust-all
 |false
-|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|When `true`, honors *any* normalized proxy context path from the `X-ProxyContextPath` / `X-Forwarded-Prefix` headers without consulting the allowlist. Secure default is `false`. Enable only when the gateway is exclusively reachable through a trusted reverse proxy. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.trusted-proxies
 |-- (empty)
-|Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR ranges (e.g. `10.0.0.0/8, 192.168.1.5`). Required to honor the forwarded client IP from the `X-Forwarded-For` / `Forwarded` headers for audit and rate-limit logging: the chain is walked right-to-left, skipping these trusted hops, and the first untrusted address is used as the client IP. Empty (the default) honors no forwarded client IP and uses the raw socket remote address. Enable only when the gateway is exclusively reachable through the listed proxies. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Comma-separated allowlist of trusted reverse-proxy hops as IP literals or CIDR ranges (e.g. `10.0.0.0/8, 192.168.1.5`). Required to honor the forwarded client IP from the `X-Forwarded-For` / `Forwarded` headers for audit and rate-limit logging: the chain is walked right-to-left, skipping these trusted hops, and the first untrusted address is used as the client IP. Empty (the default) honors no forwarded client IP and uses the raw socket remote address. Enable only when the gateway is exclusively reachable through the listed proxies. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 
 |rest.gateway.proxy.security-config.preset
 |defaults
-|Security posture for the forwarded-header sanitization pipeline: `strict` (tightest restrictions), `lenient` (maximum compatibility, trusted environments only), or `defaults` (balanced). Governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized before they are honored. See <<Reverse-Proxy / Forwarded Header Resolution>>.
+|Security posture for the forwarded-header sanitization pipeline: `strict` (tightest restrictions), `lenient` (maximum compatibility, trusted environments only), or `defaults` (balanced). Governs how the `X-Forwarded-*` / `Forwarded` header values are sanitized before they are honored. See <<reverse-proxy-forwarded-header-resolution,Reverse-Proxy / Forwarded Header Resolution>>.
 |No
 |===
 
@@ -449,7 +463,7 @@ Routes are configured using NiFi dynamic properties with the `restapi.` prefix:
 |===
 |Property Pattern |Description |Example
 
-|restapi.<name>.path |URL path for the route. Supports exact paths, prefix matching, and `{placeholder}` templates for path parameters (see <<Path-Parameter Routes>>) |/api/users/{id}
+|restapi.<name>.path |URL path for the route. Supports exact paths and `{placeholder}` templates for path parameters (see <<path-parameter-routes,Path-Parameter Routes>>). Prefix matching is *not* available to configured routes -- `/api/users` matches that path only, not `/api/users/42`. |/api/users/{id}
 |restapi.<name>.methods |Comma-separated HTTP methods (default: GET,POST,PUT,DELETE) |GET,POST
 |restapi.<name>.required-roles |Comma-separated roles the JWT must carry |admin,editor
 |restapi.<name>.required-scopes |Comma-separated scopes the JWT must carry |read,write
@@ -498,6 +512,8 @@ Placeholder syntax:
 * `{name:regex}` -- matches a single segment constrained by `regex`, e.g. `{id:\\d+}`.
 
 Routes resolve through three ordered passes -- exact match, prefix match, then `{placeholder}` pattern match -- and the first to hit wins. A literal route (for example `/api/users/me`) therefore takes precedence over a pattern route (`/api/users/{id}`) that would also match.
+
+The prefix pass exists solely for the built-in `/status` and `/attachments` handlers, which opt into it so that `/status/<id>` and `/attachments/<id>` reach them; a route configured through `restapi.<name>.path` never participates in it. To capture a variable trailing segment, declare it as a placeholder (`/api/users/{id}`).
 
 [source,properties]
 ----
@@ -565,7 +581,11 @@ jwt:
 
 === Reload Behavior
 
-Configuration files are loaded once when the Controller Service is enabled (`@OnEnabled`). The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked automatically by either processor. To apply configuration file changes, disable and re-enable the Controller Service.
+Nothing is reloaded automatically. The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked by either processor. How a change is applied depends on which side owns the setting -- and, for static files, on whether the key is one a static file is read for at all:
+
+* *Non-issuer validation settings* (`jwt.validation.jwks.refresh.interval`, `jwt.validation.jwks.connection.timeout`, `jwt.validation.maximum.token.size`, `jwt.validation.allowed.algorithms`, `jwt.validation.require.https.for.jwks`) are owned exclusively by the Controller Service's NiFi property descriptors. They are read from the `ConfigurationContext` when the Controller Service is enabled (`@OnEnabled`); a static file or environment variable never supplies them, so there is nothing to reload from a file. Change the value on the Controller Service, then disable and re-enable it.
+* *Issuer definitions* (`jwt.validation.issuer.<name>.*` in a static file, `JWT_ISSUER_{NAME}_*` in the environment, or `issuer.<name>.*` as Controller Service dynamic properties) are parsed once when the Controller Service is enabled (`@OnEnabled`). Disable and re-enable the Controller Service to apply a change; editing the static file alone has no effect on a running service.
+* *Gateway route settings* (`restapi.*`, from a static file or from `RestApiGatewayProcessor` dynamic properties) are read by the processor when it starts. Stop and restart the processor to apply a change; re-enabling the Controller Service does not pick it up.
 
 == Environment Variables
 
@@ -592,9 +612,13 @@ spec:
       - name: nifi
         image: apache/nifi:2.10.0
         env:
+        - name: JWT_ISSUER_KEYCLOAK_ISSUER
+          value: "https://keycloak.internal/realms/myapp"
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
 ----
+
+NOTE: `JWT_ISSUER_KEYCLOAK_ISSUER` is required -- it supplies the `issuer` key, and an issuer configured without it is skipped. Its value must equal the `iss` claim the realm mints, which for Keycloak is the realm base URL.
 
 == Common Configuration Scenarios
 
@@ -602,6 +626,7 @@ spec:
 
 [source,properties]
 ----
+jwt.validation.issuer.1.issuer = https://auth.example.com/
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service
 ----
@@ -626,9 +651,11 @@ restapi.admin.required-roles = admin
 
 [source,properties]
 ----
+jwt.validation.issuer.1.issuer = https://auth.example.com/
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service-prod
 
+jwt.validation.issuer.2.issuer = https://auth-test.example.com/
 jwt.validation.issuer.2.jwks-url = https://auth-test.example.com/.well-known/jwks.json
 jwt.validation.issuer.2.audience = api://my-service-test
 jwt.validation.issuer.2.enabled = false

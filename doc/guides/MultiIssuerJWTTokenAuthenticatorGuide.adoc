@@ -145,7 +145,9 @@ Each issuer can have its own audience. Issuers can be individually enabled/disab
 
 == Output FlowFile Attributes
 
-On successful validation the processor sets these attributes on the FlowFile:
+=== Success-Route Attributes
+
+On successful validation the processor sets these attributes on the FlowFile routed to `success`:
 
 [cols="2,3"]
 |===
@@ -179,16 +181,27 @@ On successful validation the processor sets these attributes on the FlowFile:
 |`true` if scope/role authorization passed
 
 |`jwt.content.<claim>`
-|Individual token claims (prefixed)
+|Individual token claims (prefixed); the claims that already have a dedicated attribute (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
+|===
+
+When the token is missing and `Require Valid Token` is `false`, the FlowFile is routed to `success` and the processor sets `jwt.present=false` on it and none of the claim or error attributes. Attributes the incoming FlowFile already carried are preserved unchanged.
+
+=== Failure-Route Attributes
+
+The processor writes these attributes only on the FlowFile routed to `authentication-failed`; it never sets them on the `success` route. It does not remove them either -- so a `success` FlowFile still carries any `jwt.error.*` attribute that was already on it when it arrived, for example from an upstream processor or an earlier pass through a retry connection.
+
+[cols="2,3"]
+|===
+|Attribute |Description
 
 |`jwt.error.code`
-|Error code on validation failure
+|Error code for the failure that caused the routing
 
 |`jwt.error.reason`
-|Human-readable error description
+|Human-readable error description, covering every failure routed here: a failed signature/format validation, an oversized token, a missing token when `Require Valid Token` is `true`, and a failed roles/scopes authorization check
 
 |`jwt.error.category`
-|Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
+|Error category for the failure that caused the routing (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
 |===
 
 == Static Configuration Files
@@ -203,7 +216,7 @@ For Kubernetes and Docker deployments, core settings can be provided through env
 
 The JWT processor includes a custom web UI with four tabs beyond the standard NiFi properties dialog:
 
-* **Configuration**: visually manage issuer configurations (see <<Step 2>>)
+* **Configuration**: visually manage issuer configurations (see <<_step_2_configure_the_processor,Step 2>>)
 * **Token Verification**: paste a JWT to test it against the current configuration (isolated, does not affect processor metrics)
 * **Metrics**: displays a "Metrics Not Available" notice (metrics are only available for the RestApiGatewayProcessor)
 * **Help**: built-in documentation and troubleshooting
