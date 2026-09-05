@@ -108,7 +108,9 @@ const renderResults = (result, el) => {
 
 const buildClaimsHtml = (payload) => {
     let html = '<div class="token-claims">';
-    if (payload.exp) {
+    // Explicit presence check, not truthiness: exp is a NumericDate, and 0
+    // (1970-01-01T00:00:00Z, an already-expired token) is a present claim.
+    if (payload.exp !== undefined && payload.exp !== null) {
         const expDate = new Date(payload.exp * 1000);
         const isExpired = expDate < new Date();
         const expiredSpan = isExpired
