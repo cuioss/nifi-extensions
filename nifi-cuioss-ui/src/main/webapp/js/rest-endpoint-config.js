@@ -12,7 +12,7 @@ import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
     sanitizeHtml, sanitizeAttr, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
-    buildOriginBadge, buildActionButton, log
+    buildOriginBadge, buildActionButton, buildIconElement, log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -122,24 +122,6 @@ const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
 /**
- * Build a badge element carrying a leading icon and a text label.
- * @param {string} className  the badge element's class
- * @param {string} title  the badge tooltip
- * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
- * @param {string} text  the badge label
- * @returns {HTMLSpanElement} the badge element
- */
-const buildIconBadge = (className, title, iconClass, text) => {
-    const span = document.createElement('span');
-    span.className = className;
-    span.title = title;
-    const icon = document.createElement('i');
-    icon.className = `fa ${iconClass}`;
-    span.append(icon, document.createTextNode(` ${text}`));
-    return span;
-};
-
-/**
  * Build the tracking badge element for a route, showing tracking mode and attachment bounds.
  * @param {string} trackingMode  'none', 'simple', or 'attachments'
  * @param {string} methods  comma-separated method list (empty = all methods)
@@ -163,7 +145,7 @@ const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
         const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
         label += ` + ${t('route.form.tracking.attachments')} (${bounds})`;
     }
-    return buildIconBadge('tracking-badge', t('route.table.tracking.title'), 'fa-clock',
+    return buildIconElement('span', 'tracking-badge', t('route.table.tracking.title'), 'fa-clock',
         `${label}${methodSuffix}`);
 };
 
@@ -173,7 +155,7 @@ const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
  * @returns {HTMLSpanElement|null} the badge element, or null when no schema is configured
  */
 const buildSchemaBadge = (schemaValue) => (schemaValue?.trim()
-    ? buildIconBadge('schema-badge', t('route.table.schema.title'), 'fa-check-circle', 'Schema')
+    ? buildIconElement('span', 'schema-badge', t('route.table.schema.title'), 'fa-check-circle', 'Schema')
     : null);
 
 const MGMT_PREFIX = 'rest.gateway.management.';

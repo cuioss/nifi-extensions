@@ -69,25 +69,22 @@ describe('rest-endpoint-config', () => {
         utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
-        utils.buildOriginBadge.mockImplementation((origin) => {
-            const o = origin || 'persisted';
-            const span = document.createElement('span');
-            span.className = `origin-badge origin-${o}`;
-            span.title = utils.t(`origin.badge.${o}.title`);
-            const icon = document.createElement('i');
-            icon.className = 'fa fa-database';
-            span.append(icon, document.createTextNode(` ${utils.t(`origin.badge.${o}`)}`));
-            return span;
-        });
-        utils.buildActionButton.mockImplementation((className, title, iconClass, label) => {
-            const button = document.createElement('button');
-            button.className = className;
-            button.title = title;
+        utils.buildIconElement.mockImplementation((tag, className, title, iconClass, label) => {
+            const el = document.createElement(tag);
+            el.className = className;
+            el.title = title;
             const icon = document.createElement('i');
             icon.className = `fa ${iconClass}`;
-            button.append(icon, document.createTextNode(` ${label}`));
-            return button;
+            el.append(icon, document.createTextNode(` ${label}`));
+            return el;
         });
+        utils.buildOriginBadge.mockImplementation((origin) => {
+            const o = origin || 'persisted';
+            return utils.buildIconElement('span', `origin-badge origin-${o}`,
+                utils.t(`origin.badge.${o}.title`), 'fa-database', utils.t(`origin.badge.${o}`));
+        });
+        utils.buildActionButton.mockImplementation((className, title, iconClass, label) =>
+            utils.buildIconElement('button', className, title, iconClass, label));
         createContextHelp.mockImplementation(mockCreateContextHelp);
         createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID

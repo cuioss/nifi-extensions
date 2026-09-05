@@ -928,6 +928,27 @@ const ORIGIN_BADGE_CONFIG = {
 };
 
 /**
+ * Build an element carrying a leading icon and a text label. Shared by every editor
+ * (issuer, route/management) and badge that renders an icon+label pair — the tag is
+ * the only axis a button-shaped action and a span-shaped badge differ on.
+ * @param {string} tag  the element tag name (e.g. 'button', 'span')
+ * @param {string} className  the element's class attribute
+ * @param {string} title  the element tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the label text
+ * @returns {HTMLElement} the built element
+ */
+export const buildIconElement = (tag, className, title, iconClass, label) => {
+    const el = document.createElement(tag);
+    el.className = className;
+    el.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    el.append(icon, document.createTextNode(` ${label}`));
+    return el;
+};
+
+/**
  * Build a button carrying a leading icon and a text label. Shared by every editor
  * (issuer, route/management) that renders an icon+label row action.
  * @param {string} className  the button's class attribute
@@ -936,15 +957,8 @@ const ORIGIN_BADGE_CONFIG = {
  * @param {string} label  the button label
  * @returns {HTMLButtonElement} the button element
  */
-export const buildActionButton = (className, title, iconClass, label) => {
-    const button = document.createElement('button');
-    button.className = className;
-    button.title = title;
-    const icon = document.createElement('i');
-    icon.className = `fa ${iconClass}`;
-    button.append(icon, document.createTextNode(` ${label}`));
-    return button;
-};
+export const buildActionButton = (className, title, iconClass, label) =>
+    buildIconElement('button', className, title, iconClass, label);
 
 /**
  * Build an origin badge element.
@@ -954,13 +968,8 @@ export const buildActionButton = (className, title, iconClass, label) => {
 export const buildOriginBadge = (origin) => {
     const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
     const config = ORIGIN_BADGE_CONFIG[badgeType];
-    const span = document.createElement('span');
-    span.className = `origin-badge origin-${badgeType}`;
-    span.title = t(`${config.textKey}.title`);
-    const icon = document.createElement('i');
-    icon.className = `fa ${config.icon}`;
-    span.append(icon, document.createTextNode(` ${t(config.textKey)}`));
-    return span;
+    return buildIconElement('span', `origin-badge origin-${badgeType}`,
+        t(`${config.textKey}.title`), config.icon, t(config.textKey));
 };
 
 // ---------------------------------------------------------------------------
