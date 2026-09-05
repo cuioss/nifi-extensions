@@ -112,8 +112,6 @@ const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
 // both the select's options and the composite "{value} {unit}" validation, so the
 // offered set and the accepted set cannot drift apart.
 const ATTACHMENTS_TIMEOUT_UNITS = ['sec', 'min', 'hr', 'day'];
-// Membership lookup for the validation site, derived from the array above.
-const ATTACHMENTS_TIMEOUT_UNITS_SET = new Set(ATTACHMENTS_TIMEOUT_UNITS);
 // The one composite "{value} {unit}" pattern, derived from the same source. The unit
 // alternation is bounded (no generic `\S+` tail), so both the load-time parse and the
 // save-time validation accept exactly the units the select offers.
@@ -1532,13 +1530,12 @@ const validateAttachments = (f) => {
     if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
     if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
     // attachments-timeout is the composite "{value} {unit}" string extractFormFields
-    // builds. Validate both halves: parseInt alone stops at the space and would let any
-    // unit through, including one the unit control never offers.
+    // builds. ATTACHMENTS_TIMEOUT_PATTERN anchors the whole string and bounds the unit
+    // alternation to the units the select offers, so a match already guarantees both
+    // halves are valid — parseInt alone would stop at the space and let any unit through.
     const timeoutMatch = ATTACHMENTS_TIMEOUT_PATTERN.exec(String(f['attachments-timeout'] ?? '').trim());
     const timeoutValue = timeoutMatch ? Number.parseInt(timeoutMatch[1], 10) : Number.NaN;
-    const timeoutUnit = timeoutMatch ? timeoutMatch[2].toLowerCase() : '';
-    if (Number.isNaN(timeoutValue) || timeoutValue < 1
-        || !ATTACHMENTS_TIMEOUT_UNITS_SET.has(timeoutUnit)) {
+    if (Number.isNaN(timeoutValue) || timeoutValue < 1) {
         return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
     }
     return null;
