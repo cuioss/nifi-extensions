@@ -1,0 +1,119 @@
+= ADR-0002: Similarly-shaped parsers with different split semantics are not force-unified
+:toc: left
+:toclevels: 2
+:sectnums:
+
+// adr-metadata
+// Progressive-disclosure metadata block (see manage-adr SKILL.md → "ADR Template
+// Structure"). Read by `manage-adr.py scan` so a caller can assess an ADR's
+// relevance without reading the full file. List fields are comma-separated.
+// summary: Functions that look duplicated but differ in a load-bearing way grounded in their domain are left separate; deduplication targets accidental duplication only.
+// tags: javascript, simplicity, deduplication, code-quality
+// affects: nifi-cuioss-ui
+// supersedes:
+// end-adr-metadata
+
+== Status
+
+Proposed
+
+== Context
+
+The UI parses dotted, prefixed configuration keys in more than one place. Two such
+parsers read as near-identical: both take a prefixed key, split it into a base name
+and a property suffix, and return the pair. Line for line they differ by a single
+character — one splits at the *first* dot, the other at the *last*.
+
+That single character is the whole of each function's correctness. The two serve
+different domains with different naming rules: one parses keys whose base segment
+may itself contain dots, so the split must anchor at the end; the other parses keys
+whose base segment may not, so the split anchors at the start. Each is right for its
+domain and wrong for the other.
+
+This creates a specific hazard. Surface similarity is the signal that deduplication
+passes — human and automated — are tuned to detect, and this pair scores highly on
+it. A reviewer or a cleanup sweep encountering the two side by side sees textbook
+duplication and consolidates them. The resulting bug is silent: the unified parser
+returns a plausible-looking base name for the domain whose rule it no longer
+follows, and only a key that actually contains a dot in the contested position
+reveals it. Such keys are legal, uncommon, and unlikely to appear in a test fixture
+written by the person doing the consolidation.
+
+The general question this poses is when structural similarity is sufficient grounds
+for consolidation, and when it is not.
+
+== Decision
+
+**Deduplication targets accidental duplication. Two functions that differ in a way
+grounded in the domain each serves are left as separate implementations, and the
+divergence is recorded where a reader will find it.**
+
+The discriminator is the origin of the difference:
+
+* **Accidental duplication** — two bodies that are the same in substance and differ
+  only because they were written independently, or differ in a detail with no
+  domain meaning (which endpoint they call, which callback they invoke). These
+  collapse into one implementation, parameterised if needed.
+* **Essential difference** — two bodies whose differing detail *is* a rule of the
+  domain being served, such that adopting either one's rule for the other changes
+  behaviour. These stay separate.
+
+When a pair is left separate, the reason is recorded next to the code rather than
+left implicit, so the omission reads as a decision rather than an oversight. Absent
+that note, the next reader sees only the similarity.
+
+== Consequences
+
+=== Positive
+
+* Each parser's split rule matches the actual rule of the domain it parses, with no
+  parameter a caller can supply incorrectly.
+* A consolidation that would have introduced a silent misparse is prevented, and the
+  reasoning is available to whoever next considers it.
+* The deduplication effort stays aimed at duplication that is genuinely accidental,
+  where collapsing carries no behavioural risk.
+
+=== Negative
+
+* A change to the shared parsing shape must be applied in both places by hand.
+* The two implementations continue to look duplicated to anyone reading quickly, and
+  to tooling that measures similarity without semantics.
+
+=== Risks
+
+* The two can drift apart in ways unrelated to the intentional difference, with no
+  structural signal drawing attention. Accepted: the domains are expected to keep
+  diverging, so a shared abstraction would be the thing under pressure, not the
+  separation.
+* The discriminator requires judgement about what is "grounded in the domain".
+  Borderline cases exist and this ADR does not resolve them mechanically; it states
+  which question to ask.
+
+== Alternatives Considered
+
+**Unify behind a parameter selecting the split position.** One implementation, a
+flag or strategy argument choosing first-dot or last-dot. Removes the textual
+duplication. Rejected because it converts a property that is currently a fact of
+each function into a decision made at every call site, and a wrong value fails
+silently — the parser returns a well-formed but incorrect base name. The
+abstraction also serves exactly two callers, so it adds an indirection without
+amortising it.
+
+**Unify on one split position and special-case the other domain.** Pick whichever
+rule is more common and adapt the other caller around it. Rejected because it
+inverts the actual naming rule for the adapted domain: the special-casing has to
+reconstruct, outside the parser, the behaviour the parser used to provide, which is
+strictly more code in a less obvious place.
+
+**Leave them separate and say nothing.** The status quo before this decision.
+Rejected not on the code but on its durability — an unexplained near-duplicate is
+an open invitation to a future consolidation, so the separation survives only until
+someone tidies it.
+
+== References
+
+* `nifi-cuioss-ui` module — `src/main/webapp/js/issuer-config.js` and the sibling
+  route-configuration parser.
+* link:0001-Attribute-context_UI_values_are_built_with_DOM_APIs_not_string_interpolation.adoc[ADR-0001]
+  — the complementary case, where a recurring construct *is* consolidated onto one
+  safe form.
