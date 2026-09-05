@@ -42,6 +42,13 @@ beforeEach(async () => {
     history.replaceState({}, '', '/nifi');
 });
 
+// Unconditional timer restore. A test that enables fake timers and then throws before
+// its own restore call would otherwise leak the fake clock into every later test in
+// this file; afterEach runs even when the test body failed.
+afterEach(() => {
+    jest.useRealTimers();
+});
+
 const mockJsonResponse = (data, ok = true, status = 200) => {
     globalThis.fetch.mockResolvedValueOnce({
         ok,
@@ -408,8 +415,6 @@ describe('updateComponentProperties', () => {
                 && JSON.parse(init.body).state === 'RUNNING'
         );
         expect(restartCalls).toHaveLength(1);
-
-        jest.useRealTimers();
     });
 
     test('should auto-terminate stale relationships but keep active ones during restart', async () => {
