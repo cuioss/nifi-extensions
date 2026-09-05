@@ -184,24 +184,24 @@ On successful validation the processor sets these attributes on the FlowFile rou
 |Individual token claims (prefixed); the claims that already have a dedicated attribute (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
 |===
 
-When the token is missing and `Require Valid Token` is `false`, the FlowFile is routed to `success` carrying `jwt.present=false` and none of the claim or error attributes.
+When the token is missing and `Require Valid Token` is `false`, the FlowFile is routed to `success` and the processor sets `jwt.present=false` on it and none of the claim or error attributes. Attributes the incoming FlowFile already carried are preserved unchanged.
 
 === Failure-Route Attributes
 
-These attributes are written only on the FlowFile routed to `authentication-failed`. They never appear on a `success` FlowFile.
+The processor writes these attributes only on the FlowFile routed to `authentication-failed`; it never sets them on the `success` route. It does not remove them either -- so a `success` FlowFile still carries any `jwt.error.*` attribute that was already on it when it arrived, for example from an upstream processor or an earlier pass through a retry connection.
 
 [cols="2,3"]
 |===
 |Attribute |Description
 
 |`jwt.error.code`
-|Error code on validation failure
+|Error code for the failure that caused the routing
 
 |`jwt.error.reason`
-|Human-readable error description
+|Human-readable error description, covering every failure routed here: a failed signature/format validation, an oversized token, a missing token when `Require Valid Token` is `true`, and a failed roles/scopes authorization check
 
 |`jwt.error.category`
-|Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
+|Error category for the failure that caused the routing (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`, `TOKEN_SIZE_VIOLATION`)
 |===
 
 == Static Configuration Files

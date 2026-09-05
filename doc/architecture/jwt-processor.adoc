@@ -60,12 +60,12 @@ Creating a new `TokenValidator` per FlowFile would cause excessive JWKS endpoint
 |`jwt.scopes` |Comma-separated scopes from the token (omitted if no `scope` claim)
 |`jwt.authorized` |`true`/`false` if scope/role authorization was checked (only present when roles or scopes are configured)
 |`jwt.content.<claim>` |Individual token claims (prefixed); the claims that already have a dedicated attribute (`sub`, `iss`, `exp`, `roles`, `groups`, `scope`) are excluded to avoid duplication
-|`jwt.error.code` |Error code on validation failure
-|`jwt.error.reason` |Human-readable error description on validation failure
-|`jwt.error.category` |Error category on validation failure (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)
+|`jwt.error.code` |Error code, written on the `authentication-failed` route
+|`jwt.error.reason` |Human-readable error description, written on the `authentication-failed` route -- covering every failure that routes there: a failed signature/format validation, an oversized token, a missing token when `Require Valid Token` is `true`, and a failed roles/scopes authorization check
+|`jwt.error.category` |Error category, written on the `authentication-failed` route (e.g., `EXTRACTION_ERROR`, `AUTHORIZATION_FAILED`)
 |===
 
-NOTE: The three `jwt.error.*` attributes are written only on the `authentication-failed` route. A `success` FlowFile never carries them -- including the accepted missing-token case below, which sets `jwt.present=false` and nothing else.
+NOTE: The processor writes the three `jwt.error.*` attributes only on the `authentication-failed` route; it never sets them on the `success` route -- including the accepted missing-token case below, which sets `jwt.present=false` and nothing else. It does not clear them either: attributes are merged onto the incoming FlowFile, never stripped from it, so a `success` FlowFile still carries any `jwt.error.*` attribute an upstream processor (or an earlier pass through a retry connection) had already set.
 
 == Error Routing
 

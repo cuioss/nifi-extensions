@@ -581,10 +581,11 @@ jwt:
 
 === Reload Behavior
 
-Nothing is reloaded automatically. The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked by either processor. How a change is applied depends on which side owns the setting:
+Nothing is reloaded automatically. The `ConfigurationManager` includes a `checkAndReloadConfiguration()` method that can detect file changes, but it is not currently invoked by either processor. How a change is applied depends on which side owns the setting -- and, for static files, on whether the key is one a static file is read for at all:
 
-* *Issuer and JWT validation settings* (`jwt.validation.*`, whether from a static file or from Controller Service properties) are loaded once when the Controller Service is enabled (`@OnEnabled`). Disable and re-enable the Controller Service to apply a change.
-* *Gateway route and static-file settings* (`restapi.*`, including static-file route definitions) are read by the `RestApiGatewayProcessor` when it starts. Stop and restart the processor to apply a change; re-enabling the Controller Service does not pick it up.
+* *Non-issuer validation settings* (`jwt.validation.jwks.refresh.interval`, `jwt.validation.jwks.connection.timeout`, `jwt.validation.maximum.token.size`, `jwt.validation.allowed.algorithms`, `jwt.validation.require.https.for.jwks`) are owned exclusively by the Controller Service's NiFi property descriptors. They are read from the `ConfigurationContext` when the Controller Service is enabled (`@OnEnabled`); a static file or environment variable never supplies them, so there is nothing to reload from a file. Change the value on the Controller Service, then disable and re-enable it.
+* *Issuer definitions* (`jwt.validation.issuer.<name>.*` in a static file, `JWT_ISSUER_{NAME}_*` in the environment, or `issuer.<name>.*` as Controller Service dynamic properties) are parsed once when the Controller Service is enabled (`@OnEnabled`). Disable and re-enable the Controller Service to apply a change; editing the static file alone has no effect on a running service.
+* *Gateway route settings* (`restapi.*`, from a static file or from `RestApiGatewayProcessor` dynamic properties) are read by the processor when it starts. Stop and restart the processor to apply a change; re-enabling the Controller Service does not pick it up.
 
 == Environment Variables
 
@@ -611,9 +612,13 @@ spec:
       - name: nifi
         image: apache/nifi:2.10.0
         env:
+        - name: JWT_ISSUER_KEYCLOAK_ISSUER
+          value: "https://keycloak.internal/realms/myapp"
         - name: JWT_ISSUER_KEYCLOAK_JWKS_URL
           value: "https://keycloak.internal/realms/myapp/protocol/openid-connect/certs"
 ----
+
+NOTE: `JWT_ISSUER_KEYCLOAK_ISSUER` is required -- it supplies the `issuer` key, and an issuer configured without it is skipped. Its value must equal the `iss` claim the realm mints, which for Keycloak is the realm base URL.
 
 == Common Configuration Scenarios
 
@@ -621,6 +626,7 @@ spec:
 
 [source,properties]
 ----
+jwt.validation.issuer.1.issuer = https://auth.example.com/
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service
 ----
@@ -645,9 +651,11 @@ restapi.admin.required-roles = admin
 
 [source,properties]
 ----
+jwt.validation.issuer.1.issuer = https://auth.example.com/
 jwt.validation.issuer.1.jwks-url = https://auth.example.com/.well-known/jwks.json
 jwt.validation.issuer.1.audience = api://my-service-prod
 
+jwt.validation.issuer.2.issuer = https://auth-test.example.com/
 jwt.validation.issuer.2.jwks-url = https://auth-test.example.com/.well-known/jwks.json
 jwt.validation.issuer.2.audience = api://my-service-test
 jwt.validation.issuer.2.enabled = false
