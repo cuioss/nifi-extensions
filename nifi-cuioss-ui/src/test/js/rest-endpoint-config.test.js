@@ -188,6 +188,30 @@ describe('rest-endpoint-config', () => {
         expect(statusCell.textContent).toBe('common.status.disabled');
     });
 
+    it('should split route keys at the FIRST dot so a dotted property suffix stays in the property', async () => {
+        // Arrange — a route property whose suffix itself contains dots.
+        // parseRouteProperties splits restapi.<route>.<prop> at the FIRST dot, so the
+        // route name is the first segment and the whole remainder is the property.
+        // Splitting at the LAST dot (what parseIssuerProperties does for issuers) would
+        // invent a route named 'metrics.custom'.
+        const props = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.metrics.path': '/api/metrics',
+            'restapi.metrics.custom.header': 'x-trace-id'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: props,
+            revision: { version: 1 }
+        });
+
+        // Act
+        await init(container);
+
+        // Assert — the dotted suffix stays in the property, so no derived route appears
+        expect(container.querySelector('tr[data-route-name="metrics"]')).not.toBeNull();
+        expect(container.querySelector('tr[data-route-name="metrics.custom"]')).toBeNull();
+    });
+
     it('should show Edit and Remove buttons per row', async () => {
         api.getComponentProperties.mockResolvedValue({
             properties: SAMPLE_PROPERTIES,
