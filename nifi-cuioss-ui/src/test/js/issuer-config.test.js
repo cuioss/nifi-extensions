@@ -31,6 +31,15 @@ describe('issuer-config', () => {
         utils.displayUiSuccess.mockImplementation(() => {});
         utils.confirmRemoveIssuer.mockImplementation((name, cb) => cb());
         utils.validateIssuerConfig.mockImplementation(() => ({ isValid: true }));
+        utils.buildActionButton.mockImplementation((className, title, iconClass, label) => {
+            const button = document.createElement('button');
+            button.className = className;
+            button.title = title;
+            const icon = document.createElement('i');
+            icon.className = `fa ${iconClass}`;
+            button.append(icon, document.createTextNode(` ${label}`));
+            return button;
+        });
         // Component ID is sourced from api.getComponentId() — which reads the ?id=<uuid>
         // query param in production (parity with rest-endpoint-config.js). Do NOT re-implement
         // ?id= parsing here: a diverging mock previously masked the bug where app.js never
@@ -98,6 +107,32 @@ describe('issuer-config', () => {
 
         const issuerForms = container.querySelectorAll('.issuer-form');
         expect(issuerForms.length).toBe(2);
+    });
+
+    it('should split issuer keys at the LAST dot so a dotted issuer name round-trips', async () => {
+        // Arrange — the issuer name itself contains dots. parseIssuerProperties splits
+        // issuer.<name>.<prop> at the LAST dot, so the property token is the final
+        // segment and everything before it is the name. Splitting at the FIRST dot
+        // (what parseRouteProperties does for routes) would yield the name 'my' and
+        // swallow the rest into the property token.
+        api.getComponentId.mockReturnValue('test-processor-123');
+        api.getComponentProperties.mockResolvedValue({
+            properties: {
+                'issuer.my.dotted.issuer.issuer': 'https://dotted.example.com',
+                'issuer.my.dotted.issuer.jwks-url': 'https://dotted.example.com/jwks'
+            }
+        });
+
+        // Act
+        await init(container);
+        await new Promise((r) => setTimeout(r, 10));
+
+        // Assert — one form, named for the full dotted issuer, with both props attached
+        const issuerForms = container.querySelectorAll('.issuer-form');
+        expect(issuerForms.length).toBe(1);
+        expect(issuerForms[0].querySelector('.issuer-name').value).toBe('my.dotted.issuer');
+        expect(issuerForms[0].querySelector('.field-issuer').value).toBe('https://dotted.example.com');
+        expect(issuerForms[0].querySelector('.field-jwks-url').value).toBe('https://dotted.example.com/jwks');
     });
 
     it('should fall back to sample issuer when API fails', async () => {

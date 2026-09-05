@@ -73,24 +73,19 @@ export const init = (container) => {
 // ---------------------------------------------------------------------------
 
 const renderResults = (result, el) => {
-    const expired = result.decoded?.payload?.exp
-        ? new Date(result.decoded.payload.exp * 1000) < new Date()
-        : false;
-
-    let statusClass, statusText, statusIcon;
-    if (expired) {
-        statusClass = 'expired'; statusText = t('token.status.expired'); statusIcon = 'fa-clock';
-    } else if (result.valid) {
-        statusClass = 'valid'; statusText = t('token.status.valid'); statusIcon = 'fa-check-circle';
-    } else {
-        statusClass = 'invalid'; statusText = t('token.status.invalid'); statusIcon = 'fa-times-circle';
-    }
+    // The badge reports the authoritative verdict only. `exp` comes from the
+    // NonValidatingJwtParser output, so it is decoded claim data, not a verification
+    // outcome — buildClaimsHtml annotates it inside the decoded region instead.
+    const statusClass = result.valid ? 'valid' : 'invalid';
+    const statusText = result.valid ? t('token.status.valid') : t('token.status.invalid');
+    const statusIcon = result.valid ? 'fa-check-circle' : 'fa-times-circle';
 
     let html = `<div class="verification-status ${statusClass}">
         <i class="fa ${statusIcon}"></i> <span>${statusText}</span></div>`;
 
     if (result.decoded) {
-        html += '<div class="token-details">';
+        html += `<div class="token-details">
+            <p class="decoded-unverified-note">${t('token.section.decoded.unverified')}</p>`;
         if (result.decoded.header) {
             html += `<div class="token-section"><h4>${t('token.section.header')}</h4>
                 <pre>${sanitizeHtml(JSON.stringify(result.decoded.header, null, 2))}</pre></div>`;
@@ -113,7 +108,9 @@ const renderResults = (result, el) => {
 
 const buildClaimsHtml = (payload) => {
     let html = '<div class="token-claims">';
-    if (payload.exp) {
+    // Explicit presence check, not truthiness: exp is a NumericDate, and 0
+    // (1970-01-01T00:00:00Z, an already-expired token) is a present claim.
+    if (payload.exp !== undefined && payload.exp !== null) {
         const expDate = new Date(payload.exp * 1000);
         const isExpired = expDate < new Date();
         const expiredSpan = isExpired

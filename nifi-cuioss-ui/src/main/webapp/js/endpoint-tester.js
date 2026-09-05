@@ -13,7 +13,7 @@ import {
     discoverTokenEndpoint, resolveJwtConfigServiceId,
     getControllerServiceProperties, getComponentId
 } from './api.js';
-import { log, t, sanitizeHtml } from './utils.js';
+import { log, t } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -196,9 +196,13 @@ const loadRoutes = async (container) => {
             return;
         }
 
-        selector.innerHTML = routes.map((r) =>
-            `<option value="${sanitizeHtml(r.path)}" data-methods="${sanitizeHtml((r.methods || []).join(','))}">${sanitizeHtml(r.name)} (${sanitizeHtml(r.path)})</option>`
-        ).join('');
+        selector.replaceChildren(...routes.map((r) => {
+            const option = document.createElement('option');
+            option.value = r.path;
+            option.dataset.methods = (r.methods || []).join(',');
+            option.textContent = `${r.name} (${r.path})`;
+            return option;
+        }));
 
         // Update method selector and body visibility for the selected route
         const updateForSelectedRoute = () => {
@@ -226,9 +230,12 @@ const updateMethodsForRoute = (container) => {
     // Routes without a methods restriction accept the default method set —
     // rebuild the dropdown so no stale restriction from a previous route remains.
     const methods = allowed.length > 0 ? allowed : DEFAULT_METHODS;
-    methodSelector.innerHTML = methods.map((m) =>
-        `<option value="${sanitizeHtml(m)}">${sanitizeHtml(m)}</option>`
-    ).join('');
+    methodSelector.replaceChildren(...methods.map((m) => {
+        const option = document.createElement('option');
+        option.value = m;
+        option.textContent = m;
+        return option;
+    }));
 };
 
 const updateBodyVisibility = (container) => {
@@ -429,11 +436,17 @@ const loadIssuers = async (container) => {
             return;
         }
 
-        let options = issuers.map((issuer) =>
-            `<option value="${sanitizeHtml(issuer)}">${sanitizeHtml(issuer)}</option>`
-        ).join('');
-        options += `<option value="__custom__">${t('tester.token.fetch.issuer.custom')}</option>`;
-        selector.innerHTML = options;
+        const options = issuers.map((issuer) => {
+            const option = document.createElement('option');
+            option.value = issuer;
+            option.textContent = issuer;
+            return option;
+        });
+        const customOption = document.createElement('option');
+        customOption.value = '__custom__';
+        customOption.textContent = t('tester.token.fetch.issuer.custom');
+        options.push(customOption);
+        selector.replaceChildren(...options);
 
         // Auto-discover when first issuer is selected
         selector.addEventListener('change', () => {

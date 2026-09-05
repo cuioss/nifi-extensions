@@ -11,8 +11,8 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
-    buildOriginBadge, log
+    sanitizeHtml, sanitizeAttr, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
+    buildOriginBadge, buildActionButton, buildIconElement, log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -108,34 +108,54 @@ const getComponentIdFromUrl = () => getComponentId();
 
 const ROUTE_PREFIX = 'restapi.';
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'];
+// The units the attachments-timeout unit control offers. Single source of truth for
+// both the select's options and the composite "{value} {unit}" validation, so the
+// offered set and the accepted set cannot drift apart.
+const ATTACHMENTS_TIMEOUT_UNITS = ['sec', 'min', 'hr', 'day'];
+// The one composite "{value} {unit}" pattern, derived from the same source. The unit
+// alternation is bounded (no generic `\S+` tail), so both the load-time parse and the
+// save-time validation accept exactly the units the select offers.
+const ATTACHMENTS_TIMEOUT_PATTERN = new RegExp(String.raw`^(\d+)\s*(${ATTACHMENTS_TIMEOUT_UNITS.join('|')})$`, 'i');
 const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
 /**
- * Build the tracking badge HTML for a route, showing tracking mode and attachment bounds.
+ * Build the tracking badge element for a route, showing tracking mode and attachment bounds.
  * @param {string} trackingMode  'none', 'simple', or 'attachments'
  * @param {string} methods  comma-separated method list (empty = all methods)
  * @param {number} [minCount]  minimum attachment count (only for attachments mode)
  * @param {number} [maxCount]  maximum attachment count (only for attachments mode)
- * @returns {string} HTML string or empty
+ * @returns {HTMLSpanElement|null} the badge element, or null when no badge applies
  */
 const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
     const mode = (trackingMode || 'none').toLowerCase();
-    if (mode === 'none') return '';
+    if (mode === 'none') return null;
     const parsed = (methods || '').split(',').map((m) => m.trim().toUpperCase()).filter(Boolean);
     const tracked = parsed.length === 0
         ? BODY_METHODS
         : parsed.filter((m) => BODY_METHODS.includes(m));
-    if (tracked.length === 0) return '';
+    if (tracked.length === 0) return null;
     const methodSuffix = parsed.length > 0 ? ` (${tracked.join(', ')})` : '';
+    let label = t('route.table.tracking');
     if (mode === 'attachments') {
         const min = Number.parseInt(minCount, 10) || 0;
         const max = Number.parseInt(maxCount, 10) || 0;
         const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
-        return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')} + ${t('route.form.tracking.attachments')} (${bounds})${methodSuffix}</span>`;
+        label += ` + ${t('route.form.tracking.attachments')} (${bounds})`;
     }
-    return ` <span class="tracking-badge" title="${t('route.table.tracking.title')}"><i class="fa fa-clock"></i> ${t('route.table.tracking')}${methodSuffix}</span>`;
+    return buildIconElement('span', 'tracking-badge', t('route.table.tracking.title'), 'fa-clock',
+        `${label}${methodSuffix}`);
 };
+
+/**
+ * Build the schema badge element for a route.
+ * @param {string} [schemaValue]  the raw schema string
+ * @returns {HTMLSpanElement|null} the badge element, or null when no schema is configured
+ */
+const buildSchemaBadge = (schemaValue) => (schemaValue?.trim()
+    ? buildIconElement('span', 'schema-badge', t('route.table.schema.title'), 'fa-check-circle', 'Schema')
+    : null);
+
 const MGMT_PREFIX = 'rest.gateway.management.';
 
 /**
@@ -279,7 +299,12 @@ const formatAuthModeBadges = (authModeValue) => {
     const modes = (authModeValue || 'bearer').split(',').map((m) => m.trim()).filter(Boolean);
     const labels = modes.map((m) => formatAuthMode(m));
     const combined = labels.join(', ');
-    const classes = modes.map((m) => `authmode-${sanitizeHtml(m)}`).join(' ');
+    // sanitizeAttr (not sanitizeHtml) — these mode tokens are interpolated into a
+    // quoted class="..." attribute, not a text node, so quote characters must also be
+    // escaped or a persisted auth-mode value containing '"' could break out of the
+    // attribute (e.g. a value set via the raw NiFi REST API or an external config file,
+    // bypassing this editor's own enum-restricted chip input).
+    const classes = modes.map((m) => `authmode-${sanitizeAttr(m)}`).join(' ');
     return `<span class="authmode-badge ${classes}">${sanitizeHtml(combined)}</span>`;
 };
 
@@ -321,11 +346,10 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
             <td>${methodBadgesHtml}</td>
             <td><span class="${enabledClass}">${enabledText}</span></td>
             <td>${formatAuthModeBadges(ep.authMode)}</td>
-            <td>
-                <button class="edit-route-button btn-edit" title="${t('route.management.edit.title')}">
-                    <i class="fa fa-pencil"></i> ${t('mgmt.edit')}
-                </button>
-            </td>`;
+            <td></td>`;
+
+        row.querySelectorAll('td')[5].appendChild(buildActionButton(
+            'edit-route-button btn-edit', t('route.management.edit.title'), 'fa-pencil', t('mgmt.edit')));
 
         row.querySelector('.btn-edit').addEventListener('click', () => {
             openManagementEditor(mgmtEl, ep, componentId, row);
@@ -775,8 +799,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const statusClass = enabledVal ? 'status-enabled' : 'status-disabled';
     const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
-    const schemaBadge = (props?.schema?.trim())
-        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const schemaBadge = buildSchemaBadge(props?.schema);
     const trackingBadge = buildTrackingBadge(props?.['tracking-mode'], methods,
         props?.['attachments-min-count'], props?.['attachments-max-count']);
 
@@ -797,19 +820,28 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
 
     const isExternalOnly = origin === 'external';
     // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
-    const actionsHtml = isExternalOnly
-        ? `<button class="edit-route-button" title="${sanitizeHtml(t('route.source.external.edit.tooltip'))}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>`
-        : `<button class="edit-route-button" title="${t('route.table.edit.title')}"><i class="fa fa-pencil"></i> ${t('common.btn.edit')}</button>
-            <button class="remove-route-button" title="${t('route.table.remove.title')}"><i class="fa fa-trash"></i> ${t('common.btn.remove')}</button>`;
+    const actionButtons = isExternalOnly
+        ? [buildActionButton('edit-route-button', t('route.source.external.edit.tooltip'),
+            'fa-pencil', t('common.btn.edit'))]
+        : [buildActionButton('edit-route-button', t('route.table.edit.title'),
+            'fa-pencil', t('common.btn.edit')),
+        buildActionButton('remove-route-button', t('route.table.remove.title'),
+            'fa-trash', t('common.btn.remove'))];
 
     row.innerHTML = `
-        <td>${sanitizeHtml(name)}${originBadge}</td>
+        <td>${sanitizeHtml(name)}</td>
         <td>${outcomeCell}</td>
-        <td>${sanitizeHtml(props?.path || '')}${schemaBadge}${trackingBadge}</td>
+        <td>${sanitizeHtml(props?.path || '')}</td>
         <td>${methodBadges || '<span class="empty-state">—</span>'}</td>
         <td>${authModeBadge}</td>
         <td><span class="${statusClass}">${statusText}</span></td>
-        <td>${actionsHtml}</td>`;
+        <td></td>`;
+
+    const cells = row.querySelectorAll('td');
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
+    if (schemaBadge) cells[2].append(document.createTextNode(' '), schemaBadge);
+    if (trackingBadge) cells[2].append(document.createTextNode(' '), trackingBadge);
+    cells[6].append(...actionButtons);
 
     // Store props reference on the row so it can be updated after save
     row._routeProps = props;
@@ -841,7 +873,8 @@ const updateTableRow = (row, formData) => {
 
     const cells = row.querySelectorAll('td');
     // cells: 0=name, 1=connection, 2=path, 3=methods, 4=authmode, 5=enabled, 6=actions
-    cells[0].innerHTML = `${sanitizeHtml(formData.routeName)}${originBadge}`;
+    cells[0].innerHTML = sanitizeHtml(formData.routeName);
+    if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
 
     // Connection column
     const createFlowFileVal = formData['create-flowfile'] !== false && formData['create-flowfile'] !== 'false';
@@ -852,11 +885,12 @@ const updateTableRow = (row, formData) => {
         cells[1].innerHTML = '<span class="empty-state">\u2014</span>';
     }
 
-    const schemaBadge = formData.schema?.trim()
-        ? ` <span class="schema-badge" title="${t('route.table.schema.title')}"><i class="fa fa-check-circle"></i> Schema</span>` : '';
+    const schemaBadge = buildSchemaBadge(formData.schema);
     const trackingBadge = buildTrackingBadge(formData['tracking-mode'], formData.methods,
         formData['attachments-min-count'], formData['attachments-max-count']);
-    cells[2].innerHTML = `${sanitizeHtml(formData.path)}${schemaBadge}${trackingBadge}`;
+    cells[2].innerHTML = sanitizeHtml(formData.path);
+    if (schemaBadge) cells[2].append(document.createTextNode(' '), schemaBadge);
+    if (trackingBadge) cells[2].append(document.createTextNode(' '), trackingBadge);
 
     const methodBadges = (formData.methods || '').split(',')
         .filter((m) => m.trim())
@@ -1084,8 +1118,7 @@ const buildAttachmentBoundsFields = (properties) => {
     maxLabel.appendChild(maxInput);
 
     const timeoutRaw = properties?.['attachments-timeout'] || '30 sec';
-    const timeoutMatch = timeoutRaw.match(
-        /^(\d+)\s*(ms|sec|min|hr|day)$/i);
+    const timeoutMatch = timeoutRaw.match(ATTACHMENTS_TIMEOUT_PATTERN);
     const timeoutNum = timeoutMatch ? timeoutMatch[1] : '30';
     const timeoutUnit = timeoutMatch
         ? timeoutMatch[2].toLowerCase() : 'sec';
@@ -1102,16 +1135,11 @@ const buildAttachmentBoundsFields = (properties) => {
     timeoutUnitSelect.className = 'field-attachments-timeout-unit';
     timeoutUnitSelect.setAttribute('aria-label',
         t('route.form.attachments.timeout') + ' unit');
-    for (const tu of [
-        { value: 'sec', label: 'sec' },
-        { value: 'min', label: 'min' },
-        { value: 'hr', label: 'hr' },
-        { value: 'day', label: 'day' }
-    ]) {
+    for (const tu of ATTACHMENTS_TIMEOUT_UNITS) {
         const opt = document.createElement('option');
-        opt.value = tu.value;
-        opt.textContent = tu.label;
-        if (tu.value === timeoutUnit) opt.selected = true;
+        opt.value = tu;
+        opt.textContent = tu;
+        if (tu === timeoutUnit) opt.selected = true;
         timeoutUnitSelect.appendChild(opt);
     }
 
@@ -1501,7 +1529,12 @@ const validateAttachments = (f) => {
     if (max < 0) return { isValid: false, error: new Error(t('route.validate.attachments.max.negative')) };
     if (min > 0 && max > 0 && min > max) return { isValid: false, error: new Error(t('route.validate.attachments.min.exceeds.max')) };
     if (max > attachmentsHardLimit) return { isValid: false, error: new Error(t('route.validate.attachments.max.exceeds.limit', String(attachmentsHardLimit))) };
-    const timeoutValue = Number.parseInt(f['attachments-timeout'], 10);
+    // attachments-timeout is the composite "{value} {unit}" string extractFormFields
+    // builds. ATTACHMENTS_TIMEOUT_PATTERN anchors the whole string and bounds the unit
+    // alternation to the units the select offers, so a match already guarantees both
+    // halves are valid — parseInt alone would stop at the space and let any unit through.
+    const timeoutMatch = ATTACHMENTS_TIMEOUT_PATTERN.exec(String(f['attachments-timeout'] ?? '').trim());
+    const timeoutValue = timeoutMatch ? Number.parseInt(timeoutMatch[1], 10) : Number.NaN;
     if (Number.isNaN(timeoutValue) || timeoutValue < 1) {
         return { isValid: false, error: new Error(t('route.validate.attachments.timeout.invalid')) };
     }
