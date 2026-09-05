@@ -117,7 +117,7 @@ const ATTACHMENTS_TIMEOUT_UNITS_SET = new Set(ATTACHMENTS_TIMEOUT_UNITS);
 // The one composite "{value} {unit}" pattern, derived from the same source. The unit
 // alternation is bounded (no generic `\S+` tail), so both the load-time parse and the
 // save-time validation accept exactly the units the select offers.
-const ATTACHMENTS_TIMEOUT_PATTERN = new RegExp(`^(\\d+)\\s*(${ATTACHMENTS_TIMEOUT_UNITS.join('|')})$`, 'i');
+const ATTACHMENTS_TIMEOUT_PATTERN = new RegExp(String.raw`^(\d+)\s*(${ATTACHMENTS_TIMEOUT_UNITS.join('|')})$`, 'i');
 const DEFAULT_ATTACHMENTS_HARD_LIMIT = 20;
 let attachmentsHardLimit = DEFAULT_ATTACHMENTS_HARD_LIMIT;
 
