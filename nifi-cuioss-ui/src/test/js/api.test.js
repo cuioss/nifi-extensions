@@ -135,7 +135,6 @@ describe('verifyToken', () => {
         expect(JSON.parse(opts.body)).toEqual({ token: 'eyJhbGci...' });
         expect(result.valid).toBe(true);
     });
-
 });
 
 // ---------------------------------------------------------------------------
