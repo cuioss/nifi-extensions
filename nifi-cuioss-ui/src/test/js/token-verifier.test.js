@@ -103,7 +103,9 @@ describe('token-verifier', () => {
         expect(results.querySelector('.verification-status.invalid')).not.toBeNull();
     });
 
-    it('should render expired status for expired token', async () => {
+    it('should keep the badge on the verdict and show a past exp as a claim annotation', async () => {
+        // Arrange — the authoritative verdict is valid while the decoded (unverified)
+        // exp claim is in the past.
         const mockResult = {
             valid: true,
             decoded: {
@@ -113,13 +115,40 @@ describe('token-verifier', () => {
         };
         api.verifyToken.mockResolvedValue(mockResult);
 
+        // Act
         init(container);
         container.querySelector('#field-token-input').value = 'expired.jwt.token';
         container.querySelector('.verify-token-button').click();
         await new Promise((r) => setTimeout(r, 10));
 
+        // Assert — the badge follows result.valid; the expiry is a claim annotation only
         const results = container.querySelector('.token-results-content');
-        expect(results.querySelector('.verification-status.expired')).not.toBeNull();
+        expect(results.querySelector('.verification-status.valid')).not.toBeNull();
+        expect(results.querySelector('.verification-status.expired')).toBeNull();
+        expect(results.querySelector('.token-claims .claim.expired')).not.toBeNull();
+        expect(results.querySelector('.expired-label')).not.toBeNull();
+        expect(results.querySelector('.decoded-unverified-note')).not.toBeNull();
+    });
+
+    it('should render the expiration claim for the falsy-but-present exp value 0', async () => {
+        // Arrange — exp: 0 is a valid NumericDate (1970-01-01T00:00:00Z). It is falsy,
+        // so a truthiness guard would silently drop the whole expiration annotation.
+        const mockResult = {
+            valid: true,
+            decoded: { header: { alg: 'RS256' }, payload: { exp: 0 } }
+        };
+        api.verifyToken.mockResolvedValue(mockResult);
+
+        // Act
+        init(container);
+        container.querySelector('#field-token-input').value = 'epoch-exp.jwt.token';
+        container.querySelector('.verify-token-button').click();
+        await new Promise((r) => setTimeout(r, 10));
+
+        // Assert — the claim is rendered and marked expired
+        const results = container.querySelector('.token-results-content');
+        expect(results.querySelector('.token-claims .claim.expired')).not.toBeNull();
+        expect(results.textContent).toContain('token.claim.expiration');
     });
 
     it('should display error when API call fails', async () => {

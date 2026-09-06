@@ -139,9 +139,10 @@ export const TRANSLATIONS = {
         'token.status.verifying': 'Verifying token...',
         'token.status.valid': 'Token is valid',
         'token.status.invalid': 'Token is invalid',
-        'token.status.expired': 'Token has expired',
         'token.section.header': 'Header',
         'token.section.payload': 'Payload',
+        'token.section.decoded.unverified':
+            'Decoded token contents: shown as-is and not verified.',
         'token.error.prefix': 'Error',
         'token.claim.expiration': 'Expiration',
         'token.claim.expired': '(Expired)',
@@ -554,9 +555,10 @@ export const TRANSLATIONS = {
         'token.status.verifying': 'Token wird \u00fcberpr\u00fcft\u2026',
         'token.status.valid': 'Token ist g\u00fcltig',
         'token.status.invalid': 'Token ist ung\u00fcltig',
-        'token.status.expired': 'Token ist abgelaufen',
         'token.section.header': 'Header',
         'token.section.payload': 'Payload',
+        'token.section.decoded.unverified':
+            'Dekodierter Token-Inhalt: unver\u00e4ndert angezeigt und nicht \u00fcberpr\u00fcft.',
         'token.error.prefix': 'Fehler',
         'token.claim.expiration': 'Ablaufzeit',
         'token.claim.expired': '(Abgelaufen)',
@@ -884,8 +886,15 @@ export const t = (key, ...params) => {
 
 /**
  * Escapes HTML entities to prevent XSS.
+ *
+ * Safe for HTML **text-node** content (e.g. `<td>${sanitizeHtml(v)}</td>`) — the
+ * textContent/innerHTML round-trip escapes `&`, `<`, `>`. It does NOT escape `"` or `'`,
+ * so it must NOT be used to build a quoted HTML **attribute** value (e.g.
+ * `class="foo ${sanitizeHtml(v)}"`); a value containing `"` can then break out of the
+ * attribute. Use {@link sanitizeAttr} for that context instead.
+ *
  * @param {string} html  raw string
- * @returns {string}  safe string
+ * @returns {string}  safe string for text-node interpolation
  */
 export const sanitizeHtml = (html) => {
     if (!html) return '';
@@ -893,6 +902,19 @@ export const sanitizeHtml = (html) => {
     d.textContent = html;
     return d.innerHTML;
 };
+
+/**
+ * Escapes a string for safe interpolation inside a double-quoted HTML attribute value
+ * (e.g. `class="foo ${sanitizeAttr(v)}"`). Extends {@link sanitizeHtml}'s text-node
+ * escaping with quote-character escaping, since an attribute value can be broken out of
+ * by an unescaped `"` (or `'`, for a single-quoted attribute) that sanitizeHtml alone
+ * does not neutralize.
+ *
+ * @param {string} value  raw string
+ * @returns {string}  attribute-safe string
+ */
+export const sanitizeAttr = (value) =>
+    sanitizeHtml(value).replaceAll('"', '&quot;').replaceAll('\'', '&#39;');
 
 // ---------------------------------------------------------------------------
 // Origin badges
@@ -906,16 +928,48 @@ const ORIGIN_BADGE_CONFIG = {
 };
 
 /**
- * Build an origin badge HTML snippet.
+ * Build an element carrying a leading icon and a text label. Shared by every editor
+ * (issuer, route/management) and badge that renders an icon+label pair — the tag is
+ * the only axis a button-shaped action and a span-shaped badge differ on.
+ * @param {string} tag  the element tag name (e.g. 'button', 'span')
+ * @param {string} className  the element's class attribute
+ * @param {string} title  the element tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the label text
+ * @returns {HTMLElement} the built element
+ */
+export const buildIconElement = (tag, className, title, iconClass, label) => {
+    const el = document.createElement(tag);
+    el.className = className;
+    el.title = title;
+    const icon = document.createElement('i');
+    icon.className = `fa ${iconClass}`;
+    el.append(icon, document.createTextNode(` ${label}`));
+    return el;
+};
+
+/**
+ * Build a button carrying a leading icon and a text label. Shared by every editor
+ * (issuer, route/management) that renders an icon+label row action.
+ * @param {string} className  the button's class attribute
+ * @param {string} title  the button tooltip
+ * @param {string} iconClass  the Font Awesome icon class (without the `fa` base class)
+ * @param {string} label  the button label
+ * @returns {HTMLButtonElement} the button element
+ */
+export const buildActionButton = (className, title, iconClass, label) =>
+    buildIconElement('button', className, title, iconClass, label);
+
+/**
+ * Build an origin badge element.
  * @param {'persisted'|'modified'|'new'|'external'} origin  the origin state
- * @returns {string} HTML string for the badge
+ * @returns {HTMLSpanElement|null} the badge element, or null when no badge applies
  */
 export const buildOriginBadge = (origin) => {
     const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
     const config = ORIGIN_BADGE_CONFIG[badgeType];
-    const title = sanitizeHtml(t(`${config.textKey}.title`));
-    const text = sanitizeHtml(t(config.textKey));
-    return ` <span class="origin-badge origin-${badgeType}" title="${title}"><i class="fa ${config.icon}"></i> ${text}</span>`;
+    return buildIconElement('span', `origin-badge origin-${badgeType}`,
+        t(`${config.textKey}.title`), config.icon, t(config.textKey));
 };
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,143 @@
+= ADR-0001: Attribute-context UI values are built with DOM APIs, not string interpolation
+:toc: left
+:toclevels: 2
+:sectnums:
+
+// adr-metadata
+// Progressive-disclosure metadata block (see manage-adr SKILL.md → "ADR Template
+// Structure"). Read by `manage-adr.py scan` so a caller can assess an ADR's
+// relevance without reading the full file. List fields are comma-separated.
+// summary: Attribute-bearing UI elements are constructed with createElement plus property assignment, never by interpolating a value into an innerHTML attribute position.
+// tags: javascript, dom-construction, security-hardening, xss
+// affects: nifi-cuioss-ui
+// supersedes:
+// end-adr-metadata
+
+== Status
+
+Proposed
+
+== Context
+
+The web UI composes table rows, badges and form controls by building HTML strings
+and assigning them through `innerHTML`. Some of those strings interpolate values
+into *attribute* positions — `title="${value}"`, `class="${value}"`,
+`value="${value}"`.
+
+Attribute-context interpolation is a structurally different problem from
+text-context interpolation, and the difference is easy to miss because the two look
+identical in a template literal. The module's shared escaper is built on the
+`textContent` → `innerHTML` idiom, which escapes `&`, `<` and `>` but *not* quote
+characters, because quotes need no escaping in a text node. Applied to an attribute
+position it is therefore insufficient by construction: a value containing a double
+quote closes the attribute early and everything after it is parsed as further
+markup and attributes.
+
+Two properties make this a class of defect rather than a set of individual bugs:
+
+* **It recurs independently.** The pattern appeared in dropdown option builders,
+  badge composers and action-button templates, written at different times by
+  different hands. Each author reached for the escaper the module offered and got a
+  result that was wrong in a way nothing signalled.
+* **Reachability is a property of the call graph, not of the construct.** Most such
+  sites interpolate translation-bundle literals, which no external party controls,
+  so they are not exploitable as written. That safety is incidental. It holds only
+  until some future caller routes a route path, an issuer URI, or a persisted
+  configuration value through the same helper — at which point a site nobody
+  revisited becomes an injection point.
+
+A content-security policy that blocks inline handlers limits what such an injection
+can achieve today. That is containment, not correctness: it makes the consequence
+survivable while leaving the defect in place, and it silently becomes load-bearing
+for the module's safety, so any future relaxation of the policy re-arms every site
+at once.
+
+== Decision
+
+**Attribute-bearing elements are constructed with DOM APIs, not assembled as markup
+strings.**
+
+Concretely:
+
+* Create the element with `document.createElement`, then set attribute values by
+  direct property assignment (`el.title = value`, `el.value = value`,
+  `el.className = value`). There is no markup string for a value to break out of, so
+  the escaping question does not arise.
+* A helper whose output is consumed elsewhere returns a DOM element (or `null` for
+  the empty case), not an HTML string. Returning a string pushes the composition
+  problem — and the escaping decision — back onto every caller.
+* Where a value genuinely must reach an attribute inside a string, it goes through
+  an attribute-context escaper that escapes quotes. The text-context escaper is
+  documented as text-node-only so the next author does not reach for it by default.
+
+The rule is deliberately unconditional rather than scoped to values believed to be
+attacker-reachable. Reachability analysis has to be redone every time the call graph
+changes, and a construct that is safe only under today's analysis provides no signal
+when that changes. Making the safe construction the only construction removes the
+need for the analysis.
+
+== Consequences
+
+=== Positive
+
+* The defect class cannot recur where the construct is absent. A quote in a value
+  has no syntactic role to escape from.
+* Conformance is checkable by a search for the construct shape rather than by
+  reasoning about each site's data provenance — a whole-module claim can be stated
+  and verified.
+* Element-returning helpers compose without a parse/re-serialise round trip, and
+  event handlers can be attached directly rather than bound by a later query.
+
+=== Negative
+
+* DOM construction is more verbose than a template literal, particularly for
+  elements with several attributes and nested children.
+* Changing a helper's return type from string to element is breaking for every
+  caller, and for any test that asserts on the produced markup.
+* Test suites that mock the shared utility module wholesale will see such a helper
+  return `undefined` unless the mock is updated, which can silently disable
+  assertions rather than fail loudly.
+
+=== Risks
+
+* No automated gate enforces the construct shape. Conformance depends on review and
+  on the search remaining part of the reviewer's habit.
+* The rule covers attribute context. Text-context interpolation through the
+  text-node escaper remains correct and common, so the two idioms coexist in the
+  same files and the distinction has to be understood rather than pattern-matched.
+
+== Alternatives Considered
+
+**Escape quotes at each interpolation site.** Keep the string-building style and
+apply a quote-escaping helper wherever a value reaches an attribute. This is a
+smaller change and preserves the more readable template-literal form. Rejected
+because it leaves the hazardous construct in place and makes correctness a per-site
+obligation: the next author writing the next badge builder has to know that
+attribute context differs from text context, and nothing in the code signals it.
+The failure mode is silent and the defect recurs.
+
+**Fix only the sites that are attacker-reachable.** Convert the sites carrying
+externally-influenced values and leave those interpolating translation literals.
+Rejected because it makes the module's safety a property of the current call graph.
+Every future change that routes a new value through an untouched helper has to
+re-run that reachability argument, and the cost of getting it wrong is an injection
+point that review has already signed off on once.
+
+**Rely on the content-security policy.** Treat the policy as the control and accept
+the construct. Rejected because it confuses containment with correctness. It makes
+the policy load-bearing for a class of defect it was not chosen to address, and
+couples the module's safety to a deployment-level setting that can be relaxed for
+unrelated reasons.
+
+The three rejected options share a shape: each keeps the unsafe construct and adds
+a compensating control elsewhere — at the site, in the analysis, or in the
+deployment. Each control is correct when applied and each has to be re-applied
+correctly forever. Removing the construct removes the obligation.
+
+== References
+
+* `nifi-cuioss-ui` module — `src/main/webapp/js/`, the shared utility module's
+  text-context and attribute-context escapers and the element-building helpers.
+* link:0002-Similarly-shaped_parsers_with_different_split_semantics_are_not_force-unified.adoc[ADR-0002]
+  — the complementary case, where surface similarity is *not* grounds for
+  consolidation.

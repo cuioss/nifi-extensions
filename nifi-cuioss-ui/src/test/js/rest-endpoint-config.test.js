@@ -65,15 +65,26 @@ describe('rest-endpoint-config', () => {
         // eslint-disable-next-line no-import-assign -- Jest auto-mock requires manual log stub
         utils.log = { info: jest.fn(), debug: jest.fn(), error: jest.fn(), warn: jest.fn() };
         utils.sanitizeHtml.mockImplementation((s) => s || '');
+        utils.sanitizeAttr.mockImplementation((s) => s || '');
         utils.t.mockImplementation((key) => key);
         utils.displayUiError.mockImplementation(() => {});
         utils.displayUiSuccess.mockImplementation(() => {});
+        utils.buildIconElement.mockImplementation((tag, className, title, iconClass, label) => {
+            const el = document.createElement(tag);
+            el.className = className;
+            el.title = title;
+            const icon = document.createElement('i');
+            icon.className = `fa ${iconClass}`;
+            el.append(icon, document.createTextNode(` ${label}`));
+            return el;
+        });
         utils.buildOriginBadge.mockImplementation((origin) => {
             const o = origin || 'persisted';
-            const title = utils.t(`origin.badge.${o}.title`);
-            const text = utils.t(`origin.badge.${o}`);
-            return ` <span class="origin-badge origin-${o}" title="${title}"><i class="fa fa-database"></i> ${text}</span>`;
+            return utils.buildIconElement('span', `origin-badge origin-${o}`,
+                utils.t(`origin.badge.${o}.title`), 'fa-database', utils.t(`origin.badge.${o}`));
         });
+        utils.buildActionButton.mockImplementation((className, title, iconClass, label) =>
+            utils.buildIconElement('button', className, title, iconClass, label));
         createContextHelp.mockImplementation(mockCreateContextHelp);
         createFormField.mockImplementation(mockCreateFormField);
         // Mock getComponentId from api.js to return a valid processor ID
@@ -175,6 +186,30 @@ describe('rest-endpoint-config', () => {
         const statusCell = disabledRow.querySelector('.status-disabled');
         expect(statusCell).not.toBeNull();
         expect(statusCell.textContent).toBe('common.status.disabled');
+    });
+
+    it('should split route keys at the FIRST dot so a dotted property suffix stays in the property', async () => {
+        // Arrange — a route property whose suffix itself contains dots.
+        // parseRouteProperties splits restapi.<route>.<prop> at the FIRST dot, so the
+        // route name is the first segment and the whole remainder is the property.
+        // Splitting at the LAST dot (what parseIssuerProperties does for issuers) would
+        // invent a route named 'metrics.custom'.
+        const props = {
+            ...SAMPLE_PROPERTIES,
+            'restapi.metrics.path': '/api/metrics',
+            'restapi.metrics.custom.header': 'x-trace-id'
+        };
+        api.getComponentProperties.mockResolvedValue({
+            properties: props,
+            revision: { version: 1 }
+        });
+
+        // Act
+        await init(container);
+
+        // Assert — the dotted suffix stays in the property, so no derived route appears
+        expect(container.querySelector('tr[data-route-name="metrics"]')).not.toBeNull();
+        expect(container.querySelector('tr[data-route-name="metrics.custom"]')).toBeNull();
     });
 
     it('should show Edit and Remove buttons per row', async () => {
@@ -3008,6 +3043,42 @@ describe('rest-endpoint-config', () => {
         form.querySelector('.save-route-button').click();
         await tick();
 
+        expect(utils.displayUiError).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.objectContaining({ message: 'route.validate.attachments.timeout.invalid' }),
+            expect.anything(),
+            expect.anything()
+        );
+    });
+
+    it('should reject attachments when the timeout unit is outside the offered set', async () => {
+        // Arrange
+        api.getComponentProperties.mockResolvedValue({
+            properties: SAMPLE_PROPERTIES,
+            revision: { version: 1 }
+        });
+
+        await init(container);
+
+        const dataRow = container.querySelector('tr[data-route-name="data"]');
+        dataRow.querySelector('.edit-route-button').click();
+        const form = container.querySelector('.route-form');
+
+        form.querySelector('.tracking-mode-select').value = 'attachments';
+        form.querySelector('.field-attachments-timeout-value').value = '30';
+        // A select only accepts values it carries an option for, so inject the rogue
+        // unit to reach the composite-validation branch that parseInt used to skip.
+        const unitSelect = form.querySelector('.field-attachments-timeout-unit');
+        const rogueUnit = document.createElement('option');
+        rogueUnit.value = 'fortnight';
+        unitSelect.appendChild(rogueUnit);
+        unitSelect.value = 'fortnight';
+
+        // Act
+        form.querySelector('.save-route-button').click();
+        await tick();
+
+        // Assert
         expect(utils.displayUiError).toHaveBeenCalledWith(
             expect.anything(),
             expect.objectContaining({ message: 'route.validate.attachments.timeout.invalid' }),

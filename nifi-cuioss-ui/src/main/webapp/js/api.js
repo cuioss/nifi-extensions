@@ -169,10 +169,15 @@ const getCsrfToken = () => {
 const request = async (method, url, body = null, { componentId } = {}) => {
     const headers = {};
 
-    // Attach processor-id header for JWT endpoints
+    // Attach processor-id header for JWT endpoints. The fallback identifier is read
+    // from the page's own query string, so it is caller-controlled; gate it on the
+    // same UUID_PATTERN that assertValidUuid enforces on every other identifier-bearing
+    // path in this module. request() is a shared helper whose callers do not expect it
+    // to throw, so a mismatch DROPS the header instead of raising — the backend then
+    // rejects an unidentified request rather than receiving an unvalidated identifier.
     if (url.includes('/jwt/')) {
         const pid = componentId || getComponentId();
-        if (pid) headers['X-Processor-Id'] = pid;
+        if (pid && UUID_PATTERN.test(pid)) headers['X-Processor-Id'] = pid;
     }
 
     // NiFi CSRF protection: double-submit cookie pattern requires
@@ -348,26 +353,29 @@ const updateProcessorWithStopStart = async (componentId, info, properties) => {
     const wasRunning = current.component?.status?.runStatus === 'Running'
         || current.component?.state === 'RUNNING';
 
-    // Stop the processor if running
-    if (wasRunning) {
-        await updateProcessorRunStatus(componentId, 'STOPPED', current.revision);
-        await waitForProcessorState(componentId, info, 'STOPPED');
-    }
-
-    // Fetch fresh revision after state change
-    const fresh = wasRunning
-        ? await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`))
-        : current;
-
-    // Preserve autoTerminatedRelationships so NiFi doesn't reset them
-    const autoTerminated = fresh.component?.config?.autoTerminatedRelationships || [];
-    const componentBody = buildComponentBody(componentId, info.propsPath, properties);
-    if (componentBody.config) {
-        componentBody.config.autoTerminatedRelationships = autoTerminated;
-    }
-
+    // Everything after the processor may have been stopped runs inside the guarded
+    // region: waitForProcessorState throws after ~10s of failed polling, and the
+    // fresh-revision GET can fail too, so both must reach the restart in `finally`.
     let result;
     try {
+        // Stop the processor if running
+        if (wasRunning) {
+            await updateProcessorRunStatus(componentId, 'STOPPED', current.revision);
+            await waitForProcessorState(componentId, info, 'STOPPED');
+        }
+
+        // Fetch fresh revision after state change
+        const fresh = wasRunning
+            ? await request('GET', nifiApiUrl(`${info.apiPath}/${componentId}`))
+            : current;
+
+        // Preserve autoTerminatedRelationships so NiFi doesn't reset them
+        const autoTerminated = fresh.component?.config?.autoTerminatedRelationships || [];
+        const componentBody = buildComponentBody(componentId, info.propsPath, properties);
+        if (componentBody.config) {
+            componentBody.config.autoTerminatedRelationships = autoTerminated;
+        }
+
         result = await request('PUT', nifiApiUrl(`${info.apiPath}/${componentId}`), {
             revision: fresh.revision,
             component: componentBody
@@ -573,25 +581,6 @@ export const resolveJwtConfigServiceId = async (processorId) => {
     return properties['rest.gateway.jwt.config.service']
         || properties['jwt.issuer.config.service']
         || null;
-};
-
-// Backward-compatible aliases
-/** @deprecated Use getComponentProperties instead */
-export const getProcessorProperties = async (processorId) => {
-    assertValidUuid(processorId, 'Processor ID');
-    await getProxyContextPath();
-    return request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
-};
-
-/** @deprecated Use updateComponentProperties instead */
-export const updateProcessorProperties = async (processorId, properties) => {
-    assertValidUuid(processorId, 'Processor ID');
-    await getProxyContextPath();
-    const proc = await request('GET', nifiApiUrl(`/nifi-api/processors/${processorId}`));
-    return request('PUT', nifiApiUrl(`/nifi-api/processors/${processorId}`), {
-        revision: proc.revision,
-        component: { id: processorId, config: { properties } }
-    });
 };
 
 export {
