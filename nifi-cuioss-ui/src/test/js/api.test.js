@@ -135,6 +135,7 @@ describe('verifyToken', () => {
         expect(JSON.parse(opts.body)).toEqual({ token: 'eyJhbGci...' });
         expect(result.valid).toBe(true);
     });
+
 });
 
 // ---------------------------------------------------------------------------
@@ -716,24 +717,43 @@ describe('error handling', () => {
 // ---------------------------------------------------------------------------
 
 describe('processor ID header', () => {
+    // The identifier reaching X-Processor-Id must be a NiFi UUID: the fallback source
+    // is the caller-controlled ?id= query parameter, so request() gates it on the same
+    // UUID_PATTERN assertValidUuid enforces elsewhere in the module. These fixtures are
+    // therefore real UUIDs rather than free-form placeholders.
     test('adds X-Processor-Id header when processorId is available', async () => {
-        globalThis.jwtAuthConfig = { processorId: 'test-proc-id' };
+        globalThis.jwtAuthConfig = { processorId: '66666666-6666-6666-6666-666666666666' };
         mockJsonResponse({});
 
         await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
-        expect(headers['X-Processor-Id']).toBe('test-proc-id');
+        expect(headers['X-Processor-Id']).toBe('66666666-6666-6666-6666-666666666666');
     });
 
     test('extracts processorId from URL query param', async () => {
-        history.replaceState({}, '', '/nifi?id=url-proc-id');
+        history.replaceState({}, '', '/nifi?id=55555555-5555-5555-5555-555555555555');
         mockJsonResponse({});
 
         await verifyToken('test');
 
         const headers = globalThis.fetch.mock.calls[0][1].headers;
-        expect(headers['X-Processor-Id']).toBe('url-proc-id');
+        expect(headers['X-Processor-Id']).toBe('55555555-5555-5555-5555-555555555555');
+    });
+
+    test('drops the header when the query-param id is not a UUID', async () => {
+        // Arrange — ?id= is caller-controlled, so a non-UUID value must never reach the
+        // backend as an identifier. request() is a shared helper, so it drops the header
+        // rather than throwing at callers that never opted into catching.
+        history.replaceState({}, '', '/nifi?id=../../etc/passwd');
+        mockJsonResponse({});
+
+        // Act
+        await verifyToken('test');
+
+        // Assert
+        const headers = globalThis.fetch.mock.calls[0][1].headers;
+        expect(headers['X-Processor-Id']).toBeUndefined();
     });
 });
 

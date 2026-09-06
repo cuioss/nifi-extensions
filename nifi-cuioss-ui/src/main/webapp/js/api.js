@@ -169,10 +169,15 @@ const getCsrfToken = () => {
 const request = async (method, url, body = null, { componentId } = {}) => {
     const headers = {};
 
-    // Attach processor-id header for JWT endpoints
+    // Attach processor-id header for JWT endpoints. The fallback identifier is read
+    // from the page's own query string, so it is caller-controlled; gate it on the
+    // same UUID_PATTERN that assertValidUuid enforces on every other identifier-bearing
+    // path in this module. request() is a shared helper whose callers do not expect it
+    // to throw, so a mismatch DROPS the header instead of raising — the backend then
+    // rejects an unidentified request rather than receiving an unvalidated identifier.
     if (url.includes('/jwt/')) {
         const pid = componentId || getComponentId();
-        if (pid) headers['X-Processor-Id'] = pid;
+        if (pid && UUID_PATTERN.test(pid)) headers['X-Processor-Id'] = pid;
     }
 
     // NiFi CSRF protection: double-submit cookie pattern requires
