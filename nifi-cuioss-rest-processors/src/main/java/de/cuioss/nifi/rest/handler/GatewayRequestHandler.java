@@ -548,7 +548,9 @@ public class GatewayRequestHandler extends Handler.Abstract {
             // header precedence, sanitization (its own security pipeline), injection guards,
             // and the trust model (allowlist / trust-all / trusted-proxies). Raw headers are
             // passed in; the resolver sanitizes them internally, so only honored values survive.
-            ResolvedForwarding forwarding = forwardedResolver.resolve(request.getHeaders()::get);
+            // getValuesList, NOT get: the resolver needs every instance of a repeated forwarded
+            // header, and HttpFields#get returns only the first.
+            ResolvedForwarding forwarding = forwardedResolver.resolve(request.getHeaders()::getValuesList);
             maybeWarnProxyContextPathIgnored(request, forwarding);
 
             return Optional.of(new SanitizedRequest(

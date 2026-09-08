@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -111,7 +112,9 @@ public class ProxyContextPathServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-        String contextPath = resolver.resolve(req::getHeader).contextPath();
+        // Collections.list over getHeaders(name), NOT req::getHeader: the resolver needs every
+        // instance of a repeated forwarded header, and getHeader returns only the first.
+        String contextPath = resolver.resolve(name -> Collections.list(req.getHeaders(name))).contextPath();
 
         var json = Json.createObjectBuilder()
                 .add("contextPath", contextPath)

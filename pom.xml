@@ -131,14 +131,6 @@
         <!-- The cuioss BOM version, imported below. A literal because this project's parent is
              org.apache.nifi:nifi-extension-bundles - there is no cuioss ancestor to inherit from. -->
         <version.cui.parent>1.7.2</version.cui.parent>
-        <!-- Deliberately held BELOW cui-java-bom's 3.0, and overriding it in dependencyManagement
-             below. 3.0 is not a drop-in: ForwardedHeaderResolver#resolve takes
-             Function<String, List<String>> there, against Function<String, String> here, because
-             forwarded headers became multi-valued. That is a security-semantics change to how a
-             forwarded chain is parsed, across ForwardedRequestResolver and 12 files around it - a
-             migration in its own right, not something to smuggle into a version-hygiene change.
-             Remove this property and the two entries below once that migration lands. -->
-        <version.cui.http>2.1.0</version.cui.http>
         <version.token-sheriff>0.9.4</version.token-sheriff>
         <version.jjwt>0.13.0</version.jjwt>
         <!-- Stays local: cui-java-bom manages jspecify at compile scope, which would bundle it
@@ -204,22 +196,6 @@
                 <scope>provided</scope>
             </dependency>
             <!-- CUI-OSS -->
-            <!-- Pinned below the imported cui-java-bom on purpose - see version.cui.http above.
-                 A directly declared entry outranks an imported BOM, which is what holds 2.1.0
-                 here. Both coordinates are listed so the classifier cannot drift from the jar. -->
-            <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-http</artifactId>
-                <version>${version.cui.http}</version>
-                <scope>compile</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-http</artifactId>
-                <version>${version.cui.http}</version>
-                <classifier>generators</classifier>
-                <scope>test</scope>
-            </dependency>
             <dependency>
                 <groupId>de.cuioss.sheriff.token</groupId>
                 <artifactId>token-sheriff-validation</artifactId>
