@@ -99,7 +99,7 @@
         <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <sonar.maven.plugin.version>5.7.0.6970</sonar.maven.plugin.version>
-        <jacoco.maven.plugin.version>0.8.14</jacoco.maven.plugin.version>
+        <jacoco.maven.plugin.version>0.8.15</jacoco.maven.plugin.version>
         <!-- Sonatype -->
 
         <!-- OpenRewrite -->
@@ -111,40 +111,44 @@
         <!-- Frontend Maven Plugin -->
         <frontend.maven.plugin.version>2.0.2</frontend.maven.plugin.version>
         <frontend.node.version>v22.23.1</frontend.node.version>
-        <frontend.npm.version>10.5.0</frontend.npm.version>
+        <frontend.npm.version>10.9.2</frontend.npm.version>
 
         <!-- The version needs to be aligned with the one defined within the nifi boms. Otherwise, it's getting messy-->
         <version.junit.jupiter>6.1.3</version.junit.jupiter>
+        <!-- Stays local although cui-java-bom carries the same value: annotationProcessorPaths
+             below reads this property, and an imported BOM supplies dependencyManagement only -
+             never properties - so there is nothing to inherit it from here. -->
         <version.lombok>1.18.48</version.lombok>
         <version.parsson>1.1.9</version.parsson>
-        <version.easymock>5.7.0</version.easymock>
+        <!-- Stays local although java-ee-orthogonal carries the same value: that BOM manages
+             io.rest-assured:rest-assured only, while the requireSameVersions block below demands one
+             version across io.rest-assured:*. json-schema-validator is pinned off this property to
+             keep the family whole; dropping it would split the very stack that rule guards. -->
         <version.rest-assured>6.0.1</version.rest-assured>
-        <version.hamcrest>3.0</version.hamcrest>
         <version.jakarta.json-api>2.1.3</version.jakarta.json-api>
         <version.webjars.font-awesome>7.3.0</version.webjars.font-awesome>
         <!-- CUI-OSS -->
-        <version.cui.test.juli.logger>2.1.4</version.cui.test.juli.logger>
-        <version.cui.test.generator>3.0.2</version.cui.test.generator>
-        <version.cui.test.value.objects>2.1.3</version.cui.test.value.objects>
-        <version.cui.test.mockwebserver>1.6</version.cui.test.mockwebserver>
-        <version.cui.java.tools>2.7.0</version.cui.java.tools>
+        <!-- The cuioss BOM version, imported below. A literal because this project's parent is
+             org.apache.nifi:nifi-extension-bundles - there is no cuioss ancestor to inherit from. -->
+        <version.cui.parent>1.7.2</version.cui.parent>
+        <!-- Deliberately held BELOW cui-java-bom's 3.0, and overriding it in dependencyManagement
+             below. 3.0 is not a drop-in: ForwardedHeaderResolver#resolve takes
+             Function<String, List<String>> there, against Function<String, String> here, because
+             forwarded headers became multi-valued. That is a security-semantics change to how a
+             forwarded chain is parsed, across ForwardedRequestResolver and 12 files around it - a
+             migration in its own right, not something to smuggle into a version-hygiene change.
+             Remove this property and the two entries below once that migration lands. -->
         <version.cui.http>2.1.0</version.cui.http>
         <version.token-sheriff>0.9.4</version.token-sheriff>
-        <version.cui.test.keycloak.integration>1.3.0</version.cui.test.keycloak.integration>
         <version.jjwt>0.13.0</version.jjwt>
+        <!-- Stays local: cui-java-bom manages jspecify at compile scope, which would bundle it
+             into every NAR. A NAR must ship only what it runs, so it is kept at provided here. -->
         <version.jspecify>1.0.1</version.jspecify>
-        <version.awaitility>4.3.0</version.awaitility>
         <version.json-schema>1.9.1</version.json-schema>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${version.lombok}</version>
-                <scope>provided</scope>
-            </dependency>
             <dependency>
                 <groupId>org.jspecify</groupId>
                 <artifactId>jspecify</artifactId>
@@ -156,6 +160,23 @@
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
                 <version>${version.junit.jupiter}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- The cuioss BOMs, replacing a hand-copied catalogue of their versions.
+                 Declared AFTER org.junit:junit-bom on purpose: among imports the first declaration
+                 wins, so NiFi's JUnit line keeps precedence, which version.junit.jupiter requires. -->
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>cui-java-bom</artifactId>
+                <version>${version.cui.parent}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>de.cuioss</groupId>
+                <artifactId>java-ee-orthogonal</artifactId>
+                <version>${version.cui.parent}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -183,12 +204,9 @@
                 <scope>provided</scope>
             </dependency>
             <!-- CUI-OSS -->
-            <dependency>
-                <groupId>de.cuioss</groupId>
-                <artifactId>cui-java-tools</artifactId>
-                <version>${version.cui.java.tools}</version>
-                <scope>compile</scope>
-            </dependency>
+            <!-- Pinned below the imported cui-java-bom on purpose - see version.cui.http above.
+                 A directly declared entry outranks an imported BOM, which is what holds 2.1.0
+                 here. Both coordinates are listed so the classifier cannot drift from the jar. -->
             <dependency>
                 <groupId>de.cuioss</groupId>
                 <artifactId>cui-http</artifactId>
@@ -200,30 +218,6 @@
                 <artifactId>cui-http</artifactId>
                 <version>${version.cui.http}</version>
                 <classifier>generators</classifier>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.test</groupId>
-                <artifactId>cui-test-juli-logger</artifactId>
-                <version>${version.cui.test.juli.logger}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.test</groupId>
-                <artifactId>cui-test-value-objects</artifactId>
-                <version>${version.cui.test.value.objects}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.test</groupId>
-                <artifactId>cui-test-generator</artifactId>
-                <version>${version.cui.test.generator}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.test</groupId>
-                <artifactId>cui-test-mockwebserver-junit5</artifactId>
-                <version>${version.cui.test.mockwebserver}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -252,12 +246,6 @@
                 <version>${version.jakarta.json-api}</version>
             </dependency>
             <dependency>
-                <groupId>org.easymock</groupId>
-                <artifactId>easymock</artifactId>
-                <version>${version.easymock}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
                 <version>${version.rest-assured}</version>
@@ -275,27 +263,9 @@
                 <version>${version.webjars.font-awesome}</version>
             </dependency>
             <dependency>
-                <groupId>org.awaitility</groupId>
-                <artifactId>awaitility</artifactId>
-                <version>${version.awaitility}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
                 <groupId>dev.harrel</groupId>
                 <artifactId>json-schema</artifactId>
                 <version>${version.json-schema}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.hamcrest</groupId>
-                <artifactId>hamcrest</artifactId>
-                <version>${version.hamcrest}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>de.cuioss.test</groupId>
-                <artifactId>cui-test-keycloak-integration</artifactId>
-                <version>${version.cui.test.keycloak.integration}</version>
-                <scope>test</scope>
             </dependency>
             <!-- Required by token-sheriff-validation generators for JWT token creation in tests -->
             <dependency>
