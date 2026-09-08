@@ -28,6 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -63,10 +64,21 @@ class ForwardedRequestResolverTest {
     private static final String TRUSTED_PROXY_PRIVATE = "10.0.0.0/8";
 
     /**
-     * Builds a header accessor backed by a plain map: absent header names resolve to {@code null},
-     * exactly as {@code HttpServletRequest#getHeader} does.
+     * Builds a single-instance header accessor: each name maps to exactly one header instance, and
+     * an absent name resolves to {@code null} - the shape a request carrying each header once has.
      */
-    private static Function<String, String> headers(Map<String, String> values) {
+    private static Function<String, List<String>> headers(Map<String, String> values) {
+        Map<String, List<String>> single = new HashMap<>();
+        values.forEach((name, value) -> single.put(name, List.of(value)));
+        return single::get;
+    }
+
+    /**
+     * Builds a header accessor where a name may map to SEVERAL instances, in wire order - what a
+     * request looks like when successive proxies each append their own hop as a repeated header
+     * rather than by extending a comma-separated value. Absent names resolve to {@code null}.
+     */
+    private static Function<String, List<String>> repeatedHeaders(Map<String, List<String>> values) {
         return new HashMap<>(values)::get;
     }
 
@@ -300,6 +312,62 @@ class ForwardedRequestResolverTest {
 
             assertTrue(resolver.resolve(lookup).clientIp().isEmpty(),
                     "An all-trusted chain leaves no untrusted client hop");
+        }
+    }
+
+    /**
+     * A proxy may append its hop either by extending a comma-separated value OR by adding another
+     * instance of the same header. Both are legitimate on the wire, so the resolver has to see
+     * every instance: an accessor that exposes only the first (HttpServletRequest#getHeader,
+     * HttpFields#get) hides the appended hops, and the hidden ones are exactly those the
+     * nearest-hop and client-IP rules depend on.
+     */
+    @Nested
+    @DisplayName("Repeated header instances")
+    class RepeatedHeaderInstances {
+
+        @Test
+        @DisplayName("Nearest hop wins across repeated X-Forwarded-Proto instances")
+        void nearestHopWinsAcrossRepeatedProto() {
+            var resolver = trustAllResolver();
+            var lookup = repeatedHeaders(Map.of(HEADER_FORWARDED_PROTO, List.of("https", "http")));
+
+            assertEquals("http", resolver.resolve(lookup).scheme().orElseThrow(),
+                    "The last appended hop wins; reading only the first instance would report https");
+        }
+
+        @Test
+        @DisplayName("Repeated instances resolve identically to one comma-separated header")
+        void repeatedInstancesMatchCommaSeparated() {
+            var resolver = ForwardedRequestResolver.create(
+                    false, Set.of(), Set.of(TRUSTED_PROXY_PRIVATE), PRESET_DEFAULTS);
+
+            var repeated = repeatedHeaders(Map.of(HEADER_FORWARDED_FOR, List.of("203.0.113.5", "10.0.0.1")));
+            var commaSeparated = headers(Map.of(HEADER_FORWARDED_FOR, "203.0.113.5, 10.0.0.1"));
+
+            assertEquals(resolver.resolve(commaSeparated).clientIp(), resolver.resolve(repeated).clientIp(),
+                    "Instances are joined in wire order, so both spellings of one chain agree");
+        }
+
+        @Test
+        @DisplayName("A hop carried only by a later instance is still walked")
+        void laterInstanceHopIsWalked() {
+            var resolver = ForwardedRequestResolver.create(
+                    false, Set.of(), Set.of(TRUSTED_PROXY_PRIVATE), PRESET_DEFAULTS);
+            var lookup = repeatedHeaders(Map.of(HEADER_FORWARDED_FOR, List.of("10.0.0.1", "203.0.113.5")));
+
+            assertEquals("203.0.113.5", resolver.resolve(lookup).clientIp().orElseThrow(),
+                    "Reading only the first instance would see an all-trusted chain and honor nothing");
+        }
+
+        @Test
+        @DisplayName("An empty instance list means absent, exactly as a null does")
+        void emptyInstanceListMeansAbsent() {
+            var resolver = trustAllResolver();
+            var lookup = repeatedHeaders(Map.of(HEADER_FORWARDED_PROTO, List.of()));
+
+            assertTrue(resolver.resolve(lookup).scheme().isEmpty(),
+                    "A header present with no instances must not be honored");
         }
     }
 

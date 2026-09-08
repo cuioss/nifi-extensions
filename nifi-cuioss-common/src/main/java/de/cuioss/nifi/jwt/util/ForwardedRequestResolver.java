@@ -22,6 +22,7 @@ import de.cuioss.http.forwarded.ResolvedForwarding;
 import de.cuioss.http.security.config.SecurityConfiguration;
 import de.cuioss.http.security.monitoring.SecurityEventCounter;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Function;
@@ -46,6 +47,16 @@ import java.util.function.Function;
  * <p><strong>Trusted network placement is mandatory.</strong> The resolver trusts HTTP headers, not
  * the socket peer; the deployment MUST guarantee that only trusted proxies can connect directly.
  * See {@link ForwardedHeaderResolver} for the full security precondition.
+ *
+ * <p><strong>The header accessor must be multi-valued.</strong> {@link #resolve} takes a
+ * {@code Function<String, List<String>>} that MUST expose every instance of a repeated header, in
+ * wire order. A proxy appends a hop by adding another instance of the header just as legitimately
+ * as by extending a comma-separated value, so a single-valued accessor
+ * ({@code HttpServletRequest#getHeader}, {@code HttpFields#get}) sees only the first instance and
+ * silently hides the rest - which is a trust-model hole, not a formatting detail: the hops it hides
+ * are exactly the ones the client-IP walk and the nearest-hop precedence rules need to see. Use
+ * {@code name -> Collections.list(request.getHeaders(name))} or
+ * {@code request.getHeaders()::getValuesList}.
  *
  * <p>Instances are immutable and thread-safe.
  */
@@ -145,16 +156,14 @@ public final class ForwardedRequestResolver {
     /**
      * Resolves the sanitized, honored forwarded-header family from the supplied header accessor.
      *
-     * @param headerLookup maps a header name to its value (or {@code null} when absent); typically
-     *                     {@code request::getHeader}
+     * @param headerLookup maps a header name to <em>every</em> instance of that header on the
+     *                     request, in wire order; {@code null} or an empty list means absent.
+     *                     A single-valued accessor such as {@code request::getHeader} is
+     *                     <strong>not</strong> sufficient - see the class javadoc.
      * @return the resolved forwarding view; never {@code null}, {@link ResolvedForwarding#empty()}
      *         when nothing is present or honored
      */
-    @SuppressWarnings("java:S4276")
-    // Function<String, String> intentionally mirrors the delegate's own
-    // ForwardedHeaderResolver#resolve(Function<String, String>) signature (cui-http); narrowing
-    // to UnaryOperator<String> here would diverge from the wrapped library's own parameter type.
-    public ResolvedForwarding resolve(Function<String, String> headerLookup) {
+    public ResolvedForwarding resolve(Function<String, List<String>> headerLookup) {
         return resolver.resolve(headerLookup);
     }
 
