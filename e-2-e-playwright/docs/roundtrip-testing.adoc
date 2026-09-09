@@ -151,7 +151,7 @@ Before committing, run full validation:
 
 [source,bash]
 ----
-# 1. Pre-commit quality checks
+# 1. Pre-commit auto-fix (rewrites files; review and commit what it changed)
 ./mvnw -Ppre-commit clean install -DskipTests
 
 # 2. Build entire project with tests
