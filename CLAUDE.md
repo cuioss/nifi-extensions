@@ -69,7 +69,7 @@ Language-level prohibitions are owned by the skills referenced under [Convention
 - **No direct Hamcrest** — OK as REST Assured transitive dependency; do not use standalone
 - **EasyMock is an approved exception** to the no-mocking-framework rule (which bans Mockito/PowerMock) — used only in nifi-cuioss-ui for NiFi web-context/servlet mocks where hand-rolled doubles are impractical; version-managed in the root pom
 - **No raw `console.log`** in JavaScript — use the `log` utility from `utils.js` (`log.info`, `log.warn`, `log.error`, `log.debug`)
-- **No commits without pre-commit checks** — always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`
+- **No commits without a pre-commit run** — the profile AUTO-FIXES (rewrites files in place); review what it changed and commit it. Always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`
 - **No hardcoded credentials or secrets**
 
 ## Temporary Files
