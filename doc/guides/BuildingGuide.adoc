@@ -25,7 +25,7 @@ How to build, test, and verify the NiFi Extensions project.
 
 [source,bash]
 ----
-./mvnw -Ppre-commit clean install -DskipTests   # Pre-commit quality checks
+./mvnw -Ppre-commit clean install -DskipTests   # Auto-fixes (OpenRewrite recipes); commit the diff
 ./mvnw clean verify -Psonar                      # SonarQube analysis
 ----
 
