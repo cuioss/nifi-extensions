@@ -130,7 +130,7 @@
         <!-- CUI-OSS -->
         <!-- The cuioss BOM version, imported below. A literal because this project's parent is
              org.apache.nifi:nifi-extension-bundles - there is no cuioss ancestor to inherit from. -->
-        <version.cui.parent>1.7.2</version.cui.parent>
+        <version.cui.parent>1.7.3</version.cui.parent>
         <version.token-sheriff>0.9.4</version.token-sheriff>
         <version.jjwt>0.13.0</version.jjwt>
         <!-- Stays local: cui-java-bom manages jspecify at compile scope, which would bundle it
