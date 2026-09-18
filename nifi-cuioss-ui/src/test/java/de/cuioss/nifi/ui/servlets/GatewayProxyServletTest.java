@@ -37,6 +37,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -85,6 +86,13 @@ class GatewayProxyServletTest {
 
     /** When true, all gateway operations throw IOException. */
     private static final AtomicBoolean gatewayFailing = new AtomicBoolean(false);
+
+    /**
+     * When true, the outgoing gateway GET throws a real {@link java.net.ConnectException}
+     * — models the expected state while the processor is STOPPED (embedded server down).
+     * Reset before each test.
+     */
+    private static final AtomicBoolean gatewayConnectionRefused = new AtomicBoolean(false);
 
     /**
      * When true, only the outgoing gateway HTTP calls (executeGatewayGet /
@@ -194,6 +202,9 @@ class GatewayProxyServletTest {
 
                 @Override
                 protected GatewayGetResponse executeGatewayGet(String url, String accept) throws IOException {
+                    if (gatewayConnectionRefused.get()) {
+                        throw new ConnectException("Connection refused");
+                    }
                     if (gatewayFailing.get() || gatewayExecuteFailing.get()) {
                         throw new IOException("Connection refused");
                     }
@@ -252,6 +263,7 @@ class GatewayProxyServletTest {
         gatewayGetStatusCode.set(200);
         gatewayFailing.set(false);
         gatewayExecuteFailing.set(false);
+        gatewayConnectionRefused.set(false);
         configResolveException.set(null);
         componentConfigReads.set(0);
         denyAuthorizationReadOrdinal.set(0);
@@ -516,6 +528,21 @@ class GatewayProxyServletTest {
                     .then()
                     .statusCode(503)
                     .body("error", containsString("Gateway unavailable"));
+        }
+
+        @Test
+        @DisplayName("Should return 503 with GATEWAY_NOT_RUNNING code when the embedded server is down")
+        void shouldReturn503WithNotRunningCodeWhenConnectionRefused() {
+            gatewayConnectionRefused.set(true);
+
+            handle.spec()
+                    .header("X-Processor-Id", PROCESSOR_ID)
+                    .when()
+                    .get("/gateway/metrics")
+                    .then()
+                    .statusCode(503)
+                    .body("error", equalTo("Gateway is not running"))
+                    .body("code", equalTo("GATEWAY_NOT_RUNNING"));
         }
 
         @Test
