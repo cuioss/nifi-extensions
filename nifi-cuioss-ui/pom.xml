@@ -208,12 +208,14 @@
                         <resource>
                             <directory>${project.build.directory}/webjar-unpack/META-INF/resources</directory>
                         </resource>
-                        <!-- Filter nifi-processor-configuration to inject ${project.version} -->
+                        <!-- Filter nifi-processor-configuration to inject ${project.version},
+                             and index.html to inject ${version.webjars.font-awesome} -->
                         <resource>
                             <directory>src/main/webapp</directory>
                             <filtering>true</filtering>
                             <includes>
                                 <include>META-INF/nifi-processor-configuration</include>
+                                <include>index.html</include>
                             </includes>
                         </resource>
                     </webResources>
