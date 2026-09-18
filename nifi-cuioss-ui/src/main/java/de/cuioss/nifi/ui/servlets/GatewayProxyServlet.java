@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -118,6 +119,9 @@ public class GatewayProxyServlet extends HttpServlet {
     private static final String ISSUER_PROPERTY_SUFFIX = ".issuer";
     private static final String MSG_MISSING_PROCESSOR_ID = "Missing processor ID";
     private static final String MSG_INVALID_JSON = "Invalid JSON request body";
+    /** Machine-readable marker so the UI can distinguish "gateway stopped" from other 503s. */
+    static final String CODE_GATEWAY_NOT_RUNNING = "GATEWAY_NOT_RUNNING";
+    private static final String MSG_GATEWAY_NOT_RUNNING = "Gateway is not running";
     /**
      * Single opaque discovery-failure message. Every discovery failure — transport error or
      * non-OK upstream status — returns this exact string so the endpoint cannot be used to
@@ -242,9 +246,7 @@ public class GatewayProxyServlet extends HttpServlet {
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway configuration unavailable");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
-            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
-                    "Gateway unavailable");
+            handleGatewayIoError(e, req, resp);
         }
     }
 
@@ -286,10 +288,41 @@ public class GatewayProxyServlet extends HttpServlet {
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway configuration unavailable");
         } catch (IOException e) {
-            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, UNKNOWN);
+            handleGatewayIoError(e, req, resp);
+        }
+    }
+
+    /**
+     * Handles an {@link IOException} from a gateway call. A connection refusal is the
+     * expected state while the processor is STOPPED (its embedded server is down), so it
+     * is logged once per request as a WARN without stack trace — the UI polls metrics
+     * periodically and a full ERROR would spam the log. The response carries
+     * {@link #CODE_GATEWAY_NOT_RUNNING} so the UI can show a targeted banner instead of
+     * a generic error. Any other I/O failure keeps the previous ERROR + generic 503 shape.
+     */
+    private void handleGatewayIoError(IOException e, HttpServletRequest req,
+            HttpServletResponse resp) {
+        String pidHeader = req.getHeader(PROCESSOR_ID_HEADER);
+        String processorId = pidHeader != null ? LogSanitizer.forLog(pidHeader) : UNKNOWN;
+        if (isConnectionRefused(e)) {
+            LOGGER.warn(UILogMessages.WARN.GATEWAY_NOT_RUNNING, processorId);
+            sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    CODE_GATEWAY_NOT_RUNNING, MSG_GATEWAY_NOT_RUNNING);
+        } else {
+            LOGGER.error(e, UILogMessages.ERROR.GATEWAY_PROXY_FAILED, processorId);
             sendErrorResponse(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
                     "Gateway unavailable");
         }
+    }
+
+    private static boolean isConnectionRefused(Throwable t) {
+        while (t != null) {
+            if (t instanceof ConnectException) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     private void handleTestRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -1212,17 +1245,24 @@ public class GatewayProxyServlet extends HttpServlet {
     }
 
     private void sendErrorResponse(HttpServletResponse resp, int status, String message) {
+        sendErrorResponse(resp, status, null, message);
+    }
+
+    private void sendErrorResponse(HttpServletResponse resp, int status, @Nullable String code,
+            String message) {
         try {
             resp.setStatus(status);
             resp.setContentType(CONTENT_TYPE_JSON);
             resp.setCharacterEncoding(CHARSET_UTF8);
 
-            JsonObject errorJson = Json.createObjectBuilder()
-                    .add("error", message)
-                    .build();
+            var builder = Json.createObjectBuilder()
+                    .add("error", message);
+            if (code != null) {
+                builder.add("code", code);
+            }
 
             try (var writer = JSON_WRITER.createWriter(resp.getOutputStream())) {
-                writer.writeObject(errorJson);
+                writer.writeObject(builder.build());
             }
         } catch (IOException e) {
             LOGGER.warn(UILogMessages.WARN.FAILED_SEND_ERROR_RESPONSE, status, e.getMessage());

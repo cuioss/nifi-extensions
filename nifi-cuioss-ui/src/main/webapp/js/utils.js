@@ -314,6 +314,8 @@ export const TRANSLATIONS = {
         'metrics.error.load': 'Unable to load metrics.',
         'metrics.error.not.available.title': 'Metrics Not Available',
         'metrics.error.not.available': 'Metrics are available for REST API Gateway processors only.',
+        'metrics.gateway.not.running.title': 'Gateway Not Running',
+        'metrics.gateway.not.running': 'The processor is stopped. Start it to collect metrics.',
 
         // -- chip input --
         'chip.methods.label': 'Methods',
@@ -730,6 +732,8 @@ export const TRANSLATIONS = {
         'metrics.error.load': 'Metriken konnten nicht geladen werden.',
         'metrics.error.not.available.title': 'Metriken nicht verf\u00fcgbar',
         'metrics.error.not.available': 'Metriken sind nur f\u00fcr REST-API-Gateway-Prozessoren verf\u00fcgbar.',
+        'metrics.gateway.not.running.title': 'Gateway nicht aktiv',
+        'metrics.gateway.not.running': 'Der Prozessor ist gestoppt. Starten Sie ihn, um Metriken zu erfassen.',
 
         // -- chip input --
         'chip.methods.label': 'Methoden',

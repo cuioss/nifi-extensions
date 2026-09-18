@@ -261,6 +261,12 @@ public final class UILogMessages {
                 .identifier(134)
                 .template("OIDC discovery for %s returned non-OK status %s")
                 .build();
+
+        public static final LogRecord GATEWAY_NOT_RUNNING = LogRecordModel.builder()
+                .prefix(PREFIX)
+                .identifier(135)
+                .template("Gateway not reachable for processor %s — embedded server is down (processor stopped?)")
+                .build();
     }
 
     public static final class ERROR {

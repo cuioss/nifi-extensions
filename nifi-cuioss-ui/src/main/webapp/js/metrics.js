@@ -200,11 +200,16 @@ const refreshMetrics = async () => {
         updateGatewayDisplay(raw);
     } catch (error) {
         if (gen !== _refreshGeneration) return; // superseded by a newer call
-        log.error('Failed to refresh metrics:', error);
         if (error.status === 404) {
+            log.error('Failed to refresh metrics:', error);
             metricsEndpointAvailable = false;
             showNotAvailable();
+        } else if (error.status === 503 && error.responseJSON?.code === 'GATEWAY_NOT_RUNNING') {
+            // Expected while the processor is STOPPED — not an error worth logging.
+            // Keep polling so the dashboard recovers automatically once it starts.
+            showGatewayNotRunning();
         } else {
+            log.error('Failed to refresh metrics:', error);
             showError();
         }
     }
@@ -299,6 +304,14 @@ const showNotAvailable = (permanent = false) => {
             `<div class="error-content"><strong>${t('metrics.error.not.available.title')}</strong> — ${t('metrics.error.not.available')}</div>`);
     }
     if (permanent) cleanup();
+};
+
+const showGatewayNotRunning = () => {
+    const el = document.getElementById('jwt-metrics-content');
+    if (el) {
+        showStatusBanner(el, 'metrics-not-available',
+            `<div class="error-content"><strong>${t('metrics.gateway.not.running.title')}</strong> — ${t('metrics.gateway.not.running')}</div>`);
+    }
 };
 
 // ---------------------------------------------------------------------------
