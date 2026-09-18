@@ -96,7 +96,7 @@
              before containers can start. Set to false in integration-tests profile when ready. -->
         <skip.docker.deployment>true</skip.docker.deployment>
         <!-- Maven Plugins -->
-        <maven.exec.plugin.version>3.6.3</maven.exec.plugin.version>
+        <maven.exec.plugin.version>3.6.4</maven.exec.plugin.version>
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
         <sonar.maven.plugin.version>5.8.0.7211</sonar.maven.plugin.version>
         <jacoco.maven.plugin.version>0.8.15</jacoco.maven.plugin.version>
