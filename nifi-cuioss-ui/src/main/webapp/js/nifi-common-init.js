@@ -2,7 +2,7 @@
 
 // NOTE: This file is a classic (non-module) script loaded before the module
 // bundle, so it cannot import the `log` utility from utils.js. The raw
-// console.warn calls below are a documented exception to the CLAUDE.md
+// console.warn calls below are a documented exception to the AGENTS.md
 // "no raw console.log — use the log utility from utils.js" rule.
 
 // In production, NiFi provides the nf.Common object
