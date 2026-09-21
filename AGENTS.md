@@ -1,4 +1,4 @@
-# Claude Code Configuration — NiFi Extensions
+# Agent Instructions — NiFi Extensions
 
 ## Project
 
@@ -74,7 +74,7 @@ Language-level prohibitions are owned by the skills referenced under [Convention
 
 ## Temporary Files
 
-- Use `.plan/temp/` for ALL temporary files (covered by `Write(.plan/**)` permission - avoids permission prompts)
+- Use `.plan/temp/` for ALL temporary files (covered by the agent's write permissions for `.plan/**` — avoids permission prompts)
 
 ## Deep Reference
 

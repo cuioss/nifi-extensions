@@ -51,7 +51,7 @@ Use the deployment scripts in `integration-testing/src/main/docker/`:
 ./integration-testing/src/main/docker/run-and-deploy.sh
 ----
 
-See `CLAUDE.md` "Docker E2E Deployment" section or the `/deploy` skill for the full deployment runbook.
+See `AGENTS.md` "Docker E2E Deployment" section or the `/deploy` skill for the full deployment runbook.
 
 === 3. Run Tests
 
