@@ -22,6 +22,7 @@ jobs:
       report-name: e-2-e-playwright
       maven-args-input: verify -Pintegration-tests -pl e-2-e-playwright -am
       install-playwright: true
+      playwright-browsers: chromium
       npm-cache: true
       timeout-minutes: 30
       reports-folder: |
