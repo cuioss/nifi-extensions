@@ -38,13 +38,16 @@ const A11Y_CONFIG = {
  * Bring the custom UI to the state a fresh load gives (default tab active, nothing
  * focused, no validation or connection-test result, empty token input) by reloading
  * the UI document inside its iframe. The NiFi page around it stays on the Advanced
- * view, so the processor is not looked up on the canvas again.
+ * view, so the processor is not looked up on the canvas again. The assertion on the
+ * tab container is what makes a failed UI initialisation fail the test, because
+ * waitForA11yReady does not: it ignores a tab container that never becomes visible.
  * @param {import('@playwright/test').Frame} customUIFrame - the custom UI frame of the fixture
  * @returns {Promise<void>}
  */
 async function restoreFreshLoadState(customUIFrame) {
     await customUIFrame.goto(customUIFrame.url());
     await a11yUtils.waitForA11yReady(customUIFrame);
+    await expect(customUIFrame.locator("#jwt-validator-tabs")).toBeVisible();
 }
 
 /**
