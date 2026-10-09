@@ -109,8 +109,11 @@ services:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /realms/oauth_integration_tests HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'oauth_integration_tests' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
       # While Keycloak starts (start_period) the check probes every second, so the
       # container counts as healthy within a second of the realm being served.
-      # Failures in that period do not count; after it the check falls back to
-      # 12 probes at 5 s, so Keycloak is given 120 s before it counts as unhealthy.
+      # Failures in that period do not count until the first probe succeeds. From
+      # the first success on, consecutive failures count towards retries, even
+      # inside the start period. Only when no probe succeeds in the start period
+      # is Keycloak given 120 s (the 60 s start period plus 12 probes at 5 s)
+      # before it counts as unhealthy.
       # start_interval needs Docker Engine 25 or newer.
       interval: 5s
       timeout: 5s
