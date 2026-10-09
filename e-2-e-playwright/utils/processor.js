@@ -7,8 +7,18 @@
 import {expect} from '@playwright/test';
 import { testLogger } from './test-logger.js';
 
+/** Wait budget each lookup candidate contributes to the single combined wait. */
+const PER_CANDIDATE_TIMEOUT_MS = 2000;
+
 /**
- * Find processor on canvas using modern Playwright patterns
+ * Find a processor on the canvas. All candidate selectors are awaited with one combined
+ * wait; the winner is the first candidate in list order that has a visible match.
+ * @param {import('@playwright/test').Page} page - the NiFi canvas page
+ * @param {string} processorType - processor type name, or "processor" for any processor
+ * @param {{failIfNotFound?: boolean}} [options] - set failIfNotFound to false to get null on a miss
+ * @returns {Promise<{element: string, locator: import('@playwright/test').Locator, type: string, isVisible: boolean}|null>}
+ *   the lookup result, or null when nothing matched and failIfNotFound is false
+ * @throws {Error} "Processor not found: <type>" when nothing matched and failIfNotFound is true
  */
 export async function findProcessor(page, processorType, options = {}) {
   const { failIfNotFound = true } = options;
@@ -44,11 +54,24 @@ export async function findProcessor(page, processorType, options = {}) {
     ] : [])
   ];
 
-  for (const selector of selectors) {
-    try {
-      const locator = page.locator(selector).first();
-      await locator.waitFor({ timeout: 2000 });
+  // One wait for all candidates: it resolves as soon as ANY candidate has a visible match,
+  // and its budget is the former worst case of one 2000 ms wait per candidate.
+  const firstVisible = (selector) => page.locator(selector).filter({ visible: true }).first();
+  const anyCandidate = selectors
+    .map((selector) => page.locator(selector))
+    .reduce((combined, candidate) => combined.or(candidate))
+    .filter({ visible: true })
+    .first();
+  const appeared = await anyCandidate
+    .waitFor({ state: 'visible', timeout: selectors.length * PER_CANDIDATE_TIMEOUT_MS })
+    .then(() => true)
+    .catch(() => false);
 
+  if (appeared) {
+    // Candidates are tested in list order without waiting, so the first matching selector
+    // wins and the type-qualified candidates keep precedence over the structural ones.
+    for (const selector of selectors) {
+      const locator = firstVisible(selector);
       if (await locator.isVisible()) {
         return {
           element: selector,
@@ -57,8 +80,6 @@ export async function findProcessor(page, processorType, options = {}) {
           isVisible: true
         };
       }
-    } catch {
-      // Continue to next selector
     }
   }
 
