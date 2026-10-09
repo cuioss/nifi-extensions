@@ -211,7 +211,10 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
      */
     @Override
     protected Collection<ValidationResult> customValidate(ValidationContext validationContext) {
-        Map<String, String> properties = new HashMap<>();
+        // Mirror onScheduled(): external config routes first (lower priority), overlaid by the
+        // NiFi properties — otherwise a tracked route supplied solely by the external
+        // configuration would pass validation without a cache client.
+        Map<String, String> properties = new HashMap<>(getExternalRouteProperties());
         validationContext.getProperties().forEach((descriptor, value) -> {
             if (value != null) {
                 properties.put(descriptor.getName(), value);
@@ -596,9 +599,19 @@ public class RestApiGatewayProcessor extends AbstractProcessor {
                 session.remove(flowFile);
             }
             FlowFile errorFile = session.create();
-            errorFile = session.putAttribute(errorFile, "error.message", e.getMessage());
+            errorFile = session.putAttribute(errorFile, "error.message", failureMessage(e));
             session.transfer(errorFile, RestApiGatewayConstants.Relationships.FAILURE);
         }
+    }
+
+    /**
+     * Resolves a never-null {@code error.message} attribute value: {@code putAttribute} rejects
+     * null, which would throw on the failure path and bypass the transfer to {@code failure}.
+     * Falls back to the exception class name when the exception carries no message.
+     */
+    static String failureMessage(Exception e) {
+        String message = e.getMessage();
+        return message != null ? message : e.getClass().getName();
     }
 
     /**

@@ -359,7 +359,12 @@ export class ProcessorService {
         } catch { /* handled by the retry / final-failure path below */ }
       }
 
-      if (await advancedMenuItem.isVisible({ timeout: 2000 })) {
+      // isVisible() is a one-shot check that ignores `timeout`; wait for the menu to render.
+      const menuVisible = await advancedMenuItem
+        .waitFor({ state: 'visible', timeout: 2000 })
+        .then(() => true)
+        .catch(() => false);
+      if (menuVisible) {
         await advancedMenuItem.click();
         testLogger.info('Processor',"Clicked Advanced menu item");
         try {

@@ -166,15 +166,16 @@ public final class ApiRouteHandler implements EndpointHandler {
             }
         }
 
-        if (!enqueueFlowFile(sanitized, token, body, request,
+        // Audit logging and the FlowFile both prefer the honored forwarded client IP; resolve it once.
+        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
+        if (!enqueueFlowFile(sanitized, token, body, request, remoteHost,
                 new TrackingContext(traceId, parentTraceId), response, callback)) {
             // M5: enqueueFlowFile has already evicted the tracking entry (before flushing the 503),
             // so a queue-full response never leaves an orphaned non-terminal entry in the cache.
             return;
         }
 
-        // Success response — audit logging prefers the honored forwarded client IP.
-        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
+        // Success response
         LOGGER.info(RestApiLogMessages.INFO.REQUEST_PROCESSED,
                 route.name(), method, path, remoteHost);
         if (tracked) {
@@ -271,13 +272,12 @@ public final class ApiRouteHandler implements EndpointHandler {
     }
 
     private boolean enqueueFlowFile(SanitizedRequest sanitized, @Nullable AccessTokenContent token,
-            byte[] body, Request request, TrackingContext tracking,
+            byte[] body, Request request, String remoteHost, TrackingContext tracking,
             Response response, Callback callback) {
         if (!route.createFlowFile()) {
             LOGGER.info(RestApiLogMessages.INFO.ROUTE_FLOWFILE_SKIPPED, route.name());
             return true;
         }
-        String remoteHost = sanitized.forwarding().clientIp().orElse(Request.getRemoteAddr(request));
         var container = new HttpRequestContainer(
                 route.name(), request.getMethod(), sanitized.path(),
                 sanitized.queryParameters(), sanitized.headers(),

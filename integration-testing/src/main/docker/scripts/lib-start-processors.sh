@@ -76,7 +76,10 @@ nifi_start_all_processors() {
 # Returns 0 once the pipeline responds, 1 on timeout.
 nifi_wait_for_flow_pipeline() {
     local timeout="${1:-120}"
-    local elapsed=0
+    # Bound the loop by wall-clock time: one iteration can take up to curl's
+    # --max-time plus the sleep, so a fixed per-iteration increment under-counts.
+    local start_time elapsed=0
+    start_time=$(date +%s)
     local http_code
 
     echo "Waiting for flow pipeline on ${FLOW_PIPELINE_URL}..."
@@ -89,7 +92,7 @@ nifi_wait_for_flow_pipeline() {
         fi
         echo "Waiting for flow pipeline... ($elapsed/${timeout}s, HTTP $http_code)"
         sleep 2
-        elapsed=$((elapsed + 2))
+        elapsed=$(( $(date +%s) - start_time ))
     done
 
     return 1
@@ -111,7 +114,10 @@ nifi_wait_for_flow_pipeline() {
 # Returns 0 once a valid token is accepted (non-401), 1 on timeout.
 nifi_wait_for_healthy_issuer() {
     local timeout="${1:-120}"
-    local elapsed=0
+    # Bound the loop by wall-clock time: one iteration can take up to curl's
+    # --max-time plus the sleep, so a fixed per-iteration increment under-counts.
+    local start_time elapsed=0
+    start_time=$(date +%s)
     local token auth_code
 
     echo "Waiting for JWT issuer to become healthy via ${FLOW_PIPELINE_URL}..."
@@ -133,7 +139,7 @@ nifi_wait_for_healthy_issuer() {
         fi
         echo "Waiting for issuer health... ($elapsed/${timeout}s, HTTP ${auth_code:-000})"
         sleep 2
-        elapsed=$((elapsed + 2))
+        elapsed=$(( $(date +%s) - start_time ))
     done
 
     return 1

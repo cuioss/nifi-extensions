@@ -186,7 +186,9 @@ public class JettyServerManager {
      * Returns whether the server is currently running.
      */
     public boolean isRunning() {
-        return server != null && server.isRunning();
+        // Snapshot the volatile field: a concurrent stop() may null it between two reads.
+        Server current = server;
+        return current != null && current.isRunning();
     }
 
     /**
@@ -195,9 +197,15 @@ public class JettyServerManager {
      * @return the port number, or -1 if not running
      */
     public int getPort() {
-        if (server == null || server.getConnectors().length == 0) {
+        // Snapshot the volatile field: a concurrent stop() may null it between two reads.
+        Server current = server;
+        if (current == null) {
             return -1;
         }
-        return ((ServerConnector) server.getConnectors()[0]).getLocalPort();
+        Connector[] connectors = current.getConnectors();
+        if (connectors.length == 0) {
+            return -1;
+        }
+        return ((ServerConnector) connectors[0]).getLocalPort();
     }
 }

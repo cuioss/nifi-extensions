@@ -198,9 +198,22 @@ const request = async (method, url, body = null, { componentId } = {}) => {
         opts.body = JSON.stringify(body);
     }
 
-    let res;
+    // Keep the timeout armed through body parsing: fetch() resolves once the headers
+    // arrive, so a stalled body would otherwise bypass the timeout and hang the caller.
     try {
-        res = await fetch(url, opts);
+        const res = await fetch(url, opts);
+
+        if (!res.ok) {
+            const text = await res.text();
+            const err = new Error(`HTTP ${res.status}: ${res.statusText}`);
+            err.status = res.status;
+            err.statusText = res.statusText;
+            err.responseText = text;
+            try { err.responseJSON = JSON.parse(text); } catch { /* not JSON */ }
+            throw err;
+        }
+
+        return await res.json();
     } catch (error) {
         if (error.name === 'AbortError') {
             throw new Error(
@@ -212,18 +225,6 @@ const request = async (method, url, body = null, { componentId } = {}) => {
     } finally {
         clearTimeout(timeoutId);
     }
-
-    if (!res.ok) {
-        const text = await res.text();
-        const err = new Error(`HTTP ${res.status}: ${res.statusText}`);
-        err.status = res.status;
-        err.statusText = res.statusText;
-        err.responseText = text;
-        try { err.responseJSON = JSON.parse(text); } catch { /* not JSON */ }
-        throw err;
-    }
-
-    return res.json();
 };
 
 // ---------------------------------------------------------------------------

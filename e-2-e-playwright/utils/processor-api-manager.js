@@ -10,6 +10,19 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+/** Interval between NiFi state polls in the polling helpers (milliseconds). */
+const POLL_INTERVAL_MS = 250;
+
+/**
+ * Summarize a failed makeApiCall result (status plus NiFi's response body) for diagnostics.
+ * @param {object} result - a non-ok makeApiCall result
+ * @returns {string} a single-line description of the failure
+ */
+const describeFailure = (result) => {
+  const body = typeof result.data === 'string' ? result.data : JSON.stringify(result.data ?? null);
+  return `HTTP ${result.status ?? 'n/a'} ${result.statusText ?? ''} ${result.error ?? body}`.trim();
+};
+
 
 /**
  * API-based Processor Manager for MultiIssuerJWTTokenAuthenticator
@@ -477,7 +490,7 @@ export class ProcessorApiManager {
         return typeof state === 'string' && state.toUpperCase() === 'RUNNING';
       });
       if (!anyRunning) return true;
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     testLogger.warn('Processor', 'Timed out waiting for processors to stop');
     return false;
@@ -548,7 +561,7 @@ export class ProcessorApiManager {
         `/nifi-api/flowfile-queues/${connId}/drop-requests/${dropRequestId}`
       );
       if (!status.ok || status.data?.dropRequest?.finished) break;
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     // Release the drop-request resource (best effort)
     await this.makeApiCall(
@@ -1003,7 +1016,7 @@ export class ProcessorApiManager {
         d.status?.aggregateSnapshot?.runStatus || d.component?.state || '';
       const activeThreads = d.status?.aggregateSnapshot?.activeThreadCount ?? 0;
       if (runStatus.toUpperCase() !== 'RUNNING' && activeThreads === 0) break;
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
     }
 
     // Delete with a freshly-fetched revision, retrying once on a 409 (a stale
@@ -1046,7 +1059,7 @@ export class ProcessorApiManager {
       const physicalState = (details.physicalState || details.component?.state || '').toUpperCase();
       const activeThreads = details.status?.aggregateSnapshot?.activeThreadCount ?? 0;
       if (physicalState === 'STOPPED' && activeThreads === 0) return details;
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
       details = await this.getProcessorDetails(processorId);
     }
     // Timed out without reaching a physically STOPPED, thread-idle state. Return
@@ -1070,7 +1083,7 @@ export class ProcessorApiManager {
       const physicalState =
         (details?.physicalState || details?.component?.state || '').toUpperCase();
       if (physicalState === 'RUNNING') return true;
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
     }
     testLogger.warn('Processor', `Timed out waiting for processor ${processorId} to reach RUNNING`);
     return false;
@@ -1109,14 +1122,20 @@ export class ProcessorApiManager {
 
     let result = await attempt(version, config);
     if (result.ok) return true;
-    if (result.status !== 409) return false;
+    if (result.status !== 409) {
+      testLogger.warn('Processor', `Config update for processor ${processorId} failed: ${describeFailure(result)}`);
+      return false;
+    }
 
     // Stale-revision conflict: re-read the live revision AND the live config, then
     // rebuild the clear payload from that fresh state so a concurrent edit cannot
     // leave new route keys behind or clobber a newer auto-terminated set.
     const fresh = await this.getProcessorDetails(processorId);
     const freshVersion = fresh?.revision?.version;
-    if (freshVersion === undefined || freshVersion === null) return false;
+    if (freshVersion === undefined || freshVersion === null) {
+      testLogger.warn('Processor', `Config update for processor ${processorId} hit a 409 but no fresh revision could be read`);
+      return false;
+    }
 
     const freshConfig = fresh.component?.config || {};
     const freshProps = freshConfig.properties || {};
@@ -1138,7 +1157,10 @@ export class ProcessorApiManager {
       properties: rebuiltProps,
       autoTerminatedRelationships: [...autoTerminated]
     });
-    if (!result.ok) return false;
+    if (!result.ok) {
+      testLogger.warn('Processor', `Config update retry for processor ${processorId} failed: ${describeFailure(result)}`);
+      return false;
+    }
 
     // Confirm the retry actually cleared the route before reporting success.
     const after = await this.getProcessorDetails(processorId);

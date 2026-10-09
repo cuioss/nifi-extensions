@@ -44,6 +44,7 @@ import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.distributed.cache.client.DistributedMapCacheClient;
 import org.apache.nifi.distributed.cache.client.Serializer;
 import org.apache.nifi.processor.Relationship;
+import org.apache.nifi.processor.exception.ProcessException;
 import org.apache.nifi.util.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -803,6 +804,26 @@ class RestApiGatewayProcessorTest {
             }
         }
 
+        @Test
+        @DisplayName("M4: a tracked route supplied only by the external config is invalid without a cache client")
+        void shouldBeInvalidWhenExternalRouteTracksWithoutCacheClient(@TempDir Path tempDir) throws Exception {
+            // Arrange — the tracked route exists solely in the external configuration file
+            writeConfigFile(tempDir, """
+                    restapi.external.path=/api/external
+                    restapi.external.methods=POST
+                    restapi.external.tracking-mode=simple
+                    """);
+            var runner = createRunner();
+            var processor = (RestApiGatewayProcessor) runner.getProcessor();
+            runner.assertValid(); // control: valid until the external tracked route is visible
+
+            // Act
+            processor.configurationManager = new ConfigurationManager(tempDir.toString() + "/");
+
+            // Assert — onScheduled() would merge this route, so validation must see it too
+            runner.assertNotValid();
+        }
+
         private TestRunner createRunner() throws Exception {
             var runner = TestRunners.newTestRunner(RestApiGatewayProcessor.class);
             runner.addControllerService(CS_ID, mockConfigService);
@@ -1334,6 +1355,15 @@ class RestApiGatewayProcessorTest {
                     "Only the error FlowFile may survive a failed outcome transfer");
             assertTrue(failures.getFirst().getAttribute("error.message").contains("ghost-outcome"),
                     "The failure FlowFile must name the unresolvable outcome");
+        }
+
+        @Test
+        @DisplayName("should fall back to the exception class name when the exception has no message")
+        void shouldFallBackToClassNameForMessagelessException() {
+            // putAttribute rejects null, so error.message must never be null
+            assertEquals(ProcessException.class.getName(),
+                    RestApiGatewayProcessor.failureMessage(new ProcessException((String) null)));
+            assertEquals("boom", RestApiGatewayProcessor.failureMessage(new ProcessException("boom")));
         }
     }
 
