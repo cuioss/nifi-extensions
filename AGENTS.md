@@ -24,7 +24,7 @@ Deployment requires **two** NARs: `nifi-cuioss-nar` and `nifi-cuioss-api-nar`.
 - **Compile:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "compile"`
 - **Quality gate:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Psonar"`
 - **Full verify:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify"`
-- **Integration tests:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"` — runbook (container lifecycle, mandatory `-pl integration-testing -am`, concurrency rule) lives in the `/deploy it` skill mode
+- **Integration tests:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pintegration-tests -pl integration-testing -am"` — `-am` adds only the root POM to the reactor; the two NAR files come from the nested build in `copy-deployment.sh`. The runbook (container lifecycle, concurrency rule) lives in the `/deploy it` skill mode
 - **Coverage:** `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "verify -Pcoverage"`
 - **Module tests (e-2-e-playwright-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=e-2-e-playwright"` — only on e-2-e-playwright-npm
 - **Module tests (nifi-cuioss-ui-npm):** `python3 .plan/execute-script.py plan-marshall:build-npm:npm run --command-args "run test --prefix=nifi-cuioss-ui"` — only on nifi-cuioss-ui-npm
@@ -42,7 +42,7 @@ Use `/deploy` skill for full runbook. Quick reference:
 
 ### Running Maven integration tests (`-Pintegration-tests`)
 
-To run the integration-testing module's Java Failsafe ITs, use the `/deploy it` skill mode — the runbook (self-managed container lifecycle, mandatory `-pl integration-testing -am`, and the concurrency rule) lives there.
+To run the integration-testing module's Java Failsafe ITs, use the `/deploy it` skill mode — the runbook (self-managed container lifecycle, the `-pl integration-testing -am` invocation, and the concurrency rule) lives there. The reactor of that invocation holds only the root POM and `integration-testing`; `deploy-and-start.sh` gets the two NAR files from the nested build in `copy-deployment.sh`, which runs whenever one of them is missing.
 
 ## Conventions
 
