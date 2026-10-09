@@ -58,12 +58,14 @@ class RequestUtilsTest {
     private static final String TEST_HOST_HEADER = "X-Test-Host";
     private static final String TEST_PORT_HEADER = "X-Test-Port";
 
-    private Server server;
-    private HttpClient httpClient;
-    private int port;
+    // One shared server for the whole class: the handler is stateless (every scenario is
+    // driven by per-request headers), so restarting Jetty per test only costs runtime.
+    private static Server server;
+    private static HttpClient httpClient;
+    private static int port;
 
-    @BeforeEach
-    void setUp() throws Exception {
+    @BeforeAll
+    static void setUp() throws Exception {
         server = new Server();
         ServerConnector connector = new ServerConnector(server);
         connector.setPort(0);
@@ -91,8 +93,8 @@ class RequestUtilsTest {
         httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
     }
 
-    @AfterEach
-    void tearDown() throws Exception {
+    @AfterAll
+    static void tearDown() throws Exception {
         if (server != null && server.isRunning()) {
             server.stop();
         }

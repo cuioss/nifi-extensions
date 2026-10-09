@@ -709,6 +709,40 @@ describe('error handling', () => {
         expect(err.status).toBe(404);
         expect(err.responseText).toBe('Not Found');
     });
+
+    // fetch() resolves on headers; emulate the browser, which rejects a pending body
+    // read with an AbortError once the request's signal aborts.
+    const stalledBody = (signal) => () => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+            const abortError = new Error('The operation was aborted.');
+            abortError.name = 'AbortError';
+            reject(abortError);
+        });
+    });
+
+    test.each([
+        ['success body', true, 200],
+        ['error body', false, 502]
+    ])('times out when the %s never arrives', async (_label, ok, status) => {
+        // Arrange — headers arrive, the body stalls forever
+        jest.useFakeTimers();
+        globalThis.fetch.mockImplementationOnce((_url, opts) => Promise.resolve({
+            ok,
+            status,
+            statusText: ok ? 'OK' : 'Bad Gateway',
+            json: stalledBody(opts.signal),
+            text: stalledBody(opts.signal)
+        }));
+
+        // Act
+        const settled = verifyToken('test').then(() => null, (e) => e);
+        await jest.advanceTimersByTimeAsync(30000);
+        const err = await settled;
+
+        // Assert — the timeout stayed armed through body parsing
+        expect(err).toBeInstanceOf(Error);
+        expect(err.message).toMatch(/Request timed out after 30000 ms/);
+    });
 });
 
 // ---------------------------------------------------------------------------

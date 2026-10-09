@@ -67,6 +67,20 @@ nifi_start_all_processors() {
     [ "$start_code" = "200" ]
 }
 
+# Seconds left until a deadline, capped at an upper bound and floored at 0.
+#
+# Lets every probe and sleep in the wait loops below be limited to the time that is
+# actually left, so a wait never blocks its caller past the configured timeout.
+#
+# $1 — deadline as epoch seconds.
+# $2 — upper bound in seconds.
+_nifi_remaining_seconds() {
+    local remaining=$(( $1 - $(date +%s) ))
+    [ "$remaining" -gt "$2" ] && remaining="$2"
+    [ "$remaining" -lt 0 ] && remaining=0
+    printf '%s' "$remaining"
+}
+
 # Wait for the flow pipeline (HandleHttpRequest) to accept connections.
 #
 # Starting the processors is necessary but not sufficient; the redeploy path
@@ -76,20 +90,24 @@ nifi_start_all_processors() {
 # Returns 0 once the pipeline responds, 1 on timeout.
 nifi_wait_for_flow_pipeline() {
     local timeout="${1:-120}"
-    local elapsed=0
+    # Bound the loop by wall-clock time: one iteration can take up to curl's
+    # --max-time plus the sleep, so a fixed per-iteration increment under-counts.
+    local start_time deadline budget elapsed=0
+    start_time=$(date +%s)
+    deadline=$((start_time + timeout))
     local http_code
 
     echo "Waiting for flow pipeline on ${FLOW_PIPELINE_URL}..."
-    while [ "$elapsed" -lt "$timeout" ]; do
-        http_code=$(curl --max-time 10 -o /dev/null -s -w '%{http_code}' \
+    while budget=$(_nifi_remaining_seconds "$deadline" 10) && [ "$budget" -gt 0 ]; do
+        http_code=$(curl --max-time "$budget" -o /dev/null -s -w '%{http_code}' \
             "${FLOW_PIPELINE_URL}" 2>/dev/null || true)
         if [ -n "$http_code" ] && [ "$http_code" != "000" ]; then
             echo "Flow pipeline is ready on ${FLOW_PIPELINE_URL} (HTTP $http_code)"
             return 0
         fi
         echo "Waiting for flow pipeline... ($elapsed/${timeout}s, HTTP $http_code)"
-        sleep 2
-        elapsed=$((elapsed + 2))
+        sleep "$(_nifi_remaining_seconds "$deadline" 2)"
+        elapsed=$(( $(date +%s) - start_time ))
     done
 
     return 1
@@ -111,18 +129,23 @@ nifi_wait_for_flow_pipeline() {
 # Returns 0 once a valid token is accepted (non-401), 1 on timeout.
 nifi_wait_for_healthy_issuer() {
     local timeout="${1:-120}"
-    local elapsed=0
+    # Bound the loop by wall-clock time: one iteration can take up to curl's
+    # --max-time plus the sleep, so a fixed per-iteration increment under-counts.
+    local start_time deadline budget elapsed=0
+    start_time=$(date +%s)
+    deadline=$((start_time + timeout))
     local token auth_code
 
     echo "Waiting for JWT issuer to become healthy via ${FLOW_PIPELINE_URL}..."
-    while [ "$elapsed" -lt "$timeout" ]; do
-        token=$(curl -sk --max-time 10 -X POST "${KEYCLOAK_TOKEN_URL}" \
+    while budget=$(_nifi_remaining_seconds "$deadline" 10) && [ "$budget" -gt 0 ]; do
+        token=$(curl -sk --max-time "$budget" -X POST "${KEYCLOAK_TOKEN_URL}" \
             -d "grant_type=password" -d "client_id=${KEYCLOAK_CLIENT_ID}" \
             -d "username=${TEST_USER_NAME}" -d "password=${TEST_USER_PASSWORD}" \
             -d "scope=openid" 2>/dev/null \
             | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || true)
-        if [ -n "$token" ]; then
-            auth_code=$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' \
+        budget=$(_nifi_remaining_seconds "$deadline" 10)
+        if [ -n "$token" ] && [ "$budget" -gt 0 ]; then
+            auth_code=$(curl -sk --max-time "$budget" -o /dev/null -w '%{http_code}' \
                 -H "Authorization: Bearer ${token}" "${FLOW_PIPELINE_URL}" 2>/dev/null || true)
             if [ -n "$auth_code" ] && [ "$auth_code" != "401" ] && [ "$auth_code" != "000" ]; then
                 echo "JWT issuer is healthy (HTTP $auth_code for a valid token)"
@@ -132,8 +155,8 @@ nifi_wait_for_healthy_issuer() {
             auth_code="no-token"
         fi
         echo "Waiting for issuer health... ($elapsed/${timeout}s, HTTP ${auth_code:-000})"
-        sleep 2
-        elapsed=$((elapsed + 2))
+        sleep "$(_nifi_remaining_seconds "$deadline" 2)"
+        elapsed=$(( $(date +%s) - start_time ))
     done
 
     return 1

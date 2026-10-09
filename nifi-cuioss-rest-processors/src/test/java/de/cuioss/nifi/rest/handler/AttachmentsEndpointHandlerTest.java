@@ -400,13 +400,19 @@ class AttachmentsEndpointHandlerTest {
         }
         assertEquals(503, postAttachment(parentTraceId, "rejected").statusCode());
 
-        // Act — free a slot and retry; the rolled-back attempt must not have consumed a slot
-        queue.poll();
-        var retry = postAttachment(parentTraceId, "retried");
+        // Act + Assert — the route allows max=3: all three must still be accepted. Had the
+        // rejected attempt consumed a slot, the third would hit the boundary and return 409.
+        for (int i = 0; i < 3; i++) {
+            queue.poll(); // free a queue slot for this attachment
+            assertEquals(202, postAttachment(parentTraceId, "retried " + i).statusCode(),
+                    "a queue-full rejection must roll back its attachment slot (attachment %d of 3)"
+                            .formatted(i + 1));
+        }
 
-        // Assert
-        assertEquals(202, retry.statusCode(),
-                "a queue-full rejection must roll back its attachment slot so a retry succeeds");
+        // The boundary itself is intact: a fourth attachment exceeds max=3
+        queue.poll();
+        assertEquals(409, postAttachment(parentTraceId, "over the max").statusCode(),
+                "the rollback must not widen the max: a fourth attachment is still rejected");
     }
 
     @Test
