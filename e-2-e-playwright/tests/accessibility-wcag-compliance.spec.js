@@ -4,7 +4,7 @@
  */
 
 import {
-    test,
+    serialTest as test,
     expect,
     takeStartScreenshot,
 } from "../fixtures/test-fixtures.js";
@@ -12,7 +12,6 @@ import {
     AccessibilityHelper,
     a11yUtils,
 } from "../utils/accessibility-helper.js";
-import { navigateToJWTAuthenticatorUI } from "../utils/navigation-utils.js";
 import { testLogger } from "../utils/test-logger.js";
 
 /**
@@ -35,34 +34,40 @@ const A11Y_CONFIG = {
     },
 };
 
+/**
+ * Bring the custom UI to the state a fresh load gives (default tab active, nothing
+ * focused, no validation or connection-test result, empty token input) by reloading
+ * the UI document inside its iframe. The NiFi page around it stays on the Advanced
+ * view, so the processor is not looked up on the canvas again.
+ * @param {import('@playwright/test').Frame} customUIFrame - the custom UI frame of the fixture
+ * @returns {Promise<void>}
+ */
+async function restoreFreshLoadState(customUIFrame) {
+    await customUIFrame.goto(customUIFrame.url());
+    await a11yUtils.waitForA11yReady(customUIFrame);
+}
+
+/**
+ * Build the accessibility helper for the custom UI frame of the fixture.
+ * @param {import('@playwright/test').Frame} customUIFrame - the custom UI frame of the fixture
+ * @returns {Promise<AccessibilityHelper>} the initialized helper
+ */
+async function createAccessibilityHelper(customUIFrame) {
+    const helper = new AccessibilityHelper(customUIFrame);
+    await helper.initialize();
+    return helper;
+}
+
 // Accessibility tests for WCAG 2.1 Level AA compliance
 // Prerequisites:
 // - NiFi must be running
 // - MultiIssuerJWTTokenAuthenticator must be on the canvas
+// The custom UI is opened once per worker by the serialTest fixture; a missing NiFi or
+// processor fails that fixture, and with it every test of this spec.
 test.describe("WCAG 2.1 Level AA Compliance", () => {
-    let accessibilityHelper;
-    let currentPage;
-
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, customUIFrame }, testInfo) => {
         try {
-            // Store the page reference for use in tests
-            currentPage = page;
-
-            // Navigate to JWT Authenticator UI
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
-
-            // Use the frame context for accessibility testing
-            const frameContext = customUIFrame ? customUIFrame : page;
-
-            // Initialize accessibility helper
-            accessibilityHelper = new AccessibilityHelper(frameContext);
-            await accessibilityHelper.initialize();
-
-            // Wait for UI to be ready
-            await a11yUtils.waitForA11yReady(frameContext);
+            await restoreFreshLoadState(customUIFrame);
 
             await takeStartScreenshot(page, testInfo);
         } catch (error) {
@@ -83,43 +88,9 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         }
     });
 
-    // Helper function to ensure we have a valid accessibility helper
-    async function ensureValidAccessibilityHelper(testInfo) {
-        try {
-            // Try to use the existing helper
-            if (accessibilityHelper && accessibilityHelper.page) {
-                // Check if the page is still valid by trying a simple operation
-                await accessibilityHelper.page.evaluate(() => true);
-                return accessibilityHelper;
-            }
-        } catch (_error) {
-            testLogger.warn(
-                "A11y",
-                "Existing accessibility helper is invalid, creating new one",
-            );
-        }
-
-        // Re-acquire frame and create new helper
-        if (currentPage) {
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                currentPage,
-                testInfo,
-            );
-            const frameContext = customUIFrame ? customUIFrame : currentPage;
-            const newHelper = new AccessibilityHelper(frameContext);
-            await newHelper.initialize();
-            await a11yUtils.waitForA11yReady(frameContext);
-            return newHelper;
-        }
-
-        throw new Error("No valid page reference available");
-    }
-
-    test("Full page WCAG compliance check", async ({
-        page: _page,
-    }, testInfo) => {
+    test("Full page WCAG compliance check", async ({ customUIFrame }) => {
         await test.step("Run comprehensive WCAG check", async () => {
-            const helper = await ensureValidAccessibilityHelper(testInfo);
+            const helper = await createAccessibilityHelper(customUIFrame);
             const results = await helper.runWCAGCheck();
 
             if (!results.passed) {
@@ -142,19 +113,11 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Component-level accessibility checks", async ({ page }, testInfo) => {
-        // Open the custom UI so the helper can attach to its frame
-        await navigateToJWTAuthenticatorUI(page, testInfo);
+    test("Component-level accessibility checks", async ({ customUIFrame }) => {
+        const helper = await createAccessibilityHelper(customUIFrame);
 
         for (const [key, component] of Object.entries(A11Y_CONFIG.components)) {
             await test.step(`Check ${component.name} accessibility`, async () => {
-                // Acquire the helper FIRST: it may re-navigate and re-create
-                // the frame, which would detach any frame reference captured
-                // earlier. All locators below must use the helper's live
-                // frame context (helper.page).
-                const helper =
-                    await ensureValidAccessibilityHelper(testInfo);
-
                 // For the tabs component, it should always be visible
                 if (key === "tabs") {
                     const tabsExist =
@@ -191,9 +154,9 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         }
     });
 
-    test("Form field labeling and associations", async ({ page }, testInfo) => {
+    test("Form field labeling and associations", async ({ customUIFrame }) => {
         await test.step("Check all form fields have proper labels", async () => {
-            const helper = await ensureValidAccessibilityHelper(testInfo);
+            const helper = await createAccessibilityHelper(customUIFrame);
             const results = await helper.runCustomChecks();
 
             const formLabelIssues = results.failures.filter(
@@ -210,10 +173,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Verify required field indicators", async () => {
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
             const requiredFields = await customUIFrame
                 .locator("input[required], select[required]")
                 .all();
@@ -264,13 +223,8 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
 
     test("Keyboard navigation and focus management", async ({
         page,
-    }, testInfo) => {
-        // Navigate once and reuse the frame across all steps
-        const customUIFrame = await navigateToJWTAuthenticatorUI(
-            page,
-            testInfo,
-        );
-
+        customUIFrame,
+    }) => {
         await test.step("Test tab order through all interactive elements", async () => {
             // Get focusable elements within the frame
             const focusableElements = await customUIFrame
@@ -341,9 +295,10 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("ARIA attributes and roles", async ({ page }, testInfo) => {
+    test("ARIA attributes and roles", async ({ customUIFrame }) => {
+        const helper = await createAccessibilityHelper(customUIFrame);
+
         await test.step("Validate ARIA attribute usage", async () => {
-            const helper = await ensureValidAccessibilityHelper(testInfo);
             const results = await helper.runCustomChecks();
 
             const ariaIssues = results.failures.filter(
@@ -360,10 +315,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Check landmark roles", async () => {
-            const customUIFrame = await navigateToJWTAuthenticatorUI(
-                page,
-                testInfo,
-            );
             const mainContent = await customUIFrame
                 .locator('[role="main"], main')
                 .count();
@@ -376,7 +327,6 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
 
         await test.step("Verify live regions for dynamic content", async () => {
-            const helper = await ensureValidAccessibilityHelper(testInfo);
             const results = await helper.checkScreenReaderAnnouncements();
 
             expect(results.passed).toBe(true);
@@ -384,15 +334,9 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Color contrast and visual design", async ({ page }, testInfo) => {
-        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
-
+    test("Color contrast and visual design", async ({ customUIFrame }) => {
         await test.step("Check text color contrast", async () => {
-            // Create a fresh helper from the current frame (not the beforeEach one which is detached)
-            const frameContext = customUIFrame ? customUIFrame : page;
-            const helper = new AccessibilityHelper(frameContext);
-            await helper.initialize();
-            await a11yUtils.waitForA11yReady(frameContext);
+            const helper = await createAccessibilityHelper(customUIFrame);
             const results = await helper.runCustomChecks();
 
             const contrastIssues = results.failures.filter(
@@ -434,9 +378,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Screen reader compatibility", async ({ page }, testInfo) => {
-        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
-
+    test("Screen reader compatibility", async ({ customUIFrame }) => {
         await test.step("Check heading hierarchy", async () => {
             const headings = await customUIFrame.locator("h1, h2, h3, h4, h5, h6").all();
             const headingLevels = [];
@@ -483,9 +425,7 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
         });
     });
 
-    test("Dynamic content accessibility", async ({ page }, testInfo) => {
-        const customUIFrame = await navigateToJWTAuthenticatorUI(page, testInfo);
-
+    test("Dynamic content accessibility", async ({ customUIFrame }) => {
         await test.step("Verify loading states are announced", async () => {
             // Click validate button to trigger loading within the custom UI frame
             const validateButton = customUIFrame
@@ -519,9 +459,9 @@ test.describe("WCAG 2.1 Level AA Compliance", () => {
     });
 
     test("Generate comprehensive accessibility report", async ({
-        page: _page,
-    }, testInfo) => {
-        const helper = await ensureValidAccessibilityHelper(testInfo);
+        customUIFrame,
+    }) => {
+        const helper = await createAccessibilityHelper(customUIFrame);
         const report = await helper.generateReport();
 
         // Log report summary

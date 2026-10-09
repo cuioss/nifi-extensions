@@ -61,7 +61,8 @@ const AUTH_STATE = path.join(__dirname, '.auth', 'state.json');
 /**
  * Modern Playwright Configuration - Project-based architecture
  *
- * Flow: auth-setup -> self-tests -> [functional + accessibility] (in parallel within workers:1)
+ * Flow: auth-setup -> self-tests -> functional, accessibility (one worker, so the two
+ * projects run in sequence; both depend on self-tests only, not on each other)
  * The auth-setup project authenticates once and saves storageState for all downstream projects.
  *
  * @see https://playwright.dev/docs/test-configuration

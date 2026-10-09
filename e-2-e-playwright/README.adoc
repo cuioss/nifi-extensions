@@ -32,13 +32,11 @@ e-2-e-playwright/
 ├── fixtures/                     # Playwright test fixtures
 │   ├── auth-fixtures.js          # Authentication fixtures
 │   └── test-fixtures.js          # Consolidated fixtures (logging, a11y, processor)
-├── utils/                        # Utility services and scripts (12 files)
+├── utils/                        # Utility services and scripts (10 files)
 │   ├── auth-service.js           # API token-based authentication
 │   ├── processor.js              # Processor discovery and verification
 │   ├── processor-api-manager.js  # REST API-based processor management
-│   ├── processor-setup-helper.js # Test setup/teardown helpers
-│   ├── navigation-utils.js       # Page navigation and verification
-│   ├── constants.js              # Selectors, credentials, URLs
+│   ├── constants.js             # Selectors, credentials, URLs
 │   ├── keycloak-token-service.js # Keycloak token acquisition
 │   ├── accessibility-helper.js   # @axe-core/playwright integration
 │   ├── critical-error-detector.js# Critical error pattern matching
