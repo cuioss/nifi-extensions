@@ -44,6 +44,8 @@ import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration tests for the RestApiGateway processor with embedded Jetty.
@@ -263,15 +265,15 @@ class RestApiGatewayIT {
             // mid-run against Keycloak's default access-token lifespan). Accepting that as
             // "non-2xx = safe" would make every remaining attack case pass vacuously, so
             // fail loudly instead of silently swallowing the auth failure.
-            org.junit.jupiter.api.Assertions.assertNotEquals(401, status,
+            assertNotEquals(401, status,
                     "Authentication failed (401) for adversarial itemId — token likely expired "
                             + "mid-run; assertion would be vacuous: " + testCase.attackDescription());
-            org.junit.jupiter.api.Assertions.assertNotEquals(403, status,
+            assertNotEquals(403, status,
                     "Authorization failed (403) for adversarial itemId — unexpected for an "
                             + "authenticated attack request: " + testCase.attackDescription());
             // The security pipeline rejects the adversarial value (400) or the router declines
             // to match it (404); either way the gateway must not return a 2xx success.
-            org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+            assertTrue(status < 200 || status >= 300,
                     "Expected non-2xx for adversarial itemId: " + testCase.attackDescription()
                             + " (got " + status + ")");
         }
@@ -542,10 +544,14 @@ class RestApiGatewayIT {
 
             // Budget deliberately exceeds the 30 sec "Expiration Duration" of
             // "Wait (wait-for-attachments)" in flow.json. Both of that processor's outlets --
-            // "success" (the Notify release, normally ~1s) and "expired" (the fallback at 30s) --
-            // feed the same upload seed chain, so the seeded fields arrive either way and this
-            // test is about the cache -> response round-trip, not about which outlet fired. A
-            // budget equal to the expiration made the two coincide and the assertion raced the
+            // "success" (the Notify release, about 2 s in a local run) and "expired" (the
+            // fallback at 30 s) -- feed the same upload seed chain, so the seeded fields arrive
+            // either way and this test is about the cache -> response round-trip, not about
+            // which outlet fired. The release is that fast only because the processor sets a
+            // 1 sec "Wait Penalty Duration": without it the processor keeps re-evaluating the
+            // oldest waiting upload, and an upload that never receives an attachment
+            // (AttachmentFlowIT leaves several) holds every later parent back until it expires.
+            // A budget equal to the expiration made the two coincide and the assertion raced the
             // fallback, which produced an observed CI flake that passed on an unmodified re-run.
             await().atMost(Duration.ofSeconds(60))
                     .pollInterval(Duration.ofSeconds(1))

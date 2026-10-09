@@ -27,6 +27,9 @@ echo "Stopping any existing containers..."
 docker compose down -v 2>/dev/null || true
 
 # Step 2: Build and copy NAR
+# --skip-build skips the nested Maven build only when both NAR files already
+# exist. The integration-test lanes do not build the NAR modules in their
+# reactor, so on a clean checkout the nested build runs here.
 echo "Building and deploying NAR files..."
 bash "${DOCKER_DIR}/copy-deployment.sh" --skip-build
 

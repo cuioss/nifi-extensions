@@ -23,8 +23,6 @@ e-2-e-playwright/
 │   ├── auth-service.js          # API token-based authentication
 │   ├── processor.js             # Processor discovery/verification
 │   ├── processor-api-manager.js # NiFi REST API processor management
-│   ├── processor-setup-helper.js# Test setup/teardown helpers
-│   ├── navigation-utils.js      # Page navigation
 │   ├── constants.js             # Selectors, credentials, URLs
 │   ├── keycloak-token-service.js# Keycloak token acquisition
 │   ├── accessibility-helper.js  # @axe-core/playwright integration

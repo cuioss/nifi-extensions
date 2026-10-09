@@ -9,6 +9,12 @@ import {CONSTANTS} from './constants.js';
 import {testLogger} from './test-logger.js';
 
 /**
+ * NiFi answers this request with 200 for a valid session and 401 without one.
+ * Resolved against the origin of the configured base URL, like the token path in login().
+ */
+const CURRENT_USER_PATH = '/nifi-api/flow/current-user';
+
+/**
  * Modern authentication service with 2025 Playwright patterns
  */
 export class AuthService {
@@ -74,6 +80,29 @@ export class AuthService {
       }
     }
     return false;
+  }
+
+  /**
+   * Whether the browser context holds a valid NiFi session.
+   *
+   * Asks NiFi for the current user through the context's request API, which sends
+   * the same cookies as the page. That answers the question without loading or
+   * reloading a page, and it does not depend on what the page currently shows.
+   *
+   * @returns {Promise<boolean>} true when NiFi accepts the session, false when it
+   *   answers with any other status or the request fails
+   */
+  async hasSession() {
+    try {
+      const response = await this.page.request.get(CURRENT_USER_PATH, {
+        timeout: 5000,
+        failOnStatusCode: false
+      });
+      return response.status() === 200;
+    } catch (error) {
+      testLogger.warn('Auth', `Session check failed - ${error.message}`);
+      return false;
+    }
   }
 
   /**
@@ -280,14 +309,20 @@ export class AuthService {
       );
     }
 
-    // Ensure authentication
-    if (!(await this.isAuthenticated())) {
+    // Establish the session state before any navigation. A context that already holds
+    // a session must not go through login(), which reloads the page and waits for
+    // network idle before it finds out that nothing was left to do.
+    const mainCanvas = this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS);
+    if (await this.hasSession()) {
+      if (!(await mainCanvas.isVisible().catch(() => false))) {
+        await this.page.goto('/nifi');
+      }
+    } else {
       await this.login();
     }
 
     // Final verification using modern locators
-    await expect(this.page.locator(CONSTANTS.SELECTORS.MAIN_CANVAS))
-      .toBeVisible({ timeout: 10000 });
+    await expect(mainCanvas).toBeVisible({ timeout: 10000 });
 
     await expect(this.page).toHaveTitle(/NiFi/);
 

@@ -1,8 +1,9 @@
 = NiFi Docker Test Environment
-:toc:
+:toc: left
 :toclevels: 3
 :toc-title: Table of Contents
 :sectnums:
+:source-highlighter: highlight.js
 
 Docker-based test environment for both custom NiFi processors: the
 `MultiIssuerJWTTokenAuthenticator` (FlowFile-based JWT validation) and the
@@ -164,7 +165,7 @@ All scripts are in `src/main/docker/`. They can be run from any directory.
 |Waits for NiFi to be ready, then starts all flow processors via the NiFi REST API and verifies the flow pipeline bound to port 7777. Invoked by `start-nifi.sh` and `redeploy-nifi.sh`.
 
 |`copy-deployment.sh`
-|Copies both `nifi-cuioss-api-nar` and `nifi-cuioss-nar` to `target/nifi-deploy/`. Accepts `--skip-build` to skip the Maven build when NARs were already built by the Maven reactor (used by `deploy-and-start.sh`). Without the flag, always runs `./mvnw package -DskipTests` to ensure fresh NARs.
+|Copies both `nifi-cuioss-api-nar` and `nifi-cuioss-nar` to `target/nifi-deploy/`. Before copying it runs a nested Maven build of the two NAR modules and the modules they need (`./mvnw package -DskipTests -pl nifi-cuioss-nar,nifi-cuioss-api-nar -am`). With `--skip-build` (used by `deploy-and-start.sh`) the nested build is skipped only when both NAR files already exist; if one is missing, it runs despite the flag.
 |===
 
 === Diagnostic Scripts
@@ -229,15 +230,15 @@ src/main/docker/
 │   └── other_realm-realm.json              # Secondary realm (signature testing)
 ├── maintenance/                   # Certificate and credential utilities
 ├── scripts/                       # Maven-invoked orchestration scripts
-│   ├── deploy-and-start.sh       #   Pre-integration-test: copy NAR + start containers + wait
-│   ├── wait-for-containers.sh    #   Health polling: containers → NiFi API → flow pipeline
+│   ├── deploy-and-start.sh       #   Pre-integration-test: stage NARs + start containers + wait
+│   ├── wait-for-containers.sh    #   Readiness: containers → NiFi API → processor start → flow pipeline → JWT issuer
 │   └── stop-containers.sh        #   Post-integration-test: stop containers
 ├── run-and-deploy.sh             # Full build + start (always rebuilds NARs)
 ├── start-nifi.sh                 # Start Keycloak + NiFi
 ├── start-keycloak.sh             # Start Keycloak only
 ├── stop-test-container.sh        # Stop all containers
 ├── redeploy-nifi.sh              # Rebuild + restart NiFi (always rebuilds NARs)
-├── copy-deployment.sh            # Build + copy NAR (--skip-build to skip Maven)
+├── copy-deployment.sh            # Build + copy NARs (--skip-build: no build if both exist)
 ├── check-status.sh               # Health check
 ├── debug-containers.sh           # Container diagnostics
 └── debug-nar-deployment.sh       # NAR deployment diagnostics
@@ -283,8 +284,8 @@ curl -sk -X POST https://localhost:9085/realms/oauth_integration_tests/protocol/
 
 When running via Maven (`./mvnw verify -Pintegration-tests -pl integration-testing -am`), the lifecycle is:
 
-1. **Maven reactor builds** all dependent modules (processors, UI WAR, NARs) via `-am`
-2. **`deploy-and-start.sh`** (pre-integration-test phase) copies NARs to deploy dir (skipping redundant Maven build via `--skip-build`), starts Docker containers, and waits for readiness
+1. **Maven reactor** builds the root POM and `integration-testing`. `-am` adds only the root POM: `integration-testing` depends on no other module of the project, so the reactor does not build the NAR files.
+2. **`deploy-and-start.sh`** (pre-integration-test phase) calls `copy-deployment.sh --skip-build`, which runs the nested build of the two NAR modules when a NAR file is missing and copies both NAR files to the deploy dir. It then starts the Docker containers (NiFi starts once Keycloak is healthy) and runs `wait-for-containers.sh`, which waits for the containers, the NiFi API, the flow pipeline and a healthy JWT issuer.
 3. **Failsafe** runs all IT classes with **parallel class execution** (3 concurrent threads)
 4. **`cleanup-containers`** (post-integration-test phase) collects logs and stops containers
 
@@ -298,9 +299,9 @@ Integration test classes run concurrently via `junit-platform.properties`:
 
 === NAR Build Optimization
 
-`copy-deployment.sh` accepts `--skip-build` to avoid redundant Maven builds:
+The nested build in `copy-deployment.sh` covers only the two NAR modules and the modules they need (`-pl nifi-cuioss-nar,nifi-cuioss-api-nar -am`). `--skip-build` skips it when both NAR files already exist:
 
-* **Maven path** (`deploy-and-start.sh`): passes `--skip-build` because the Maven reactor already built fresh NARs
+* **Maven path** (`deploy-and-start.sh`): passes `--skip-build`. The outer reactor does not build the NAR files, so on a clean checkout the nested build runs; it is skipped when an earlier build left both NAR files in place.
 * **Standalone path** (`run-and-deploy.sh`, `redeploy-nifi.sh`): always rebuilds to pick up code changes
 
 == Certificate Configuration

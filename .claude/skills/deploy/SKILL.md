@@ -68,7 +68,7 @@ python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-ar
 ```
 Runs the `integration-testing` module's Java Failsafe ITs (e.g. `RestApiGatewayIT`) via the canonical plan-marshall Maven executor. Use a 10-minute (600000 ms) Bash timeout and analyze the build's TOON result (`status`, `errors[]`, `log_file`) rather than scanning raw stdout.
 
-- `-pl integration-testing -am` is **mandatory** — the `-am` (also-make) is required because the `integration-testing` test sources depend on the `nifi-cuioss-common` test-jar, which is only built when the reactor is also-made.
+- Keep the invocation `-pl integration-testing -am`. The `-am` (also-make) adds only the root POM to the reactor; the two NAR files come from the nested build in `copy-deployment.sh`, which `deploy-and-start.sh` runs whenever one of them is missing.
 - The `integration-tests` profile **manages its own container lifecycle**: `deploy-and-start.sh` auto-stops the same-project `docker` stack (`docker compose down -v`) before building and starting fresh NiFi+Keycloak containers, and `cleanup-containers` tears them down on completion. **No explicit pre-flight stop is needed here** — the profile already reuses the existing Docker primitives.
 
 #### stop

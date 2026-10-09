@@ -3,6 +3,9 @@
 # Wait for Docker containers (Keycloak + NiFi) to become healthy.
 # Extracted from the inline CDATA health-check in integration-testing/pom.xml.
 #
+# Stages: containers running, NiFi API ready, processor start, flow pipeline ready,
+# JWT issuer healthy.
+#
 # Failure semantics: LENIENT for the processor start — a token/start failure only
 # warns, and the flow-pipeline wait in Stage 3 decides the exit code. This differs
 # deliberately from wait-and-start-processors.sh, which aborts on any failure.
