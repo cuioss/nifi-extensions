@@ -93,7 +93,7 @@ class GatewayMetricsPrometheusIT {
 
         List<JsonObject> gatewayCounters = fetchGatewayCounters(bearerToken);
 
-        assertTrue(!gatewayCounters.isEmpty(),
+        assertFalse(gatewayCounters.isEmpty(),
                 "At least one gateway.* counter must surface at /nifi-api/counters; found none");
         long positive = gatewayCounters.stream()
                 .filter(c -> counterValue(c) > 0)
@@ -114,7 +114,7 @@ class GatewayMetricsPrometheusIT {
                 .filter(line -> line.contains("counter_name=\"" + GATEWAY_COUNTER_PREFIX))
                 .toList();
 
-        assertTrue(!gatewayCounterLines.isEmpty(),
+        assertFalse(gatewayCounterLines.isEmpty(),
                 "The nifi_processor_counters family must contain at least one gateway.* counter_name; "
                         + "none found in the Prometheus exposition");
     }

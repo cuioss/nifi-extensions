@@ -44,6 +44,8 @@ import static de.cuioss.nifi.integration.IntegrationTestSupport.*;
 import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration tests for the RestApiGateway processor with embedded Jetty.
@@ -263,15 +265,15 @@ class RestApiGatewayIT {
             // mid-run against Keycloak's default access-token lifespan). Accepting that as
             // "non-2xx = safe" would make every remaining attack case pass vacuously, so
             // fail loudly instead of silently swallowing the auth failure.
-            org.junit.jupiter.api.Assertions.assertNotEquals(401, status,
+            assertNotEquals(401, status,
                     "Authentication failed (401) for adversarial itemId — token likely expired "
                             + "mid-run; assertion would be vacuous: " + testCase.attackDescription());
-            org.junit.jupiter.api.Assertions.assertNotEquals(403, status,
+            assertNotEquals(403, status,
                     "Authorization failed (403) for adversarial itemId — unexpected for an "
                             + "authenticated attack request: " + testCase.attackDescription());
             // The security pipeline rejects the adversarial value (400) or the router declines
             // to match it (404); either way the gateway must not return a 2xx success.
-            org.junit.jupiter.api.Assertions.assertTrue(status < 200 || status >= 300,
+            assertTrue(status < 200 || status >= 300,
                     "Expected non-2xx for adversarial itemId: " + testCase.attackDescription()
                             + " (got " + status + ")");
         }

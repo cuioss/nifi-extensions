@@ -25,9 +25,9 @@ services:
       - NIFI_SECURITY_USER_LOGIN_IDENTITY_PROVIDER=
       - NIFI_SECURITY_KEYSTORE=
       - NIFI_SECURITY_TRUSTSTORE=
-    depends_on:
-      keycloak:
-        condition: service_healthy
+    # No depends_on on keycloak: both containers start together. The processors
+    # need a healthy Keycloak, and scripts/wait-for-containers.sh waits for it
+    # before it starts them.
     volumes:
       - ../../../../target/nifi-deploy:/opt/nifi/nifi-current/nar_extensions
     healthcheck:
@@ -104,10 +104,16 @@ services:
       # Readiness check via HTTP on port 8080 (management port 9000 uses HTTPS which bash TCP can't handle).
       # Checking the test realm endpoint verifies both server readiness and realm import completion.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /realms/oauth_integration_tests HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q 'oauth_integration_tests' && exec 3<&- && exec 3>&- && exit 0 || exit 1"]
+      # While Keycloak starts (start_period) the check probes every second, so the
+      # container counts as healthy within a second of the realm being served.
+      # Failures in that period do not count; after it the check falls back to
+      # 12 probes at 5 s, so Keycloak is given 120 s before it counts as unhealthy.
+      # start_interval needs Docker Engine 25 or newer.
       interval: 5s
       timeout: 5s
       retries: 12
-      start_period: 20s
+      start_period: 60s
+      start_interval: 1s
     networks:
       - nifi-keycloak-network
     # No restart policy: symmetric with the nifi service. An auto-restarting
