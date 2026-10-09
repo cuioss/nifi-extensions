@@ -7,26 +7,73 @@
 import {expect} from '@playwright/test';
 import { testLogger } from './test-logger.js';
 
-/** Wait budget each lookup candidate contributes to the single combined wait. */
+/**
+ * Default wait budget each lookup candidate contributes to the combined wait of its tier.
+ * A caller can override it with the perCandidateTimeout option of findProcessor.
+ */
 const PER_CANDIDATE_TIMEOUT_MS = 2000;
 
 /**
- * Find a processor on the canvas. All candidate selectors are awaited with one combined
- * wait; the winner is the first candidate in list order that has a visible match.
+ * Wait for one tier of candidate selectors with one combined wait and pick the winner:
+ * the first candidate in list order that has a visible match.
+ * @param {import('@playwright/test').Page} page - the page to search
+ * @param {string[]} selectors - the candidates of the tier, in order of precedence
+ * @param {number} perCandidateTimeout - wait budget in ms each candidate adds to the tier's wait
+ * @returns {Promise<{selector: string, locator: import('@playwright/test').Locator}|null>}
+ *   the winning candidate, or null when none became visible within the tier's budget
+ */
+async function findFirstVisibleCandidate(page, selectors, perCandidateTimeout) {
+  // One wait for the whole tier: it resolves as soon as ANY candidate has a visible match,
+  // and its budget is one per-candidate wait for each candidate of the tier.
+  const firstVisible = (selector) => page.locator(selector).filter({ visible: true }).first();
+  const anyCandidate = selectors
+    .map((selector) => page.locator(selector))
+    .reduce((combined, candidate) => combined.or(candidate))
+    .filter({ visible: true })
+    .first();
+  const appeared = await anyCandidate
+    .waitFor({ state: 'visible', timeout: selectors.length * perCandidateTimeout })
+    .then(() => true)
+    .catch(() => false);
+
+  if (appeared) {
+    // Candidates are tested in list order without waiting, so the first matching selector wins.
+    for (const selector of selectors) {
+      const locator = firstVisible(selector);
+      if (await locator.isVisible()) {
+        return { selector, locator };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find a processor on the canvas. The candidate selectors are awaited in two tiers, each
+ * with one combined wait: first the type-qualified candidates, and only when none of them
+ * appeared the structural fallbacks, which exist for the generic type "processor" alone.
+ * A structural fallback (g[transform] matches ordinary canvas groups) is visible before any
+ * processor has rendered, so it must not end the wait while a type-qualified candidate can
+ * still appear. Within a tier the winner is the first candidate in list order that has a
+ * visible match. The two tier budgets add up to one per-candidate wait (2000 ms by default)
+ * for each candidate.
  * @param {import('@playwright/test').Page} page - the NiFi canvas page
  * @param {string} processorType - processor type name, or "processor" for any processor
- * @param {{failIfNotFound?: boolean}} [options] - set failIfNotFound to false to get null on a miss
+ * @param {{failIfNotFound?: boolean, perCandidateTimeout?: number}} [options] - set
+ *   failIfNotFound to false to get null on a miss; perCandidateTimeout is the wait budget in
+ *   ms each candidate adds to its tier's wait (default 2000, must be greater than 0)
  * @returns {Promise<{element: string, locator: import('@playwright/test').Locator, type: string, isVisible: boolean}|null>}
  *   the lookup result, or null when nothing matched and failIfNotFound is false
  * @throws {Error} "Processor not found: <type>" when nothing matched and failIfNotFound is true
  */
 export async function findProcessor(page, processorType, options = {}) {
-  const { failIfNotFound = true } = options;
+  const { failIfNotFound = true, perCandidateTimeout = PER_CANDIDATE_TIMEOUT_MS } = options;
 
   // Note: Processors should already exist on canvas - no longer adding them automatically
 
-  // Use more specific selectors for processors on canvas
-  const selectors = [
+  // Tier 1: type-qualified candidates. They are waited first, for every processor type.
+  const typeQualifiedSelectors = [
     // NiFi-specific processor selectors
     `g.processor[data-type*="${processorType}"]`,
     `rect.processor[data-type*="${processorType}"]`,
@@ -37,49 +84,35 @@ export async function findProcessor(page, processorType, options = {}) {
     `text.processor-name:has-text("${processorType}")`,
     `text.processor-type:has-text("${processorType}")`,
     `[title*="${processorType}"]`,
-    `[alt*="${processorType}"]`,
-
-    // General processor selectors — only used when NOT searching for a specific type
-    // (e.g. when processorType is just "processor"). Using these for a specific type
-    // risks matching the wrong processor on a crowded canvas.
-    ...(processorType === "processor" ? [
-      `g.processor, rect.processor`,
-      `[data-component-type="processor"]`,
-      `g.component`,
-      `svg g.processor`,
-      `svg rect.processor`,
-      `g[transform]`,
-      `.processor-component`,
-      `[class*="processor"]`
-    ] : [])
+    `[alt*="${processorType}"]`
   ];
 
-  // One wait for all candidates: it resolves as soon as ANY candidate has a visible match,
-  // and its budget is the former worst case of one 2000 ms wait per candidate.
-  const firstVisible = (selector) => page.locator(selector).filter({ visible: true }).first();
-  const anyCandidate = selectors
-    .map((selector) => page.locator(selector))
-    .reduce((combined, candidate) => combined.or(candidate))
-    .filter({ visible: true })
-    .first();
-  const appeared = await anyCandidate
-    .waitFor({ state: 'visible', timeout: selectors.length * PER_CANDIDATE_TIMEOUT_MS })
-    .then(() => true)
-    .catch(() => false);
+  // Tier 2: general processor selectors — only used when NOT searching for a specific type
+  // (e.g. when processorType is just "processor"). Using these for a specific type
+  // risks matching the wrong processor on a crowded canvas. They are waited only after
+  // tier 1 found nothing, because some of them match elements that are not processors.
+  const structuralSelectors = processorType === "processor" ? [
+    `g.processor, rect.processor`,
+    `[data-component-type="processor"]`,
+    `g.component`,
+    `svg g.processor`,
+    `svg rect.processor`,
+    `g[transform]`,
+    `.processor-component`,
+    `[class*="processor"]`
+  ] : [];
 
-  if (appeared) {
-    // Candidates are tested in list order without waiting, so the first matching selector
-    // wins and the type-qualified candidates keep precedence over the structural ones.
-    for (const selector of selectors) {
-      const locator = firstVisible(selector);
-      if (await locator.isVisible()) {
-        return {
-          element: selector,
-          locator,
-          type: processorType,
-          isVisible: true
-        };
-      }
+  for (const tier of [typeQualifiedSelectors, structuralSelectors]) {
+    const candidate = tier.length > 0
+      ? await findFirstVisibleCandidate(page, tier, perCandidateTimeout)
+      : null;
+    if (candidate) {
+      return {
+        element: candidate.selector,
+        locator: candidate.locator,
+        type: processorType,
+        isVisible: true
+      };
     }
   }
 
