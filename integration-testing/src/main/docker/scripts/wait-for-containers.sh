@@ -3,12 +3,8 @@
 # Wait for Docker containers (Keycloak + NiFi) to become healthy.
 # Extracted from the inline CDATA health-check in integration-testing/pom.xml.
 #
-# Stages: containers running, NiFi API ready, Keycloak healthy, processor start,
-# flow pipeline ready, JWT issuer healthy.
-#
-# Keycloak gate: docker-compose.yml starts NiFi and Keycloak together, so NiFi no
-# longer waits for Keycloak. The processors load the issuer keys from Keycloak when
-# they start, so this script waits for a healthy Keycloak before it starts them.
+# Stages: containers running, NiFi API ready, processor start, flow pipeline ready,
+# JWT issuer healthy.
 #
 # Failure semantics: LENIENT for the processor start — a token/start failure only
 # warns, and the flow-pipeline wait in Stage 3 decides the exit code. This differs
@@ -28,39 +24,6 @@ DOCKER_DIR="${SCRIPT_DIR}/.."
 . "${SCRIPT_DIR}/lib-start-processors.sh"
 
 cd "${DOCKER_DIR}"
-
-# Wait for the Keycloak container to report the health status "healthy".
-#
-# Bounded by wall-clock time like the wait helpers in lib-start-processors.sh.
-#
-# $1 — timeout in seconds (default 120).
-# Returns 0 once Keycloak is healthy, 1 on timeout.
-wait_for_healthy_keycloak() {
-    local timeout="${1:-120}"
-    local start_time deadline elapsed=0
-    start_time=$(date +%s)
-    deadline=$((start_time + timeout))
-    local container_id health_status
-
-    echo "Waiting for Keycloak to become healthy..."
-    while [ "$(_nifi_remaining_seconds "$deadline" 1)" -gt 0 ]; do
-        health_status="no-container"
-        container_id=$(docker compose ps -q keycloak 2>/dev/null || true)
-        if [ -n "$container_id" ]; then
-            health_status=$(docker inspect --format '{{.State.Health.Status}}' \
-                "$container_id" 2>/dev/null || true)
-        fi
-        if [ "$health_status" = "healthy" ]; then
-            echo "Keycloak is healthy (after ${elapsed}s)."
-            return 0
-        fi
-        echo "Waiting for Keycloak health... ($elapsed/${timeout}s, status ${health_status:-unknown})"
-        sleep "$(_nifi_remaining_seconds "$deadline" 1)"
-        elapsed=$(( $(date +%s) - start_time ))
-    done
-
-    return 1
-}
 
 # ---------------------------------------------------------------------------
 # Stage 1: Wait for containers to be running (Keycloak + NiFi)
@@ -116,16 +79,6 @@ if [ $api_elapsed -ge $api_timeout ]; then
     echo "Timeout waiting for NiFi API to become ready"
     echo "Last HTTP status from /nifi-api/access/config: $http_code"
     docker compose logs --tail=50 nifi
-    exit 1
-fi
-
-# ---------------------------------------------------------------------------
-# Stage 2a: Wait for Keycloak to be healthy before the processors start
-# ---------------------------------------------------------------------------
-if ! wait_for_healthy_keycloak 120; then
-    echo "Timeout waiting for Keycloak to become healthy"
-    docker compose ps
-    docker compose logs --tail=50 keycloak
     exit 1
 fi
 
