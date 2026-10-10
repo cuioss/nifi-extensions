@@ -1,5 +1,9 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": null
+  },
   "insights": [],
   "internal_dependencies": [
     "nifi-cuioss-api",
@@ -8,13 +12,13 @@
   "key_dependencies": [],
   "key_dependencies_reasoning": "UI servlets validate tokens and read issuer config via the shared JWT API and infrastructure",
   "key_packages": {
-    "de.cuioss.nifi.ui.service": {
+    "nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/service": {
       "description": "JwtValidationService backing the UI's token verification and JWKS endpoint testing features."
     },
-    "de.cuioss.nifi.ui.servlets": {
+    "nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/servlets": {
       "description": "Backend servlets and filters: JwksValidationServlet, JwtVerificationServlet, ComponentInfoServlet, GatewayProxyServlet, plus SecurityHeadersFilter and ProcessorIdValidationFilter."
     },
-    "de.cuioss.nifi.ui.util": {
+    "nifi-cuioss-ui/src/main/java/de/cuioss/nifi/ui/util": {
       "description": "ComponentConfigReader and UI utilities for reading processor/controller-service configuration exposed to the UI."
     }
   },

@@ -1,11 +1,15 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": null
+  },
   "insights": [],
   "internal_dependencies": [],
   "key_dependencies": [],
   "key_dependencies_reasoning": "",
   "key_packages": {
-    "de.cuioss.nifi.jwt.config": {
+    "nifi-cuioss-api/src/main/java/de/cuioss/nifi/jwt/config": {
       "description": "Public Controller Service contract: JwtIssuerConfigService interface and the JwtAuthenticationConfig configuration record shared across processors and the implementation."
     }
   },

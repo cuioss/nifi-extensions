@@ -1,5 +1,9 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": null
+  },
   "insights": [],
   "internal_dependencies": [
     "nifi-cuioss-api",
@@ -8,7 +12,7 @@
   "key_dependencies": [],
   "key_dependencies_reasoning": "Uses the JwtIssuerConfigService API and shared JWT infrastructure for validation",
   "key_packages": {
-    "de.cuioss.nifi.processors.auth": {
+    "nifi-cuioss-processors/src/main/java/de/cuioss/nifi/processors/auth": {
       "description": "MultiIssuerJWTTokenAuthenticator FlowFile-based JWT validation processor plus its constants and log messages."
     }
   },

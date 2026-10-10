@@ -1,5 +1,9 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": null
+  },
   "insights": [],
   "internal_dependencies": [
     "nifi-cuioss-api",
@@ -8,16 +12,16 @@
   "key_dependencies": [],
   "key_dependencies_reasoning": "Reuses JwtIssuerConfigService API and shared JWT/authorization utilities for per-route auth",
   "key_packages": {
-    "de.cuioss.nifi.rest": {
+    "nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest": {
       "description": "RestApiGatewayProcessor entry point with gateway constants, FlowFile attributes, and log messages."
     },
-    "de.cuioss.nifi.rest.config": {
+    "nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/config": {
       "description": "Gateway configuration model: RouteConfiguration and its parser, AuthMode, and TrackingMode enums driving per-route behavior."
     },
-    "de.cuioss.nifi.rest.handler": {
+    "nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/handler": {
       "description": "HTTP request handling pipeline: route dispatch (ApiRouteHandler), management endpoints (health/metrics/status/attachments), RFC 9457 ProblemDetail, request sanitization, and async request-status tracking store."
     },
-    "de.cuioss.nifi.rest.server": {
+    "nifi-cuioss-rest-processors/src/main/java/de/cuioss/nifi/rest/server": {
       "description": "Embedded Jetty lifecycle management (JettyServerManager) hosting the gateway HTTP server inside the processor."
     }
   },

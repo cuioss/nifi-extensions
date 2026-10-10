@@ -1,5 +1,9 @@
 {
   "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": null
+  },
   "insights": [],
   "internal_dependencies": [
     "nifi-cuioss-api"
@@ -7,16 +11,16 @@
   "key_dependencies": [],
   "key_dependencies_reasoning": "Implements the JwtIssuerConfigService API contract",
   "key_packages": {
-    "de.cuioss.nifi.jwt": {
+    "nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt": {
       "description": "Shared cross-cutting constants and contracts: JwtAttributes, JwtConstants, JwtPropertyKeys, JwtTranslationKeys, and JwtLogMessages."
     },
-    "de.cuioss.nifi.jwt.config": {
+    "nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/config": {
       "description": "Controller Service implementation and configuration: StandardJwtIssuerConfigService, ConfigurationManager, and IssuerConfigurationParser that build JWT validation config from NiFi properties."
     },
-    "de.cuioss.nifi.jwt.i18n": {
+    "nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/i18n": {
       "description": "Internationalization resolution (I18nResolver, NiFiI18nResolver) for UI labels and processor messages."
     },
-    "de.cuioss.nifi.jwt.util": {
+    "nifi-cuioss-common/src/main/java/de/cuioss/nifi/jwt/util": {
       "description": "Reusable JWT utilities: AuthorizationValidator/Requirements, TokenClaimMapper, TokenMasking, DynamicPropertyGroupParser, and error modeling (ErrorContext, ProcessingError)."
     }
   },

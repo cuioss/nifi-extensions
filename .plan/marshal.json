@@ -1,4 +1,7 @@
 {
+  "extension_defaults": {
+    "build.maven.profiles.mutating": "pre-commit"
+  },
   "plan": {
     "effort": "level-4",
     "open_in_ide": true,
@@ -66,7 +69,8 @@
         "XL": "260K",
         "XXL": "520K"
       },
-      "per_envelope_budget_tokens": "400K"
+      "per_envelope_budget_tokens": "400K",
+      "worktree_setup_commands": []
     },
     "phase-6-finalize": {
       "max_iterations": 5,
@@ -78,21 +82,21 @@
           "auto_rebase_threshold": "no_overlap_only",
           "lane": "minimal"
         },
-        "default:pre-push-quality-gate": {
-          "lane": "minimal"
+        "default:finalize-step-simplify": {
+          "lane": "off"
+        },
+        "default:finalize-step-security-audit": {
+          "lane": "full"
         },
         "default:pre-submission-self-review": {
           "drop_review_on_scope_gate": false,
           "lane": "standard"
         },
-        "default:finalize-step-simplify": {
-          "lane": "standard"
-        },
-        "default:finalize-step-security-audit": {
-          "lane": "full"
-        },
         "default:architecture-refresh": {
           "lane": "full"
+        },
+        "default:pre-push-quality-gate": {
+          "lane": "minimal"
         },
         "plan-marshall:automatic-review": {
           "review_bot_buffer_seconds": 180,
@@ -138,7 +142,7 @@
           "lane": "minimal"
         },
         "default:lessons-capture": {
-          "lane": "minimal"
+          "lane": "off"
         },
         "default:finalize-step-preference-emitter": {
           "preference_min_recurrence": 2,
@@ -171,7 +175,8 @@
   "orchestrator": {
     "auto_emit": false,
     "effort": {},
-    "parallelization_scope": 1
+    "parallelization_scope": 1,
+    "use_worktree": true
   },
   "build": {
     "queue": {
@@ -248,6 +253,7 @@
       "project_key": "cuioss_nifi-extensions"
     }
   },
+  "interaction_mode": "advanced",
   "project": {
     "default_base_branch": "main",
     "working_prefixes": [
@@ -332,10 +338,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.1607",
-    "config_seed_fingerprint": "cf572469"
-  },
-  "extension_defaults": {
-    "build.maven.profiles.mutating": "pre-commit"
+    "provisioned_version": "0.1.1894",
+    "config_seed_fingerprint": "605fa294"
   }
 }
