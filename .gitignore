@@ -41,3 +41,9 @@ jest_stdout.log
 !.plan/plugin-doctor.yml
 !.plan/project-structure.json
 
+# Orchestrator ledger (git-tracked epic store; per-epic logs/ stay local)
+!.plan/orchestrator/
+!.plan/archived-orchestrators/
+.plan/orchestrator/*/logs/
+.plan/archived-orchestrators/*/logs/
+
