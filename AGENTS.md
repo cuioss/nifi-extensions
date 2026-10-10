@@ -72,6 +72,14 @@ Language-level prohibitions are owned by the skills referenced under [Convention
 - **No commits without a pre-commit run** — the profile AUTO-FIXES (rewrites files in place); review what it changed and commit it. Always run the pre-commit profile then a clean install via the [Build Commands](#build-commands) executor: `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "-Ppre-commit clean install -DskipTests"` then `python3 .plan/execute-script.py plan-marshall:build-maven:maven run --command-args "clean install"`
 - **No hardcoded credentials or secrets**
 
+## Orchestrator Ledger
+
+The plan-marshall orchestrator ledger (epics, plan specs, queue, landings, inbox) is **local-only in this repository**. This repository is public, and the ledger describes unfixed defects — including security findings — with file-and-line pointers.
+
+- **All orchestrator work lives in the shared ledger worktree** (`.plan/local/worktrees/_orchestrator`, branch `chore/orchestrator-ledger`, `orchestrator.use_worktree: true` in `.plan/marshal.json`), so ledger writes never touch the branch a session or plan is working on. Resolve its location with `orchestrator resolve-path`, never a cwd-relative `.plan/orchestrator/` path.
+- **Never push the ledger and never merge any orchestrator aspect into this repository.** Do not run `/plan-orchestrator land`, do not push `chore/orchestrator-ledger`, do not open a PR from it, and do not commit `.plan/orchestrator/**` or `.plan/archived-orchestrators/**` on any other branch.
+- This overrides the plan-marshall default, which lands the ledger on the base branch. Verbs that only read or write the worktree (`status`, `next`, `analyze`, `cleanup`, `resume`, …) are unaffected.
+
 ## Temporary Files
 
 - Use `.plan/temp/` for ALL temporary files (covered by the agent's write permissions for `.plan/**` — avoids permission prompts)
