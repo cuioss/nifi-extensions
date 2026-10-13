@@ -106,8 +106,9 @@
           "re_review_on_timeout": "ask",
           "review_rate_window_await": false,
           "review_rate_window_timeout_seconds": 3600,
-          "required_bots": "coderabbit",
+          "required_bots": "cuioss-review-bot,coderabbit",
           "optional_bots": "sourcery",
+          "bot_lists_provenance": "answered",
           "review_completion_poll_timeout_seconds": 600,
           "lane": "standard"
         },
