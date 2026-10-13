@@ -33,7 +33,6 @@
     },
     "phase-3-outline": {
       "plan_without_asking": false,
-      "qgate": "auto",
       "effort": "level-5",
       "q_gate_validation": "once"
     },
@@ -49,7 +48,6 @@
         "default:verify:compile",
         "default:verify:module-tests"
       ],
-      "per_task_budget_reserve_tokens": "50K",
       "verification_steps": {
         "default:verify:quality-gate": {},
         "default:verify:module-tests": {},
@@ -109,7 +107,7 @@
           "review_rate_window_await": false,
           "review_rate_window_timeout_seconds": 3600,
           "required_bots": "coderabbit",
-          "optional_bots": "sourcery,pr-agent",
+          "optional_bots": "sourcery",
           "review_completion_poll_timeout_seconds": 600,
           "lane": "standard"
         },
@@ -167,10 +165,7 @@
         "default": "level-3",
         "verification-feedback": "level-3",
         "post-run-review": "level-5"
-      },
-      "self_review": "auto",
-      "simplify": "auto",
-      "drop_review_on_scope_gate": false
+      }
     },
     "finding_raw_input_max_bytes": 65536
   },
