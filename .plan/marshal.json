@@ -88,8 +88,10 @@
         "default:finalize-step-security-audit": {
           "lane": "full"
         },
-        "default:pre-submission-self-review": {
-          "drop_review_on_scope_gate": false,
+        "default:functional-review": {
+          "lane": "standard"
+        },
+        "default:code-review": {
           "lane": "standard"
         },
         "default:architecture-refresh": {
@@ -338,7 +340,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.1894",
-    "config_seed_fingerprint": "605fa294"
+    "provisioned_version": "0.1.1916",
+    "config_seed_fingerprint": "a2efc4ac"
   }
 }
