@@ -33,7 +33,6 @@
     },
     "phase-3-outline": {
       "plan_without_asking": false,
-      "qgate": "auto",
       "effort": "level-5",
       "q_gate_validation": "once"
     },
@@ -49,7 +48,6 @@
         "default:verify:compile",
         "default:verify:module-tests"
       ],
-      "per_task_budget_reserve_tokens": "50K",
       "verification_steps": {
         "default:verify:quality-gate": {},
         "default:verify:module-tests": {},
@@ -88,8 +86,10 @@
         "default:finalize-step-security-audit": {
           "lane": "full"
         },
-        "default:pre-submission-self-review": {
-          "drop_review_on_scope_gate": false,
+        "default:functional-review": {
+          "lane": "standard"
+        },
+        "default:code-review": {
           "lane": "standard"
         },
         "default:architecture-refresh": {
@@ -106,8 +106,9 @@
           "re_review_on_timeout": "ask",
           "review_rate_window_await": false,
           "review_rate_window_timeout_seconds": 3600,
-          "required_bots": "coderabbit",
-          "optional_bots": "sourcery,pr-agent",
+          "required_bots": "cuioss-review-bot,coderabbit",
+          "optional_bots": "sourcery",
+          "bot_lists_provenance": "answered",
           "review_completion_poll_timeout_seconds": 600,
           "lane": "standard"
         },
@@ -165,10 +166,7 @@
         "default": "level-3",
         "verification-feedback": "level-3",
         "post-run-review": "level-5"
-      },
-      "self_review": "auto",
-      "simplify": "auto",
-      "drop_review_on_scope_gate": false
+      }
     },
     "finding_raw_input_max_bytes": 65536
   },
@@ -338,7 +336,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.1894",
-    "config_seed_fingerprint": "605fa294"
+    "provisioned_version": "0.1.1916",
+    "config_seed_fingerprint": "a2efc4ac"
   }
 }
