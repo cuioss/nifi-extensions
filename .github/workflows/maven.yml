@@ -14,9 +14,9 @@ on:
   # feature branches with one of: `feature/*`, `fix/*`, `chore/*`, `release/*`
   # (or `dependabot/**`, `main`). Add any new prefix here before using it.
   push:
-    branches: [main, "feature/*", "fix/*", "chore/*", "release/*", "dependabot/**"]
+    branches: [main, "release/*", "dependabot/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "release/*"]
   merge_group:
     branches: [main]
   workflow_dispatch:
@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   build:
-    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@711571432df351d3c5b08d5d50cb6c331f61abb1 # v0.42.0
+    uses: cuioss/cuioss-organization/.github/workflows/reusable-maven-build.yml@3e1ecafb6a194fe22fc6a9bfdc2a41c81584f989 # v0.43.0
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       OSS_SONATYPE_USERNAME: ${{ secrets.OSS_SONATYPE_USERNAME }}
