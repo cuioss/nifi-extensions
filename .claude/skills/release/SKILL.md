@@ -1,13 +1,14 @@
 ---
 name: release
-description: Cut a project release — bump project.yml version, open and merge the release PR, wait for the automated Release workflow, then reformat the generated GitHub release notes
+description: Cut a project release — verify the custom-UI icon precondition, bump project.yml version, open and merge the release PR, wait for the automated Release workflow, then reformat the generated GitHub release notes
 user-invocable: true
 allowed-tools: Bash, Read, Edit, AskUserQuestion
 ---
 
 # Release Skill
 
-Cuts a new project release end-to-end: determine the version, open the version-bump PR
+Cuts a new project release end-to-end: determine the version, **verify the icon precondition**,
+open the version-bump PR
 that triggers the release, merge it, wait for the automated Release workflow, verify the
 release landed, and reformat the auto-generated GitHub release notes.
 
@@ -71,6 +72,53 @@ Also confirm the working tree is clean (`git status --porcelain`) before branchi
 git checkout main && git pull --ff-only origin main
 ```
 
+### Step 3a — Precondition: custom UI icons load (BLOCKING)
+
+**Never release without this passing.** It guards the regression from #600 / #602: `index.html`
+hardcoded `webjars/font-awesome/7.2.0/...` while the webjar had been bumped to 7.3.0, so the
+packaged WAR only contained the 7.3.0 path, both stylesheet links returned 404 and the custom UI
+rendered without icons. The fix filters `index.html` with `${version.webjars.font-awesome}`;
+this step proves that wiring still holds in the artifact that is about to ship — Dependabot
+bumps that property, the build-file filtering list or the webjar dependency can each silently
+break it again.
+
+1. Build the UI WAR from the freshly pulled `main` (the check must run against current `main`,
+   not a stale `target/`):
+
+   ```bash
+   python3 .plan/execute-script.py plan-marshall:build-maven:maven run \
+     --command-args "clean package -pl nifi-cuioss-ui -am -DskipTests"
+   ```
+2. Run the verifier from the repository root:
+
+   ```bash
+   .claude/skills/release/verify-icons.sh
+   ```
+
+   It asserts, against the built WAR: `index.html` has no unresolved `${...}`; every
+   `webjars/font-awesome/<v>/...` link uses exactly the `version.webjars.font-awesome` from
+   `pom.xml`; each linked CSS file and the webfonts really exist in the WAR (the actual 404);
+   and no second Font Awesome version is packaged.
+3. **Exit 0 → record the evidence and continue.** Note the Font Awesome version it printed
+   (`ICON PRECONDITION: PASS (Font Awesome <x>)`) — it goes into the release PR body (Step 7)
+   and the final report (Step 14).
+4. **Non-zero → STOP. Do not branch, do not release.** Show the user the failing lines. Fix on
+   a normal `fix/` PR (usual causes: `index.html` removed from the `maven-war-plugin`
+   `<webResources>` filtering include list in `nifi-cuioss-ui/pom.xml`; a hardcoded version
+   re-introduced in `index.html` or a CSS file; the webjar dependency or
+   `version.webjars.font-awesome` changed in only one place), merge it, then restart from
+   Step 2.
+
+Optional deeper check when a local deployment is running (see the `deploy` skill): also assert
+the live server serves the stylesheets —
+
+```bash
+NIFI_UI_BASE_URL=https://localhost:9095/nifi-cuioss-ui .claude/skills/release/verify-icons.sh
+```
+
+(adjust the base URL to the deployed custom-UI context path; every linked file must answer
+HTTP 200).
+
 ### Step 4 — Create the release branch
 
 Branch name uses the `chore/` prefix (required — the Maven CI workflow only triggers on
@@ -116,7 +164,10 @@ git push -u origin chore/release_<version>
 gh pr create --repo cuioss/nifi-extensions --base main \
   --label "skip-bot-review" \
   --title "chore(release): prepare release <version>" \
-  --body "Bump current-version to <version>, next-version to <next>-SNAPSHOT. Triggers the automated Release workflow on merge."
+  --body "Bump current-version to <version>, next-version to <next>-SNAPSHOT. Triggers the automated Release workflow on merge.
+
+Release preconditions:
+- [x] Custom UI icon check (Step 3a, #600/#602): PASS — Font Awesome <fa-version> verified in the built WAR (\`verify-icons.sh\`)"
 ```
 
 The release PR is a mechanical version bump (`project.yml` + optional README badge) — no
@@ -287,7 +338,8 @@ re-run. Also confirm no dependency line is missing a version range (rule 6), and
 
 ### Step 14 — Done
 
-Report: released version, release URL, the PR number, whether the NiFi badge changed, and a
+Report: released version, release URL, the PR number, whether the NiFi badge changed, the
+**icon precondition result (Font Awesome version verified in the WAR)**, and a
 short summary of how many dependency PRs were collapsed/removed during note reformatting.
 
 ## Critical rules
@@ -296,5 +348,8 @@ short summary of how many dependency PRs were collapsed/removed during note refo
   Maven release goals.
 - Branch prefix **must** be `chore/` (or another CI-accepted prefix) or the build check skips
   and auto-merge is blocked.
+- **Never release without a passing icon precondition (Step 3a).** `verify-icons.sh` exiting
+  non-zero blocks the release; there is no override. A release PR whose body lacks the passing
+  icon line must not be merged.
 - Never merge a red PR; fix and re-wait.
 - Temporary files go under `.plan/temp/`.
