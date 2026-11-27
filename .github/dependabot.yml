@@ -27,6 +27,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      # stylelint and its shareable configs peer-depend on each other (config-standard 41 needs
+      # stylelint 18), so separate PRs fail npm ERESOLVE until both land. Bump them together.
+      stylelint:
+        patterns:
+          - "stylelint"
+          - "stylelint-*"
     cooldown:
       default-days: 3
       semver-major-days: 7
