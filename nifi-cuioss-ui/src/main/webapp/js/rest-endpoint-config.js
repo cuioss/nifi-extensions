@@ -1457,9 +1457,9 @@ const buildEditorActions = (form, componentId, tableRow, routesContainer) => {
     saveBtn.className = 'save-route-button';
     saveBtn.innerHTML =
         `<i class="fa fa-check"></i> ${t('route.btn.save')}`;
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
         errorContainer.innerHTML = '';
-        saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
+        await saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
     });
     actionsDiv.appendChild(saveBtn);
 
