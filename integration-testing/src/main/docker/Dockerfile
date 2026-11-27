@@ -1,4 +1,4 @@
-FROM apache/nifi:2.10.0@sha256:362d7a7caa27f246f2fd8797f906cb216ae71546e15abee5c6b579187c42e28e
+FROM apache/nifi:2.12.0@sha256:6f7f2840dbf178c6dd3fa13435b9b358f3be3c6fb7417de467a35a267f4d28ad
 
 # Set environment variables for faster startup and HTTPS configuration.
 # NiFi 2.x is HTTPS-only: setting both NIFI_WEB_HTTP_PORT and NIFI_WEB_HTTPS_PORT
