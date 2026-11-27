@@ -972,8 +972,7 @@ export const buildActionButton = (className, title, iconClass, label) =>
 export const buildOriginBadge = (origin) => {
     const badgeType = ORIGIN_BADGE_CONFIG[origin] ? origin : 'persisted';
     const config = ORIGIN_BADGE_CONFIG[badgeType];
-    return buildIconElement('span', `origin-badge origin-${badgeType}`,
-        t(`${config.textKey}.title`), config.icon, t(config.textKey));
+    return buildIconElement('span', `origin-badge origin-${badgeType}`, t(`${config.textKey}.title`), config.icon, t(config.textKey));
 };
 
 // ---------------------------------------------------------------------------

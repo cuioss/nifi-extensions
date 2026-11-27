@@ -43,9 +43,7 @@ export const mockCreateContextHelp = ({ helpKey, propertyKey, currentValue }) =>
  * @param {Object} opts
  * @returns {HTMLDivElement}
  */
-export const mockCreateFormField = ({ container, idx, name, label, placeholder, value,
-    extraClass, hidden, inputClass, isTextArea,
-    helpKey, propertyKey, currentValue }) => {
+export const mockCreateFormField = ({ container, idx, name, label, placeholder, value, extraClass, hidden, inputClass, isTextArea, helpKey, propertyKey, currentValue }) => {
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);

@@ -46,11 +46,22 @@ import { createContextHelp } from './context-help.js';
  */
 export const createChipInput = ({ container, idx, value, config }) => {
     const {
-        cssPrefix, availableValues, fieldName, fieldClass,
-        label, placeholder, ariaLabel,
-        normalize, displayLabel, removeAriaLabel, isAllowed,
-        minSelected = 0, dispatchChange = false,
-        helpKey, propertyKey, currentValue
+        cssPrefix,
+        availableValues,
+        fieldName,
+        fieldClass,
+        label,
+        placeholder,
+        ariaLabel,
+        normalize,
+        displayLabel,
+        removeAriaLabel,
+        isAllowed,
+        minSelected = 0,
+        dispatchChange = false,
+        helpKey,
+        propertyKey,
+        currentValue
     } = config;
 
     const wrapper = document.createElement('div');

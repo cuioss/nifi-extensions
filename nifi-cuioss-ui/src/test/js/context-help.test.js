@@ -261,8 +261,12 @@ describe('createFormField', () => {
     it('should create an input field with label', () => {
         const container = document.createElement('div');
         const div = createFormField({
-            container, idx: 0, name: 'path',
-            label: 'Path', placeholder: '/api/*', value: '/foo'
+            container,
+            idx: 0,
+            name: 'path',
+            label: 'Path',
+            placeholder: '/api/*',
+            value: '/foo'
         });
 
         expect(div.className).toBe('form-field field-container-path');
@@ -279,8 +283,12 @@ describe('createFormField', () => {
     it('should create a textarea when isTextArea is true', () => {
         const container = document.createElement('div');
         const div = createFormField({
-            container, idx: 1, name: 'content',
-            label: 'Content', value: 'abc', isTextArea: true
+            container,
+            idx: 1,
+            name: 'content',
+            label: 'Content',
+            value: 'abc',
+            isTextArea: true
         });
 
         const textarea = div.querySelector('textarea');
@@ -293,8 +301,11 @@ describe('createFormField', () => {
     it('should attach context help when helpKey is provided', () => {
         const container = document.createElement('div');
         const div = createFormField({
-            container, idx: 0, name: 'port',
-            label: 'Port', value: '9443',
+            container,
+            idx: 0,
+            name: 'port',
+            label: 'Port',
+            value: '9443',
             helpKey: 'contexthelp.global.listening.port',
             propertyKey: 'rest.gateway.listening.port',
             currentValue: '9443'
@@ -309,8 +320,11 @@ describe('createFormField', () => {
     it('should not attach context help when helpKey is absent', () => {
         const container = document.createElement('div');
         const div = createFormField({
-            container, idx: 0, name: 'port',
-            label: 'Port', value: '9443'
+            container,
+            idx: 0,
+            name: 'port',
+            label: 'Port',
+            value: '9443'
         });
 
         expect(div.querySelector('.context-help-toggle')).toBeNull();
@@ -320,8 +334,12 @@ describe('createFormField', () => {
     it('should apply extraClass and hidden', () => {
         const container = document.createElement('div');
         const div = createFormField({
-            container, idx: 0, name: 'url',
-            label: 'URL', extraClass: 'jwks-type-url', hidden: true
+            container,
+            idx: 0,
+            name: 'url',
+            label: 'URL',
+            extraClass: 'jwks-type-url',
+            hidden: true
         });
 
         expect(div.classList.contains('jwks-type-url')).toBe(true);
@@ -331,8 +349,11 @@ describe('createFormField', () => {
     it('should apply inputClass to the input element', () => {
         const container = document.createElement('div');
         createFormField({
-            container, idx: 0, name: 'test',
-            label: 'Test', inputClass: 'route-config-field'
+            container,
+            idx: 0,
+            name: 'test',
+            label: 'Test',
+            inputClass: 'route-config-field'
         });
 
         const input = container.querySelector('input');

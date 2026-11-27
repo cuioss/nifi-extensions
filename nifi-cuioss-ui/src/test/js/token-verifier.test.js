@@ -62,7 +62,9 @@ describe('token-verifier', () => {
         // Empty token now surfaces a real Error (the "token required" message) instead of a
         // null error that rendered "Unknown error".
         expect(utils.displayUiError).toHaveBeenCalledWith(
-            expect.any(Element), expect.any(Error), {}
+            expect.any(Element),
+            expect.any(Error),
+            {}
         );
     });
 
@@ -161,7 +163,9 @@ describe('token-verifier', () => {
         await new Promise((r) => setTimeout(r, 10));
 
         expect(utils.displayUiError).toHaveBeenCalledWith(
-            expect.any(Element), error, {}
+            expect.any(Element),
+            error,
+            {}
         );
     });
 

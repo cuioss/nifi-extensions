@@ -8,9 +8,15 @@
 
 import * as api from './api.js';
 import {
-    sanitizeHtml, displayUiError, displayUiSuccess, confirmRemoveIssuer,
-    validateIssuerConfig, log, t,
-    buildOriginBadge, buildActionButton
+    sanitizeHtml,
+    displayUiError,
+    displayUiSuccess,
+    confirmRemoveIssuer,
+    validateIssuerConfig,
+    log,
+    t,
+    buildOriginBadge,
+    buildActionButton
 } from './utils.js';
 import { createContextHelp, createFormField } from './context-help.js';
 
@@ -75,8 +81,7 @@ export const init = async (element, options = {}) => {
         if (isGateway) {
             openInlineIssuerEditor(issuersContainer, '', SAMPLE.props, ctx, null);
         } else {
-            addIssuerForm(issuersContainer, `${SAMPLE.name}-${Date.now()}`,
-                SAMPLE.props, componentId);
+            addIssuerForm(issuersContainer, `${SAMPLE.name}-${Date.now()}`, SAMPLE.props, componentId);
         }
     });
     container.appendChild(addBtn);
@@ -174,30 +179,10 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
     jwksTypeDiv.appendChild(select);
     fields.appendChild(jwksTypeDiv);
 
-    addField({ container: fields, idx, name: 'issuer', label: t('issuer.form.issuer.uri.label'),
-        placeholder: t('issuer.form.issuer.uri.placeholder'),
-        value: properties?.issuer,
-        helpKey: 'contexthelp.issuer.uri', propertyKey: `issuer.${iName}.issuer`,
-        currentValue: properties?.issuer });
-    addField({ container: fields, idx, name: 'jwks-url', label: t('issuer.form.jwks.url.label'),
-        placeholder: t('issuer.form.jwks.url.placeholder'),
-        value: properties?.['jwks-url'], extraClass: 'jwks-type-url',
-        hidden: jwksType !== 'url',
-        helpKey: 'contexthelp.issuer.jwks.url', propertyKey: `issuer.${iName}.jwks-url`,
-        currentValue: properties?.['jwks-url'] });
-    addField({ container: fields, idx, name: 'jwks-file', label: t('issuer.form.jwks.file.label'),
-        placeholder: t('issuer.form.jwks.file.placeholder'),
-        value: properties?.['jwks-file'], extraClass: 'jwks-type-file',
-        hidden: jwksType !== 'file',
-        helpKey: 'contexthelp.issuer.jwks.file', propertyKey: `issuer.${iName}.jwks-file`,
-        currentValue: properties?.['jwks-file'] });
-    addTextArea({ container: fields, idx, name: 'jwks-content',
-        label: t('issuer.form.jwks.content.label'),
-        placeholder: t('issuer.form.jwks.content.placeholder'),
-        value: properties?.['jwks-content'], extraClass: 'jwks-type-memory',
-        hidden: jwksType !== 'memory',
-        helpKey: 'contexthelp.issuer.jwks.content', propertyKey: `issuer.${iName}.jwks-content`,
-        currentValue: properties?.['jwks-content'] });
+    addField({ container: fields, idx, name: 'issuer', label: t('issuer.form.issuer.uri.label'), placeholder: t('issuer.form.issuer.uri.placeholder'), value: properties?.issuer, helpKey: 'contexthelp.issuer.uri', propertyKey: `issuer.${iName}.issuer`, currentValue: properties?.issuer });
+    addField({ container: fields, idx, name: 'jwks-url', label: t('issuer.form.jwks.url.label'), placeholder: t('issuer.form.jwks.url.placeholder'), value: properties?.['jwks-url'], extraClass: 'jwks-type-url', hidden: jwksType !== 'url', helpKey: 'contexthelp.issuer.jwks.url', propertyKey: `issuer.${iName}.jwks-url`, currentValue: properties?.['jwks-url'] });
+    addField({ container: fields, idx, name: 'jwks-file', label: t('issuer.form.jwks.file.label'), placeholder: t('issuer.form.jwks.file.placeholder'), value: properties?.['jwks-file'], extraClass: 'jwks-type-file', hidden: jwksType !== 'file', helpKey: 'contexthelp.issuer.jwks.file', propertyKey: `issuer.${iName}.jwks-file`, currentValue: properties?.['jwks-file'] });
+    addTextArea({ container: fields, idx, name: 'jwks-content', label: t('issuer.form.jwks.content.label'), placeholder: t('issuer.form.jwks.content.placeholder'), value: properties?.['jwks-content'], extraClass: 'jwks-type-memory', hidden: jwksType !== 'memory', helpKey: 'contexthelp.issuer.jwks.content', propertyKey: `issuer.${iName}.jwks-content`, currentValue: properties?.['jwks-content'] });
 
     // Toggle field visibility on type change
     fields.querySelector('.field-jwks-type').addEventListener('change', (e) => {
@@ -217,8 +202,7 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
         <div class="verification-result" aria-live="polite"
              role="status">
             <em>${t('issuer.jwks.test.hint')}</em></div>`;
-    const verifyButton = buildActionButton('verify-jwks-button',
-        t('issuer.jwks.test.title'), 'fa-plug', t('issuer.jwks.test.btn'));
+    const verifyButton = buildActionButton('verify-jwks-button', t('issuer.jwks.test.title'), 'fa-plug', t('issuer.jwks.test.btn'));
     verifyButton.type = 'button';
     tw.prepend(verifyButton);
     const urlField = fields.querySelector('.jwks-type-url');
@@ -240,16 +224,8 @@ const buildIssuerFields = (form, fields, idx, properties, issuerName = '*') => {
         performJwksValidation(type, value, rc);
     });
 
-    addField({ container: fields, idx, name: 'audience', label: t('issuer.form.audience.label'),
-        placeholder: t('issuer.form.audience.placeholder'),
-        value: properties?.audience,
-        helpKey: 'contexthelp.issuer.audience', propertyKey: `issuer.${iName}.audience`,
-        currentValue: properties?.audience });
-    addField({ container: fields, idx, name: 'client-id', label: t('issuer.form.client.id.label'),
-        placeholder: t('issuer.form.client.id.placeholder'),
-        value: properties?.['client-id'],
-        helpKey: 'contexthelp.issuer.client.id', propertyKey: `issuer.${iName}.client-id`,
-        currentValue: properties?.['client-id'] });
+    addField({ container: fields, idx, name: 'audience', label: t('issuer.form.audience.label'), placeholder: t('issuer.form.audience.placeholder'), value: properties?.audience, helpKey: 'contexthelp.issuer.audience', propertyKey: `issuer.${iName}.audience`, currentValue: properties?.audience });
+    addField({ container: fields, idx, name: 'client-id', label: t('issuer.form.client.id.label'), placeholder: t('issuer.form.client.id.placeholder'), value: properties?.['client-id'], helpKey: 'contexthelp.issuer.client.id', propertyKey: `issuer.${iName}.client-id`, currentValue: properties?.['client-id'] });
 };
 
 // ---------------------------------------------------------------------------
@@ -548,10 +524,9 @@ const createIssuerTableRow = (name, props, ctx, issuersContainer, origin = 'pers
     const cells = row.querySelectorAll('td');
     if (originBadge) cells[0].append(document.createTextNode(' '), originBadge);
     cells[4].append(
-        buildActionButton('edit-issuer-button', t('issuer.table.edit.title'),
-            'fa-pencil', t('common.btn.edit')),
-        buildActionButton('remove-issuer-gw-button', t('issuer.table.remove.title'),
-            'fa-trash', t('common.btn.remove')));
+        buildActionButton('edit-issuer-button', t('issuer.table.edit.title'), 'fa-pencil', t('common.btn.edit')),
+        buildActionButton('remove-issuer-gw-button', t('issuer.table.remove.title'), 'fa-trash', t('common.btn.remove'))
+    );
 
     row.querySelector('.edit-issuer-button').addEventListener('click', () => {
         closeActiveIssuerEditor(issuersContainer);

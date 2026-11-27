@@ -658,7 +658,8 @@ describe('issuer-config', () => {
                 }
             });
             api.validateJwksUrl.mockResolvedValue({
-                valid: true, keyCount: 2
+                valid: true,
+                keyCount: 2
             });
 
             await init(container, {
@@ -865,7 +866,8 @@ describe('issuer-config', () => {
                 }
             });
             api.validateJwksFile.mockResolvedValue({
-                valid: true, keyCount: 1
+                valid: true,
+                keyCount: 1
             });
 
             await init(container, {
@@ -899,7 +901,8 @@ describe('issuer-config', () => {
                 }
             });
             api.validateJwksContent.mockResolvedValue({
-                valid: true, keyCount: 1
+                valid: true,
+                keyCount: 1
             });
 
             await init(container, {

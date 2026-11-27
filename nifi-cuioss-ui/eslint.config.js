@@ -72,8 +72,9 @@ export default [
             '@stylistic/keyword-spacing': 'error',
             '@stylistic/space-infix-ops': 'error',
             '@stylistic/eol-last': 'error',
-            '@stylistic/object-curly-spacing': ['error', 'always'],
-            '@stylistic/array-bracket-spacing': ['error', 'never'],
+            // Replaces the deprecated object-curly-spacing / array-bracket-spacing;
+            // the rule defaults are equivalent (objects spaced, arrays and calls not).
+            '@stylistic/list-style': 'error',
             '@stylistic/block-spacing': 'error',
             '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: true }],
             '@stylistic/comma-spacing': ['error', { before: false, after: true }],
