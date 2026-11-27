@@ -9,6 +9,12 @@ permissions:
 jobs:
   auto-merge:
     uses: cuioss/cuioss-organization/.github/workflows/reusable-dependabot-auto-merge.yml@a7e76c841bc9bf8bb91be66c979762724956016c # v0.46.0
+    with:
+      # The reusable default is 'minor,patch', which left green MAJOR bumps (e.g. #699, #700)
+      # unlabelled and therefore never swept. Major bumps are safe to automate here: the
+      # sweeper only enqueues PRs whose checks are green and the merge queue re-runs the full
+      # build / integration / e2e suite before anything lands on main.
+      allowed-update-types: 'major,minor,patch'
     permissions:
       contents: write
       pull-requests: write
