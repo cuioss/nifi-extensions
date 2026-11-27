@@ -58,3 +58,14 @@ updates:
       semver-major-days: 7
       semver-minor-days: 3
       semver-patch-days: 1
+
+  # The E2E / integration-test NiFi image. Without this entry the Dockerfile silently fell
+  # five minor versions behind the compiled NiFi version (2.10.0 vs 2.12.0). Docker Hub
+  # publishes the image about a day after the Maven artifacts, hence the short cooldown.
+  - package-ecosystem: docker
+    directory: "/integration-testing/src/main/docker"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 1
+      semver-major-days: 7
