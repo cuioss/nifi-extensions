@@ -9,9 +9,13 @@
  */
 
 import {
-    fetchGatewayApi, sendGatewayTestRequest, fetchOAuthToken,
-    discoverTokenEndpoint, resolveJwtConfigServiceId,
-    getControllerServiceProperties, getComponentId
+    fetchGatewayApi,
+    sendGatewayTestRequest,
+    fetchOAuthToken,
+    discoverTokenEndpoint,
+    resolveJwtConfigServiceId,
+    getControllerServiceProperties,
+    getComponentId
 } from './api.js';
 import { log, t } from './utils.js';
 
@@ -512,7 +516,11 @@ const validateTokenFetchFields = (container) => {
     if (!clientId) markRequired('.tf-client-id');
 
     const payload = {
-        tokenEndpointUrl, grantType, clientId, clientSecret, scope
+        tokenEndpointUrl,
+        grantType,
+        clientId,
+        clientSecret,
+        scope
     };
 
     if (grantType === 'password') {
@@ -531,8 +539,7 @@ const validateTokenFetchFields = (container) => {
 const applyTokenFetchSuccess = (container, statusEl, result) => {
     container.querySelector('.token-input').value = result.access_token;
     const expiresIn = result.expires_in;
-    statusEl.textContent = t('tester.token.fetch.success',
-        expiresIn || '?');
+    statusEl.textContent = t('tester.token.fetch.success', expiresIn || '?');
     statusEl.className = 'token-fetch-status success';
     if (expiresIn) startExpiryCountdown(statusEl, expiresIn);
 };

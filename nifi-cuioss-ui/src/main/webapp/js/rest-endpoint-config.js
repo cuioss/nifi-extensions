@@ -11,8 +11,16 @@
 import { getComponentId } from './api.js';
 import * as api from './api.js';
 import {
-    sanitizeHtml, sanitizeAttr, displayUiError, displayUiSuccess, confirmRemoveRoute, t,
-    buildOriginBadge, buildActionButton, buildIconElement, log
+    sanitizeHtml,
+    sanitizeAttr,
+    displayUiError,
+    displayUiSuccess,
+    confirmRemoveRoute,
+    t,
+    buildOriginBadge,
+    buildActionButton,
+    buildIconElement,
+    log
 } from './utils.js';
 import { createMethodChipInput } from './method-chip-input.js';
 import { createAuthModeChipInput } from './auth-mode-chip-input.js';
@@ -143,8 +151,7 @@ const buildTrackingBadge = (trackingMode, methods, minCount, maxCount) => {
         const bounds = max > 0 ? `${min}-${max}` : `${min}+`;
         label += ` + ${t('route.form.tracking.attachments')} (${bounds})`;
     }
-    return buildIconElement('span', 'tracking-badge', t('route.table.tracking.title'), 'fa-clock',
-        `${label}${methodSuffix}`);
+    return buildIconElement('span', 'tracking-badge', t('route.table.tracking.title'), 'fa-clock', `${label}${methodSuffix}`);
 };
 
 /**
@@ -247,7 +254,9 @@ const renderGlobalSettings = (container, properties) => {
         const helpKey = GLOBAL_HELP_KEYS[key];
         if (helpKey) {
             const { button, panel } = createContextHelp({
-                helpKey, propertyKey: key, currentValue: display
+                helpKey,
+                propertyKey: key,
+                currentValue: display
             });
             helpCell.appendChild(button);
 
@@ -349,7 +358,11 @@ const renderManagementEndpoints = (container, managementEndpoints, componentId) 
             <td></td>`;
 
         row.querySelectorAll('td')[5].appendChild(buildActionButton(
-            'edit-route-button btn-edit', t('route.management.edit.title'), 'fa-pencil', t('mgmt.edit')));
+            'edit-route-button btn-edit',
+            t('route.management.edit.title'),
+            'fa-pencil',
+            t('mgmt.edit')
+        ));
 
         row.querySelector('.btn-edit').addEventListener('click', () => {
             openManagementEditor(mgmtEl, ep, componentId, row);
@@ -442,7 +455,9 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
 
     // Required Roles field
     addField({
-        container: fields, idx, name: 'required-roles',
+        container: fields,
+        idx,
+        name: 'required-roles',
         label: t('mgmt.roles.label'),
         placeholder: t('mgmt.roles.placeholder'),
         value: currentRoles,
@@ -453,7 +468,9 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
 
     // Required Scopes field
     addField({
-        container: fields, idx, name: 'required-scopes',
+        container: fields,
+        idx,
+        name: 'required-scopes',
         label: t('mgmt.scopes.label'),
         placeholder: t('mgmt.scopes.placeholder'),
         value: currentScopes,
@@ -503,9 +520,15 @@ const openManagementEditor = (mgmtEl, ep, componentId, tableRow) => {
         const rolesValue = rolesInput ? rolesInput.value.trim() : '';
         const scopesValue = scopesInput ? scopesInput.value.trim() : '';
         saveManagementEndpoint({
-            ep, componentId, enabled: enabledCheckbox.checked, authModeValue,
-            rolesValue, scopesValue,
-            form, tableRow, errEl: errorContainer
+            ep,
+            componentId,
+            enabled: enabledCheckbox.checked,
+            authModeValue,
+            rolesValue,
+            scopesValue,
+            form,
+            tableRow,
+            errEl: errorContainer
         });
     });
     actionsDiv.appendChild(saveBtn);
@@ -576,8 +599,15 @@ const applyManagementSave = (tableRow, enabled, authModeValue, rolesValue, scope
  * @param {HTMLElement} opts.errEl  error container element
  */
 const saveManagementEndpoint = async ({
-    ep, componentId, enabled, authModeValue,
-    rolesValue, scopesValue, form, tableRow, errEl
+    ep,
+    componentId,
+    enabled,
+    authModeValue,
+    rolesValue,
+    scopesValue,
+    form,
+    tableRow,
+    errEl
 }) => {
     const updates = {
         [`rest.gateway.management.${ep.name}.enabled`]: String(enabled),
@@ -800,8 +830,7 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const statusText = enabledVal ? t('common.status.enabled') : t('common.status.disabled');
 
     const schemaBadge = buildSchemaBadge(props?.schema);
-    const trackingBadge = buildTrackingBadge(props?.['tracking-mode'], methods,
-        props?.['attachments-min-count'], props?.['attachments-max-count']);
+    const trackingBadge = buildTrackingBadge(props?.['tracking-mode'], methods, props?.['attachments-min-count'], props?.['attachments-max-count']);
 
     const originBadge = buildOriginBadge(origin);
 
@@ -821,12 +850,8 @@ const createTableRow = (name, props, componentId, routesContainer, origin = 'per
     const isExternalOnly = origin === 'external';
     // External routes can be edited (saves as NiFi override) but not deleted (config file owns them)
     const actionButtons = isExternalOnly
-        ? [buildActionButton('edit-route-button', t('route.source.external.edit.tooltip'),
-            'fa-pencil', t('common.btn.edit'))]
-        : [buildActionButton('edit-route-button', t('route.table.edit.title'),
-            'fa-pencil', t('common.btn.edit')),
-        buildActionButton('remove-route-button', t('route.table.remove.title'),
-            'fa-trash', t('common.btn.remove'))];
+        ? [buildActionButton('edit-route-button', t('route.source.external.edit.tooltip'), 'fa-pencil', t('common.btn.edit'))]
+        : [buildActionButton('edit-route-button', t('route.table.edit.title'), 'fa-pencil', t('common.btn.edit')), buildActionButton('remove-route-button', t('route.table.remove.title'), 'fa-trash', t('common.btn.remove'))];
 
     row.innerHTML = `
         <td>${sanitizeHtml(name)}</td>
@@ -886,8 +911,7 @@ const updateTableRow = (row, formData) => {
     }
 
     const schemaBadge = buildSchemaBadge(formData.schema);
-    const trackingBadge = buildTrackingBadge(formData['tracking-mode'], formData.methods,
-        formData['attachments-min-count'], formData['attachments-max-count']);
+    const trackingBadge = buildTrackingBadge(formData['tracking-mode'], formData.methods, formData['attachments-min-count'], formData['attachments-max-count']);
     cells[2].innerHTML = sanitizeHtml(formData.path);
     if (schemaBadge) cells[2].append(document.createTextNode(' '), schemaBadge);
     if (trackingBadge) cells[2].append(document.createTextNode(' '), trackingBadge);
@@ -1016,7 +1040,9 @@ const buildBasicSection = (idx, rn, properties) => {
     fields.className = 'form-fields';
     section.appendChild(fields);
     addField({
-        container: fields, idx, name: 'path',
+        container: fields,
+        idx,
+        name: 'path',
         label: t('route.form.path.label'),
         placeholder: t('route.form.path.placeholder'),
         value: properties?.path,
@@ -1025,7 +1051,9 @@ const buildBasicSection = (idx, rn, properties) => {
         currentValue: properties?.path
     });
     createMethodChipInput({
-        container: fields, idx, value: properties?.methods
+        container: fields,
+        idx,
+        value: properties?.methods
     });
     return section;
 };
@@ -1039,14 +1067,17 @@ const buildAuthSection = (idx, rn, properties) => {
 
     const currentAuthMode = properties?.['auth-mode'] || 'bearer';
     const authModeChip = createAuthModeChipInput({
-        container: authFields, idx, value: currentAuthMode,
+        container: authFields,
+        idx,
+        value: currentAuthMode,
         helpKey: 'contexthelp.route.authmode',
         propertyKey: `restapi.${rn}.auth-mode`,
         currentValue: currentAuthMode
     });
 
     addField({
-        container: authFields, idx,
+        container: authFields,
+        idx,
         name: 'required-roles',
         label: t('route.form.roles.label'),
         placeholder: t('route.form.roles.placeholder'),
@@ -1056,7 +1087,8 @@ const buildAuthSection = (idx, rn, properties) => {
         currentValue: properties?.['required-roles']
     });
     addField({
-        container: authFields, idx,
+        container: authFields,
+        idx,
         name: 'required-scopes',
         label: t('route.form.scopes.label'),
         placeholder: t('route.form.scopes.placeholder'),
@@ -1067,9 +1099,11 @@ const buildAuthSection = (idx, rn, properties) => {
     });
 
     const rolesContainer = authFields.querySelector(
-        '.field-container-required-roles');
+        '.field-container-required-roles'
+    );
     const scopesContainer = authFields.querySelector(
-        '.field-container-required-scopes');
+        '.field-container-required-scopes'
+    );
     const toggleRolesScopes = () => {
         const modes = (authModeChip.getValue() || '')
             .split(',').map((m) => m.trim());
@@ -1128,13 +1162,11 @@ const buildAttachmentBoundsFields = (properties) => {
     timeoutInput.className = 'field-attachments-timeout-value';
     timeoutInput.min = '1';
     timeoutInput.value = timeoutNum;
-    timeoutInput.setAttribute('aria-label',
-        t('route.form.attachments.timeout'));
+    timeoutInput.setAttribute('aria-label', t('route.form.attachments.timeout'));
 
     const timeoutUnitSelect = document.createElement('select');
     timeoutUnitSelect.className = 'field-attachments-timeout-unit';
-    timeoutUnitSelect.setAttribute('aria-label',
-        t('route.form.attachments.timeout') + ' unit');
+    timeoutUnitSelect.setAttribute('aria-label', t('route.form.attachments.timeout') + ' unit');
     for (const tu of ATTACHMENTS_TIMEOUT_UNITS) {
         const opt = document.createElement('option');
         opt.value = tu;
@@ -1199,8 +1231,7 @@ const buildTrackingSection = (idx, rn, properties) => {
     trackingToggle.appendChild(attachmentFields);
 
     const toggleAttachmentFields = () => {
-        attachmentFields.classList.toggle('hidden',
-            trackingSelect.value !== 'attachments');
+        attachmentFields.classList.toggle('hidden', trackingSelect.value !== 'attachments');
     };
     trackingSelect.addEventListener('change', toggleAttachmentFields);
     toggleAttachmentFields();
@@ -1213,7 +1244,8 @@ const buildTrackingSection = (idx, rn, properties) => {
 const collectExistingConnectionNames = (routesContainer, excludeRoute) => {
     const names = [];
     for (const r of routesContainer.querySelectorAll(
-        'tr[data-route-name]')) {
+        'tr[data-route-name]'
+    )) {
         if (r.dataset.routeName === excludeRoute) continue;
         const cell = r.querySelectorAll('td')[1];
         if (!cell || cell.querySelector('.empty-state')) continue;
@@ -1226,8 +1258,7 @@ const collectExistingConnectionNames = (routesContainer, excludeRoute) => {
 };
 
 /** Build the flowfile toggle + success-outcome field. */
-const buildFlowFileFields = (section, idx, rn, properties,
-    routesContainer, routeName) => {
+const buildFlowFileFields = (section, idx, rn, properties, routesContainer, routeName) => {
     const createFlowFileVal = properties?.['create-flowfile'] !== 'false';
     const flowFileToggle = document.createElement('div');
     flowFileToggle.className = 'form-field field-container-create-flowfile';
@@ -1255,7 +1286,9 @@ const buildFlowFileFields = (section, idx, rn, properties,
     section.appendChild(flowFileToggle);
 
     const existingNames = collectExistingConnectionNames(
-        routesContainer, routeName);
+        routesContainer,
+        routeName
+    );
 
     const outcomeContainer = document.createElement('div');
     outcomeContainer.className =
@@ -1280,8 +1313,7 @@ const buildFlowFileFields = (section, idx, rn, properties,
         'field-success-outcome form-input route-config-field';
     outcomeInput.placeholder = t('route.form.connection.placeholder');
     outcomeInput.value = properties?.['success-outcome'] || routeName;
-    outcomeInput.setAttribute('aria-label',
-        t('route.form.connection.label'));
+    outcomeInput.setAttribute('aria-label', t('route.form.connection.label'));
     outcomeInput.setAttribute('list', `connection-names-${idx}`);
     outcomeContainer.appendChild(outcomeInput);
 
@@ -1298,8 +1330,7 @@ const buildFlowFileFields = (section, idx, rn, properties,
     section.appendChild(outcomeContainer);
 
     flowfileCheckbox.addEventListener('change', () => {
-        outcomeContainer.classList.toggle('hidden',
-            !flowfileCheckbox.checked);
+        outcomeContainer.classList.toggle('hidden', !flowfileCheckbox.checked);
     });
 };
 
@@ -1316,8 +1347,7 @@ const buildSchemaFields = (section, idx, rn, properties, hasSchema) => {
     schemaCheckboxEl.id = `schema-check-${idx}`;
     schemaCheckboxEl.className = 'schema-validation-checkbox';
     if (hasSchema) schemaCheckboxEl.checked = true;
-    schemaCheckboxEl.setAttribute('aria-label',
-        'Enable Schema Validation');
+    schemaCheckboxEl.setAttribute('aria-label', 'Enable Schema Validation');
     schemaLabel.appendChild(schemaCheckboxEl);
     schemaLabel.append(` ${t('route.form.schema.toggle')}`);
 
@@ -1372,10 +1402,12 @@ const buildSchemaFields = (section, idx, rn, properties, hasSchema) => {
 
     const fileRadio = schemaContainer.querySelector('.schema-mode-file');
     const inlineRadio = schemaContainer.querySelector(
-        '.schema-mode-inline');
+        '.schema-mode-inline'
+    );
     const fileDiv = schemaContainer.querySelector('.schema-file-input');
     const inlineDiv = schemaContainer.querySelector(
-        '.schema-inline-input');
+        '.schema-inline-input'
+    );
     fileRadio.addEventListener('change', () => {
         fileDiv.classList.remove('hidden');
         inlineDiv.classList.add('hidden');
@@ -1385,37 +1417,33 @@ const buildSchemaFields = (section, idx, rn, properties, hasSchema) => {
         fileDiv.classList.add('hidden');
     });
     schemaCheckboxEl.addEventListener('change', () => {
-        schemaContainer.classList.toggle('hidden',
-            !schemaCheckboxEl.checked);
+        schemaContainer.classList.toggle('hidden', !schemaCheckboxEl.checked);
     });
 };
 
 /** Build the Advanced section (max-request-size, flowfile, schema). */
-const buildAdvancedSection = (idx, rn, properties,
-    routesContainer, routeName) => {
+const buildAdvancedSection = (idx, rn, properties, routesContainer, routeName) => {
     const section = createSection('route.form.section.advanced');
     const advancedFields = document.createElement('div');
     advancedFields.className = 'form-fields';
     section.appendChild(advancedFields);
 
     addField({
-        container: advancedFields, idx,
+        container: advancedFields,
+        idx,
         name: 'max-request-size',
         label: t('route.form.max.request.size.label'),
         placeholder: t('route.form.max.request.size.placeholder'),
         value: properties?.['max-request-size'] || ''
     });
 
-    buildFlowFileFields(section, idx, rn, properties,
-        routesContainer, routeName);
-    buildSchemaFields(section, idx, rn, properties,
-        !!properties?.schema?.trim());
+    buildFlowFileFields(section, idx, rn, properties, routesContainer, routeName);
+    buildSchemaFields(section, idx, rn, properties, !!properties?.schema?.trim());
     return section;
 };
 
 /** Build error container and action buttons (Save + Cancel). */
-const buildEditorActions = (form, componentId, tableRow,
-    routesContainer) => {
+const buildEditorActions = (form, componentId, tableRow, routesContainer) => {
     const errorContainer = document.createElement('div');
     errorContainer.className = 'route-form-error-messages';
     errorContainer.setAttribute('role', 'alert');
@@ -1431,8 +1459,7 @@ const buildEditorActions = (form, componentId, tableRow,
         `<i class="fa fa-check"></i> ${t('route.btn.save')}`;
     saveBtn.addEventListener('click', () => {
         errorContainer.innerHTML = '';
-        saveRoute(form, errorContainer, componentId,
-            tableRow, routesContainer);
+        saveRoute(form, errorContainer, componentId, tableRow, routesContainer);
     });
     actionsDiv.appendChild(saveBtn);
 
@@ -1476,8 +1503,7 @@ const openInlineEditor = (routesContainer, routeName, properties, componentId, t
     form.appendChild(buildBasicSection(idx, rn, properties));
     form.appendChild(buildAuthSection(idx, rn, properties));
     form.appendChild(buildTrackingSection(idx, rn, properties));
-    form.appendChild(buildAdvancedSection(idx, rn, properties,
-        routesContainer, routeName));
+    form.appendChild(buildAdvancedSection(idx, rn, properties, routesContainer, routeName));
     buildEditorActions(form, componentId, tableRow, routesContainer);
 
     routesContainer.appendChild(form);
@@ -1679,8 +1705,7 @@ const appendRouteTrackingLines = (lines, p, props) => {
  * @returns {string[]}
  */
 const buildRouteExportLines = (data, props) => {
-    const { name, prefix, pathText, methods, authModeValue, enabled,
-        hasSchemaBadge, outcomeDash, outcomeText } = data;
+    const { name, prefix, pathText, methods, authModeValue, enabled, hasSchemaBadge, outcomeDash, outcomeText } = data;
     const lines = [];
     const p = `${prefix}${ROUTE_PREFIX}${name}`;
 
@@ -1883,8 +1908,7 @@ const showSaveSuccessBanner = (routesContainer) => {
  * @param {HTMLElement} routesContainer  the .routes-container element
  */
 /** Apply route save result to the UI (update or add row, close form). */
-const applyRouteSaveToUI = (form, formData, tableRow, routesContainer,
-    componentId, origin) => {
+const applyRouteSaveToUI = (form, formData, tableRow, routesContainer, componentId, origin) => {
     form.dataset.originalName = formData.routeName;
     if (tableRow) {
         // Preserve external provenance — an 'external'-origin route edited and persisted
@@ -1904,8 +1928,7 @@ const applyRouteSaveToUI = (form, formData, tableRow, routesContainer,
 };
 
 /** If a route was renamed, mark old properties for deletion. */
-const collectRouteRenameCleanup = async (componentId, originalName,
-    updates) => {
+const collectRouteRenameCleanup = async (componentId, originalName, updates) => {
     const prefix = `${ROUTE_PREFIX}${originalName}.`;
     try {
         const res = await api.getComponentProperties(componentId);
@@ -1916,14 +1939,12 @@ const collectRouteRenameCleanup = async (componentId, originalName,
     } catch { /* ignore — old props will remain as orphans */ }
 };
 
-const saveRoute = async (form, errEl, componentId, tableRow,
-    routesContainer) => {
+const saveRoute = async (form, errEl, componentId, tableRow, routesContainer) => {
     const f = extractFormFields(form);
     const originalName = form.dataset.originalName || '';
     const v = validateFormData(f, routesContainer, originalName);
     if (!v.isValid) {
-        displayUiError(errEl, v.error, {},
-            'routeConfigEditor.error.title');
+        displayUiError(errEl, v.error, {}, 'routeConfigEditor.error.title');
         return;
     }
 
@@ -1931,25 +1952,21 @@ const saveRoute = async (form, errEl, componentId, tableRow,
     const updates = buildPropertyUpdates(f.routeName, f);
 
     if (nameChanged) {
-        await collectRouteRenameCleanup(componentId, originalName,
-            updates);
+        await collectRouteRenameCleanup(componentId, originalName, updates);
     }
 
     if (!componentId) {
-        applyRouteSaveToUI(form, f, tableRow, routesContainer,
-            componentId);
+        applyRouteSaveToUI(form, f, tableRow, routesContainer, componentId);
         showInfoBanner(routesContainer);
         return;
     }
 
     try {
         await api.updateComponentProperties(componentId, updates);
-        applyRouteSaveToUI(form, f, tableRow, routesContainer,
-            componentId, 'persisted');
+        applyRouteSaveToUI(form, f, tableRow, routesContainer, componentId, 'persisted');
         showSaveSuccessBanner(routesContainer);
     } catch (error) {
-        displayUiError(errEl, error, {},
-            'routeConfigEditor.error.saveFailedTitle');
+        displayUiError(errEl, error, {}, 'routeConfigEditor.error.saveFailedTitle');
     }
 };
 

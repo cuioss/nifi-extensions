@@ -18,16 +18,27 @@ let _refreshGeneration = 0;
 
 /** All known gateway event types — shown even when zero to give a complete dashboard view. */
 const GATEWAY_EVENT_TYPES = [
-    'MISSING_BEARER_TOKEN', 'AUTH_FAILED', 'AUTHZ_ROLE_DENIED', 'AUTHZ_SCOPE_DENIED',
-    'BODY_TOO_LARGE', 'ROUTE_NOT_FOUND', 'METHOD_NOT_ALLOWED', 'SCHEMA_VALIDATION_FAILED',
+    'MISSING_BEARER_TOKEN',
+    'AUTH_FAILED',
+    'AUTHZ_ROLE_DENIED',
+    'AUTHZ_SCOPE_DENIED',
+    'BODY_TOO_LARGE',
+    'ROUTE_NOT_FOUND',
+    'METHOD_NOT_ALLOWED',
+    'SCHEMA_VALIDATION_FAILED',
     'QUEUE_FULL'
 ];
 
 /** Key HTTP security event types from cui-http UrlSecurityFailureType — curated subset. */
 const HTTP_SECURITY_TYPES = [
-    'invalid_encoding', 'path_traversal_detected', 'null_byte_injection',
-    'control_characters', 'suspicious_pattern_detected', 'known_attack_signature',
-    'protocol_violation', 'malformed_url'
+    'invalid_encoding',
+    'path_traversal_detected',
+    'null_byte_injection',
+    'control_characters',
+    'suspicious_pattern_detected',
+    'known_attack_signature',
+    'protocol_violation',
+    'malformed_url'
 ];
 
 // ---------------------------------------------------------------------------
@@ -117,8 +128,7 @@ const DEFAULT_REFRESH_INTERVAL_MS = 10000;
  * @param {number} [options.refreshIntervalMs=10000]  auto-refresh interval for
  *     gateway metrics; pass 0 to disable periodic refresh (injection point for tests)
  */
-export const init = (container, isGateway = false,
-    { refreshIntervalMs = DEFAULT_REFRESH_INTERVAL_MS } = {}) => {
+export const init = (container, isGateway = false, { refreshIntervalMs = DEFAULT_REFRESH_INTERVAL_MS } = {}) => {
     if (!container || container.querySelector('#jwt-metrics-content')) return;
     _isGateway = isGateway;
 
@@ -292,16 +302,14 @@ const showStatusBanner = (el, className, html) => {
 const showError = () => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
-        showStatusBanner(el, 'server-error',
-            `<div class="error-content"><strong>${t('common.error.prefix')}</strong> ${t('metrics.error.load')}</div>`);
+        showStatusBanner(el, 'server-error', `<div class="error-content"><strong>${t('common.error.prefix')}</strong> ${t('metrics.error.load')}</div>`);
     }
 };
 
 const showNotAvailable = (permanent = false) => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
-        showStatusBanner(el, 'validation-error',
-            `<div class="error-content"><strong>${t('metrics.error.not.available.title')}</strong> — ${t('metrics.error.not.available')}</div>`);
+        showStatusBanner(el, 'validation-error', `<div class="error-content"><strong>${t('metrics.error.not.available.title')}</strong> — ${t('metrics.error.not.available')}</div>`);
     }
     if (permanent) cleanup();
 };
@@ -309,8 +317,7 @@ const showNotAvailable = (permanent = false) => {
 const showGatewayNotRunning = () => {
     const el = document.getElementById('jwt-metrics-content');
     if (el) {
-        showStatusBanner(el, 'metrics-not-available',
-            `<div class="error-content"><strong>${t('metrics.gateway.not.running.title')}</strong> — ${t('metrics.gateway.not.running')}</div>`);
+        showStatusBanner(el, 'metrics-not-available', `<div class="error-content"><strong>${t('metrics.gateway.not.running.title')}</strong> — ${t('metrics.gateway.not.running')}</div>`);
     }
 };
 
@@ -345,8 +352,7 @@ const exportAsCsv = (data) => {
             csv += `${category},${key},${value}\n`;
         }
     }
-    return { content: csv, mimeType: 'text/csv',
-        filename: `gateway-metrics-${Date.now()}.csv` };
+    return { content: csv, mimeType: 'text/csv', filename: `gateway-metrics-${Date.now()}.csv` };
 };
 
 /**
@@ -374,23 +380,20 @@ const formatPrometheusSection = (metricName, helpText, counters, labelName) => {
 const exportAsPrometheus = (data) => {
     let output = '';
     if (data.tokenValidation) {
-        output += formatPrometheusSection('nifi_jwt_validations_total',
-            'Token validation events (token-sheriff)',
-            data.tokenValidation, 'result');
+        output += formatPrometheusSection('nifi_jwt_validations_total', 'Token validation events (token-sheriff)', data.tokenValidation, 'result');
     }
     if (data.httpSecurity) {
         output += formatPrometheusSection(
             'nifi_gateway_http_security_events_total',
             'Transport-level security events (cui-http)',
-            data.httpSecurity, 'type');
+            data.httpSecurity,
+            'type'
+        );
     }
     if (data.gatewayEvents) {
-        output += formatPrometheusSection('nifi_gateway_events_total',
-            'Application-level gateway events',
-            data.gatewayEvents, 'type');
+        output += formatPrometheusSection('nifi_gateway_events_total', 'Application-level gateway events', data.gatewayEvents, 'type');
     }
-    return { content: output, mimeType: 'text/plain',
-        filename: `gateway-metrics-${Date.now()}.txt` };
+    return { content: output, mimeType: 'text/plain', filename: `gateway-metrics-${Date.now()}.txt` };
 };
 
 const EXPORT_FORMATTERS = {

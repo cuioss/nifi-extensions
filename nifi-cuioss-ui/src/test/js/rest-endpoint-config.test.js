@@ -80,8 +80,7 @@ describe('rest-endpoint-config', () => {
         });
         utils.buildOriginBadge.mockImplementation((origin) => {
             const o = origin || 'persisted';
-            return utils.buildIconElement('span', `origin-badge origin-${o}`,
-                utils.t(`origin.badge.${o}.title`), 'fa-database', utils.t(`origin.badge.${o}`));
+            return utils.buildIconElement('span', `origin-badge origin-${o}`, utils.t(`origin.badge.${o}.title`), 'fa-database', utils.t(`origin.badge.${o}`));
         });
         utils.buildActionButton.mockImplementation((className, title, iconClass, label) =>
             utils.buildIconElement('button', className, title, iconClass, label));
@@ -1507,8 +1506,7 @@ describe('rest-endpoint-config', () => {
         api.updateComponentProperties.mockResolvedValue({});
         api.fetchGatewayApi.mockResolvedValue({
             managementEndpoints: [
-                { name: 'health', path: '/health', enabled: false, authMode: 'bearer', methods: 'GET',
-                    requiredRoles: 'admin', requiredScopes: '' }
+                { name: 'health', path: '/health', enabled: false, authMode: 'bearer', methods: 'GET', requiredRoles: 'admin', requiredScopes: '' }
             ]
         });
 
@@ -1582,8 +1580,7 @@ describe('rest-endpoint-config', () => {
         });
         api.fetchGatewayApi.mockResolvedValue({
             managementEndpoints: [
-                { name: 'health', path: '/health', enabled: true, authMode: 'bearer', methods: 'GET',
-                    requiredRoles: 'admin', requiredScopes: 'read' }
+                { name: 'health', path: '/health', enabled: true, authMode: 'bearer', methods: 'GET', requiredRoles: 'admin', requiredScopes: 'read' }
             ]
         });
 
@@ -2497,16 +2494,11 @@ describe('rest-endpoint-config', () => {
     describe('external routes from /config', () => {
         const GATEWAY_CONFIG_WITH_EXTERNAL = {
             managementEndpoints: [
-                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer',
-                    methods: ['GET'], requiredRoles: '', requiredScopes: '', builtIn: true }
+                { name: 'health', path: '/health', enabled: true, authMode: 'local-only,bearer', methods: ['GET'], requiredRoles: '', requiredScopes: '', builtIn: true }
             ],
             routes: [
-                { name: 'data', path: '/api/data', enabled: true, methods: ['GET', 'POST'],
-                    requiredRoles: [], requiredScopes: [], authMode: 'bearer',
-                    createFlowFile: true, successOutcome: 'data', source: 'external' },
-                { name: 'users', path: '/api/users', enabled: true, methods: ['GET'],
-                    requiredRoles: ['ADMIN'], requiredScopes: [], authMode: 'bearer',
-                    createFlowFile: true, successOutcome: 'users', source: 'nifi' }
+                { name: 'data', path: '/api/data', enabled: true, methods: ['GET', 'POST'], requiredRoles: [], requiredScopes: [], authMode: 'bearer', createFlowFile: true, successOutcome: 'data', source: 'external' },
+                { name: 'users', path: '/api/users', enabled: true, methods: ['GET'], requiredRoles: ['ADMIN'], requiredScopes: [], authMode: 'bearer', createFlowFile: true, successOutcome: 'users', source: 'nifi' }
             ],
             externalConfigLoaded: true
         };
@@ -2583,9 +2575,7 @@ describe('rest-endpoint-config', () => {
             api.fetchGatewayApi.mockResolvedValue({
                 managementEndpoints: [],
                 routes: [
-                    { name: 'data', path: '/api/data', enabled: false, methods: ['GET'],
-                        requiredRoles: [], requiredScopes: [], authMode: 'bearer',
-                        createFlowFile: true, source: 'external' }
+                    { name: 'data', path: '/api/data', enabled: false, methods: ['GET'], requiredRoles: [], requiredScopes: [], authMode: 'bearer', createFlowFile: true, source: 'external' }
                 ],
                 externalConfigLoaded: true
             });

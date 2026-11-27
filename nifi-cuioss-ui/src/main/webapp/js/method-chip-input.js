@@ -24,7 +24,9 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'
  */
 export const createMethodChipInput = ({ container, idx, value }) =>
     createChipInput({
-        container, idx, value,
+        container,
+        idx,
+        value,
         config: {
             cssPrefix: 'method',
             availableValues: HTTP_METHODS,

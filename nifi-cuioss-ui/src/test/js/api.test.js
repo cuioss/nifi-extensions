@@ -5,15 +5,25 @@
 'use strict';
 
 import {
-    validateJwksUrl, validateJwksFile, validateJwksContent,
+    validateJwksUrl,
+    validateJwksFile,
+    validateJwksContent,
     verifyToken,
-    getComponentProperties, updateComponentProperties,
-    getControllerServiceProperties, updateControllerServiceProperties,
+    getComponentProperties,
+    updateComponentProperties,
+    getControllerServiceProperties,
+    updateControllerServiceProperties,
     resolveJwtConfigServiceId,
-    getComponentId, detectComponentType, resetComponentCache,
-    fetchGatewayApi, sendGatewayTestRequest, getCsrfToken, COMPONENT_TYPES,
+    getComponentId,
+    detectComponentType,
+    resetComponentCache,
+    fetchGatewayApi,
+    sendGatewayTestRequest,
+    getCsrfToken,
+    COMPONENT_TYPES,
     getConnectedRelationships,
-    getProxyContextPath, resetProxyContextPath
+    getProxyContextPath,
+    resetProxyContextPath
 } from '../../main/webapp/js/api.js';
 
 // ---------------------------------------------------------------------------
@@ -436,7 +446,8 @@ describe('updateComponentProperties', () => {
         mockJsonResponse({
             revision: { version: 3 },
             component: {
-                id: procId, state: 'STOPPED',
+                id: procId,
+                state: 'STOPPED',
                 validationErrors: [
                     "'Relationship old-rel' is invalid because Relationship 'old-rel' is not connected to any component and is not auto-terminated",
                     "'Relationship new-rel' is invalid because Relationship 'new-rel' is not connected to any component and is not auto-terminated"
@@ -950,7 +961,9 @@ describe('getProxyContextPath', () => {
         // Several entry points priming the cache at once on page load: the
         // in-flight promise is shared, so the servlet is hit at most once.
         const [a, b, c] = await Promise.all([
-            getProxyContextPath(), getProxyContextPath(), getProxyContextPath()
+            getProxyContextPath(),
+            getProxyContextPath(),
+            getProxyContextPath()
         ]);
 
         expect(a).toBe('/my-app/ui');

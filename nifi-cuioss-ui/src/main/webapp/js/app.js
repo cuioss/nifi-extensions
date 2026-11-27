@@ -110,8 +110,7 @@ const detectIsGateway = async (componentId) => {
         log.info(`Detected component type: ${isGw ? 'Gateway' : 'JWT'}`);
         return isGw;
     } catch (err) {
-        log.warn('Component type detection failed, defaulting to JWT view:',
-            err.message);
+        log.warn('Component type detection failed, defaulting to JWT view:', err.message);
         return false;
     }
 };

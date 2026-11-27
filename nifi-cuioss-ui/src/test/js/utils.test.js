@@ -1,12 +1,22 @@
 'use strict';
 
 import {
-    sanitizeHtml, formatNumber, formatDate, t, lang, TRANSLATIONS, log,
+    sanitizeHtml,
+    formatNumber,
+    formatDate,
+    t,
+    lang,
+    TRANSLATIONS,
+    log,
     validateUrl,
-    validateIssuerName, validateProcessorIdFromUrl,
+    validateIssuerName,
+    validateProcessorIdFromUrl,
     validateIssuerConfig,
-    displayUiError, displayUiSuccess,
-    showConfirmationDialog, confirmRemoveIssuer, confirmClearForm
+    displayUiError,
+    displayUiSuccess,
+    showConfirmationDialog,
+    confirmRemoveIssuer,
+    confirmClearForm
 } from '../../main/webapp/js/utils.js';
 
 // ---------------------------------------------------------------------------

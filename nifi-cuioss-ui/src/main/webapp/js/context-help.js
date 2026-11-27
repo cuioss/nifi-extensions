@@ -106,9 +106,7 @@ export const createContextHelp = ({ helpKey, propertyKey, currentValue }) => {
  * @param {string}      [opts.currentValue] current property value
  * @returns {HTMLDivElement}
  */
-export const createFormField = ({ container, idx, name, label, placeholder, value,
-    extraClass, hidden, inputClass, isTextArea,
-    helpKey, propertyKey, currentValue }) => {
+export const createFormField = ({ container, idx, name, label, placeholder, value, extraClass, hidden, inputClass, isTextArea, helpKey, propertyKey, currentValue }) => {
     const div = document.createElement('div');
     div.className = `form-field field-container-${name}`;
     if (extraClass) div.classList.add(extraClass);

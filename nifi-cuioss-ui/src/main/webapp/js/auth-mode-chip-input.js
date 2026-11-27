@@ -33,10 +33,16 @@ const AUTH_MODE_DISPLAY = {
  * @returns {{ getValue: () => string, destroy: () => void }}
  */
 export const createAuthModeChipInput = ({
-    container, idx, value,
-    helpKey, propertyKey, currentValue
+    container,
+    idx,
+    value,
+    helpKey,
+    propertyKey,
+    currentValue
 }) => createChipInput({
-    container, idx, value,
+    container,
+    idx,
+    value,
     config: {
         cssPrefix: 'auth-mode',
         availableValues: AUTH_MODES,

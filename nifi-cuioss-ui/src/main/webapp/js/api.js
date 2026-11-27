@@ -245,8 +245,7 @@ const detectComponentType = async (componentId) => {
 
     // Call WAR servlet with the explicit component ID so the backend
     // resolves the correct component regardless of global state.
-    const data = await request('GET', `${BASE_URL}/component-info`,
-        null, { componentId });
+    const data = await request('GET', `${BASE_URL}/component-info`, null, { componentId });
     const info = {
         type: data.type,
         componentClass: data.componentClass,
@@ -585,6 +584,10 @@ export const resolveJwtConfigServiceId = async (processorId) => {
 };
 
 export {
-    getComponentId, detectComponentType, resetComponentCache, getCsrfToken, COMPONENT_TYPES,
+    getComponentId,
+    detectComponentType,
+    resetComponentCache,
+    getCsrfToken,
+    COMPONENT_TYPES,
     resetProxyContextPath
 };
