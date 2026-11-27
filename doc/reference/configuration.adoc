@@ -610,7 +610,7 @@ spec:
     spec:
       containers:
       - name: nifi
-        image: apache/nifi:2.10.0
+        image: apache/nifi:2.12.0
         env:
         - name: JWT_ISSUER_KEYCLOAK_ISSUER
           value: "https://keycloak.internal/realms/myapp"
